@@ -1,0 +1,21 @@
+name = "Muscade"
+uuid = "93488820-1883-11ed-0c34-05177b029e4d"
+authors = ["Philippe Maincon <philippe.maincon@sintef.no>"]
+version = "0.0.1"
+
+[deps]
+EspyInsideFunction = "d6b55740-5cb4-11ec-1cb9-93db9984c461"
+FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
+GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+Ratios = "c84ed2f1-dad5-54f0-aa8e-dbefe2724439"
+ReverseDiff = "37e2e3b7-166d-5795-8a7a-e32c996b4267"
+SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+StaticUnivariatePolynomials = "6f584044-cad5-5b68-a429-1e244a824f76"
+Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
+
+[compat]
+julia = "1.7"
