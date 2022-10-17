@@ -209,6 +209,18 @@ git-tree-sha1 = "3f3a2501fa7236e9b911e0f7a588c657e822bb6d"
 uuid = "5ae413db-bbd1-5e63-b57d-d24a61df00f5"
 version = "2.2.3+0"
 
+[[deps.Enzyme]]
+deps = ["Adapt", "CEnum", "Enzyme_jll", "GPUCompiler", "LLVM", "Libdl", "LinearAlgebra", "ObjectFile", "Printf", "Random"]
+git-tree-sha1 = "8ab9eb44fbcfc9161b3f81be7814a7618f2a3460"
+uuid = "7da242da-08ed-463a-9acd-ee780be4f1d9"
+version = "0.10.4"
+
+[[deps.Enzyme_jll]]
+deps = ["Artifacts", "JLLWrappers", "LazyArtifacts", "Libdl", "Pkg", "TOML"]
+git-tree-sha1 = "722aa3b554e883118e0e3111629ec40e176cee2c"
+uuid = "7cc45869-7501-5eee-bdea-0790c847d4ef"
+version = "0.0.33+0"
+
 [[deps.EspyInsideFunction]]
 deps = ["Printf"]
 git-tree-sha1 = "3867faea8ede996b4269f609830f1ae83c21c036"
@@ -220,6 +232,11 @@ deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "bad72f730e9e91c08d9427d5e8db95478a3c323d"
 uuid = "2e619515-83b5-522b-bb60-26c02a35a201"
 version = "2.4.8+0"
+
+[[deps.ExprTools]]
+git-tree-sha1 = "56559bbef6ca5ea0c0818fa5c90320398a6fbf8d"
+uuid = "e2ba6199-217a-4e67-a87a-7c52f15ade04"
+version = "0.1.8"
 
 [[deps.Extents]]
 git-tree-sha1 = "5e1e4c53fa39afe63a7d356e30452249365fba99"
@@ -344,6 +361,12 @@ deps = ["Adapt"]
 git-tree-sha1 = "6872f5ec8fd1a38880f027a26739d42dcda6691f"
 uuid = "46192b85-c4d5-4398-a991-12ede77f4527"
 version = "0.1.2"
+
+[[deps.GPUCompiler]]
+deps = ["ExprTools", "InteractiveUtils", "LLVM", "Libdl", "Logging", "TimerOutputs", "UUIDs"]
+git-tree-sha1 = "122d7bcc92abf94cf1a86281ad7a4d0e838ab9e0"
+uuid = "61eb1bfa-7361-4325-ad38-22787b887f55"
+version = "0.16.3"
 
 [[deps.GeoInterface]]
 deps = ["Extents"]
@@ -722,6 +745,12 @@ version = "1.0.2"
 [[deps.NetworkOptions]]
 uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
 
+[[deps.ObjectFile]]
+deps = ["Reexport", "StructIO"]
+git-tree-sha1 = "55ce61d43409b1fb0279d1781bf3b0f22c83ab3b"
+uuid = "d8793406-e978-5875-9003-1fc021f44a92"
+version = "0.3.7"
+
 [[deps.Observables]]
 git-tree-sha1 = "dfd8d34871bc3ad08cd16026c1828e271d554db9"
 uuid = "510215fc-4207-5dde-b226-833fc4488ee2"
@@ -1048,6 +1077,12 @@ git-tree-sha1 = "ec47fb6069c57f1cee2f67541bf8f23415146de7"
 uuid = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
 version = "0.6.11"
 
+[[deps.StructIO]]
+deps = ["Test"]
+git-tree-sha1 = "010dc73c7146869c042b49adcdb6bf528c12e859"
+uuid = "53d494c1-5632-5724-8f4c-31dff12d585f"
+version = "0.3.0"
+
 [[deps.SuiteSparse]]
 deps = ["Libdl", "LinearAlgebra", "Serialization", "SparseArrays"]
 uuid = "4607b0f0-06f3-5cda-b6b1-a6196a1729e9"
@@ -1087,6 +1122,12 @@ deps = ["ColorTypes", "DataStructures", "DocStringExtensions", "FileIO", "FixedP
 git-tree-sha1 = "fcf41697256f2b759de9380a7e8196d6516f0310"
 uuid = "731e570b-9d59-4bfa-96dc-6df516fadf69"
 version = "0.6.0"
+
+[[deps.TimerOutputs]]
+deps = ["ExprTools", "Printf"]
+git-tree-sha1 = "9dfcb767e17b0849d6aaf85997c98a5aea292513"
+uuid = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
+version = "0.5.21"
 
 [[deps.TranscodingStreams]]
 deps = ["Random", "Test"]

@@ -172,3 +172,5 @@
     const calorie  = 4.184J
     const kgTNT    = 1e6calorie
     const alen     = 622.77cm
+    const kWh      = 1e3W*hour
+    const denier   = 1g/9000m
