@@ -4,6 +4,7 @@ authors = ["Philippe Maincon <philippe.maincon@sintef.no>"]
 version = "0.0.1"
 
 [deps]
+DiffResults = "163ba53b-c6d8-5494-b064-1a9d43ac40c5"
 EspyInsideFunction = "d6b55740-5cb4-11ec-1cb9-93db9984c461"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"

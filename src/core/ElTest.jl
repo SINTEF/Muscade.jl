@@ -1,16 +1,11 @@
-using  Printf,ForwardDiff,StaticArrays
-using  Muscade # to define dofid
-using Enzyme
+using  Printf
+using  Muscade 
 
 
-function testStaticElement(el::Element; δX,X,U,A, t::Float64=0.,ε::Float64=0., verbose::Bool=true,dbg = ()) 
+function test_static_element(el::Element; δX,X,U,A, t::Float64=0.,ε::Float64=0., verbose::Bool=true,dbg = ()) 
     id           = dofid(el)
-
     n            = neldof(el)
-    iδX,iX,iU,iA = (1:n.X) , (1:n.X) .+ n.X , (1:n.U) .+ 2n.X , (1:n.A) .+ (2n.X+n.U)         
-    closure(Y)   = lagrangian(el,Y[iδX],[Y[iX]],[Y[iU]],Y[iA], t,ε,dbg)
-    Ly           = ForwardDiff.gradient(closure,vcat(δX,X,U,A))
-    Lδx,Lx,Lu,La = Ly[iδX], Ly[iX], Ly[iU], Ly[iA]
+    L,Lδx,Lx,Lu,La   = Muscade.gradient(SeverΛXUAstatic,el,δX,[X],[U],A, t,ε,dbg)
 
 
     if verbose

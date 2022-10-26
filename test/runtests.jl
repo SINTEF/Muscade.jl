@@ -10,3 +10,4 @@ println("\nMuscade test suite\n")
     end
     #doctest(Muscade)
 end
+;

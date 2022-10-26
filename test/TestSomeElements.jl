@@ -1,6 +1,7 @@
 module TestSomeElements
 
 using Test,StaticArrays
+using Muscade
 using Muscade.ElTest
 
 include("SomeElements.jl")
@@ -13,13 +14,24 @@ turbine  = Turbine(SVector(0.,0.),-10., 2.,sea, 3.,sky)
 X        = @SVector [1.,2.]
 U        = @SVector []
 A        = @SVector [0.,0.]  # [Δseadrag,Δskydrag]
-Lδx,Lx,Lu,La  = testStaticElement(turbine; δX,X,U,A,verbose=false)
+L,Lδx,Lx,Lu,La   = gradient(SeverΛXUAstatic,turbine,δX,[X],[U],A, 0.,0.,())
+
 @testset "Turbine" begin
     @test Lδx           ≈ [2, 3]
     @test Lx            ≈ [0, 0]
     @test length(Lu)    == 0
     @test La            ≈ [1, 1]
 end
+
+Lδx,Lx,Lu,La   = test_static_element(turbine;δX,X,U,A,verbose=false)
+
+@testset "test_static_element" begin
+    @test Lδx           ≈ [2, 3]
+    @test Lx            ≈ [0, 0]
+    @test length(Lu)    == 0
+    @test La            ≈ [1, 1]
+end
+
 
 # ###  AnchorLine
 
@@ -29,7 +41,7 @@ anchorline      = AnchorLine(SVector(0.,0.,100.), SVector(0,2.,0), SVector(94.,0
 X        = @SVector [0.,0.,0.]
 U        = @SVector []
 A        = @SVector [0.,0.]  # [Δseadrag,Δskydrag]
-Lδx,Lx,Lu,La  = testStaticElement(anchorline; δX,X,U,A,verbose=false)
+L,Lδx,Lx,Lu,La   = gradient(SeverΛXUAstatic,anchorline,δX,[X],[U],A, 0.,0.,())
 @testset "anchorline1" begin
     @test Lδx           ≈ [-12.256289016934003, 0.26077210674327667, -0.5215442134865533]
     @test Lx            ≈ [0.9150974560878556, -0.14708204066347275, 22.682383121692297]
@@ -38,7 +50,7 @@ Lδx,Lx,Lu,La  = testStaticElement(anchorline; δX,X,U,A,verbose=false)
 end
 
 X               = [0,-1,45/180*π]
-Lδx,Lx,Lu,La  = testStaticElement(anchorline; δX,X,U,A,verbose=false)
+L,Lδx,Lx,Lu,La   = gradient(SeverΛXUAstatic,anchorline,δX,[X],[U],A, 0.,0.,())
 
 @testset "anchorline2" begin
     @test Lδx           ≈ [-13.554507845277369, 0.05884302528088421, 19.08575222168048]
@@ -49,4 +61,3 @@ end
 
 
 end
-;

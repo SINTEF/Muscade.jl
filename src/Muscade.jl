@@ -35,12 +35,16 @@ module Muscade
     export ∂0,∂1,∂2
     export Xdofid,Udofid,Adofid,dofid,neldof
 
+    include("core/Assemble.jl")
+    export gradient,hessian
+    export JointΛXAstatic,SeverΛXUAstatic
+
     module Unit
         include("Core/Unit.jl")
         export unit,←,→,convert
     end
     module ElTest
         include("Core/ElTest.jl")
-        export testStaticElement,nodesforelementtest
+        export test_static_element#,nodes_for_element_test
     end
 end
