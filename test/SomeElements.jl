@@ -1,6 +1,5 @@
 
 using  Muscade
-using  Muscade.Tools.Dialect,Muscade.Tools.Dots
 using  StaticArrays,Printf,LinearAlgebra,StaticUnivariatePolynomials #,GLMakie
 
 export Turbine,AnchorLine

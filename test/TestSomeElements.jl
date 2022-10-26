@@ -1,7 +1,7 @@
 module TestSomeElements
 
 using Test,StaticArrays
-using Muscade.Tools.ElementTestBench
+using Muscade.ElementTestBench
 
 include("SomeElements.jl")
 
