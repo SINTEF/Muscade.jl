@@ -1,4 +1,3 @@
-## NOT OPERATIONAL
 
 struct MuscadeException <:Exception
     msg::String
