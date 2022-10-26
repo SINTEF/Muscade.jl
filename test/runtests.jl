@@ -6,4 +6,3 @@ println("\nMuscade test suite\n")
     include("TestUnit.jl")
     #doctest(Muscade)
 end
-;

@@ -1,8 +1,16 @@
 
 using  Muscade
-using  StaticArrays,Printf,LinearAlgebra,StaticUnivariatePolynomials #,GLMakie
+using  StaticArrays,LinearAlgebra #,GLMakie
 
 export Turbine,AnchorLine
+
+function horner(p,x)
+    y = zero(x)
+    for i = length(p):-1:1
+        y = p[i] + x*y
+    end
+    return y
+end    
 
 ### Turbine
 
@@ -39,7 +47,7 @@ struct AnchorLine <: AbstractElement
 end
 AnchorLine(nod::Vector{Node};Δxₘtop,xₘbot,L,buoyancy) = AnchorLine(coords(nod)[1,:],Δxₘtop,xₘbot,L,buoyancy)
          
-p = Polynomial(   2.82040487827,  -24.86027164695,   153.69500343165, -729.52107422849, 2458.11921356871,
+p = SVector(   2.82040487827,  -24.86027164695,   153.69500343165, -729.52107422849, 2458.11921356871,
               -5856.85610233072, 9769.49700812681,-11141.12651712473, 8260.66447746395,-3582.36704093187,
                 687.83550335374)
 
@@ -52,7 +60,8 @@ p = Polynomial(   2.82040487827,  -24.86027164695,   153.69500343165, -729.52107
     :ΔXtop   = [c -s 0;s c 0;0 0 1]*Δxₘtop       # arm of the fairlead
     :ΔXchain = Xtop[1:2]+ΔXtop[1:2]-xₘbot        # vector from anchor to fairlead
     :xaf     = norm(ΔXchain)                     # horizontal distance from anchor to fairlead
-    :cr      = exp10(p((L-xaf)/Xtop[3]))*Xtop[3] # curvature radius at TDP
+#    :cr      = exp10(p((L-xaf)/Xtop[3]))*Xtop[3] # curvature radius at TDP
+    :cr      = exp10(horner(p,(L-xaf)/Xtop[3]))*Xtop[3] # curvature radius at TDP
     :Fh      = -cr*buoyancy                      # horizontal force
     :ltf     = √(Xtop[3]^2+2Xtop[3]*cr)          # horizontal distance from fairlead to TDP
     r        = ΔXchain/xaf.*Fh

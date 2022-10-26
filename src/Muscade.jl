@@ -35,9 +35,6 @@ module Muscade
     export ∂0,∂1,∂2
     export Xdofid,Udofid,Adofid,dofid,neldof
 
-    # export dofid,neldof
-
-  
     module Unit
         include("Core/Unit.jl")
         export unit,←,→,convert
