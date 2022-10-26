@@ -30,8 +30,8 @@ module Muscade
     export muscadeerror
 
     include("core/ElementAPI.jl")
-    export AbstractElement
-    export initχ,lagrangian,espyable,draw,request2draw # element API
+    export Element
+    export initχ,lagrangian,residual,espyable,draw,request2draw # element API
     export ∂0,∂1,∂2
     export Xdofid,Udofid,Adofid,dofid,neldof
 
@@ -39,8 +39,8 @@ module Muscade
         include("Core/Unit.jl")
         export unit,←,→,convert
     end
-    module ElementTestBench
-        include("Core/ElementTestBench.jl")
+    module ElTest
+        include("Core/ElTest.jl")
         export testStaticElement,nodesforelementtest
     end
 end

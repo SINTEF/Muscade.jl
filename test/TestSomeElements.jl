@@ -1,11 +1,10 @@
 module TestSomeElements
 
 using Test,StaticArrays
-using Muscade.ElementTestBench
+using Muscade.ElTest
 
 include("SomeElements.jl")
 
-@testset "SomeElements" begin
 ### Turbine
 sea(t,x) = SVector(1.,0.)
 sky(t,x) = SVector(0.,1.)
@@ -47,13 +46,6 @@ Lδx,Lx,Lu,La  = testStaticElement(anchorline; δX,X,U,A,verbose=false)
     @test length(Lu)    == 0
     @test La            ≈ [-0.39614938921718024, -5.590087401683997]
 end
-
-
-
-end # @testset
-
-
-
 
 
 end

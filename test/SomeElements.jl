@@ -4,17 +4,17 @@ using  StaticArrays,LinearAlgebra #,GLMakie
 
 export Turbine,AnchorLine
 
-function horner(p,x)
-    y = zero(x)
-    for i = length(p):-1:1
-        y = p[i] + x*y
+function horner(p::AbstractVector,x::Number) # avoiding to use e.g. Polynomials.jl just for test code
+    y = zero(x) # not typestable if eltype(p)≠typeof(x)
+    for i ∈ reverse(p) 
+        y = i + x*y
     end
     return y
 end    
 
 ### Turbine
 
-struct Turbine{Tsea,Tsky} <: AbstractElement
+struct Turbine{Tsea,Tsky} <: Element
     xₘ      :: SVector{2,𝕣} # dx1,dx2
     z       :: 𝕣
     seadrag :: 𝕣
@@ -23,10 +23,9 @@ struct Turbine{Tsea,Tsky} <: AbstractElement
     sky     :: Tsky  # function
 end
 Turbine(nod::Vector{Node};seadrag,sea,skydrag,sky) = Turbine([coords(nod)[1,1],coords(nod)[1,2],0.],coords(nod)[1,3],seadrag,sea,skydrag,sky)  
-@espy function Muscade.lagrangian(o::Turbine, δX,X,U,A, t,ε,dbg)
+@espy function Muscade.residual(o::Turbine, Re,X,U,A, t,ε,dbg)
     :x       = ∂0(X)+o.xₘ  
-    δW       = δX ∘₁ (o.sea(t,x)*(o.seadrag+A[1]) + o.sky(t,x)*(o.skydrag+A[2]))
-    return δW
+    Re[:]     = o.sea(t,x)*(o.seadrag+A[1]) + o.sky(t,x)*(o.skydrag+A[2])
 end
 # function Muscade.draw(axe,key,out, o::Turbine, δX,X,U,A, t,ε,dbg)
 #     x    = ∂0(X)+o.xₘ  
@@ -38,7 +37,7 @@ Muscade.espyable(::Type{<:Turbine}) = (x=(3,),)
 
 ### AnchorLine
 
-struct AnchorLine <: AbstractElement
+struct AnchorLine <: Element
     xₘtop   :: SVector{3,𝕣}  # x1,x2,x3
     Δxₘtop  :: SVector{3,𝕣}  # as meshed, node to fairlead
     xₘbot   :: SVector{2,𝕣}  # x1,x2 (x3=0)
@@ -51,22 +50,20 @@ p = SVector(   2.82040487827,  -24.86027164695,   153.69500343165, -729.52107422
               -5856.85610233072, 9769.49700812681,-11141.12651712473, 8260.66447746395,-3582.36704093187,
                 687.83550335374)
 
-@espy function Muscade.lagrangian(o::AnchorLine, δX,X,U,A, t,ε,dbg)
+@espy function Muscade.residual(o::AnchorLine, Re,X,U,A, t,ε,dbg)
     xₘtop,Δxₘtop,xₘbot,L,buoyancy = o.xₘtop,o.Δxₘtop,o.xₘbot,o.L+A[1],o.buoyancy+A[2]      # a for anchor, t for TDP, f for fairlead
     x        = ∂0(X)  
-    :Xtop    = [x[1:2]...,0] + xₘtop
+    :Xtop    = SVector(x[1],x[2],0.) + xₘtop
     α        =  x[3]                            # azimut from COG to fairlead
     c,s      = cos(α),sin(α)
-    :ΔXtop   = [c -s 0;s c 0;0 0 1]*Δxₘtop       # arm of the fairlead
+    :ΔXtop   = SMatrix{3,3}(c,s,0,-s,c,0,0,0,1)*Δxₘtop       # arm of the fairlead
     :ΔXchain = Xtop[1:2]+ΔXtop[1:2]-xₘbot        # vector from anchor to fairlead
     :xaf     = norm(ΔXchain)                     # horizontal distance from anchor to fairlead
-#    :cr      = exp10(p((L-xaf)/Xtop[3]))*Xtop[3] # curvature radius at TDP
     :cr      = exp10(horner(p,(L-xaf)/Xtop[3]))*Xtop[3] # curvature radius at TDP
     :Fh      = -cr*buoyancy                      # horizontal force
     :ltf     = √(Xtop[3]^2+2Xtop[3]*cr)          # horizontal distance from fairlead to TDP
-    r        = ΔXchain/xaf.*Fh
-    δW       = δX[1]*r[1] + δX[2]*r[2] + δX[3] * (ΔXtop[1]*r[1]-ΔXtop[2]*r[2])
-    return δW
+    Re[1:2]   = ΔXchain/xaf.*Fh
+    Re[3]     = ΔXtop[1]*Re[1]-ΔXtop[2]*Re[2]
 end
 # function Muscade.draw(axe,key,out, o::AnchorLine, δX,X,U,A, t,ε,dbg)
 #     Muscade.lagrangian(out,key,o, δX,X,U,A, t,ε,(dbg...,espy2draw=true))

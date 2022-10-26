@@ -2,7 +2,11 @@ using Test,Documenter,Muscade
 println("\nMuscade test suite\n")
 
 @testset "Muscade.jl package" begin
-    include("TestSomeElements.jl")
-    include("TestUnit.jl")
+    @testset "SomeElements" begin
+        include("TestSomeElements.jl")
+    end
+    @testset "TestUnit" begin
+        include("TestUnit.jl")
+    end
     #doctest(Muscade)
 end
