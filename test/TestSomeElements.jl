@@ -32,6 +32,13 @@ Lδx,Lx,Lu,La   = test_static_element(turbine;δX,X,U,A,verbose=false)
     @test La            ≈ [1, 1]
 end
 
+L,Ly,Lyy   = hessian(JointΛXAstatic,turbine,δX,[X],[U],A, 0.,0.,())
+
+@testset "hessian" begin
+    @test L           ≈ 5.
+    @test Ly          ≈ [2,3,0,0,1,1]
+    @test Lyy         ≈ [0 0 0 0 1 0;0 0 0 0 0 1;0 0 0 0 0 0;0 0 0 0 0 0;1 0 0 0 0 0;0 1 0 0 0 0]
+end
 
 # ###  AnchorLine
 
