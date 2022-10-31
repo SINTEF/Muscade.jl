@@ -7,14 +7,14 @@ module Muscade
     # import Base.Threads.@spawn, Base.Threads.nthreads
 
 
-    ## TEMPORARY STUFF
-    using StaticArrays    
-    struct Node
-        coords :: SVector{3,Float64}
-    end
-    coords(n)= SMatrix{1,3}(n[i].coords[j] for i∈eachindex(n), j∈1:3)
-    export Node,coords    
-    ##
+    # ## TEMPORARY STUFF
+    # using StaticArrays    
+    # struct Node
+    #     coords :: SVector{3,Float64}
+    # end
+    # coords(n)= SMatrix{1,3}(n[i].coords[j] for i∈eachindex(n), j∈1:3)
+    # export Node,coords    
+    # ##
 
     include("core/Dialect.jl")
     export ℝ,ℤ,𝕣,𝕫,𝔹,𝕓
@@ -30,10 +30,13 @@ module Muscade
     export muscadeerror
 
     include("core/ElementAPI.jl")
-    export Element
-    export initχ,lagrangian,residual,espyable,draw,request2draw # element API
+    export AbstractElement
+    export lagrangian,residual,espyable,draw,request2draw 
     export ∂0,∂1,∂2
-    export Xdofid,Udofid,Adofid,dofid,neldof
+    export doflist
+
+    include("core/ModelDescription.jl")
+    export Model,addnode!,addelement!,Node 
 
     include("core/Assemble.jl")
     export gradient,hessian

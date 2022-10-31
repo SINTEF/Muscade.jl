@@ -1,4 +1,4 @@
-abstract type Element  end
+abstract type AbstractElement  end
 
 # TODO macros for neater syntax in element definition.  Someting like 
 # @Xdofid   Ballast (nod=[1,1,1],typ=[:dx1,:dx2,:dx3])  
@@ -14,31 +14,26 @@ abstract type Element  end
 ∂2(y)  = ∂(y,2)
 
 # to be implemented by elements (or not)
-function lagrangian(el::eltyp,δX,X,U,A, t,ε,dbg) where{eltyp<:Element} 
+function lagrangian(el::E,δX,X,U,A, t,ε,dbg) where{E<:AbstractElement} 
     TRe   = promote_type(eltype(δX),eltype(X[1]),eltype(U[1]),eltype(A))
-    Re    = zeros(TRe,neldof(el).X) # TODO this allocates.  Can we allocate at compilation and zero at each call?
+    Re    = zeros(TRe,getndof(E,:X)) # TODO this allocates.  Can we allocate at compilation and zero at each call?
     residual(el,Re,X,U,A, t,ε,dbg)
     return δX ∘₁ Re
 end
-residual( ::eltyp, R,X,U,A, t,ε,dbg) where{eltyp<:Element}  = muscadeerror(@sprintf "no method residual for %s" eltyp )
+residual( ::E, R,X,U,A, t,ε,dbg) where{E<:AbstractElement}  = muscadeerror(@sprintf "no method residual for %s" E )
 
-draw(axe,key,out, ::eltyp,args...) where{eltyp<:Element}    = nothing # by default, an element draws nothing
+draw(axe,key,out, ::E,args...) where{E<:AbstractElement}    = nothing # by default, an element draws nothing
 
-espyable(    ::Type{eltyp}) where{eltyp<:Element}  = ()
-request2draw(::Type{eltyp}) where{eltyp<:Element}  = ()
-Xdofid(      ::Type{eltyp}) where{eltyp<:Element}  = (nod=𝕫[],typ=Symbol[])
-Udofid(      ::Type{eltyp}) where{eltyp<:Element}  = (nod=𝕫[],typ=Symbol[])
-Adofid(      ::Type{eltyp}) where{eltyp<:Element}  = (nod=𝕫[],typ=Symbol[])
+espyable(    ::Type{E}) where{E<:AbstractElement}  = ()
+request2draw(::Type{E}) where{E<:AbstractElement}  = ()
+doflist(     ::Type{E}) where{E<:AbstractElement}  = (inod=𝕫[],class=Symbol[],field=Symbol[])
 
-# convenience functions based on the above
-dofid(      ::Type{eltyp}) where{eltyp<:Element}   = (X=Xdofid(eltyp),U=Udofid(eltyp),A=Adofid(eltyp))
-neldof(     ::Type{eltyp}) where{eltyp<:Element}   = (X=length(Xdofid(eltyp).nod),U=length(Udofid(eltyp).nod),A=length(Adofid(eltyp).nod))
+### Not part of element API, not exported by Muscade
 
-
-Xdofid(  ::eltyp) where{eltyp<:Element}   = Xdofid(eltyp)
-Udofid(  ::eltyp) where{eltyp<:Element}   = Udofid(eltyp)
-Adofid(  ::eltyp) where{eltyp<:Element}   = Adofid(eltyp)
-dofid(   ::eltyp) where{eltyp<:Element}   =  dofid(eltyp)
-neldof(  ::eltyp) where{eltyp<:Element}   = neldof(eltyp)
-espyable(::eltyp) where{eltyp<:Element}   = espyable(eltyp)
+getndof(E)                        = length(doflist(E).inod)
+getnnod(E)                        = maximum(doflist(E).inod) 
+getdoflist(E)                     = doflist(E).inod, doflist(E).class, doflist(E).field
+getidof(E,class)                  = findall(doflist(E).class.==class)  
+getndof(E,class)                  = length(getidof(E,class))  
+getndofs(E)                       = getndof(E,:X),getndof(E,:U),getndof(E,:A)
 

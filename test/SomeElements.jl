@@ -14,7 +14,7 @@ end
 
 ### Turbine
 
-struct Turbine{Tsea,Tsky} <: Element
+struct Turbine{Tsea,Tsky} <: AbstractElement
     xₘ      :: SVector{2,𝕣} # dx1,dx2
     z       :: 𝕣
     seadrag :: 𝕣
@@ -31,13 +31,14 @@ end
 #     x    = ∂0(X)+o.xₘ  
 #     lines!(axe,SMatrix{2,3}(x[1],x[1],x[2],x[2],o.z-10,o.z+10)' ,color=:orange, linewidth=5)
 # end
-Muscade.Xdofid(  ::Type{<:Turbine}) = (nod=[1,1],typ=[:dx1,:dx2])
-Muscade.Adofid(  ::Type{<:Turbine}) = (nod=[2,2],typ=[:Δseadrag,:Δskydrag])
+Muscade.doflist( ::Type{<:Turbine}) = (inod =[1   ,1   ,2        ,2        ],
+                                       class=[:X  ,:X  ,:A       ,:A       ],
+                                       field=[:dx1,:dx2,:Δseadrag,:Δskydrag])
 Muscade.espyable(::Type{<:Turbine}) = (x=(3,),)
 
 ### AnchorLine
 
-struct AnchorLine <: Element
+struct AnchorLine <: AbstractElement
     xₘtop   :: SVector{3,𝕣}  # x1,x2,x3
     Δxₘtop  :: SVector{3,𝕣}  # as meshed, node to fairlead
     xₘbot   :: SVector{2,𝕣}  # x1,x2 (x3=0)
@@ -90,8 +91,9 @@ end
 #     end
 #     lines!(axe,hcat(Xtop,Xtop+ΔXtop) ,color=:red , linewidth=2) # excentricity
 # end
-Muscade.Xdofid(      ::Type{<:AnchorLine}) = (nod=[1,1,1],typ=[:dx1,:dx2,:rx3])
-Muscade.Adofid(      ::Type{<:AnchorLine}) = (nod=[2,2  ],typ=[:ΔL,:Δbuoyancy])
+Muscade.doflist(     ::Type{<:AnchorLine}) = (inod =[1   ,1   ,1   ,2  ,2         ],
+                                              class=[:X  ,:X  ,:X  ,:A ,:A        ],
+                                              field=[:dx1,:dx2,:rx3,:ΔL,:Δbuoyancy])
 Muscade.espyable(    ::Type{<:AnchorLine}) = (Xtop=(3,),ΔXtop=(3,),ΔXchain=(2,),xaf=scalar,cr=scalar,Fh=scalar,ltf=scalar)
 Muscade.request2draw(::Type{<:AnchorLine}) = @request (Xtop,ΔXtop,ΔXchain,cr,xaf,ltf)
 
