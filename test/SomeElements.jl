@@ -15,14 +15,14 @@ end
 ### Turbine
 
 struct Turbine{Tsea,Tsky} <: AbstractElement
-    xₘ      :: SVector{2,𝕣} # dx1,dx2
+    xₘ      :: SVector{2,𝕣} # tx1,tx2
     z       :: 𝕣
     seadrag :: 𝕣
     sea     :: Tsea  # function
     skydrag :: 𝕣
     sky     :: Tsky  # function
 end
-Turbine(nod::Vector{Node};seadrag,sea,skydrag,sky) = Turbine([coords(nod)[1,1],coords(nod)[1,2],0.],coords(nod)[1,3],seadrag,sea,skydrag,sky)  
+Turbine(nod::Vector{Node};seadrag,sea,skydrag,sky) = Turbine(SVector(coord(nod)[1][1],coord(nod)[1][2]),coord(nod)[1][3],seadrag,sea,skydrag,sky)  
 @espy function Muscade.residual(o::Turbine, Re,X,U,A, t,ε,dbg)
     :x       = ∂0(X)+o.xₘ  
     Re[:]     = o.sea(t,x)*(o.seadrag+A[1]) + o.sky(t,x)*(o.skydrag+A[2])
@@ -33,7 +33,7 @@ end
 # end
 Muscade.doflist( ::Type{<:Turbine}) = (inod =[1   ,1   ,2        ,2        ],
                                        class=[:X  ,:X  ,:A       ,:A       ],
-                                       field=[:dx1,:dx2,:Δseadrag,:Δskydrag])
+                                       field=[:tx1,:tx2,:Δseadrag,:Δskydrag])
 Muscade.espyable(::Type{<:Turbine}) = (x=(3,),)
 
 ### AnchorLine
@@ -45,7 +45,7 @@ struct AnchorLine <: AbstractElement
     L       :: 𝕣
     buoyancy:: 𝕣
 end
-AnchorLine(nod::Vector{Node};Δxₘtop,xₘbot,L,buoyancy) = AnchorLine(coords(nod)[1,:],Δxₘtop,xₘbot,L,buoyancy)
+AnchorLine(nod::Vector{Node};Δxₘtop,xₘbot,L,buoyancy) = AnchorLine(coord(nod)[1],Δxₘtop,xₘbot,L,buoyancy)
          
 p = SVector(   2.82040487827,  -24.86027164695,   153.69500343165, -729.52107422849, 2458.11921356871,
               -5856.85610233072, 9769.49700812681,-11141.12651712473, 8260.66447746395,-3582.36704093187,
@@ -63,8 +63,8 @@ p = SVector(   2.82040487827,  -24.86027164695,   153.69500343165, -729.52107422
     :cr      = exp10(horner(p,(L-xaf)/Xtop[3]))*Xtop[3] # curvature radius at TDP
     :Fh      = -cr*buoyancy                      # horizontal force
     :ltf     = √(Xtop[3]^2+2Xtop[3]*cr)          # horizontal distance from fairlead to TDP
-    Re[1:2]   = ΔXchain/xaf.*Fh
-    Re[3]     = ΔXtop[1]*Re[1]-ΔXtop[2]*Re[2]
+    Re[1:2]  = ΔXchain/xaf.*Fh
+    Re[3]    = ΔXtop[1]*Re[1]-ΔXtop[2]*Re[2]
 end
 # function Muscade.draw(axe,key,out, o::AnchorLine, δX,X,U,A, t,ε,dbg)
 #     Muscade.lagrangian(out,key,o, δX,X,U,A, t,ε,(dbg...,espy2draw=true))
@@ -93,7 +93,7 @@ end
 # end
 Muscade.doflist(     ::Type{<:AnchorLine}) = (inod =[1   ,1   ,1   ,2  ,2         ],
                                               class=[:X  ,:X  ,:X  ,:A ,:A        ],
-                                              field=[:dx1,:dx2,:rx3,:ΔL,:Δbuoyancy])
+                                              field=[:tx1,:tx2,:rx3,:ΔL,:Δbuoyancy])
 Muscade.espyable(    ::Type{<:AnchorLine}) = (Xtop=(3,),ΔXtop=(3,),ΔXchain=(2,),xaf=scalar,cr=scalar,Fh=scalar,ltf=scalar)
 Muscade.request2draw(::Type{<:AnchorLine}) = @request (Xtop,ΔXtop,ΔXchain,cr,xaf,ltf)
 

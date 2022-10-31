@@ -1,4 +1,4 @@
-module TestSomeElements
+module TestElementAPI
 
 using Test,StaticArrays
 using Muscade
@@ -21,6 +21,17 @@ L,Lδx,Lx,Lu,La   = gradient(SeverΛXUAstatic,turbine,δX,[X],[U],A, 0.,0.,())
     @test Lx            ≈ [0, 0]
     @test length(Lu)    == 0
     @test La            ≈ [1, 1]
+end
+T = typeof(turbine)
+@testset "Element utility functions" begin
+    @test Muscade.getdoflist(T)  == ([1, 1, 2, 2],[:X, :X, :A, :A],[:tx1, :tx2, :Δseadrag, :Δskydrag])
+    @test Muscade.getidof(T,:X) == [1,2]
+    @test Muscade.getidof(T,:U) == []
+    @test Muscade.getidof(T,:A) == [3,4]
+    @test Muscade.getndof(T)     == 4
+    @test Muscade.getndof(T,:X)  == 2
+    @test Muscade.getndofs(T)    == (2,0,2)
+    @test Muscade.getnnod(T)     == 2
 end
 
 Lδx,Lx,Lu,La   = test_static_element(turbine;δX,X,U,A,verbose=false)

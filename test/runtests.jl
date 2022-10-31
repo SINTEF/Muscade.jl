@@ -3,8 +3,8 @@ println("\nMuscade test suite\n")
 
 @testset "Muscade.jl package" begin
     @testset "SomeElements" begin
-        include("TestSomeElements.jl")
-        include("TestAssemble.jl")
+        include("TestElementAPI.jl")
+        include("TestModelDescription.jl")
     end
     @testset "TestUnit" begin
         include("TestUnit.jl")

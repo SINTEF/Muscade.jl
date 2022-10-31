@@ -36,7 +36,7 @@ module Muscade
     export doflist
 
     include("core/ModelDescription.jl")
-    export Model,addnode!,addelement!,Node 
+    export Model,addnode!,addelement!,coord,Node 
 
     include("core/Assemble.jl")
     export gradient,hessian
