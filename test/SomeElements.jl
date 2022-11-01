@@ -51,7 +51,7 @@ p = SVector(   2.82040487827,  -24.86027164695,   153.69500343165, -729.52107422
               -5856.85610233072, 9769.49700812681,-11141.12651712473, 8260.66447746395,-3582.36704093187,
                 687.83550335374)
 
-@espy function Muscade.residual(o::AnchorLine, Re,X,U,A, t,ε,dbg)
+@espy function Muscade.lagrangian(o::AnchorLine, δX,X,U,A, t,ε,dbg)
     xₘtop,Δxₘtop,xₘbot,L,buoyancy = o.xₘtop,o.Δxₘtop,o.xₘbot,o.L+A[1],o.buoyancy+A[2]      # a for anchor, t for TDP, f for fairlead
     x        = ∂0(X)  
     :Xtop    = SVector(x[1],x[2],0.) + xₘtop
@@ -63,8 +63,10 @@ p = SVector(   2.82040487827,  -24.86027164695,   153.69500343165, -729.52107422
     :cr      = exp10(horner(p,(L-xaf)/Xtop[3]))*Xtop[3] # curvature radius at TDP
     :Fh      = -cr*buoyancy                      # horizontal force
     :ltf     = √(Xtop[3]^2+2Xtop[3]*cr)          # horizontal distance from fairlead to TDP
-    Re[1:2]  = ΔXchain/xaf.*Fh
-    Re[3]    = ΔXtop[1]*Re[1]-ΔXtop[2]*Re[2]
+    Fd       = ΔXchain/xaf.*Fh
+    δW       = δX[1:2] ∘₁ Fd
+    δW      += δX[3] * (ΔXtop[1]*Fd[1]-ΔXtop[2]*Fd[2])
+    return δW
 end
 # function Muscade.draw(axe,key,out, o::AnchorLine, δX,X,U,A, t,ε,dbg)
 #     Muscade.lagrangian(out,key,o, δX,X,U,A, t,ε,(dbg...,espy2draw=true))

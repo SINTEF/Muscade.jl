@@ -5,6 +5,7 @@ println("\nMuscade test suite\n")
     @testset "SomeElements" begin
         include("TestElementAPI.jl")
         include("TestModelDescription.jl")
+        include("TestAssemble.jl")
     end
     @testset "TestUnit" begin
         include("TestUnit.jl")
