@@ -86,21 +86,17 @@ end
     @test model.doftyp[1].ID    == 1
     @test model.doftyp[1].class == :X
     @test model.doftyp[1].field == :tx1
-    @test model.doftyp[1].dofscale ≈ 1.
-    @test model.doftyp[1].dualscale ≈ 1.
+    @test model.doftyp[1].scale ≈ 1.
 
     @test model.doftyp[3].ID    == 3
     @test model.doftyp[3].class == :A
     @test model.doftyp[3].field == :Δseadrag
-    @test model.doftyp[3].dofscale ≈ 1.
-    @test model.doftyp[3].dualscale ≈ 1.
+    @test model.doftyp[3].scale ≈ 1.
 
     @test model.doftyp[5].ID    == 5
     @test model.doftyp[5].class == :X
     @test model.doftyp[5].field == :rx3
-    @test model.doftyp[5].dofscale ≈ 1.
-    @test model.doftyp[5].dualscale ≈ 1.
-
+    @test model.doftyp[5].scale ≈ 1.
 end
 
 end # module

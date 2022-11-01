@@ -39,8 +39,6 @@ module Muscade
     export Model,addnode!,addelement!,coord,Node 
 
     include("core/Assemble.jl")
-    export gradient,hessian
-    export JointΛXAstatic,SeverΛXUAstatic
 
     module Unit
         include("Core/Unit.jl")
