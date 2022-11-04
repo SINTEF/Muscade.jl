@@ -36,7 +36,7 @@ module Muscade
     export doflist
 
     include("core/ModelDescription.jl")
-    export Model,addnode!,addelement!,coord,Node 
+    export Model,addnode!,addelement!,coord,Node,DofID,NodID,EleID,setscale! 
 
     include("core/Assemble.jl")
 

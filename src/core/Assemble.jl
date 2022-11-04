@@ -9,83 +9,77 @@ using ForwardDiff, DiffResults
 # with a solver dependent accessor provided for the user (NodalResults)
 
 
-# REFACTORING
-#
-# dofID, for a vector must be a unique, sequential identifier _within_a_class_. In other words, dofs must be stored in model by class.  model.dof.A[dofID] accesses a dof.
-# This change "show elements" and other accessors to model.dof.
-# This will allow to store a state as an object with separate classes, and provide the user with the key to access data in the state. 
-#  
-# Redesign disassembler to account for the new form of dofID and to have the structure
-# asm[eletypID][iele].dofID.  X|U|A[ieledof]   
-# asm[eletypID][iele].scale.Λ|X|U|A[ieledof]
-
 
 copies(n,a::T) where{T}    = NTuple{n,T}(deepcopy(a) for i∈1:n)
-struct Disassembler
-    iX  :: Vector{𝕫2}  
-    iU  :: Vector{𝕫2}  
-    iA  :: Vector{𝕫2}  
-    sΛ  :: Vector{𝕫2}
-    sX  :: Vector{𝕫2}
-    sU  :: Vector{𝕫2}
-    sA  :: Vector{𝕫2}
+struct XUA{T,nX,nU,nA} 
+    X::SVector{nX,T}
+    U::SVector{nU,T}
+    A::SVector{nA,T}
 end
-
+struct ΛXUA{T,nX,nU,nA} 
+    Λ::SVector{nX,T}
+    X::SVector{nX,T}
+    U::SVector{nU,T}
+    A::SVector{nA,T}
+end
+struct IS{nX,nU,nA} 
+    index:: XUA{𝕫,nX,nU,nA}
+    scale::ΛXUA{𝕣,nX,nU,nA}
+end
 function Disassembler(model::Model)
     neletyp          = length(model.eleobj)  
-    iX,iU,iA         = copies(3,Vector{𝕫2}(undef,neletyp))
-    sΛ,sX,sU,sA      = copies(4,Vector{𝕣2}(undef,neletyp))
-    for eletypID     = 1:neletyp
-        nele         = length(model.eleobj[eletypID])  
-        nX, nU, nA   = getndofs(eltype(model.eleobj[eletypID])) 
-        iX[eletypID] = 𝕫2(undef,nX,nele)
-        iU[eletypID] = 𝕫2(undef,nU,nele)
-        iA[eletypID] = 𝕫2(undef,nA,nele)
-        sΛ[eletypID] = 𝕣2(undef,nX,nele)
-        sX[eletypID] = 𝕣2(undef,nX,nele)
-        sU[eletypID] = 𝕣2(undef,nU,nele)
-        sA[eletypID] = 𝕣2(undef,nA,nele)
-    end
-    for ele               ∈ model.ele
-        dofID             = ele.dofID
-        eletypID          = ele.eletypID
-        iele              = ele.iele
-        ixdof,iudof,iadof = 0,0,0
-        for dofID         ∈ ele.dofID
-            doftyp        = model.doftyp[model.dof[dofID].doftypID]
-            class,scale   = doftyp.class,doftyp.scale
-            if     class == :X
-                ixdof    += 1
-                iX[eletypID][ixdof,iele] = dofID
-                sX[eletypID][ixdof,iele] = scale
-                sΛ[eletypID][ixdof,iele] = scale*model.Λscale
-            elseif class == :U
-                iudof    += 1
-                iU[eletypID][iudof,iele] = dofID
-                sU[eletypID][iudof,iele] = scale
-            elseif class == :A
-                iadof    += 1
-                iA[eletypID][iadof,iele] = dofID
-                sA[eletypID][iadof,iele] = scale
-            else
-                muscadeerror("dof class must be :X,:U or :A")
+    dis              = Vector{Any}(undef,neletyp)
+    for ieletyp      = 1:neletyp
+        nele         = length(model.eleobj[ieletyp])  
+        E            = eltype(model.eleobj[ieletyp])
+        nX,nU,nA     = getndofs(E)
+        dis[ieletyp] = Vector{IS{nX,nU,nA}}(undef,nele)
+        iX           = 𝕫1(undef,nX)  # working arrays
+        sX           = 𝕣1(undef,nX)  
+        sΛ           = 𝕣1(undef,nX)  
+        iU           = 𝕫1(undef,nU)
+        sU           = 𝕣1(undef,nU)
+        iA           = 𝕫1(undef,nA)
+        sA           = 𝕣1(undef,nA)
+        for iele     = 1:nele
+            ixdof,iudof,iadof = 0,0,0
+            for dofID         ∈ model.ele[ieletyp][iele].dofID
+                doftyp        = getdoftyp(model,dofID)
+                class,scale   = doftyp.class,doftyp.scale
+                if     class == :X
+                    ixdof    += 1
+                    iX[ixdof] = dofID.idof  
+                    sX[ixdof] = scale
+                    sΛ[ixdof] = scale * model.Λscale
+                elseif class == :U
+                    iudof    += 1
+                    iU[iudof] = dofID.idof
+                    sU[iudof] = scale
+                elseif class == :A
+                    iadof    += 1
+                    iA[iadof] = dofID.idof
+                    sA[iadof] = scale
+                else
+                    muscadeerror("dof class must be :X,:U or :A")
+                end
             end
+            dis[ieletyp][iele] = IS(XUA{𝕫,nX,nU,nA}(iX,iU,iA),ΛXUA{𝕣,nX,nU,nA}(sΛ,sX,sU,sA))# IS{nX,nU,nA}(XUA(iX,iU,iA),ΛXUA(sΛ,sX,sU,sA))
         end
     end
-    return Disassembler(iX,iU,iA,sΛ,sX,sU,sA)
+    return dis
 end
-function finalize!(model;scale=nothing,Λscale=nothing)  # scale = (X=(tx=10,rx=1),A=(drag=3.))
+function setscaling!(model;scale=nothing,Λscale=nothing)  # scale = (X=(tx=10,rx=1),A=(drag=3.))
     if ~isnothing(scale)
         for doftyp ∈ model.doftyp
             if doftyp.class ∈ keys(scale) && doftyp.field ∈ keys(scale[doftyp.class])
-                doftyp.scale = scale[doftyp.class][doftyp.field]
+                doftyp.scale = scale[doftyp.class][doftyp.field] # otherwise leave untouched
             end
         end
     end
     if ~isnothing(Λscale)
         model.Λscale = Λscale
     end
-    model.disassembler = Disassembler(model)
+    model.disassembler = Disassembler(model) # 
 end
 
 abstract type Assembler end
@@ -93,17 +87,17 @@ function assemble!(asm::Assembler,model,Λ,X,U,A, t,ε,dbg)
     for ieletyp ∈ eachindex(model.eletyp)
         eleobj  = model.eleobj[ieletyp]
         dis     = model.disassembler[ieletyp]
-        assemblesequential!(asm,ieletyp,dis,eleobj,Λ,X,U,A, t,ε,dbg)
+        assemblesequential!(asm,ieletyp,dis, eleobj,Λ,X,U,A, t,ε,dbg)
     end
 end
-function assembleequential!(asm::Assembler,ieletyp,dis,eleobj,Λ,X,U,A, t,ε,dbg) 
+function assembleequential!(asm::Assembler,ieletyp,dis, eleobj,Λ,X,U,A, t,ε,dbg) 
     for iele  ∈ eachindex(eleobj)
         scale = dis[iele].scale
-        dofID = dis[iele].dofID
-        Λe    =       Λ[dofID.Λ].*scale.Λ               
-        Xe    = Tuple(x[dofID.X].*scale.X for x∈X)
-        Ue    = Tuple(u[dofID.U].*scale.U for u∈U)
-        Ae    =       A[dofID.A].*scale.A
+        index = dis[iele].index
+        Λe    =       Λ[index.X].*scale.Λ               
+        Xe    = Tuple(x[index.X].*scale.X for x∈X)
+        Ue    = Tuple(u[index.U].*scale.U for u∈U)
+        Ae    =       A[index.A].*scale.A
         addin!(asm,ieletyp,iele, eleobj[iele],Λe,Xe,Ue,Ae, t,ε,dbg)
     end
 end
@@ -111,24 +105,31 @@ end
 
 ######
 struct ASMstaticX <: Assembler 
-    dis :: Disassembler          # naïve version! - just a shallow copy of model.disassembler
-    R   :: 𝕣1
-    K   :: XXXXX
-    dofgr:: DofGroup
+    dis   :: Vector{Any}          # naïve version! - just a shallow copy of model.disassembler
+    R     :: 𝕣1
+    K     :: SparseMatrixCSC{𝕣,𝕫} 
 end # for good old static FEM 
-ASMstaticX(model::Model) = ASMstaticX(model.disassembler,zeros(getndof(model)),XXXX EMPTY SPARSE XXXX)
+function ASMstaticX(model::Model) 
+    nX = getndof(model,:X)
+    return ASMstaticX(model.disassembler,zeros(nX),sparse(Int64[],Int64[],Float64[],nX,nX))
+end
 function addin!(asm::ASMstaticX,ieletyp,iele,eleobj,Λ,X,U,A, t,ε,dbg) 
     for iele ∈ eachindex(eleobj)
-        r,r∂x       = residual()
-
-        i           =     
+        closure(X)  = residual(eleobj, Re,X,U,A, t,ε,dbg)
+        result      = DiffResults.HessianResult(X)
+        result      = ForwardDiff.hessian!(result, closure, X)
+        r           = DiffResults.value(result)
+        r∂x         = DiffResults.gradient(result)
+        i           = asm.dis[ieletyp][iele].index.X    # TODO not type stable!
         asm.R[i  ] += r
-        asm.K[i,i] += r∂x
+        asm.K[i,i] += r∂x                               # TODO very slow!
     end
 end
 
+
+
 abstract type ASMjointΛXAstatic  <: Assembler end # for XA
-function hessian(::Type{JointΛXAstatic}, ele::E,Λ,X,U,A, t,ε,dbg) where{E<:AbstractElement}
+function hessian(::Type{ASMjointΛXAstatic}, ele::E,Λ,X,U,A, t,ε,dbg) where{E<:AbstractElement}
     nX,_,nA      = getndofs(E)
     iΛ,iX,iA     = (1:nX) , (1:nX) .+ nX ,  (1:nA) .+ (2nX) 
     closure(Y)   = lagrangian(ele,Y[iΛ],[Y[iX]],U,Y[iA], t,ε,dbg)
@@ -138,9 +139,9 @@ function hessian(::Type{JointΛXAstatic}, ele::E,Λ,X,U,A, t,ε,dbg) where{E<:Ab
     return (L=DiffResults.value(result), Ly=DiffResults.gradient(result), Lyy=DiffResults.hessian(result))
 end
 
-
-abstract type ASMseverΛXUAstatic <: Assembler end # For the purpose of testing elements
-function gradient(::Type{SeverΛXUAstatic}, ele::E,Λ,X,U,A, t,ε,dbg) where{E<:AbstractElement}
+# For the purpose of testing elements
+abstract type ASMseverΛXUAstatic <: Assembler end 
+function gradient(::Type{ASMseverΛXUAstatic}, ele::E,Λ,X,U,A, t,ε,dbg) where{E<:AbstractElement}
     nX,nU,nA     = getndofs(E)
     iΛ,iX,iU,iA  = (1:nX) , (1:nX) .+ nX , (1:nU) .+ 2nX , (1:nA) .+ (2nX+nU)         
     closure(Y)   = lagrangian(ele,Y[iΛ],[Y[iX]],[Y[iU]],Y[iA], t,ε,dbg)

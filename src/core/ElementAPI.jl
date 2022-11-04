@@ -14,13 +14,21 @@ abstract type AbstractElement  end
 ∂2(y)  = ∂(y,2)
 
 # to be implemented by elements (or not)
-function lagrangian(el::E,δX,X,U,A, t,ε,dbg) where{E<:AbstractElement} 
+function lagrangian(ele::E,δX,X,U,A, t,ε,dbg) where{E<:AbstractElement} 
     TRe   = promote_type(eltype(δX),eltype(X[1]),eltype(U[1]),eltype(A))
     Re    = zeros(TRe,getndof(E,:X)) # TODO this allocates.  Can we allocate at compilation and zero at each call?
-    residual(el,Re,X,U,A, t,ε,dbg)
+    residual(ele,Re,X,U,A, t,ε,dbg)
     return δX ∘₁ Re
 end
-residual( ::E, R,X,U,A, t,ε,dbg) where{E<:AbstractElement}  = muscadeerror(@sprintf "no method residual for %s" E )
+function residual(ele::E, R,X,U,A, t,ε,dbg) where{E<:AbstractElement} 
+    δX           = zeros(getndof(E,:X))                   # TODO this allocates!
+    closure(δX)  = lagrangian(ele,δX,X,U,A, t,ε,dbg)
+    R           .= ForwardDiff.gradient(closure,δX)
+end
+
+
+
+
 
 draw(axe,key,out, ::E,args...) where{E<:AbstractElement}    = nothing # by default, an element draws nothing
 
@@ -30,10 +38,10 @@ doflist(     ::Type{E}) where{E<:AbstractElement}  = (inod=𝕫[],class=Symbol[]
 
 ### Not part of element API, not exported by Muscade
 
-getndof(E)                        = length(doflist(E).inod)
-getnnod(E)                        = maximum(doflist(E).inod) 
-getdoflist(E)                     = doflist(E).inod, doflist(E).class, doflist(E).field
-getidof(E,class)                  = findall(doflist(E).class.==class)  
-getndof(E,class)                  = length(getidof(E,class))  
-getndofs(E)                       = getndof(E,:X),getndof(E,:U),getndof(E,:A)
+getndof(E::DataType)              = length(doflist(E).inod)
+getnnod(E::DataType)              = maximum(doflist(E).inod) 
+getdoflist(E::DataType)           = doflist(E).inod, doflist(E).class, doflist(E).field
+getidof(E::DataType,class)        = findall(doflist(E).class.==class)  
+getndof(E::DataType,class)        = length(getidof(E,class))  
+getndofs(E::DataType)             = getndof(E,:X),getndof(E,:U),getndof(E,:A)
 
