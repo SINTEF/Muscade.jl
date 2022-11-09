@@ -167,3 +167,15 @@ function addelement!(model::Model,::Type{T},nodID::Matrix{NodID};kwargs...) wher
 end
 addelement!(model::Model,::Type{E},nodID::Vector{NodID};kwargs...) where{E<:AbstractElement} = addelement!(model,E,reshape(nodID,(1,length(nodID)));kwargs...)[1] 
 
+function setscale!(model;scale=nothing,Λscale=nothing)  # scale = (X=(tx=10,rx=1),A=(drag=3.))
+    if ~isnothing(scale)
+        for doftyp ∈ model.doftyp
+            if doftyp.class ∈ keys(scale) && doftyp.field ∈ keys(scale[doftyp.class])
+                doftyp.scale = scale[doftyp.class][doftyp.field] # otherwise leave untouched
+            end
+        end
+    end
+    if ~isnothing(Λscale)
+        model.Λscale = Λscale
+    end
+end

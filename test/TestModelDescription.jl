@@ -75,6 +75,7 @@ end
     @test model.dof[DofID(:A,3)].idoftyp  == 6
     @test model.dof[DofID(:A,3)].eleID    == [EleID(2,1)]
 end
+setscale!(model;scale=(X=(tx1=1.,tx2=1.,rx3=2.),A=(Δseadrag=3.,Δskydrag=4.,ΔL=5)),Λscale=2)  # scale = (X=(tx=10,rx=1),A=(drag=3.))
 @testset "model.doftyp" begin
     @test model.doftyp[1].class == :X
     @test model.doftyp[1].field == :tx1
@@ -82,11 +83,13 @@ end
 
     @test model.doftyp[3].class == :A
     @test model.doftyp[3].field == :Δseadrag
-    @test model.doftyp[3].scale ≈ 1.
+    @test model.doftyp[3].scale ≈ 3.
 
     @test model.doftyp[5].class == :X
     @test model.doftyp[5].field == :rx3
-    @test model.doftyp[5].scale ≈ 1.
+    @test model.doftyp[5].scale ≈ 2.
+
+    @test model.Λscale          ≈ 2.
 end
 
 end # module

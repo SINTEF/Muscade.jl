@@ -59,6 +59,7 @@ sky(t,x)        = SVector(0.,1.)
 e1              = addelement!(model,Turbine   ,[n1,n2], seadrag=2., sea=sea, skydrag=3., sky=sky)
 e2              = addelement!(model,AnchorLine,[n1,n3], Δxₘtop=SVector(5.,0.,0), xₘbot=SVector(150.,0.), L=180., buoyancy=-1e3)
 setscale!(model;scale=(X=(tx1=1.,tx2=1.,rx3=2.),A=(Δseadrag=3.,Δskydrag=4.,ΔL=5)),Λscale=2)  # scale = (X=(tx=10,rx=1),A=(drag=3.))
+model.disassembler = Muscade.Disassembler(model)
 
 @testset "Disassembler" begin
     @test  model.disassembler[1][1].index.X == [1,2]
