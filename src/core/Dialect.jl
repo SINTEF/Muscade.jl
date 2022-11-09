@@ -53,7 +53,7 @@
     constructor(x::T) where{T}             = T.name.wrapper
     # typestable equivalent of a ? b : c
     toggle(cond::Bool,a::Ta,b::Tb) where{Ta,Tb} = convert(promote_type(Ta,Tb), cond ? a : b)
-    macro toggle(cond,a,b)
+    macro toggle(cond,a,b) # evaluate only a or only b
         return :(convert(promote_type(typeof($a),typeof($b)), $cond ? $a : $b))
     end
     getval(::Val{v}) where{v} = v

@@ -1,10 +1,9 @@
-using ForwardDiff, DiffResults
+using ForwardDiff, DiffResults  # phasing this out, though!
 
 # TODO consider Yota.jl
 # TODO XOR
 # TODO use Holy traits to dispatch on wether Elements have "residual" or "lagrangian" https://www.juliabloggers.com/the-emergent-features-of-julialang-part-ii-traits/ 
 # TODO memory management in hessian and gradient, make Y static
-# TODO gradient and hessian receives scaled values. The closure unscales them. In that way, Ly and Lyy are correctly scaled. 
 # TODO Solvers store scaled states? What is the convention? dofID? Are result scaled?  Maybe the storage is unscaled and compact, 
 # with a solver dependent accessor provided for the user (NodalResults)
 
@@ -34,13 +33,8 @@ function Disassembler(model::Model)
         E            = eltype(model.eleobj[ieletyp])
         nX,nU,nA     = getndofs(E)
         dis[ieletyp] = Vector{IS{nX,nU,nA}}(undef,nele)
-        iX           = 𝕫1(undef,nX)  # working arrays
-        sX           = 𝕣1(undef,nX)  
-        sΛ           = 𝕣1(undef,nX)  
-        iU           = 𝕫1(undef,nU)
-        sU           = 𝕣1(undef,nU)
-        iA           = 𝕫1(undef,nA)
-        sA           = 𝕣1(undef,nA)
+        iX,iU,iA     =              𝕫1(undef,nX),𝕫1(undef,nU),𝕫1(undef,nA)  # tmp arrays
+        sΛ,sX,sU,sA  = 𝕣1(undef,nX),𝕣1(undef,nX),𝕣1(undef,nU),𝕣1(undef,nA)
         for iele     = 1:nele
             ixdof,iudof,iadof = 0,0,0
             for dofID         ∈ model.ele[ieletyp][iele].dofID
@@ -63,12 +57,12 @@ function Disassembler(model::Model)
                     muscadeerror("dof class must be :X,:U or :A")
                 end
             end
-            dis[ieletyp][iele] = IS(XUA{𝕫,nX,nU,nA}(iX,iU,iA),ΛXUA{𝕣,nX,nU,nA}(sΛ,sX,sU,sA))# IS{nX,nU,nA}(XUA(iX,iU,iA),ΛXUA(sΛ,sX,sU,sA))
+            dis[ieletyp][iele] = IS(XUA{𝕫,nX,nU,nA}(iX,iU,iA),ΛXUA{𝕣,nX,nU,nA}(sΛ,sX,sU,sA))
         end
     end
     return dis
 end
-function setscaling!(model;scale=nothing,Λscale=nothing)  # scale = (X=(tx=10,rx=1),A=(drag=3.))
+function setscale!(model;scale=nothing,Λscale=nothing)  # scale = (X=(tx=10,rx=1),A=(drag=3.))
     if ~isnothing(scale)
         for doftyp ∈ model.doftyp
             if doftyp.class ∈ keys(scale) && doftyp.field ∈ keys(scale[doftyp.class])
@@ -84,13 +78,13 @@ end
 
 abstract type Assembler end
 function assemble!(asm::Assembler,model,Λ,X,U,A, t,ε,dbg)
-    for ieletyp ∈ eachindex(model.eletyp)
+    for ieletyp ∈ eachindex(model.ele)
         eleobj  = model.eleobj[ieletyp]
         dis     = model.disassembler[ieletyp]
-        assemblesequential!(asm,ieletyp,dis, eleobj,Λ,X,U,A, t,ε,dbg)
+        assemblesequential!(asm,ieletyp,dis, eleobj,Λ,X,U,A, t,ε,(dbg...,ieletyp=ieletyp))
     end
 end
-function assembleequential!(asm::Assembler,ieletyp,dis, eleobj,Λ,X,U,A, t,ε,dbg) 
+function assemblesequential!(asm::Assembler,ieletyp,dis, eleobj,Λ,X,U,A, t,ε,dbg) 
     for iele  ∈ eachindex(eleobj)
         scale = dis[iele].scale
         index = dis[iele].index
@@ -98,56 +92,63 @@ function assembleequential!(asm::Assembler,ieletyp,dis, eleobj,Λ,X,U,A, t,ε,db
         Xe    = Tuple(x[index.X].*scale.X for x∈X)
         Ue    = Tuple(u[index.U].*scale.U for u∈U)
         Ae    =       A[index.A].*scale.A
-        addin!(asm,ieletyp,iele, eleobj[iele],Λe,Xe,Ue,Ae, t,ε,dbg)
+        addin!(asm,ieletyp,iele, eleobj[iele],Λe,Xe,Ue,Ae, t,ε,(dbg...,iele=iele))
     end
 end
 
 
-######
+###### Automatic differentiation and adding in for single elements
+
+# Lagrangian from residual and residual from Lagrangian
+function lagrangian(ele::E,δX,X,U,A, t,ε,dbg) where{E<:AbstractElement} 
+    TRe   = promote_type(eltype(δX),eltype(X[1]),eltype(U[1]),eltype(A))
+    Re    = zeros(TRe,getndof(E,:X)) # TODO this allocates.  Can we allocate at compilation and zero at each call?
+    residual(ele,Re,X,U,A, t,ε,dbg)
+    return δX ∘₁ Re
+end
+function residual(ele::E, Re,X,U,A, t,ε,dbg) where{E<:AbstractElement} 
+    P            = constants(∂0(X),∂0(U),A,t)
+    N            = getndof(E,:X)
+    δX           = δ{P,N,𝕣}()                        
+    L            = lagrangian(ele,δX,X,U,A, t,ε,dbg)
+    Re          .= ∂{P,N}(L)
+end
+
+# For the purpose of testing elements: get all the gradients
+function gradient(ele::E,Λ,X,U,A, t,ε,dbg) where{E<:AbstractElement}
+    P            = constants(Λ,∂0(X),∂0(U),A,t)
+    nX,nU,nA     = getndofs(E) # TODO type stability?
+    N            = 2nX+nU+nA
+    iΛ,iX,iU,iA  = (1:nX) , (1:nX) .+ nX , (1:nU) .+ 2nX , (1:nA) .+ (2nX+nU)  
+    ΔY           = δ{P,N,𝕣}()                        
+    L            = lagrangian(ele,Λ+ΔY[iΛ],(∂0(X)+ΔY[iX],),(∂0(U)+ΔY[iU],),A+ΔY[iA], t,ε,dbg)
+    Ly           = ∂{P,N}(L)
+    return (L=value{P}(L), Lλ=Ly[iΛ], Lx=Ly[iX], Lu=Ly[iU], La=Ly[iA])
+end
+
+# Static X
 struct ASMstaticX <: Assembler 
     dis   :: Vector{Any}          # naïve version! - just a shallow copy of model.disassembler
     R     :: 𝕣1
     K     :: SparseMatrixCSC{𝕣,𝕫} 
 end # for good old static FEM 
 function ASMstaticX(model::Model) 
-    nX = getndof(model,:X)
+    nX       = getndof(model,:X)
     return ASMstaticX(model.disassembler,zeros(nX),sparse(Int64[],Int64[],Float64[],nX,nX))
 end
-function addin!(asm::ASMstaticX,ieletyp,iele,eleobj,Λ,X,U,A, t,ε,dbg) 
-    for iele ∈ eachindex(eleobj)
-        closure(X)  = residual(eleobj, Re,X,U,A, t,ε,dbg)
-        result      = DiffResults.HessianResult(X)
-        result      = ForwardDiff.hessian!(result, closure, X)
-        r           = DiffResults.value(result)
-        r∂x         = DiffResults.gradient(result)
+@generated function addin!(asm::ASMstaticX,ieletyp,iele,eleobj::E,Λ,X,U,A, t,ε,dbg)  where{E<:AbstractElement}
+    Nx      = length(Λ) 
+    ΔX      = δ{1,Nx,𝕣}()                 # NB: precedence==1, because input is not Adiff
+    Re      = Vector{∂ℝ{1,Nx,𝕣}}(undef,Nx)  # BUG one memory - common for all CPU threads?
+    return quote
+        $Re        .= 0.
+        residual(eleobj, $Re,(∂0(X)+$ΔX,),U,A, t,ε,dbg)
         i           = asm.dis[ieletyp][iele].index.X    # TODO not type stable!
-        asm.R[i  ] += r
-        asm.K[i,i] += r∂x                               # TODO very slow!
+        asm.R[i  ] += value{1}($Re)
+        j           = Vector(i)                               #
+        asm.K[j,j] += ∂{1,$Nx}($Re)                 # TODO very slow!
     end
 end
 
 
 
-abstract type ASMjointΛXAstatic  <: Assembler end # for XA
-function hessian(::Type{ASMjointΛXAstatic}, ele::E,Λ,X,U,A, t,ε,dbg) where{E<:AbstractElement}
-    nX,_,nA      = getndofs(E)
-    iΛ,iX,iA     = (1:nX) , (1:nX) .+ nX ,  (1:nA) .+ (2nX) 
-    closure(Y)   = lagrangian(ele,Y[iΛ],[Y[iX]],U,Y[iA], t,ε,dbg)
-    Y            = vcat(Λ,∂0(X),A)
-    result       = DiffResults.HessianResult(Y)
-    result       = ForwardDiff.hessian!(result, closure, Y)
-    return (L=DiffResults.value(result), Ly=DiffResults.gradient(result), Lyy=DiffResults.hessian(result))
-end
-
-# For the purpose of testing elements
-abstract type ASMseverΛXUAstatic <: Assembler end 
-function gradient(::Type{ASMseverΛXUAstatic}, ele::E,Λ,X,U,A, t,ε,dbg) where{E<:AbstractElement}
-    nX,nU,nA     = getndofs(E)
-    iΛ,iX,iU,iA  = (1:nX) , (1:nX) .+ nX , (1:nU) .+ 2nX , (1:nA) .+ (2nX+nU)         
-    closure(Y)   = lagrangian(ele,Y[iΛ],[Y[iX]],[Y[iU]],Y[iA], t,ε,dbg)
-    Y            = vcat(Λ,∂0(X),∂0(U),A)
-    result       = DiffResults.GradientResult(Y)
-    result       = ForwardDiff.gradient!(result,closure,Y)
-    Ly           = DiffResults.gradient(result)
-    return (L=DiffResults.value(result), Lλ=Ly[iΛ], Lx=Ly[iX], Lu=Ly[iU], La=Ly[iA])
-end

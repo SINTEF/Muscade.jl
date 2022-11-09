@@ -23,6 +23,13 @@ module Muscade
     export ℝ11,ℤ11,𝕣11,𝕫11,𝔹11,𝕓11
     export toggle
 
+    include("core/Adiff.jl")
+    export  ∂ℝ,∂ℝ1,∂ℝx #\partial \bbR
+    export  variate,variate2,δ,δ2,directional # \delta
+    export  value,VALUE,∂,∇,∂_,∇_,parts,toggle,NewtonIncrement # \partial, \nabla
+    export  constants,precedence,npartial,norm
+    export  str,≗ #\circeq
+
     include("core/Dots.jl")
     export dots,∘₀ ,∘₁,∘₂,⊗
 

@@ -1,0 +1,215 @@
+using   StaticArrays
+using   SpecialFunctions
+using   Printf
+
+
+## Type and construction
+
+# Types
+# P for precedence 
+# N number of partials 
+# R type of the variable 
+struct ∂ℝ{P,N,R} <:ℝ where{R<:ℝ}  # P for precedence, N number of partials, R type of the variable (∂ℝ can be nested)
+    x  :: R
+    dx :: SVector{N,R}
+end
+const AV{R}        = AbstractVector{R}
+const AA{R}        = AbstractArray{R}
+#const ∂ℝx{P,N,R}   = AA{∂ℝ{P,N,R}}
+#const ∂ℝ1{P,N,R}   = AV{∂ℝ{P,N,R}}
+
+# Constructors 
+∂ℝ{P,N}(x::R ,dx::AV{R  }) where{P,N,R<:ℝ      } = ∂ℝ{P,N,R}(x,SVector{N,R}(dx))
+∂ℝ{P,N}(x::R             ) where{P,N,R<:ℝ      } = ∂ℝ{P,N,R}(x,SVector{N,R}(zero(R)                 for j=1:N))
+∂ℝ{P,N}(x::R,i::ℤ        ) where{P,N,R<:ℝ      } = ∂ℝ{P,N,R}(x,SVector{N,R}(i==j ? one(R) : zero(R) for j=1:N))
+function ∂ℝ{P,N}(x::Rx,dx::AV{Rdx}) where{P,N,Rx<:ℝ,Rdx<:ℝ}
+    R = promote_type(Rx,Rdx)
+    return ∂ℝ{P,N}(convert(R,x),convert.(R,dx))
+end
+
+# zeros, ones, norm
+Base.zero(T::Type{∂ℝ{P,N,R}}) where{P,N,R<:ℝ}    = ∂ℝ{P,N,R}(zero(R), SVector{N,R}(zero(R) for j=1:N))
+#Base.zero(v::     ∂ℝ{P,N,R} ) where{P,N,R<:ℝ}    = zero(typeof(v))
+Base.one( T::Type{∂ℝ{P,N,R}}) where{P,N,R<:ℝ}    = ∂ℝ{P,N,R}(one( R), SVector{N,R}(zero(R) for j=1:N))
+#Base.one( v::     ∂ℝ{P,N,R} ) where{P,N,R<:ℝ}    = one( typeof(v))
+Base.isnan(   a::∂ℝ)                             = isnan(   VALUE(a))
+Base.isone(   a::∂ℝ)                             = isone(   VALUE(a))
+Base.iszero(  a::∂ℝ)                             = iszero(  VALUE(a))
+Base.isinf(   a::∂ℝ)                             = isinf(   VALUE(a))
+Base.isfinite(a::∂ℝ)                             = isfinite(VALUE(a))
+Base.typemax( ::Type{∂ℝ{P,N,R}}) where{P,N,R<:ℝ} = typemax(R)
+Base.typemin( ::Type{∂ℝ{P,N,R}}) where{P,N,R<:ℝ} = typemin(R)
+Base.floatmax(::Type{∂ℝ{P,N,R}}) where{P,N,R<:ℝ} = floatmax(R)
+Base.floatmin(::Type{∂ℝ{P,N,R}}) where{P,N,R<:ℝ} = floatmin(R)
+Base.eps(     ::Type{∂ℝ{P,N,R}}) where{P,N,R<:ℝ} = eps(R)
+Base.float(a::∂ℝ)                                = a
+
+# promote rules
+Base.promote_rule(::Type{∂ℝ{P ,N ,Ra}},::Type{∂ℝ{P,N,Rb}}) where{P ,N ,Ra<:ℝ,Rb<:ℝ} = ∂ℝ{P ,N ,promote_type(Ra,Rb)}
+Base.promote_rule(::Type{∂ℝ{Pa,Na,Ra}},::Type{       Rb }) where{Pa,Na,Ra<:ℝ,Rb<:ℝ} = ∂ℝ{Pa,Na,promote_type(Ra,Rb)}
+function Base.promote_rule(::Type{∂ℝ{Pa,Na,Ra}},::Type{∂ℝ{Pb,Nb,Rb}}) where{Pa,Pb,Na,Nb,Ra<:ℝ,Rb<:ℝ}
+    if Pa> Pb ∂ℝ{Pa,Nb,promote_type(      Ra    ,∂ℝ{Pb,Nb,Rb})}
+    else      ∂ℝ{Pb,Nb,promote_type(∂ℝ{Pa,Na,Ra},      Rb    )}
+    end
+end
+
+# conversions
+Base.convert(::Type{∂ℝ{P,N,Ra}},b::∂ℝ{P,N,Rb}) where{P,N,Ra<:ℝ,Rb<:ℝ} = ∂ℝ{P,N }(convert( Ra,b.x) ,convert.(Ra,b.dx))
+Base.convert(::Type{∂ℝ{P,N,Ra}},b::Real      ) where{P,N,Ra<:ℝ       } = ∂ℝ{P,N }(convert(Ra,b  ) ,SVector{N,Ra}(zero(Ra) for j=1:N))
+function Base.convert(::Type{∂ℝ{Pa,Na,Ra}},b::∂ℝ{Pb,Nb,Rb}) where{Pa,Pb,Na,Nb,Ra<:ℝ,Rb<:ℝ}
+    if Pa> Pb return                                                     ∂ℝ{Pa,Na}(convert(Ra,b.x) ,convert.(Ra,b.dx)  )
+    else      error("Cannot convert precedence ",Pb," to ",Pa)
+    end
+end
+
+
+## Pack and unpack
+
+precedence( ::Type{<:∂ℝ{P,N,R}}) where{P,N,R<:ℝ}          = P
+npartial(   ::Type{<:∂ℝ{P,N,R}}) where{P,N,R<:ℝ}          = N
+precedence( ::Type{<:ℝ})                                  = 0
+npartial(   ::Type{<:ℝ })                                 = 0
+precedence(a::AA) = precedence(eltype(a))
+npartial(  a::AA) = npartial(eltype(a))
+precedence(a::ℝ)  = precedence(typeof(a))
+npartial(a::ℝ)    = npartial(typeof(a))
+constants(a...)                                           = 1+maximum(precedence.(a))
+
+struct δ{P,N,R}       dum::𝕫   end # need dum, because syntax δ{P,N,R}() collides with default constructor
+struct variate{P,N}            end
+struct ∂{P,N}                  end 
+struct value{P,N}              end
+
+# variate
+δ{      P,N,R}(                    ) where{P,N,R<:ℝ} = SVector{N,∂ℝ{P,N,R}}(∂ℝ{P,N}(zero(R),i) for i=1:N)
+variate{P,N  }(a::AbstractVector{R}) where{P,N,R<:ℝ} = SVector{N,∂ℝ{P,N,R}}(∂ℝ{P,N}(a[i]   ,i) for i=1:N)
+variate{P    }(a::R                ) where{P,  R<:ℝ} =                    ∂ℝ{P,1}(a,SVector{1,R}(one(R)))
+
+# Analyse
+VALUE(a::ℝ )                           =        a
+VALUE(a::∂ℝ)                           = VALUE( a.x)
+VALUE(a::AA)                           = VALUE.(a)
+
+value{P}(a::∂ℝ{P,N,R}) where{P,N,R}    = a.x
+value{P}(a::R        ) where{P  ,R}    = a
+value{P}(a::AA{R}    ) where{P  ,R}    = value{P}.(a)
+
+∂{P,N}(a::          ∂ℝ{P,N,R} ) where{  P,N,R} = a.dx
+∂{P,N}(a::                 R  ) where{  P,N,R} = SVector{  N,R}(zero(R)    for i=1:N      )
+∂{P,N}(a::SVector{M,∂ℝ{P,N,R}}) where{M,P,N,R} = SMatrix{M,N,R}(a[i].dx[j] for i=1:M,j∈1:N) # ∂(a,x)[i,j] = ∂a[i]/∂x[j]
+∂{P,N}(a::SVector{M,       R }) where{M,P,N,R} = SMatrix{M,N,R}(zero(R)    for i=1:M,j=1:N)
+∂{P,N}(a::Vector{∂ℝ{P,N,R}})    where{  P,N,R} = SMatrix{N,N,R}(a[i].dx[j] for i=1:N,j∈1:N) # ∂(a,x)[i,j] = ∂a[i]/∂x[j]
+∂{P,N}(a::Vector{       R })    where{  P,N,R} = SMatrix{N,N,R}(zero(R)    for i=1:N,j=1:N)
+#∂{P,N}(a::SArray{M,∂ℝ{P,N,R}}) where{M,P,N,R}  = SArray{(M...,N),R}(a[i].dx[j] for i∈eachindex(a),j∈1:N) # ∂(a,x)[i,...,j] = ∂a[i,...]/∂x[j]
+#∂{P,N}(a::SArray{M,       R }) where{M,P,N,R}  = SArray{(M...,N),R}(zero(R)    for i∈eachindex(a),j∈1:N)
+
+## Binary operations
+for OP∈(:(>),:(<),:(==),:(>=),:(<=),:(!=))
+    @eval Base.$OP(a::∂ℝ,b::∂ℝ)  = $OP(VALUE(a),VALUE(b))
+    @eval Base.$OP(a:: ℝ,b::∂ℝ)  = $OP(      a ,VALUE(b))
+    @eval Base.$OP(a::∂ℝ,b:: ℝ)  = $OP(VALUE(a),      b )
+end
+
+macro Op2(OP,AB,A,B)
+    return esc(quote
+        @inline $OP(a::∂ℝ{P,N,R},b::∂ℝ{P,N,R}) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}($OP(a.x,b.x),$AB)
+        @inline $OP(a::∂ℝ{P,N,R},b::ℝ        ) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}($OP(a.x,b  ),$A )
+        @inline $OP(a::ℝ        ,b::∂ℝ{P,N,R}) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}($OP(a  ,b.x),$B )
+        @inline function $OP(a::∂ℝ{Pa,Na,Ra},b::∂ℝ{Pb,Nb,Rb}) where{Pa,Pb,Na,Nb,Ra<:ℝ,Rb<:ℝ}
+            if Pa==Pb
+                R = promote_type(Ra,Rb)
+                return ∂ℝ{Pa,Na}(convert(R,$OP(a.x,b.x)),convert.(R,$AB))
+            elseif Pa> Pb
+                R = promote_type(Ra,typeof(b))
+                return ∂ℝ{Pa,Na}(convert(R,$OP(a.x,b  )),convert.(R,$A ))
+            else
+                R = promote_type(typeof(a),Rb)
+                return ∂ℝ{Pb,Nb}(convert(R,$OP(a  ,b.x)),convert.(R,$B ))
+            end
+        end
+    end)
+end
+@Op2(Base.:(+), a.dx+b.dx,                                  a.dx,               b.dx               )
+@Op2(Base.:(-), a.dx-b.dx,                                  a.dx,               -b.dx              )
+@Op2(Base.:(*), a.dx*b.x+a.x*b.dx,                          a.dx*b,             a*b.dx             )
+@Op2(Base.:(/), a.dx/b.x-a.x/b.x^2*b.dx,                    a.dx/b,             -a/b.x^2*b.dx      )
+@Op2(Base.:(^), a.dx*b.x*a.x^(b.x-1)+log(a.x)*a.x^b.x*b.dx, a.dx*b*a.x^(b  -1), log(a)*a ^b.x*b.dx )
+@inline Base.:(^)(a::∂ℝ{P,N,R},b::Integer) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(a.x^b ,a.dx*b*a.x^(b-1) )
+
+## Functions
+macro Op1(OP,A)
+    return esc(:(@inline $OP(a::∂ℝ{P,N}) where{P,N} = ∂ℝ{P,N}($OP(a.x),$A)))
+end
+@Op1(Base.:(+),       a.dx                                                     )
+@Op1(Base.:(-),      -a.dx                                                     )
+@Op1(Base.abs  ,a.x==0.0 ? zero(a.dx) : (a.x>0.0 ? a.dx : -a.dx)               )
+@Op1(Base.conj ,      a.dx                                                     )
+@Op1(Base.sqrt,       a.dx / 2. / sqrt(a.x)                                    )
+@Op1(Base.cbrt,       a.dx / 3. / cbrt(a.x)^2                                  )
+@Op1(Base.abs2,       a.dx*2. * a.x                                            )
+@Op1(Base.inv,       -a.dx * abs2(inv(a.x))                                    )
+@Op1(Base.log,        a.dx / a.x                                               )
+@Op1(Base.log10,      a.dx / a.x / log(10.)                                    )
+@Op1(Base.log2,       a.dx / a.x / log(2.)                                     )
+@Op1(Base.log1p,      a.dx / (a.x + 1.)                                        )
+@Op1(Base.exp,         exp(a.x) * a.dx                                         )
+@Op1(Base.exp2,        log(2. ) * exp2( a.x) * a.dx                            )
+@Op1(Base.exp10,       log(10.) * exp10(a.x) * a.dx                            )
+@Op1(Base.expm1,       exp(a.x) * a.dx                                         )
+@Op1(Base.sin,         cos(a.x) * a.dx                                         )
+@Op1(Base.cos,        -sin(a.x) * a.dx                                         )
+@Op1(Base.tan,         (1. + tan(a.x)^2) * a.dx                                )
+@Op1(Base.sec,         sec(a.x) * tan(a.x) * a.dx                              )
+@Op1(Base.csc,        -csc(a.x) * cot(a.x) * a.dx                              )
+@Op1(Base.cot,        -(1. + cot(a.x)^2) * a.dx                                )
+@Op1(Base.sind,        π / 180. * cosd(a.x) * a.dx                             )
+@Op1(Base.cosd,       -π / 180. * sind(a.x) * a.dx                             )
+@Op1(Base.tand,        π / 180. * (1. + tand(a.x)^2) * a.dx                    )
+@Op1(Base.secd,        π / 180. * secd(a.x) * tand(a.x) * a.dx                 )
+@Op1(Base.cscd,       -π / 180. * cscd(a.x) * cotd(a.x) * a.dx                 )
+@Op1(Base.cotd,       -π / 180. * (1. + cotd(a.x)^2)  * a.dx                   )
+@Op1(Base.asin,        a.dx / sqrt(1. - a.x^2)                                 )
+@Op1(Base.acos,       -a.dx / sqrt(1. - a.x^2)                                 )
+@Op1(Base.atan,        a.dx / (1. + a.x^2)                                     )
+@Op1(Base.asec,        a.dx / abs(a.x) / sqrt(a.x^2 - 1.)                      )
+@Op1(Base.acsc,       -a.dx / abs(a.x) / sqrt(a.x^2 - 1.)                      )
+@Op1(Base.acot,       -a.dx / (1. + a.x^2)                                     )
+@Op1(Base.asind,       180. / π / sqrt(1. - a.x^2) * a.dx                      )
+@Op1(Base.acosd,      -180. / π / sqrt(1. - a.x^2) * a.dx                      )
+@Op1(Base.atand,       180. / π / (1. + a.x^2) * a.dx                          )
+@Op1(Base.asecd,       180. / π / abs(a.x) / sqrt(a.x^2- 1.) * a.dx            )
+@Op1(Base.acscd,      -180. / π / abs(a.x) / sqrt(a.x^2- 1.) * a.dx            )
+@Op1(Base.acotd,      -180. / π / (1. + a.x^2) * a.dx                          )
+@Op1(Base.sinh,        cosh(a.x) * a.dx                                        )
+@Op1(Base.cosh,        sinh(a.x) * a.dx                                        )
+@Op1(Base.tanh,        sech(a.x)^2 * a.dx                                      )
+@Op1(Base.sech,       -tanh(a.x) * sech(a.x) * a.dx                            )
+@Op1(Base.csch,       -coth(a.x) * csch(a.x) * a.dx                            )
+@Op1(Base.coth,       -csch(a.x)^2                                             )
+@Op1(Base.asinh,       a.dx / sqrt(a.x^2 + 1.)                                 )
+@Op1(Base.acosh,       a.dx / sqrt(a.x^2 - 1.)                                 )
+@Op1(Base.atanh,       a.dx / (1. - a.x^2)                                     )
+@Op1(Base.asech,      -a.dx / a.x / sqrt(1. - a.x^2)                           )
+@Op1(Base.acsch,      -a.dx / abs(a.x) / sqrt(1. + a.x^2)                      )
+@Op1(Base.acoth,       a.dx / (1. - a.x^2)                                     )
+@Op1(SpecialFunctions.erf,         2. * exp(-a.x^2) / sqrt(π) * a.dx           )
+@Op1(SpecialFunctions.erfc,       -2. * exp(-a.x^2) / sqrt(π) * a.dx           )
+@Op1(SpecialFunctions.erfi,        2. * exp( a.x^2) / sqrt(π) * a.dx           )
+@Op1(SpecialFunctions.gamma,       digamma(a.x) * gamma(a.x) * a.dx            )
+@Op1(SpecialFunctions.lgamma,      digamma(a.x) * a.dx                         )
+@Op1(SpecialFunctions.airy,        airyprime(a.x) * a.dx                       )  # note: only covers the 1-arg version
+@Op1(SpecialFunctions.airyprime,   airy(2., a.x) * a.dx                        )
+@Op1(SpecialFunctions.airyai,      airyaiprime(a.x) * a.dx                     )
+@Op1(SpecialFunctions.airybi,      airybiprime(a.x) * a.dx                     )
+@Op1(SpecialFunctions.airyaiprime, a.x * airyai(a.x) * a.dx                    )
+@Op1(SpecialFunctions.airybiprime, a.x * airybi(a.x) * a.dx                    )
+@Op1(SpecialFunctions.besselj0,   -besselj1(a.x) * a.dx                        )
+@Op1(SpecialFunctions.besselj1,   (besselj0(a.x) - besselj(2., a.x))/2. * a.dx )
+@Op1(SpecialFunctions.bessely0,   -bessely1(a.x) * a.dx                        )
+@Op1(SpecialFunctions.bessely1,   (bessely0(a.x) - bessely(2., a.x))/2. * a.dx )
+
+## Comparison for debug purposes
+≗(a::ℝ,b::ℝ) = (typeof(a)==typeof(b)) && ((a-b) < 1e-10*max(1,a+b))
+≗(a::AbstractArray,b::AbstractArray) = (size(a)==size(b)) && all(a .≗ b)
+≗(a::∂ℝ,b::∂ℝ) = (typeof(a)==typeof(b)) && (a.x ≗ b.x) && (a.dx ≗ b.dx)
+

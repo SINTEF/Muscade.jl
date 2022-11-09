@@ -21,7 +21,7 @@ residual(turbine, Re,[X],[U],A, 0.,0.,())
 end
 T = typeof(turbine)
 @testset "Element utility functions" begin
-    @test Muscade.getdoflist(T)  == ([1, 1, 2, 2],[:X, :X, :A, :A],[:tx1, :tx2, :Δseadrag, :Δskydrag])
+    @test Muscade.getdoflist(T)  == ((1, 1, 2, 2),(:X, :X, :A, :A),(:tx1, :tx2, :Δseadrag, :Δskydrag))
     @test Muscade.getidof(T,:X)  == [1,2]
     @test Muscade.getidof(T,:U)  == []
     @test Muscade.getidof(T,:A)  == [3,4]
@@ -46,7 +46,7 @@ X        = [0,-1,45/180*π]
 L2       = lagrangian(anchorline, δX,[X],[U],A, 0.,0.,())
 
 @testset "Lagrangian" begin
-   @test L1 ≈ -12.517061123678818
+   @test L1 ≈ 12.517061123678818
    @test L2 ≈ 5.590087401683872
 end
 

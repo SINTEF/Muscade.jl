@@ -36,7 +36,7 @@ struct Element
     nodID       :: Vector{NodID}                
     dofID       :: Vector{DofID}                  
 end
-struct DofTyp   
+mutable struct DofTyp   
     class       :: Symbol            # either :X,:U or :A
     field       :: Symbol            # user defined. e.g. :rx1 :tx1
     scale       :: 𝕣        
