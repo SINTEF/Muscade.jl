@@ -8,21 +8,24 @@ using ForwardDiff, DiffResults  # phasing this out, though!
 # with a solver dependent accessor provided for the user (NodalResults)
 
 ####### Lagrangian from residual and residual from Lagrangian
+# an assembler that calls "lagrangian" will call the element's own method if implemented, or this one, which then calls the element's residual method
 function lagrangian(ele::E,δX,X,U,A, t,ε,dbg) where{E<:AbstractElement} 
     TRe   = promote_type(eltype(δX),eltype(X[1]),eltype(U[1]),eltype(A))
     Re    = zeros(TRe,getndof(E,:X)) # TODO this allocates.  Can we allocate at compilation and zero at each call?
     residual(ele,Re,X,U,A, t,ε,dbg)
     return δX ∘₁ Re
 end
+# an assembler that calls "residual" will call the element's own method if implemented, or this one, which then calls the element's lagrangian method
 function residual(ele::E, Re,X,U,A, t,ε,dbg) where{E<:AbstractElement} 
     P            = constants(∂0(X),∂0(U),A,t)
-    N            = getndof(E,:X)
-    δX           = δ{P,N,𝕣}()                        
+    Nx           = length(∂0(X))
+    δX           = δ{P,Nx,𝕣}()                        
     L            = lagrangian(ele,δX,X,U,A, t,ε,dbg)
-    Re          .= ∂{P,N}(L)
+    Re          .= ∂{P,Nx}(L)
 end
+# if an element implements neither lagrangian nor residual, the above code will flat-spin recursively
 
-# For the purpose of testing elements: get all the gradients. 
+####### For testing: get all the gradients. 
 function gradient(ele::E,Λ,X,U,A, t,ε,dbg) where{E<:AbstractElement}
     P            = constants(Λ,∂0(X),∂0(U),A,t)
     nX,nU,nA     = length(Λ),length(∂0(U)),length(A)
@@ -32,6 +35,22 @@ function gradient(ele::E,Λ,X,U,A, t,ε,dbg) where{E<:AbstractElement}
     L            = lagrangian(ele,Λ+ΔY[iΛ],(∂0(X)+ΔY[iX],),(∂0(U)+ΔY[iU],),A+ΔY[iA], t,ε,dbg)
     Ly           = ∂{P,N}(L)
     return (L=value{P}(L), Lλ=Ly[iΛ], Lx=Ly[iX], Lu=Ly[iU], La=Ly[iA])
+end
+
+###### scaling functions
+function scaledlagrangian(scale,ele::E,Λs,Xs,Us,As, t,ε,dbg) where{E<:AbstractElement}
+    Λ     =       Λs.*scale.Λ                 
+    X     = Tuple(xs.*scale.X for xs∈Xs)
+    U     = Tuple(us.*scale.U for us∈Us)
+    A     =       As.*scale.A
+    return lagrangian(ele,Λe,Xe,Ue,Ae, t,ε,dbg)
+end    
+function scaledresidual(scale,ele::E, Re,Xs,Us,As, t,ε,dbg) where{E<:AbstractElement} 
+    X     = Tuple(xs.*scale.X for xs∈Xs)
+    U     = Tuple(us.*scale.U for us∈Us)
+    A     =       As.*scale.A
+    residual(ele, Re,X,U,A, t,ε,dbg)
+    Re  .*= scale.Λ
 end
 
 ######## The disassembler
@@ -102,13 +121,13 @@ function assemble!(asm::Assembler,model,Λ,X,U,A, t,ε,dbg)
 end
 function assemblesequential!(asm::Assembler,ieletyp,dis, eleobj,Λ,X,U,A, t,ε,dbg) 
     for iele  ∈ eachindex(eleobj)
-        scale = dis[iele].scale
+        scale = dis[iele].scale  # TODO unnecessary replication of "scale": is identical over iele...
         index = dis[iele].index
-        Λe    =       Λ[index.X].*scale.Λ                 # BUG R and K will not be scaled!
-        Xe    = Tuple(x[index.X].*scale.X for x∈X)
-        Ue    = Tuple(u[index.U].*scale.U for u∈U)
-        Ae    =       A[index.A].*scale.A
-        addin!(asm,ieletyp,iele, eleobj[iele],Λe,Xe,Ue,Ae, t,ε,(dbg...,iele=iele))
+        Λe    =       Λ[index.X]                 
+        Xe    = Tuple(x[index.X] for x∈X)
+        Ue    = Tuple(u[index.U] for u∈U)
+        Ae    =       A[index.A]
+        addin!(asm,scale,ieletyp,iele,eleobj[iele],Λe,Xe,Ue,Ae, t,ε,(dbg...,iele=iele))
     end
 end
 
@@ -126,14 +145,14 @@ function ASMstaticX(model::Model)
     return ASMstaticX(model.disassembler,zeros(nX),sparse(Int64[],Int64[],Float64[],nX,nX))
 end
 length(::StaticArrays.StaticIndexing{StaticArraysCore.SVector{L, Int64}}) where{L} = L
-@generated function addin!(asm::ASMstaticX,ieletyp,iele,eleobj::E,Λ,X,U,A, t,ε,dbg)  where{E<:AbstractElement}
+@generated function addin!(asm::ASMstaticX,scale,ieletyp,iele,eleobj::E,Λ,X,U,A, t,ε,dbg)  where{E<:AbstractElement}
     Nx      = length(Λ) 
     ΔX      = δ{1,Nx,𝕣}()                 # NB: precedence==1, input must not Adiff
     Re      = Vector{∂ℝ{1,Nx,𝕣}}(undef,Nx)  # BUG one memory - common for all CPU threads?
     i       = Vector{𝕫         }(undef,Nx)  # BUG one memory - common for all CPU threads?
     return quote
         $Re          .= 0.
-        residual(eleobj, $Re,(∂0(X)+$ΔX,),U,A, t,ε,dbg)
+        scaledresidual(scale,eleobj, $Re,(∂0(X)+$ΔX,),U,A, t,ε,dbg)
         $i           .= asm.dis[ieletyp][iele].index.X    # TODO not type stable (X is SVector)!
         asm.R[$i   ] += value{1}($Re)
         asm.K[$i,$i] += ∂{1,$Nx}($Re)                     # TODO very slow!
