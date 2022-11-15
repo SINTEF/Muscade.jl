@@ -46,6 +46,7 @@ module Muscade
     export Model,addnode!,addelement!,coord,Node,DofID,NodID,EleID,setscale! 
 
     include("core/Assemble.jl")
+    export step!,StaticX
 
     module Unit
         include("Core/Unit.jl")

@@ -54,7 +54,6 @@ mutable struct Model
     eleobj      :: Vector{Any}             # model.ele[eleID]or  model.eleobj[ieletyp][iele]
     doftyp      :: Vector{DofTyp}          # model.doftyp[idoftyp]
     Λscale      :: 𝕣
-    disassembler:: Vector{Any}
 end
 
 # Model construction - private
@@ -70,15 +69,17 @@ Base.getindex(dof::NamedTuple{(:X,:U,:A), Tuple{Dof1, Dof1, Dof1}},dofID::DofID)
 Base.getindex(ele::AbstractArray,eleID::EleID)   = ele[eleID.ieletyp][dofID.iele]
 Base.getindex(A  ::AbstractArray,id::AbstractArray{ID})   = [A[i] for i ∈ id]
 getndof(model::Model,class)       = length(model.dof[class])
-getnele(model,ieletyp)            = length(model.ele[ieletyp])
-newdofID(model,class)             = DofID(class  ,getndof(model,class)+1)
-neweleID(model,ieletyp)           = EleID(ieletyp,getndof(model,class)+1)
+getndof(model::Model)             = sum(length(d) for d∈model.dof)
+getnele(model::Model,ieletyp)     = length(model.ele[ieletyp])
+getnele(model::Model)             = sum(length(e) for e∈model.ele)
+newdofID(model::Model,class)      = DofID(class  ,getndof(model,class)+1)
+neweleID(model::Model,ieletyp)    = EleID(ieletyp,getndof(model,class)+1)
 
 # Model construction - API
 
 # TODO sizehint!(vec,n) to accelerate push! .
 
-Model(ID=:muscade_model::Symbol) = Model(ID, Vector{Node}(),Vector{Vector{Element}}(),(X=Dof1(),U=Dof1(),A=Dof1()),Vector{Any}(),Vector{DofTyp}(),1.,Vector{Any}())
+Model(ID=:muscade_model::Symbol) = Model(ID, Vector{Node}(),Vector{Vector{Element}}(),(X=Dof1(),U=Dof1(),A=Dof1()),Vector{Any}(),Vector{DofTyp}(),1.)
 
 function addnode!(model::Model,coord::ℝ2) 
     Δnnod = size(coord,1)
@@ -117,7 +118,7 @@ function addelement!(model::Model,::Type{T},nodID::Matrix{NodID};kwargs...) wher
     eleobj = Vector{E      }(undef,nele_new)         # work array - will be appended to model.eleobj
     for iele_new = 1:nele_new
          # add eleID to nodes
-        eleID[iele_new] = EleID(ieletyp,iele_new) 
+        eleID[iele_new] = EleID(ieletyp,iele_new+iele_sofar) 
         nod = [model.nod[i] for i∈unique(nodID[iele_new,:])]
         for nod ∈ [model.nod[i] for i∈unique(nodID[iele_new,:])] # unique: if several nodes of an element are connected to the same model node, mention element only once
             push!(nod.eleID,eleID[iele_new])

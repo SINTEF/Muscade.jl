@@ -14,8 +14,7 @@ X        = @SVector [1.,2.]
 U        = @SVector []
 A        = @SVector [0.,0.]  # [Δseadrag,Δskydrag]
 
-Re = zeros(2)
-residual(turbine, Re,[X],[U],A, 0.,0.,())
+Re=residual(turbine, [X],[U],A, 0.,0.,())
 @testset "Turbine" begin
     @test Re            ≈ [2, 3]
 end

@@ -59,24 +59,25 @@ sky(t,x)        = SVector(0.,1.)
 e1              = addelement!(model,Turbine   ,[n1,n2], seadrag=2., sea=sea, skydrag=3., sky=sky)
 e2              = addelement!(model,AnchorLine,[n1,n3], Δxₘtop=SVector(5.,0.,0), xₘbot=SVector(150.,0.), L=180., buoyancy=-1e3)
 setscale!(model;scale=(X=(tx1=1.,tx2=1.,rx3=2.),A=(Δseadrag=3.,Δskydrag=4.,ΔL=5)),Λscale=2)  # scale = (X=(tx=10,rx=1),A=(drag=3.))
-model.disassembler = Muscade.Disassembler(model)
+dis = Muscade.Disassembler(model)
+
 
 @testset "Disassembler" begin
-    @test  model.disassembler[1][1].index.X == [1,2]
-    @test  model.disassembler[1][1].index.U == []
-    @test  model.disassembler[1][1].index.A == [1,2]
-    @test  model.disassembler[2][1].index.X == [1,2,3]
-    @test  model.disassembler[2][1].index.U == []
-    @test  model.disassembler[2][1].index.A == [3,4]
-    @test  model.disassembler[1][1].scale.X ≈  [1,1]
-    @test  model.disassembler[1][1].scale.U ≈  𝕫[]
-    @test  model.disassembler[1][1].scale.A ≈  [3,4]
-    @test  model.disassembler[2][1].scale.X ≈  [1,1,2]
-    @test  model.disassembler[2][1].scale.U ≈  𝕫[]
-    @test  model.disassembler[2][1].scale.A ≈  [5,1]
+    @test  dis[1][1].index.X == [1,2]
+    @test  dis[1][1].index.U == []
+    @test  dis[1][1].index.A == [1,2]
+    @test  dis[2][1].index.X == [1,2,3]
+    @test  dis[2][1].index.U == []
+    @test  dis[2][1].index.A == [3,4]
+    @test  dis[1][1].scale.X ≈  [1,1]
+    @test  dis[1][1].scale.U ≈  𝕫[]
+    @test  dis[1][1].scale.A ≈  [3,4]
+    @test  dis[2][1].scale.X ≈  [1,1,2]
+    @test  dis[2][1].scale.U ≈  𝕫[]
+    @test  dis[2][1].scale.A ≈  [5,1]
 end
 
-asm = Muscade.ASMstaticX(model)
+asm = Muscade.ASMstaticX(model,dis)
 nX  = Muscade.getndof(model,:X)
 nU  = Muscade.getndof(model,:U)
 nA  = Muscade.getndof(model,:A)
@@ -87,11 +88,17 @@ A   =  zeros(nA)
 t   = 0.
 ε   = 0.
 dbg = ()
-Muscade.assemble!(asm,model,Λ,X,U,A, t,ε,dbg)
+state = Muscade.State(Λ,X,U,A, t)
+Muscade.assemble!(asm,dis,model,state,ε,dbg)
 
 @testset "ASMstaticX" begin
     @test  asm.R ≈ [-304253.42399716884, 6.0, 0.0]
-    @test  asm.K ≈ sparse([1, 2, 3, 2, 3], [1, 2, 2, 3, 3], [20646.13919595113, 2098.3270620494404, 20983.270620494404, 20983.2706204944, 6.294981186148321e6], 3, 3)
+    @test  asm.K ≈ sparse([1,2,3,2,3], [1,2,2,3,3], [20646.13919595113, 2098.3270620494404, 20983.270620494404, 20983.2706204944, 6.294981186148321e6], 3, 3)
+end
+
+gr = Muscade.AllXdofs(model,dis)
+@testset "AllXdofs" begin
+    @test  gr.scale ≈ [1.0, 1.0, 2.0]
 end
 
 end
