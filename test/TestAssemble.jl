@@ -88,7 +88,7 @@ A   =  zeros(nA)
 t   = 0.
 ε   = 0.
 dbg = ()
-state = Muscade.State(Λ,X,U,A, t)
+state = Muscade.State(Λ,X,U,A, t,ε,model,dis)
 Muscade.assemble!(asm,dis,model,state,ε,dbg)
 
 @testset "ASMstaticX" begin

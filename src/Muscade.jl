@@ -48,6 +48,9 @@ module Muscade
     include("core/Assemble.jl")
     export step!,StaticX
 
+    include("core/SelfDraw.jl")
+    export draw
+    
     module Unit
         include("Core/Unit.jl")
         export unit,←,→,convert

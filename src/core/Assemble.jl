@@ -99,15 +99,18 @@ end
 
 ######## state and initstate
 # at each step, contains the complete, unscaled state of the system
-struct State{Nxder,Nuder}
+struct State{Nxder,Nuder,D}
     Λ :: 𝕣1
     X :: NTuple{Nxder,𝕣1}
     U :: NTuple{Nuder,𝕣1}
     A :: 𝕣1
     t :: 𝕣
+    ε :: 𝕣
+    model :: Model
+    dis :: D
 end
 # a constructor that provides an initial state
-State(model;t=-∞) = State(zeros(getndof(model,:X)),(zeros(getndof(model,:X)),),(zeros(getndof(model,:U)),),zeros(getndof(model,:A)),t)
+State(model::Model,dis;t=-∞) = State(zeros(getndof(model,:X)),(zeros(getndof(model,:X)),),(zeros(getndof(model,:U)),),zeros(getndof(model,:A)),t,0.,model,dis)
 
 
 
@@ -204,13 +207,13 @@ function addin!(asm::ASMstaticX,scale,ieletyp,iele,eleobj::E,Λ,X,U,A, t,ε,dbg)
     asm.K[i,i]  += ∂{1,Nx}(Re)                     # TODO very slow!   TODO can a sparse be indexed by a view? or do I need a i-buffer in asm?
 end
 function StaticX(pstate,dbg;model::Model,time::AbstractVector{𝕣},
-                    initial::State=State(model),
+                    initial::State=State(model,Disassembler(model)),
                     maxiter::ℤ=50,maxΔy::ℝ=1e-5,maxR::ℝ=∞,
                     verbose::𝕓=true,saveiter::𝔹=false)
     # important: this code assumes that there is no χ in state.
     verb             = verbose
     verb && @printf "    StaticX solver\n\n"
-    dis              = Disassembler(model)
+    dis              = initial.dis
     asm              = ASMstaticX(model,dis)
     dofgr            = AllXdofs(model,dis)
     asmt,solt,citer  = 0.,0.,0
@@ -219,7 +222,7 @@ function StaticX(pstate,dbg;model::Model,time::AbstractVector{𝕣},
     for (it,t)       ∈ enumerate(time)
         verb && @printf "    increment %3d" it
         old          = it==1 ? initial : state[it-1]
-        s            = State(old.Λ,old.X,old.U,old.A,t)
+        s            = State(old.Λ,old.X,old.U,old.A,t,0.,model,dis)
         y            = s[dofgr] # includes scaling
         for iiter    = 1:maxiter
             citer   += 1
