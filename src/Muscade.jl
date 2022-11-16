@@ -46,7 +46,10 @@ module Muscade
     export Model,addnode!,addelement!,coord,Node,DofID,NodID,EleID,setscale! 
 
     include("core/Assemble.jl")
-    export step!,StaticX
+    include("core/Solve.jl")
+    export solve
+    include("core/StaticX.jl")
+    export StaticX
 
     include("core/SelfDraw.jl")
     export draw

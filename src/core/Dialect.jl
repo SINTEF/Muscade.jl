@@ -140,5 +140,15 @@ function showtime(t)
     end
 end
 
+# if a function f is given the argument pointer= Ref{SomeType}()
+# the function can then do e.g. vec=allocate(pointer,Vector...) and write to vec.
+# and the caller retrievs the data with vec = pointer[] 
+# advantage over "return vec" is if f throws, then vec still contains some data.
+function allocate(pointer::Ref,target)
+    pointer[]=target
+    return target
+end
+
+
 
 

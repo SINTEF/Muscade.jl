@@ -14,9 +14,10 @@ n3              = addnode!(model,𝕣[])  # Anod for anchor
 sea(t,x)        = SVector(1.,0.)
 sky(t,x)        = SVector(0.,10.)
 α(i)            = SVector(cos(i*2π/3),sin(i*2π/3))
-e1              = addelement!(model,Turbine   ,[n1,n2], seadrag=1e6, sea=sea, skydrag=1e5, sky=sky)
+e1              =  addelement!(model,Turbine   ,[n1,n2], seadrag=1e6, sea=sea, skydrag=1e5, sky=sky)
 e2              = [addelement!(model,AnchorLine,[n1,n3], Δxₘtop=vcat(5*α(i),[0.]), xₘbot=250*α(i), L=290., buoyancy=-5e3) for i∈0:2]
-state           = step!(StaticX;model,time = [0.],verbose=false)
+state           = solve(StaticX;model,time=[0.],verbose=false)
+
 @testset "StaticX" begin
     @test  state[1].Λ ≈ [0.0, 0.0, 0.0]
     @test  state[1].X[1] ≈  [-17.46832446885514, -24.570658899684172, 0.011313890183180228]
