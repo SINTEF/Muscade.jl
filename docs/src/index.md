@@ -1,8 +1,13 @@
+```@meta
+CurrentModule = Muscade.jl
+```
+
 # Muscade.jl
 
-*Finite elements for optimisation*
+Documentation for [Muscade.jl](https://github.com/SINTEF/Muscade.jl).
 
-## Package features
+```@index
+```
 
 ## [Some chapter](@id some-chapter)
 
@@ -17,17 +22,9 @@ true
 ```julia
 some code
 ```
+## Reference manual
 
-# Reference
-```@meta
-CurrentModule = Muscade
-```
 
-```@docs
-@request
-makekey
-@espy
-@espydbg
-forloop
-scalar
+```@autodocs
+Modules = [Muscade.jl]
 ```
