@@ -8,7 +8,7 @@ end
 
 Throw a `MuscadeException`, where
 - `dbg` is a `NamedTuple` that contains "location information"
-(for example: step, increment, iteration, element, quadrature point) that will Basedisplayed with the error message.
+(for example: solver, step, iteration, element, quadrature point) that will Basedisplayed with the error message.
 - `msg` is a `String` describing the problem.
 """
 muscadeerror(dbg::NamedTuple,msg)      = throw(MuscadeException(msg,dbg))

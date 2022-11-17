@@ -56,28 +56,28 @@ function StaticX(pstate,dbg;model::Model,time::AbstractVector{𝕣},
     asmt,solt,citer  = 0.,0.,0
     cΔy²,cR²         = maxΔy^2,maxR^2
     state            = allocate(pstate,Vector{State}(undef,saveiter ? maxiter : length(time))) # state is not a return argument so that data is not lost in case of exception
-    for (it,t)       ∈ enumerate(time)
-        verb && @printf "    increment %3d" it
-        old          = it==1 ? initial : state[it-1]
+    for (step,t)     ∈ enumerate(time)
+        verb && @printf "    step %3d" step
+        old          = step==1 ? initial : state[step-1]
         s            = State(old.Λ,old.X,old.U,old.A,t,0.,model,dis)
         y            = s[dofgr] # includes scaling
         for iiter    = 1:maxiter
             citer   += 1
-            asmt+=@elapsed assemble!(asm,dis,model,s, 0.,(dbg...,solver=:StaticX,it=it,iiter=iiter))
-            solt+=@elapsed Δy = try asm.K\-asm.R catch; muscadeerror(@sprintf("Incremental solution failed at it=%i, iiter=%i",it,iiter)) end
+            asmt+=@elapsed assemble!(asm,dis,model,s, 0.,(dbg...,solver=:StaticX,step=step,iiter=iiter))
+            solt+=@elapsed Δy = try asm.K\-asm.R catch; muscadeerror(@sprintf("Incremental solution failed at step=%i, iiter=%i",step,iiter)) end
             Δy²,R²   = sum(Δy.^2),sum(asm.R.^2)
             y      .+= Δy
             s[dofgr] = y  # includes descaling
             saveiter && (state[iiter]=s)
             if Δy²≤cΔy² && R²≤cR² 
                 verb && @printf " converged in %3d iterations. |Δy|=%7.1e |R|=%7.1e\n" iiter √(Δy²) √(R²)
-                saveiter || (state[it]=s)
+                saveiter || (state[step]=s)
                 break#out of the iiter loop
             end
             iiter==maxiter && muscadeerror(@sprintf(" no convergence after %3d iterations |Δy|:%g / %g, |R|:%g / %g",iiter,√(Δy²),maxΔy,√(R²)^2,maxR))
         end
     end
-    verb && @printf "\n    nel=%d, ndof=%d, nincr=%d, niter=%d, niter/nincr=%5.2f\n" getnele(model) getndof(dofgr) length(time) citer citer/length(time)
+    verb && @printf "\n    nel=%d, ndof=%d, nstep=%d, niter=%d, niter/nstep=%5.2f\n" getnele(model) getndof(dofgr) length(time) citer citer/length(time)
     verb && @printf "    Build  time = %s, (per iteration: %s, per iteration and element: %s)\n" showtime(asmt)  showtime(asmt/citer)  showtime(asmt/citer/getnele(model))
     verb && @printf "    Solve  time = %s, (per iteration: %s, per iteration and dof:     %s)\n" showtime(solt)  showtime(solt/citer)  showtime(solt/citer/getndof(dofgr))
 end
