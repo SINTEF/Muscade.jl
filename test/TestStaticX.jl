@@ -20,7 +20,7 @@ state           = solve(StaticX;model,time=[0.],verbose=false)
 
 @testset "StaticX" begin
     @test  state[1].Λ ≈ [0.0, 0.0, 0.0]
-    @test  state[1].X[1] ≈  [-17.46832446885514, -24.570658899684172, 0.011313890183180228]
+    @test  state[1].X[1] ≈  [20.184170880401076, 10.987078031136829, -0.016856115935358795]
     @test  state[1].U[1] ≈  Float64[]
     @test  state[1].A ≈ [0.0, 0.0, 0.0, 0.0]
     @test  state[1].t ≈ 0.
@@ -32,7 +32,7 @@ s           = deepcopy(state[1])
 s[dofgr]    = [1.,1.,1.]
 @testset "AllXdofs construction" begin
     @test  dofgr.scale ≈ [1.0, 1.0, 1.0]
-    @test  state[1][dofgr] ≈ [-17.46832446885514, -24.570658899684172, 0.011313890183180228]
+    @test  state[1][dofgr] ≈ [20.184170880401076, 10.987078031136829, -0.016856115935358795]
     @test  s[dofgr] ≈ [1.,1.,1.]
 end
 
@@ -48,11 +48,11 @@ axe = SpyAxe()
 draw(axe,state[1])
 @testset "drawing" begin
     @test  axe.data[1].fun == :lines!
-    @test  axe.data[1].args[1] ≈ [-17.46832446885514 -17.46832446885514; -24.570658899684172 -24.570658899684172; 90.0 110.0]
+    @test  axe.data[1].args[1] ≈ [20.184170880401076 20.184170880401076; 10.987078031136829 10.987078031136829; 90.0 110.0]
     @test  axe.data[1].kwargs[:color] == :orange
     @test  axe.data[1].kwargs[:linewidth] == 5
     @test  axe.data[2].fun == :lines!
-    @test  axe.data[2].args[1][1:5]≈[ 220.71174584912032,197.39370681663635,174.0756677841524,150.75762875166845,127.43958971918447]
+    @test  axe.data[2].args[1][1:5]≈[82.97477173657569, 77.19564062047895, 71.41650950438223, 65.6373783882855, 59.85824727218878]
     @test  axe.data[2].kwargs[:color] == :blue
     @test  axe.data[2].kwargs[:linewidth] == 2
 end

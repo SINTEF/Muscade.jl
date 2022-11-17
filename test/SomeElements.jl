@@ -25,8 +25,8 @@ end
 Turbine(nod::Vector{Node};seadrag,sea,skydrag,sky) = Turbine(SVector(coord(nod)[1][1],coord(nod)[1][2]),coord(nod)[1][3],seadrag,sea,skydrag,sky)  
 @espy function Muscade.residual(o::Turbine, X,U,A, t,ε,dbg)
     :x = ∂0(X)+o.xₘ  
-    Re = o.sea(t,x)*(o.seadrag+A[1]) + o.sky(t,x)*(o.skydrag+A[2])
-    return Re
+    R  = -o.sea(t,x)*(o.seadrag+A[1]) - o.sky(t,x)*(o.skydrag+A[2])
+    return R 
 end
 function Muscade.draw(axe,key,out, o::Turbine, δX,X,U,A, t,ε,dbg)
     x    = ∂0(X)+o.xₘ  

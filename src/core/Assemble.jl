@@ -10,7 +10,7 @@ function scaledresidual(scale,eleobj::E, Xs,Us,As, t,ε,dbg) where{E<:AbstractEl
     X     = Tuple(xs.*scale.X for xs∈Xs)
     U     = Tuple(us.*scale.U for us∈Us)
     A     =       As.*scale.A
-    Re    = scale.Λ .* residual(eleobj, X,U,A, t,ε,dbg) 
+    R     = scale.Λ .* residual(eleobj, X,U,A, t,ε,dbg) 
 end
 
 ######## The disassembler

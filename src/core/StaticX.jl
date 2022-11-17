@@ -38,10 +38,10 @@ end
 function addin!(asm::ASMstaticX,scale,ieletyp,iele,eleobj::E,Λ,X,U,A, t,ε,dbg)  where{E<:AbstractElement}
     Nx           = length(Λ)                   # TODO consider Yota.jl for adiff
     ΔX           = δ{1,Nx,𝕣}()                 # NB: precedence==1, input must not be Adiff 
-    Re           = scaledresidual(scale,eleobj, (∂0(X)+ΔX,),U,A, t,ε,dbg)
+    R            = scaledresidual(scale,eleobj, (∂0(X)+ΔX,),U,A, t,ε,dbg)
     i            = Vector(asm.dis[ieletyp][iele].index.X)    # TODO not type stable (X is SVector).  Allocating!
-    asm.R[i  ]  += value{1}(Re)            
-    asm.K[i,i]  += ∂{1,Nx}(Re)                     # TODO very slow!   TODO can a sparse be indexed by a view? or do I need a i-buffer in asm?
+    asm.R[i  ]  += value{1}(R)            
+    asm.K[i,i]  += ∂{1,Nx}(R)                     # TODO very slow!   TODO can a sparse be indexed by a view? or do I need a i-buffer in asm?
 end
 function StaticX(pstate,dbg;model::Model,time::AbstractVector{𝕣},
                     initial::State=State(model,Disassembler(model)),

@@ -14,9 +14,9 @@ X        = @SVector [1.,2.]
 U        = @SVector []
 A        = @SVector [0.,0.]  # [Δseadrag,Δskydrag]
 
-Re=residual(turbine, [X],[U],A, 0.,0.,())
+R =residual(turbine, [X],[U],A, 0.,0.,())
 @testset "Turbine" begin
-    @test Re            ≈ [2, 3]
+    @test R             ≈ [-2, -3]
 end
 T = typeof(turbine)
 @testset "Element utility functions" begin
