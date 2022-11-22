@@ -57,4 +57,22 @@ draw(axe,state[step])
     @test  axe.call[2].kwargs[:color] == :blue
     @test  axe.call[2].kwargs[:linewidth] == 2
 end
+
+out1,dofid1 = getdof(state[1],field=:tx1)
+out2,dofid2 = getdof(state   ,field=:tx1)
+out3,dofid3 = getdof(state[1],class=:A,field=:ΔL)
+out4,dofid4 = getdof(state[1],field=:tx1,nodID=[n1])
+out5,dofid5 = getdof(state   ,field=:tx1,nodID=[n1])
+@testset "getdof" begin
+    @test  out1 ≈ [20.184170880401076;;]
+    @test  dofid1 == DofID[DofID(:X, 1)]
+    @test  out2 ≈ [20.184170880401076;;;]
+    @test  dofid2 == DofID[DofID(:X, 1)]
+    @test  out3 ≈ [0.0;;]
+    @test  dofid3 == DofID[DofID(:A, 3)]
+    @test  out4 ≈ [20.184170880401076;;]
+    @test  dofid4 == DofID[DofID(:X, 1)]
+    @test  out5 ≈ [20.184170880401076;;;]
+    @test  dofid5 == DofID[DofID(:X, 1)]
+end
 end

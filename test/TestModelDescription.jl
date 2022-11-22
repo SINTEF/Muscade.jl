@@ -80,14 +80,17 @@ setscale!(model;scale=(X=(tx1=1.,tx2=1.,rx3=2.),A=(Δseadrag=3.,Δskydrag=4.,ΔL
     @test model.doftyp[1].class == :X
     @test model.doftyp[1].field == :tx1
     @test model.doftyp[1].scale ≈ 1.
+    @test model.doftyp[1].dofID == [DofID(:X, 1)]
 
     @test model.doftyp[3].class == :A
     @test model.doftyp[3].field == :Δseadrag
     @test model.doftyp[3].scale ≈ 3.
+    @test model.doftyp[3].dofID == [DofID(:A, 1)]
 
     @test model.doftyp[5].class == :X
     @test model.doftyp[5].field == :rx3
     @test model.doftyp[5].scale ≈ 2.
+    @test model.doftyp[5].dofID == [DofID(:X, 3)]
 
     @test model.Λscale          ≈ 2.
 end

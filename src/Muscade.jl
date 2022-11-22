@@ -50,6 +50,9 @@ module Muscade
     export solve
     include("core/StaticX.jl")
     export StaticX
+    
+    include("core/Output.jl")
+    export getdof
 
     include("core/SelfDraw.jl")
     export draw

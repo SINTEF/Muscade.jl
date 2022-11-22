@@ -93,7 +93,6 @@ coord(nod::AbstractVector{Node}) = [n.coord for n∈nod]
 
 function addelement!(model::Model,::Type{T},nodID::Matrix{NodID};kwargs...) where{T<:AbstractElement}
     # new element type? make space in model.eletyp and model.eleobj for that
-#    ele1     = T(collect(model.nod[nodID[1,:]]);kwargs...)
     nod      = [model.nod[nodID[1,i]] for i∈eachindex(nodID[1,:])]
     ele1     = T(nod;kwargs...)
     E        = typeof(ele1)
@@ -117,7 +116,7 @@ function addelement!(model::Model,::Type{T},nodID::Matrix{NodID};kwargs...) wher
     ele    = Vector{Element}(undef,nele_new)         # work array - will be appended to model.ele
     eleobj = Vector{E      }(undef,nele_new)         # work array - will be appended to model.eleobj
     for iele_new = 1:nele_new
-         # add eleID to nodes
+        # add eleID to nodes
         eleID[iele_new] = EleID(ieletyp,iele_new+iele_sofar) 
         nod = [model.nod[i] for i∈unique(nodID[iele_new,:])]
         for nod ∈ [model.nod[i] for i∈unique(nodID[iele_new,:])] # unique: if several nodes of an element are connected to the same model node, mention element only once
@@ -131,20 +130,19 @@ function addelement!(model::Model,::Type{T},nodID::Matrix{NodID};kwargs...) wher
             nodid    = nodID[iele_new,inod[ieledof]]  # nodID of current eledof
             idoftyp  = getidoftyp(model,class[ieledof],field[ieledof])
             # add doftyp to model (if new)  
-            if idoftyp == 0 # new!
-                idoftyp = length(model.doftyp)+1
+            if idoftyp == 0 # new dof type
                 push!(model.doftyp, DofTyp(class[ieledof],field[ieledof],1.,DofID[])) # DofID[]: do not add dof to doftyp, though
+                idoftyp = length(model.doftyp)
             end
             # add dof to model (if new)
             idofID = firstindex(model.dof[dofID].idoftyp == idoftyp for dofID ∈ model.nod[nodid].dofID) 
-            if idofID == 0 # new
+            if idofID == 0 # new dof
                 dofID[ieledof] = newdofID(model,class[ieledof]) 
                 push!(model.dof[class[ieledof]], Dof(dofID[ieledof],nodid,idoftyp,𝕫[]) ) # do not add element to dof, though
+                push!(model.doftyp[idoftyp].dofID, dofID[ieledof])
             else
                 dofID[ieledof] = model.nod[nodid].dofID[idofID]
             end
-            # add dof to doftyp (always)
-            push!(model.doftyp[idoftyp].dofID, dofID[ieledof])
             # add element to dof (always)
             push!(model.dof[dofID[ieledof]].eleID, eleID[iele_new])  
             # add dof to node (if new)
@@ -154,7 +152,6 @@ function addelement!(model::Model,::Type{T},nodID::Matrix{NodID};kwargs...) wher
         end
         # add element to model (always)
         ele[   iele_new] = Element(eleID[iele_new], ieletyp, iele_sofar+iele_new, nodID[iele_new,:],dofID)
-#        eleobj[iele_new] = iele_new==1 ? ele1 : T(collect(model.nod[nodID[iele_new,:]]);kwargs...)   # call element constructor
         if iele_new==1
             eleobj[iele_new] = ele1
         else
