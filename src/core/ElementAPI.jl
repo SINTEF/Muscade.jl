@@ -29,7 +29,8 @@ getndofs(E::DataType)             = getndof(E,:X),getndof(E,:U),getndof(E,:A)
 
 ####### Lagrangian from residual and residual from Lagrangian
 # an assembler that calls "lagrangian" will call the element's own method if implemented, or this one, which then calls the element's residual method
-lagrangian(eleobj::E,δX,X,U,A, t,ε,dbg) where{E<:AbstractElement} = δX ∘₁ residual(eleobj,X,U,A, t,ε,dbg)
+lagrangian(        eleobj::E,δX,X,U,A, t,ε,dbg) where{E<:AbstractElement} = δX ∘₁ residual(        eleobj,X,U,A, t,ε,dbg)
+lagrangian(out,key,eleobj::E,δX,X,U,A, t,ε,dbg) where{E<:AbstractElement} = δX ∘₁ residual(out,key,eleobj,X,U,A, t,ε,dbg)
 # an assembler that calls "residual" will call the element's own method if implemented, or this one, which then calls the element's lagrangian method
 function residual(eleobj::E, X,U,A, t,ε,dbg) where{E<:AbstractElement} 
     P            = constants(∂0(X),∂0(U),A,t)

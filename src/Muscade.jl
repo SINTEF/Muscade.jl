@@ -52,7 +52,7 @@ module Muscade
     export StaticX
     
     include("core/Output.jl")
-    export getdof
+    export getdof,getresult
 
     include("core/SelfDraw.jl")
     export draw

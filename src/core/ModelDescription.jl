@@ -74,6 +74,17 @@ getnele(model::Model,ieletyp)     = length(model.ele[ieletyp])
 getnele(model::Model)             = sum(length(e) for e∈model.ele)
 newdofID(model::Model,class)      = DofID(class  ,getndof(model,class)+1)
 neweleID(model::Model,ieletyp)    = EleID(ieletyp,getndof(model,class)+1)
+function getdoftyp(model::Model,class::Symbol,field::Symbol)
+    idoftyp = findfirst(doftyp.class==class && doftyp.field==field for doftyp∈model.doftyp)
+    isnothing(idoftyp) && muscadeerror(@sprintf("The model has no dof of class %s and field %s.",class,field))    
+    return model.doftyp[idoftyp]    
+end
+getdofID(model::Model,class::Symbol,field::Symbol) = getdoftyp(model,class,field).dofID
+function getdofID(model::Model,class::Symbol,field::Symbol,nodID::AbstractVector{NodID})
+    dofID  = getdofID(model,class,field) 
+    i      = [model.dof[d].nodID ∈ nodID for d ∈ dofID]
+    return dofID[i]
+end
 
 # Model construction - API
 

@@ -1,4 +1,4 @@
-module TestStaticX
+#module TestStaticX
 
 using Test,StaticArrays,SparseArrays
 using Muscade
@@ -32,7 +32,7 @@ dofgr       = Muscade.AllXdofs(model,dis)
 s           = deepcopy(state[step])
 s[dofgr]    = [1.,1.,1.]
 @testset "AllXdofs construction" begin
-    @test  dofgr.scale ≈ [1.0, 1.0, 1.0]
+    @test  dofgr.scale ≈ [1., 1., 1.]
     @test  state[step][dofgr] ≈ [20.184170880401076, 10.987078031136829, -0.016856115935358795]
     @test  s[dofgr] ≈ [1.,1.,1.]
 end
@@ -75,4 +75,21 @@ out5,dofid5 = getdof(state   ,field=:tx1,nodID=[n1])
     @test  out5 ≈ [20.184170880401076;;;]
     @test  dofid5 == DofID[DofID(:X, 1)]
 end
+req     = @request cr,ltf
+out,key = getresult(state,req, eleID=e2)
+cr      = out[key.cr ,:,1] # out[ikey,iele,istep]
+ltf     = out[key.ltf,:,1]
+@testset "getdof" begin
+    @test  cr  ≈ [25.37276764221335, 89.41914791181317, 322.4125480714144]
+    @test  ltf ≈ [122.77847339188848,166.98451899012264,272.9148394907886]
 end
+
+out,key = getresult(state[1],req, eleID=e2)
+cr      = out[key.cr ,:] # out[ikey,iele]
+ltf     = out[key.ltf,:]
+@testset "getdof" begin
+    @test  cr  ≈ [25.37276764221335, 89.41914791181317, 322.4125480714144]
+    @test  ltf ≈ [122.77847339188848,166.98451899012264,272.9148394907886]
+end
+
+#end
