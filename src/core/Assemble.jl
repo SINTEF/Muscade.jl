@@ -14,7 +14,6 @@ function scaledresidual(scale,eleobj::E, Xs,Us,As, t,ε,dbg) where{E<:AbstractEl
 end
 
 ######## The disassembler
-copies(n,a::T) where{T}    = NTuple{n,T}(deepcopy(a) for i∈1:n) # TODO move to Dialect.jl
 # dis[ieletyp][iele].index.[  X|U|A]
 # dis[ieletyp][iele].scale.[Λ|X|U|A]
 struct XUA{T,nX,nU,nA} 

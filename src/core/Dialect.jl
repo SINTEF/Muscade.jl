@@ -149,6 +149,7 @@ function allocate(pointer::Ref,target)
     return target
 end
 
+copies(n,a::T) where{T} = NTuple{n,T}(deepcopy(a) for i∈1:n)
 
 
 

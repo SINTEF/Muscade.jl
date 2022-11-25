@@ -1,11 +1,5 @@
 abstract type AbstractElement  end
 
-# TODO macros for neater syntax in element definition.  Someting like 
-# @Xdofid   Ballast (nod=[1,1,1],typ=[:dx1,:dx2,:dx3])  
-# @Udofid   Ballast (nod=[1,1,1],typ=[:dx1,:dx2,:dx3])  
-# @Adofid   Ballast (nod=[2,2  ],typ=[:Δseadrag,:Δbuoyancy])  
-# @espyable Ballast (X=(3,),)
-
 # MUST be used by elements to unpack X and U.  Today, the various derivatives are packed into tuples.  Would we use Adiff tomorrow, allowing
 # correct computation of e.g. Coriolis terms in beam elements?
 ∂n(Y,n) = n+1≤length(Y) ? Y[n+1] : zeros(eltype(Y[1]),size(Y[1])...)  # this implementation will be slow if zero is to be returned!

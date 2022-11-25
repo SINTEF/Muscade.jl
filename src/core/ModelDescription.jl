@@ -2,8 +2,6 @@ using StaticArrays,Printf
 
 # model datastructure - private, structure may change, use accessor functions
 
-# TODO REFACTOR: model.ele and model.eleobj are both Vector{Vector} and can both be accessed directly or using model.ele[eleID]
-
 abstract type ID end 
 struct DofID <: ID
     class       :: Symbol      # either :X,:U or :A
@@ -87,8 +85,6 @@ function getdofID(model::Model,class::Symbol,field::Symbol,nodID::AbstractVector
 end
 
 # Model construction - API
-
-# TODO sizehint!(vec,n) to accelerate push! .
 
 Model(ID=:muscade_model::Symbol) = Model(ID, Vector{Node}(),Vector{Vector{Element}}(),(X=Dof1(),U=Dof1(),A=Dof1()),Vector{Any}(),Vector{DofTyp}(),1.)
 
