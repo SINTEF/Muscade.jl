@@ -15,8 +15,6 @@ struct ∂ℝ{P,N,R} <:ℝ where{R<:ℝ}  # P for precedence, N number of partia
 end
 const AV{R}        = AbstractVector{R}
 const AA{R}        = AbstractArray{R}
-#const ∂ℝx{P,N,R}   = AA{∂ℝ{P,N,R}}
-#const ∂ℝ1{P,N,R}   = AV{∂ℝ{P,N,R}}
 
 # Constructors 
 ∂ℝ{P,N}(x::R ,dx::AV{R  }) where{P,N,R<:ℝ      } = ∂ℝ{P,N,R}(x,SVector{N,R}(dx))
@@ -27,11 +25,9 @@ function ∂ℝ{P,N}(x::Rx,dx::AV{Rdx}) where{P,N,Rx<:ℝ,Rdx<:ℝ}
     return ∂ℝ{P,N}(convert(R,x),convert.(R,dx))
 end
 
-# zeros, ones, norm
+# zeros, ones
 Base.zero(T::Type{∂ℝ{P,N,R}}) where{P,N,R<:ℝ}    = ∂ℝ{P,N,R}(zero(R), SVector{N,R}(zero(R) for j=1:N))
-#Base.zero(v::     ∂ℝ{P,N,R} ) where{P,N,R<:ℝ}    = zero(typeof(v))
 Base.one( T::Type{∂ℝ{P,N,R}}) where{P,N,R<:ℝ}    = ∂ℝ{P,N,R}(one( R), SVector{N,R}(zero(R) for j=1:N))
-#Base.one( v::     ∂ℝ{P,N,R} ) where{P,N,R<:ℝ}    = one( typeof(v))
 Base.isnan(   a::∂ℝ)                             = isnan(   VALUE(a))
 Base.isone(   a::∂ℝ)                             = isone(   VALUE(a))
 Base.iszero(  a::∂ℝ)                             = iszero(  VALUE(a))
@@ -55,7 +51,7 @@ end
 
 # conversions
 Base.convert(::Type{∂ℝ{P,N,Ra}},b::∂ℝ{P,N,Rb}) where{P,N,Ra<:ℝ,Rb<:ℝ} = ∂ℝ{P,N }(convert( Ra,b.x) ,convert.(Ra,b.dx))
-Base.convert(::Type{∂ℝ{P,N,Ra}},b::Real      ) where{P,N,Ra<:ℝ       } = ∂ℝ{P,N }(convert(Ra,b  ) ,SVector{N,Ra}(zero(Ra) for j=1:N))
+Base.convert(::Type{∂ℝ{P,N,Ra}},b::ℝ         ) where{P,N,Ra<:ℝ       } = ∂ℝ{P,N }(convert(Ra,b  ) ,SVector{N,Ra}(zero(Ra) for j=1:N))
 function Base.convert(::Type{∂ℝ{Pa,Na,Ra}},b::∂ℝ{Pb,Nb,Rb}) where{Pa,Pb,Na,Nb,Ra<:ℝ,Rb<:ℝ}
     if Pa> Pb return                                                     ∂ℝ{Pa,Na}(convert(Ra,b.x) ,convert.(Ra,b.dx)  )
     else      error("Cannot convert precedence ",Pb," to ",Pa)
@@ -90,12 +86,12 @@ VALUE(a::ℝ )                           =        a
 VALUE(a::∂ℝ)                           = VALUE( a.x)
 VALUE(a::AA)                           = VALUE.(a)
 
-value{P}(a::∂ℝ{P,N,R}) where{P,N,R}    = a.x
-value{P}(a::R        ) where{P  ,R}    = a
-value{P}(a::AA{R}    ) where{P  ,R}    = value{P}.(a)
+value{P}(a::∂ℝ{P,N,R}) where{P,N,R   } = a.x
+value{P}(a::R        ) where{P  ,R<:ℝ} = a
+value{P}(a::AA{R}    ) where{P  ,R   } = value{P}.(a)
 
 ∂{P,N}(a::          ∂ℝ{P,N,R} ) where{  P,N,R} = a.dx
-∂{P,N}(a::                 R  ) where{  P,N,R} = SVector{  N,R}(zero(R)    for i=1:N      )
+∂{P,N}(a::                 R  ) where{  P,N,R<:ℝ} = SVector{  N,R}(zero(R)    for i=1:N      )
 ∂{P,N}(a::SVector{M,∂ℝ{P,N,R}}) where{M,P,N,R} = SMatrix{M,N,R}(a[i].dx[j] for i=1:M,j∈1:N) # ∂(a,x)[i,j] = ∂a[i]/∂x[j]
 ∂{P,N}(a::SVector{M,       R }) where{M,P,N,R} = SMatrix{M,N,R}(zero(R)    for i=1:M,j=1:N)
 ∂{P,N}(a::Vector{∂ℝ{P,N,R}})    where{  P,N,R} = SMatrix{N,N,R}(a[i].dx[j] for i=1:N,j∈1:N) # ∂(a,x)[i,j] = ∂a[i]/∂x[j]

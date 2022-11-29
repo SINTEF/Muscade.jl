@@ -30,7 +30,7 @@ vC  = value{PC}(C)
 vvC = value{PC1}(vC)
 v∂C = value{PC1}(∂C)
 ∂vC = ∂{PC1,2}(    vC)
-∂∂C = ∂{PC1,2}(    ∂C)
+#∂∂C = ∂{PC1,2}(    ∂C)
 dX1 = toggle(false,dx1,3.)
 
 ## Operations
