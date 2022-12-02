@@ -92,8 +92,8 @@ state = Muscade.State(Λ,X,U,A, t,ε,model,dis)
 Muscade.assemble!(asm,dis,model,state,ε,dbg)
 
 @testset "ASMstaticX" begin
-    @test  asm.R ≈ [-304261.42399716884, -6.0, 0.0]
-    @test  asm.K ≈ sparse([1,2,3,2,3], [1,2,2,3,3], [20646.13919595113, 2098.3270620494404, 20983.270620494404, 20983.2706204944, 6.294981186148321e6], 3, 3)
+    @test  asm.Lλ ≈ [-304261.42399716884, -6.0, 0.0]
+    @test  asm.Lλx ≈ sparse([1,2,3,2,3], [1,2,2,3,3], [20646.13919595113, 2098.3270620494404, 20983.270620494404, 20983.2706204944, 6.294981186148321e6], 3, 3)
 end
 
 gr = Muscade.AllXdofs(model,dis)

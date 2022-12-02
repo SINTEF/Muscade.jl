@@ -48,8 +48,12 @@ module Muscade
     include("core/Assemble.jl")
     include("core/Solve.jl")
     export solve
+
     include("core/StaticX.jl")
     export StaticX
+    
+    # include("core/StaticXA.jl")
+    # export StaticXA
     
     include("core/Output.jl")
     export getdof,getresult
