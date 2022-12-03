@@ -5,13 +5,15 @@ struct State{Nxder,Nuder,D}
     X     :: NTuple{Nxder,𝕣1}
     U     :: NTuple{Nuder,𝕣1}
     A     :: 𝕣1
-    t     :: 𝕣
+    time  :: 𝕣
     ε     :: 𝕣
     model :: Model
     dis   :: D
 end
 # a constructor that provides an initial state
 State(model::Model,dis;t=-∞) = State(zeros(getndof(model,:X)),(zeros(getndof(model,:X)),),(zeros(getndof(model,:U)),),zeros(getndof(model,:A)),t,0.,model,dis)
+settime(s,t) = State(s.Λ,s.X,s.U,s.A,t,0.,s.model,s.dis)  
+
 
 ## find the last assigned array-element in a vector 
 lastassigned(state) = state

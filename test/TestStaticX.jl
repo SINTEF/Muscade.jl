@@ -16,24 +16,25 @@ sky(t,x)        = SVector(0.,10.)
 α(i)            = SVector(cos(i*2π/3),sin(i*2π/3))
 e1              =  addelement!(model,Turbine   ,[n1,n2], seadrag=1e6, sea=sea, skydrag=1e5, sky=sky)
 e2              = [addelement!(model,AnchorLine,[n1,n3], Δxₘtop=vcat(5*α(i),[0.]), xₘbot=250*α(i), L=290., buoyancy=-5e3) for i∈0:2]
-state           = solve(StaticX;model,time=[0.,1.],verbose=true)
+state           = solve(StaticX;model,time=[0.,1.],verbose=false)
 step = 1
 @testset "StaticX" begin
     @test  state[step].Λ ≈ [0.0, 0.0, 0.0]
     @test  state[step].X[1] ≈  [-5.332268523655259, 21.09778288272267, 0.011304253608808651]
     @test  state[step].U[1] ≈  Float64[]
     @test  state[step].A ≈ [0.0, 0.0, 0.0, 0.0]
-    @test  state[step].t ≈ 0.
+    @test  state[step].time ≈ 0.
 end
 
 dis         = Muscade.Disassembler(model)
 dofgr       = Muscade.AllXdofs(model,dis)
 s           = deepcopy(state[step])
-s[dofgr]    = [1.,1.,1.]
+Muscade.decrement!(s,[1.,1.,-1.],dofgr)
+#s[dofgr]    = [1.,1.,1.]
 @testset "AllXdofs construction" begin
     @test  dofgr.scale ≈ [1., 1., 1.]
     @test  state[step][dofgr] ≈ [-5.332268523655259, 21.09778288272267, 0.011304253608808651]
-    @test  s[dofgr] ≈ [1.,1.,1.]
+    @test  s[dofgr] ≈ [-6.332268523655259, 20.09778288272267, 1.011304253608808651]
 end
 
 #using GLMakie

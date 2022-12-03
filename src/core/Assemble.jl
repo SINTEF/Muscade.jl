@@ -87,7 +87,7 @@ function assemblesequential!(asm::Assembler,ieletyp,dis, eleobj,state,ε,dbg)
         Xe    = Tuple(x[index.X] for x∈state.X)
         Ue    = Tuple(u[index.U] for u∈state.U)
         Ae    = state.A[index.A]
-        addin!(asm,scale,ieletyp,iele,eleobj[iele],Λe,Xe,Ue,Ae, state.t,ε,(dbg...,iele=iele))
+        addin!(asm,scale,ieletyp,iele,eleobj[iele],Λe,Xe,Ue,Ae, state.time,ε,(dbg...,iele=iele))
     end
 end
 

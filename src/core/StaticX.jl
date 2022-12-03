@@ -12,10 +12,10 @@ function AllXdofs(model::Model,dis)
     end
     return AllXdofs(scale)
 end
-function Base.setindex!(s::State,x::𝕣1,gr::AllXdofs) 
-    s.X[1] .= x.*gr.scale
+function decrement!(s::State,x::𝕣1,gr::AllXdofs) 
+    s.X[1] .-= x.*gr.scale
 end
-Base.getindex(s::State,gr::AllXdofs) = s.X[1]./gr.scale
+Base.getindex(s::State,gr::AllXdofs) = s.X[1] # get values of a dofgroup
 getndof(gr::AllXdofs) = length(gr.scale)
 
 ##### Solvers and their Addin
@@ -56,23 +56,20 @@ function StaticX(pstate,dbg;model::Model,time::AbstractVector{𝕣},
     asmt,solt,citer  = 0.,0.,0
     cΔy²,cLλ²        = maxΔy^2,maxresidual^2
     state            = allocate(pstate,Vector{State}(undef,saveiter ? maxiter : length(time))) # state is not a return argument so that data is not lost in case of exception
+    s                = initial # deep copy?
     for (step,t)     ∈ enumerate(time)
         verb && @printf "    step %3d" step
-        old          = step==1 ? initial : state[step-1]
-        s            = State(old.Λ,deepcopy(old.X),old.U,old.A,t,0.,model,dis)
-        y            = s[dofgr] # includes scaling
+        s            = settime(s,t)
         for iiter    = 1:maxiter
             citer   += 1
             asmt+=@elapsed assemble!(asm,dis,model,s, 0.,(dbg...,solver=:StaticX,step=step,iiter=iiter))
-            solt+=@elapsed Δy = try asm.Lλx\-asm.Lλ catch; muscadeerror(@sprintf("Incremental solution failed at step=%i, iiter=%i",step,iiter)) end
+            solt+=@elapsed Δy = try asm.Lλx\asm.Lλ catch; muscadeerror(@sprintf("Incremental solution failed at step=%i, iiter=%i",step,iiter)) end
             Δy²,Lλ²  = sum(Δy.^2),sum(asm.Lλ.^2)
-            y      .+= Δy
-            s[dofgr] = y  # includes descaling
-
-            saveiter && (state[iiter]=deepcopy(s))
+            decrement!(s,Δy,dofgr)
+            saveiter && (state[iiter]=State(s.Λ,deepcopy(s.X),s.U,s.A,s.time,0.,model,dis))
             if Δy²≤cΔy² && Lλ²≤cLλ² 
                 verb && @printf " converged in %3d iterations. |Δy|=%7.1e |Lλ|=%7.1e\n" iiter √(Δy²) √(Lλ²)
-                ~saveiter && (state[step]=s)
+                ~saveiter && (state[step]=State(s.Λ,deepcopy(s.X),s.U,s.A,s.time,0.,model,dis))
                 break#out of the iiter loop
             end
             iiter==maxiter && muscadeerror(@sprintf(" no convergence after %3d iterations |Δy|:%g / %g, |R|:%g / %g",iiter,√(Δy²),maxΔy,√(Lλ²)^2,maxresidual))

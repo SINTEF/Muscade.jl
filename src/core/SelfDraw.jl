@@ -11,7 +11,7 @@ function draw(axe,key,out,dis,eleobj,iele,state,dbg;kwargs...)
         Ue    = Tuple(u[index.U] for u∈state.U)
         Ae    = state.A[index.A]
         eo    = eleobj[ie]
-        draw(axe,key,out, eo, Λe,Xe,Ue,Ae, state.t,state.ε,(dbg...,iele=ie);kwargs...)
+        draw(axe,key,out, eo, Λe,Xe,Ue,Ae, state.time,state.ε,(dbg...,iele=ie);kwargs...)
     end
 end
 function draw(axe,state::State,ieletyp::ℝ; iele::ℤ1=1:length(state.model.ele[ieletyp]),kwargs...)
