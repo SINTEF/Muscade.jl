@@ -6,16 +6,6 @@ module Muscade
     # using  Base.Threads
     # import Base.Threads.@spawn, Base.Threads.nthreads
 
-
-    # ## TEMPORARY STUFF
-    # using StaticArrays    
-    # struct Node
-    #     coords :: SVector{3,Float64}
-    # end
-    # coords(n)= SMatrix{1,3}(n[i].coords[j] for i∈eachindex(n), j∈1:3)
-    # export Node,coords    
-    # ##
-
     include("core/Dialect.jl")
     export ℝ,ℤ,𝕣,𝕫,𝔹,𝕓
     export ℝ1,ℤ1,𝕣1,𝕫1,𝔹1,𝕓1
@@ -44,6 +34,9 @@ module Muscade
 
     include("core/ModelDescription.jl")
     export Model,addnode!,addelement!,coord,Node,DofID,NodID,EleID,setscale! 
+
+    include("core/BasicElements.jl")
+    export XdofCost,UdofCost,AdofCost
 
     include("core/Assemble.jl")
     include("core/Solve.jl")
