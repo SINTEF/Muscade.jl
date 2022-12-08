@@ -45,8 +45,8 @@ module Muscade
     include("core/StaticX.jl")
     export StaticX
     
-    # include("core/StaticXA.jl")
-    # export StaticXA
+    include("core/StaticXUA.jl")
+    export StaticXUA
     
     include("core/Output.jl")
     export getdof,getresult

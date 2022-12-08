@@ -75,6 +75,7 @@ struct δ{P,N,R}       dum::𝕫   end # need dum, because syntax δ{P,N,R}() co
 struct variate{P,N}            end
 struct ∂{P,N}                  end 
 struct value{P,N}              end
+struct value_∂{P,N}            end
 
 # variate
 δ{      P,N,R}(                    ) where{P,N,R<:ℝ} = SVector{N,∂ℝ{P,N,R}}(∂ℝ{P,N}(zero(R),i) for i=1:N)
@@ -98,6 +99,8 @@ value{P}(a::AA{R}    ) where{P  ,R   } = value{P}.(a)
 ∂{P,N}(a::Vector{       R })    where{  P,N,R} = SMatrix{N,N,R}(zero(R)    for i=1:N,j=1:N)
 #∂{P,N}(a::SArray{M,∂ℝ{P,N,R}}) where{M,P,N,R}  = SArray{(M...,N),R}(a[i].dx[j] for i∈eachindex(a),j∈1:N) # ∂(a,x)[i,...,j] = ∂a[i,...]/∂x[j]
 #∂{P,N}(a::SArray{M,       R }) where{M,P,N,R}  = SArray{(M...,N),R}(zero(R)    for i∈eachindex(a),j∈1:N)
+
+value_∂{P,N}(a) where{  P,N}= value{P}(a),∂{P,N}(a)
 
 ## Binary operations
 for OP∈(:(>),:(<),:(==),:(>=),:(<=),:(!=))
