@@ -22,7 +22,7 @@ L,Lδx,Lx,Lu,La   = Muscade.gradient(turbine,δX,[X],[U],A, 0.,0.,())
     @test Lδx           ≈ [-2, -3]
     @test Lx            ≈ [0, 0]
     @test length(Lu)    == 0
-    @test La            ≈ [-1, -1]
+    @test La            ≈ [-2, -3]
 end
 
 Lδx,Lx,Lu,La   = test_static_element(turbine;δX,X,U,A,verbose=false)
@@ -31,7 +31,7 @@ Lδx,Lx,Lu,La   = test_static_element(turbine;δX,X,U,A,verbose=false)
     @test Lδx           ≈ [-2, -3]
     @test Lx            ≈ [0, 0]
     @test length(Lu)    == 0
-    @test La            ≈ [-1, -1]
+    @test La            ≈ [-2, -3]
 end
 
 # ###  AnchorLine
@@ -47,7 +47,7 @@ L,Lδx,Lx,Lu,La   = Muscade.gradient(anchorline,δX,[X],[U],A, 0.,0.,())
     @test Lδx           ≈ [-12.25628901693551, 0.2607721067433087, 24.51257803387102]
     @test Lx            ≈ [-0.91509745608786, 0.14708204066349, 1.3086506986891027]
     @test length(Lu)    == 0
-    @test La            ≈ [-0.9180190940689051, -12.517061123678818]
+    @test La            ≈ [-156.06324599170992, 12.517061123678818]
 end
 
 model           = Model(:TestModel)

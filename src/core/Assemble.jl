@@ -4,7 +4,7 @@ function scaledlagrangian(scale,eleobj::E,Λs,Xs,Us,As, t,ε,dbg) where{E<:Abstr
     X     = Tuple(xs.*scale.X for xs∈Xs)
     U     = Tuple(us.*scale.U for us∈Us)
     A     =       As.*scale.A
-    return lagrangian(eleobj,Λe,Xe,Ue,Ae, t,ε,dbg)
+    return lagrangian(eleobj,Λ,X,U,A, t,ε,dbg)
 end    
 function scaledresidual(scale,eleobj::E, Xs,Us,As, t,ε,dbg) where{E<:AbstractElement} 
     X     = Tuple(xs.*scale.X for xs∈Xs)

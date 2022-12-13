@@ -11,7 +11,7 @@ struct State{Nxder,Nuder,D}
     dis   :: D
 end
 # a constructor that provides an initial state
-State(model::Model,dis;t=-∞) = State(zeros(getndof(model,:X)),(zeros(getndof(model,:X)),),(zeros(getndof(model,:U)),),zeros(getndof(model,:A)),t,0.,model,dis)
+State(model::Model,dis;time=-∞) = State(zeros(getndof(model,:X)),(zeros(getndof(model,:X)),),(zeros(getndof(model,:U)),),zeros(getndof(model,:A)),time,0.,model,dis)
 settime(s,t) = State(s.Λ,s.X,s.U,s.A,t,0.,s.model,s.dis)  
 
 
@@ -24,8 +24,8 @@ end
 
 ######### error management for solver
 function solve(solver!::Function;verbose::𝕓=true,kwargs...) # e.g. solve(SOLstaticX,model,time=1:10)
-    verbose && printstyled("\n\n\nMuscade\n",bold=true,color=:cyan)
-    pstate = Ref{Any}()
+    verbose && printstyled("\n\n\nMuscade\n\n",bold=true,color=:cyan)
+    pstate = Ref{Any}() # state is not a return argument of solver!, so that partial results are not lost on error
     dbg    = ()
     try
         solver!(pstate,dbg;verbose=verbose,kwargs...) # 

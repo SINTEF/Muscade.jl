@@ -19,6 +19,9 @@ module Runtest
         @testset "TestStaticXUA" begin
             include("TestStaticXUA.jl")
         end
+        @testset "TestAsensitivity" begin
+            include("TestAsensitivity.jl")
+        end
         @testset "TestUnit" begin
             include("TestUnit.jl")
         end

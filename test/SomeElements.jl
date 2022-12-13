@@ -25,7 +25,7 @@ end
 Turbine(nod::Vector{Node};seadrag,sea,skydrag,sky) = Turbine(SVector(coord(nod)[1][1],coord(nod)[1][2]),coord(nod)[1][3],seadrag,sea,skydrag,sky)  
 @espy function Muscade.residual(o::Turbine, X,U,A, t,ε,dbg)
     :x = ∂0(X)+o.xₘ  
-    R  = -o.sea(t,x)*(o.seadrag+A[1]) - o.sky(t,x)*(o.skydrag+A[2])
+    R  = -o.sea(t,x)*o.seadrag*(1+A[1]) - o.sky(t,x)*o.skydrag*(1+A[2])
     return R 
 end
 function Muscade.draw(axe,key,out, o::Turbine, δX,X,U,A, t,ε,dbg)
@@ -53,7 +53,7 @@ p = SVector(   2.82040487827,  -24.86027164695,   153.69500343165, -729.52107422
                 687.83550335374)
 
 @espy function Muscade.lagrangian(o::AnchorLine, δX,X,U,A, t,ε,dbg)
-    xₘtop,Δxₘtop,xₘbot,L,buoyancy = o.xₘtop,o.Δxₘtop,o.xₘbot,o.L+A[1],o.buoyancy+A[2]      # a for anchor, t for TDP, f for fairlead
+    xₘtop,Δxₘtop,xₘbot,L,buoyancy = o.xₘtop,o.Δxₘtop,o.xₘbot,o.L*(1+A[1]),o.buoyancy*(1+A[2])      # a for anchor, t for TDP, f for fairlead
     x        = ∂0(X)  
     :Xtop    = SVector(x[1],x[2],0.) + xₘtop
     α        =  x[3]                            # azimut from COG to fairlead
@@ -100,6 +100,41 @@ Muscade.doflist(     ::Type{<:AnchorLine}) = (inod =(1   ,1   ,1   ,2  ,2       
                                               field=(:tx1,:tx2,:rx3,:ΔL,:Δbuoyancy))
 Muscade.espyable(    ::Type{<:AnchorLine}) = (Xtop=(3,),ΔXtop=(3,),ΔXchain=(2,),xaf=scalar,cr=scalar,Fh=scalar,ltf=scalar)
 Muscade.request2draw(::Type{<:AnchorLine}) = @request (Xtop,ΔXtop,ΔXchain,cr,xaf,ltf)
+
+#### Spring
+
+# TODO untested!
+
+struct Spring{D} <: AbstractElement
+    x₁     :: SVector{D,𝕣}  # x1,x2,x3
+    x₂     :: SVector{D,𝕣} 
+    EI     :: 𝕣
+    L      :: 𝕣
+end
+Spring(nod::Vector{Node};EI) = Spring(coord(nod)[1],coord(nod)[2],EI,norm(coord(nod)[1]-coord(nod)[2]))
+
+@espy function Muscade.residual(o::Spring{D}, X,U,A, t,ε,dbg) where{D}
+    x        = ∂0(X)  
+    x₁       = SVector(x[i] for i=1  : D)+o.x₁
+    x₂       = SVector(x[i] for i=1+D:2D)+o.x₂
+    :EI      = o.EI*exp10(A[1]) 
+    :L₀      = o.L *exp10(A[2]) 
+    Δx       = x₁-x₂
+    :L       = norm(Δx)
+    :T       = EI*(L-L₀)
+    F₁       = Δx/L*T # external force on node 1
+    R        = vcat(F₁,-F₁)
+    return R
+end
+
+Muscade.doflist(     ::Type{Spring{D}}) where{D}=(
+    inod  = (( 1 for i=1: D)...,(2 for i=1:D)...,3,3),
+    class = ((:X for i=1:2D)...,:A,:A),
+    field = ((Symbol(:tx,i) for i=1: D)...,(Symbol(:tx,i) for i=1: D)...,:ΞL₀,:ΞEI)) # \Xi
+Muscade.espyable(    ::Type{<:Spring}) = (EI=scalar,L₀=scalar,L=scalar,T=scalar)
+Muscade.request2draw(::Type{<:Spring}) = @request ()
+
+
 
 
 

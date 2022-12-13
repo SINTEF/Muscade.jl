@@ -43,10 +43,13 @@ module Muscade
     export solve
 
     include("core/StaticX.jl")
-    export StaticX
+    export staticX
     
     include("core/StaticXUA.jl")
-    export StaticXUA
+    export staticXUA
+
+    include("core/Asensitivity.jl")
+    export Asensitivity
     
     include("core/Output.jl")
     export getdof,getresult

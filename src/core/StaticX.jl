@@ -40,13 +40,13 @@ function addin!(asm::ASMstaticX,scale,ieletyp,iele,eleobj,Λ,X,U,A, t,ε,dbg)
     asm.Lλ[ i  ] += value{1}(Lλ)            
     asm.Lλx[i,i] += ∂{1,Nx}(Lλ)                     
 end
-function StaticX(pstate,dbg;model::Model,time::AbstractVector{𝕣},
+function staticX(pstate,dbg;model::Model,time::AbstractVector{𝕣},
                     initial::State=State(model,Disassembler(model)),
                     maxiter::ℤ=50,maxΔx::ℝ=1e-5,maxresidual::ℝ=∞,
                     verbose::𝕓=true,saveiter::𝔹=false)
     # important: this code assumes that there is no χ in state.
     verb             = verbose
-    verb && @printf "    StaticX solver\n\n"
+    verb && @printf "    staticX solver\n\n"
     dis              = initial.dis
     asm              = ASMstaticX(model,dis)
     dofgr            = AllXdofs(model,dis)
