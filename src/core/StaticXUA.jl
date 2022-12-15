@@ -142,6 +142,7 @@ function staticXUA(pstate,dbg;model::Model,time::AbstractVector{𝕣},
         end
         iiter==maxiter && muscadeerror(@sprintf("no convergence after %3d iterations. |Δy|=%7.1e |Ly|=%7.1e |Δa|=%7.1e |La|=%7.1e\n",iiter,√(maximum(Δy²)),√(maximum(Ly²)),√(Δa²),√(La²)))
     end
+    return
 end
 
 

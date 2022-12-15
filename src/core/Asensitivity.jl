@@ -33,8 +33,8 @@ end
 
 get(v::ℝ ,i) = v
 get(v::ℝ1,i) = v[i]
-function Asensitivity(pstate,dbg;model::Model,time::𝕣=0.,initial::State=State(model,Disassembler(model);time), Δa=1.,pJa,verbose::𝕓)
-    verbose && @printf "    Asensitivity\n\n"
+function Asensitivity(pstate,dbg;model::Model,time::𝕣=0.,initial::State=State(model,Disassembler(model);time), Δa=1.,pJa=Ref{Any}(),verbose::𝕓)
+    verbose && @printf "    Asensitivity\n"
     nA                 = getndof(model,:A)
     dis                = initial.dis
     asm                = ASMsensitivityA(model,dis)
@@ -43,8 +43,9 @@ function Asensitivity(pstate,dbg;model::Model,time::𝕣=0.,initial::State=State
     assemble!(asm,dis,model,initial, 0.,(dbg...,solver=:Asensitivity))
     for iA = 1:nA
         ΔR = Vector(asm.Lλa[:,iA]*get(Δa,iA))
-        ΔX = try  asm.Lλx\ΔR catch; muscadeerror(@sprintf("Incremental solution failed at step=%i, iiter=%i",step,iiter)) end
+        ΔX = try  asm.Lλx\ΔR catch; muscadeerror(@sprintf("Sensitivity failed for iA=%i",iA)) end
         decrement!(state[iA], ΔX, Xdofgr)
     end
     allocate(pJa,asm.La-initial.Λ∘₁asm.Lλa) 
+    return
 end

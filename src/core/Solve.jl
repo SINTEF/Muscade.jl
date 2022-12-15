@@ -23,10 +23,9 @@ function lastassigned(v::Vector)
 end
 
 ######### error management for solver
-function solve(solver!::Function;verbose::𝕓=true,kwargs...) # e.g. solve(SOLstaticX,model,time=1:10)
+function solve(solver!::Function;dbg=(),verbose::𝕓=true,kwargs...) # e.g. solve(SOLstaticX,model,time=1:10)
     verbose && printstyled("\n\n\nMuscade\n\n",bold=true,color=:cyan)
     pstate = Ref{Any}() # state is not a return argument of solver!, so that partial results are not lost on error
-    dbg    = ()
     try
         solver!(pstate,dbg;verbose=verbose,kwargs...) # 
     catch exn

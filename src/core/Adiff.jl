@@ -37,6 +37,8 @@ Base.typemax( ::Type{∂ℝ{P,N,R}}) where{P,N,R<:ℝ} = typemax(R)
 Base.typemin( ::Type{∂ℝ{P,N,R}}) where{P,N,R<:ℝ} = typemin(R)
 Base.floatmax(::Type{∂ℝ{P,N,R}}) where{P,N,R<:ℝ} = floatmax(R)
 Base.floatmin(::Type{∂ℝ{P,N,R}}) where{P,N,R<:ℝ} = floatmin(R)
+Base.floatmax(::∂ℝ{P,N,R}) where{P,N,R<:ℝ} = floatmax(R)
+Base.floatmin(::∂ℝ{P,N,R}) where{P,N,R<:ℝ} = floatmin(R)
 Base.eps(     ::Type{∂ℝ{P,N,R}}) where{P,N,R<:ℝ} = eps(R)
 Base.float(a::∂ℝ)                                = a
 
@@ -208,7 +210,12 @@ end
 @Op1(SpecialFunctions.bessely1,   (bessely0(a.x) - bessely(2., a.x))/2. * a.dx )
 
 ## Comparison for debug purposes
-≗(a::ℝ,b::ℝ) = (typeof(a)==typeof(b)) && ((a-b) < 1e-10*max(1,a+b))
-≗(a::AbstractArray,b::AbstractArray) = (size(a)==size(b)) && all(a .≗ b)
-≗(a::∂ℝ,b::∂ℝ) = (typeof(a)==typeof(b)) && (a.x ≗ b.x) && (a.dx ≗ b.dx)
+≗(a::ℝ,b::ℝ)                 = (typeof(a)==typeof(b)) && ((a-b) < 1e-10*max(1,a+b))
+≗(a::AA,b::AA)               = (size(a)==size(b)) && all(a .≗ b)
+≗(a::∂ℝ,b::∂ℝ)               = (typeof(a)==typeof(b)) && (a.x ≗ b.x) && (a.dx ≗ b.dx)
+
+## Find NaN in derivatives
+hasnan(a::∂ℝ   )             = hasnan(a.x) || hasnan(a.dx)
+hasnan(a::AV{R}) where{R<:ℝ} = any(hasnan.(a))
+hasnan(a::ℝ   )              = isnan(a)
 

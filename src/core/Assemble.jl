@@ -4,13 +4,17 @@ function scaledlagrangian(scale,eleobj::E,Λs,Xs,Us,As, t,ε,dbg) where{E<:Abstr
     X     = Tuple(xs.*scale.X for xs∈Xs)
     U     = Tuple(us.*scale.U for us∈Us)
     A     =       As.*scale.A
-    return lagrangian(eleobj,Λ,X,U,A, t,ε,dbg)
+    L     = lagrangian(eleobj,Λ,X,U,A, t,ε,dbg)
+    hasnan(L) && muscadeerror(dbg,"NaN in a Lagrangian or its partial derivatives")
+    return L
 end    
 function scaledresidual(scale,eleobj::E, Xs,Us,As, t,ε,dbg) where{E<:AbstractElement} 
     X     = Tuple(xs.*scale.X for xs∈Xs)
     U     = Tuple(us.*scale.U for us∈Us)
     A     =       As.*scale.A
     R     = scale.Λ .* residual(eleobj, X,U,A, t,ε,dbg) 
+    hasnan(R) && muscadeerror(dbg,"NaN in a residual or its partial derivatives")
+    return R
 end
 
 ######## The disassembler
