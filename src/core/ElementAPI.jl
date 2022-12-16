@@ -7,7 +7,7 @@ abstract type AbstractElement  end
 ∂1(y)  = ∂n(y,1)
 ∂2(y)  = ∂n(y,2)
 
-draw(axe,key,out, ::E,args...) where{E<:AbstractElement}    = nothing # by default, an element draws nothing
+draw(axe,key,out, ::E,args...;kwargs...) where{E<:AbstractElement}    = nothing # by default, an element draws nothing
 
 espyable(    ::Type{E}) where{E<:AbstractElement}  = ()
 request2draw(::Type{E}) where{E<:AbstractElement}  = ()

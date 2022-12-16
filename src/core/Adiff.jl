@@ -37,8 +37,8 @@ Base.typemax( ::Type{∂ℝ{P,N,R}}) where{P,N,R<:ℝ} = typemax(R)
 Base.typemin( ::Type{∂ℝ{P,N,R}}) where{P,N,R<:ℝ} = typemin(R)
 Base.floatmax(::Type{∂ℝ{P,N,R}}) where{P,N,R<:ℝ} = floatmax(R)
 Base.floatmin(::Type{∂ℝ{P,N,R}}) where{P,N,R<:ℝ} = floatmin(R)
-Base.floatmax(::∂ℝ{P,N,R}) where{P,N,R<:ℝ} = floatmax(R)
-Base.floatmin(::∂ℝ{P,N,R}) where{P,N,R<:ℝ} = floatmin(R)
+Base.floatmax(::     ∂ℝ{P,N,R} ) where{P,N,R<:ℝ} = floatmax(R)  # because ℝ is Real, not AbstractFloat
+Base.floatmin(::     ∂ℝ{P,N,R} ) where{P,N,R<:ℝ} = floatmin(R)  # because ℝ is Real, not AbstractFloat
 Base.eps(     ::Type{∂ℝ{P,N,R}}) where{P,N,R<:ℝ} = eps(R)
 Base.float(a::∂ℝ)                                = a
 
