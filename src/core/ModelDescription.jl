@@ -205,7 +205,7 @@ function describe(model::Model,eleID::EleID)
         dof    = model.dof[dofid]
         nod    = model.nod[dof.nodID]
         doftyp = model.doftyp[dof.idoftyp]
-        @printf "      nodID=NodID(%i) class=:%s field=:%-12s\n" dof.nodID.inod doftyp.class doftyp.field 
+        @printf "      NodID(%i), class=:%s, field=:%-12s\n" dof.nodID.inod doftyp.class doftyp.field 
     end
 end
 function describe(model::Model,dofID::DofID)
@@ -222,10 +222,11 @@ function describe(model::Model,dofID::DofID)
     doftyp  = model.doftyp[dof.idoftyp]
     @printf "Degree of freedom with DofID(:%s,%i)\n" dofID.class dofID.idof
     @printf "   model.dof.%s[%i]:\n" dofID.class dofID.idof
-    @printf "   nodID=NodID(%i), class=:%s, field=:%-12s\n" dof.nodID.inod dofID.class doftyp.field 
+    @printf "   NodID(%i), class=:%s, field=:%-12s\n" dof.nodID.inod dofID.class doftyp.field 
     @printf "   elements:\n"
     for eleid ∈ dof.eleID
-        @printf "      EleID(%i,%i) :: %s\n" eleid.ieletyp eleid.iele eltype(model.eleobj[eleid.ieletyp])
+        @printf "      EleID(%i,%i), " eleid.ieletyp eleid.iele 
+        printstyled(@sprintf("%s\n",eltype(model.eleobj[eleid.ieletyp])),color=:cyan)
     end
     if dofID.class == :X
         @printf "   Output in state[istep].X[ider+1][%i] and state[istep].Λ[%i]\n" dofID.idof dofID.idof    
@@ -236,7 +237,12 @@ function describe(model::Model,dofID::DofID)
     end            
 end
 function describe(model::Model,nodID::NodID)
-    0 < nodID.inod ≤ length(model.nod) || (printstyled("Not a valid NodID\n",color=:red,bold=true);return)
+    try 
+        nod = model.nod[nodID] 
+    catch
+        printstyled("Not a valid NodID\n",color=:red,bold=true)
+        return
+    end
     nod = model.nod[nodID]
     @printf "Node with NodID(%i)\n" nodID.inod
     @printf "   model.nod[%i]:\n" nodID.inod
@@ -253,11 +259,11 @@ function describe(model::Model,nodID::NodID)
     for dofid ∈ nod.dofID
         dof = model.dof[dofid]
         doftyp = model.doftyp[dof.idoftyp]
-        @printf "      dofID=DofID(:%s,%i), class=:%s, idof=%i, field=:%-12s\n" dofid.class dofid.idof dofid.class dofid.idof doftyp.field    
+        @printf "      DofID(:%s,%i), class=:%s, idof=%i, field=:%-12s\n" dofid.class dofid.idof dofid.class dofid.idof doftyp.field    
     end
     @printf "   elements:\n"
     for eleID ∈ nod.eleID
-        @printf "      eleID=EleID(%i,%i), ::" eleID.ieletyp eleID.iele 
+        @printf "      EleID(%i,%i), " eleID.ieletyp eleID.iele 
         printstyled(@sprintf("%s\n",typeof(model.eleobj[eleID])),color=:cyan)
     end
  end
