@@ -1,4 +1,4 @@
-module TestModelDescription
+#module TestModelDescription
 
 using Test
 using Muscade
@@ -95,4 +95,12 @@ setscale!(model;scale=(X=(tx1=1.,tx2=1.,rx3=2.),A=(Δseadrag=3.,Δskydrag=4.,ΔL
     @test model.Λscale          ≈ 2.
 end
 
-end # module
+@testset "model inspection" begin
+    @test model.eleobj[e1] == Turbine{typeof(sea), typeof(sky)}([0.0, 0.0], -10.0, 2.0, sea, 3.0, sky) 
+    @test model.nod[n1].coord ≈ [0.0, 0.0, -10.0]
+    getndof(model,:X) == 3
+    getndof(model,(:X,:A)) == (3,2)
+    getnele(model) == 2
+    getnele(model,1) == 1
+end
+#end # module

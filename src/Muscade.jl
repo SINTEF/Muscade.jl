@@ -34,6 +34,7 @@ module Muscade
 
     include("core/ModelDescription.jl")
     export Model,addnode!,addelement!,coord,Node,DofID,NodID,EleID,setscale! 
+    export getndof,getnele,getdofID,describe
 
     include("core/BasicElements.jl")
     export XdofCost,UdofCost,AdofCost
