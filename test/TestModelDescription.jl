@@ -1,4 +1,4 @@
-#module TestModelDescription
+module TestModelDescription
 
 using Test
 using Muscade
@@ -103,4 +103,4 @@ end
     getnele(model) == 2
     getnele(model,1) == 1
 end
-#end # module
+end # module

@@ -55,3 +55,75 @@ function getresult(state::State,req;kwargs...)
     return reshape(out,size(out)[1:2]),key
 end
 
+function describeX(state::State)
+    model = state.model
+    nX    = getndof(model,:X)
+    nder  = length(state.X)
+    for iX = 1:nX
+        dofID   = DofID(:X,iX)
+        dof     = model.dof[dofID] 
+        doftyp  = model.doftyp[dof.idoftyp]
+        @printf "NodID(%i), class=:%s, field=:%-15s   " dof.nodID.inod dofID.class doftyp.field
+        for ider = 1:nder
+            @printf "%15g " state.X[ider][iX]
+        end
+        @printf "\n" 
+    end
+end
+function describeΛX(state::State)
+    model = state.model
+    nX    = getndof(model,:X)
+    nder  = length(state.X)
+    for iX = 1:nX
+        dofID   = DofID(:X,iX)
+        dof     = model.dof[dofID] 
+        doftyp  = model.doftyp[dof.idoftyp]
+        @printf "NodID(%i), class=:%s, field=:%-15s   %15g " dof.nodID.inod dofID.class doftyp.field state.Λ[iX]
+        for ider = 1:nder
+            @printf "%15g " state.X[ider][iX]
+        end
+        @printf "\n" 
+    end
+end
+function describeU(state::State)
+    model = state.model
+    nU    = getndof(model,:U)
+    nder  = length(state.U)
+    for iU = 1:nU
+        dofID   = DofID(:U,iU)
+        dof     = model.dof[dofID] 
+        doftyp  = model.doftyp[dof.idoftyp]
+        @printf "NodID(%i), class=:%s, field=:%-15s   " dof.nodID.inod dofID.class doftyp.field
+        for ider = 1:nder
+            @printf "%15g " state.U[ider][iU]
+        end
+        @printf "\n"
+    end
+end
+function describeA(state::State)
+    model = state.model
+    nA    = getndof(model,:A)
+    for iA = 1:nA
+        dofID   = DofID(:A,iA)
+        dof     = model.dof[dofID] 
+        doftyp  = model.doftyp[dof.idoftyp]
+        @printf "NodID(%i), class=:%s, field=:%-15s   %15g\n" dof.nodID.inod dofID.class doftyp.field state.A[iA] 
+    end
+end
+function describe(state::State;class::Symbol=:all)
+    if class ==:all
+        describeΛX(state)
+        describeU(state)
+        describeA(state)
+    elseif class==:Λ || class==:ΛX
+        describeΛX(state)
+    elseif class ==:X    
+        describeX(state)
+    elseif class ==:U    
+        describeU(state)
+    elseif class ==:A    
+        describeA(state)
+    else
+        printstyled("Not a valid class\n",color=:red,bold=true)
+    end
+end
