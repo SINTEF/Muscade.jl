@@ -267,7 +267,7 @@ function describe(model::Model,nodID::NodID)
         printstyled(@sprintf("%s\n",typeof(model.eleobj[eleID])),color=:cyan)
     end
  end
-function describe(model)
+function describe(model::Model)
     @printf "\nModel '%s'\n" model.ID
     for class ∈ (:X,:U,:A)
        ndof    = getndof(model,class)

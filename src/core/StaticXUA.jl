@@ -117,18 +117,18 @@ function staticXUA(pstate,dbg;model::Model,time::AbstractVector{𝕣},
         Laa           .= 0
         for step     ∈ eachindex(time)
             assemble!(asm,dis,model,state[step], 0.,(dbg...,solver=:StaticXUA,step=step))
-            Δy[ step]  = try -asm.Lyy\asm.Ly  catch; muscadeerror(@sprintf("Incremental solution failed at step=%i, iiter=%i",step,iiter)) end
-            y∂a[step]  = try -asm.Lyy\asm.Lya catch; muscadeerror(@sprintf("Incremental solution failed at step=%i, iiter=%i",step,iiter)) end
-            La       .+= asm.La  + asm.Lya' * Δy[ step]
-            Laa      .+= asm.Laa + asm.Lya' * y∂a[step]
+            Δy[ step]  = try asm.Lyy\asm.Ly  catch; muscadeerror(@sprintf("Incremental solution failed at step=%i, iiter=%i",step,iiter)) end
+            y∂a[step]  = try asm.Lyy\asm.Lya catch; muscadeerror(@sprintf("Incremental solution failed at step=%i, iiter=%i",step,iiter)) end
+            La       .+= asm.La  - asm.Lya' * Δy[ step]
+            Laa      .+= asm.Laa - asm.Lya' * y∂a[step]
             Δy²[step],Ly²[step] = sum(Δy[step].^2),sum(asm.Ly.^2)
         end    
-        Δa             = -Laa\La 
+        Δa             = Laa\La 
         Δa²,La²        = sum(Δa.^2),sum(La.^2)
         for step       ∈ eachindex(time)
-            ΔY         = Δy[step] + y∂a[step] * Δa
-            decrement!(state[step],-ΔY,Ydofgr)
-            decrement!(state[step],-Δa,Adofgr)
+            ΔY         = Δy[step] - y∂a[step] * Δa
+            decrement!(state[step],ΔY,Ydofgr)
+            decrement!(state[step],Δa,Adofgr)
         end    
         if all(Δy².≤cΔy²) && all(Ly².≤cLy²) && Δa².≤cΔa² && La².≤cLa² 
             verbose && @printf "\n    StaticXUA converged in %3d A-iterations.\n" iiter
