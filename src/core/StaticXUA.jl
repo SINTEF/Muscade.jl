@@ -117,27 +117,22 @@ function staticXUA(pstate,dbg;model::Model,time::AbstractVector{𝕣},
         Laa           .= 0
         for step     ∈ eachindex(time)
             assemble!(asm,dis,model,state[step], 0.,(dbg...,solver=:StaticXUA,step=step))
-            Δy[ step]  = try asm.Lyy\asm.Ly  catch; muscadeerror(@sprintf("Incremental solution failed at step=%i, iiter=%i",step,iiter)) end
-            y∂a[step]  = try asm.Lyy\asm.Lya catch; muscadeerror(@sprintf("Incremental solution failed at step=%i, iiter=%i",step,iiter)) end
+            Δy[ step]  = try -asm.Lyy\asm.Ly  catch; muscadeerror(@sprintf("Incremental solution failed at step=%i, iiter=%i",step,iiter)) end
+            y∂a[step]  = try -asm.Lyy\asm.Lya catch; muscadeerror(@sprintf("Incremental solution failed at step=%i, iiter=%i",step,iiter)) end
             La       .+= asm.La  + asm.Lya' * Δy[ step]
             Laa      .+= asm.Laa + asm.Lya' * y∂a[step]
             Δy²[step],Ly²[step] = sum(Δy[step].^2),sum(asm.Ly.^2)
         end    
-#        @show Laa
-#        @show La
-        Δa             = Laa\La 
-#        @show Δa
+        Δa             = -Laa\La 
         Δa²,La²        = sum(Δa.^2),sum(La.^2)
-#        @show √Δa²
         for step       ∈ eachindex(time)
-            ΔY         = Δy[step] - y∂a[step] * Δa
-            decrement!(state[step],ΔY,Ydofgr)
-            decrement!(state[step],Δa,Adofgr)
+            ΔY         = Δy[step] + y∂a[step] * Δa
+            decrement!(state[step],-ΔY,Ydofgr)
+            decrement!(state[step],-Δa,Adofgr)
         end    
-#        @show state[1].A
         if all(Δy².≤cΔy²) && all(Ly².≤cLy²) && Δa².≤cΔa² && La².≤cLa² 
             verbose && @printf "\n    StaticXUA converged in %3d A-iterations.\n" iiter
-            verbose && @printf "    |Δy|=%7.1e |Ly|=%7.1e |Δa|=%7.1e |La|=%7.1e\n" √(maximum(Δy²)) √(maximum(Ly²)) √(Δa²) √(La²)
+            verbose && @printf "    maxₜ(|ΔY|)=%7.1e  |∂L/∂Y|=%7.1e  |ΔA|=%7.1e  |∂L/∂A|=%7.1e\n" √(maximum(Δy²)) √(maximum(Ly²)) √(Δa²) √(La²)
             break#out of the iiter loop
         end
         iiter==maxiter && muscadeerror(@sprintf("no convergence after %3d iterations. |Δy|=%7.1e |Ly|=%7.1e |Δa|=%7.1e |La|=%7.1e\n",iiter,√(maximum(Δy²)),√(maximum(Ly²)),√(Δa²),√(La²)))

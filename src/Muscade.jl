@@ -37,7 +37,7 @@ module Muscade
     export getndof,getnele,getdofID,describe
 
     include("core/BasicElements.jl")
-    export XdofCost,UdofCost,AdofCost
+    export XdofCost,UdofCost,AdofCost,DofLoad,DofHold
 
     include("core/Assemble.jl")
     include("core/Solve.jl")

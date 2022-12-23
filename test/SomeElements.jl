@@ -103,22 +103,18 @@ Muscade.request2draw(::Type{<:AnchorLine}) = @request (Xtop,ΔXtop,ΔXchain,cr,x
 
 #### Spring
 
-# TODO untested!
-
 struct Spring{D} <: AbstractElement
     x₁     :: SVector{D,𝕣}  # x1,x2,x3
     x₂     :: SVector{D,𝕣} 
     EI     :: 𝕣
     L      :: 𝕣
 end
-Spring(nod::Vector{Node};EI) = Spring(coord(nod)[1],coord(nod)[2],EI,norm(coord(nod)[1]-coord(nod)[2]))
-
+Spring{D}(nod::Vector{Node};EI) where{D}= Spring{D}(coord(nod)[1],coord(nod)[2],EI,norm(coord(nod)[1]-coord(nod)[2]))
 @espy function Muscade.residual(o::Spring{D}, X,U,A, t,ε,dbg) where{D}
-    x        = ∂0(X)  
-    x₁       = SVector(x[i] for i=1  : D)+o.x₁
-    x₂       = SVector(x[i] for i=1+D:2D)+o.x₂
-    :EI      = o.EI*exp10(A[1]) 
-    :L₀      = o.L *exp10(A[2]) 
+    x₁       = ∂0(X)[SVector{D}(i   for i∈1:D)]+o.x₁
+    x₂       = ∂0(X)[SVector{D}(i+D for i∈1:D)]+o.x₂
+    :L₀      = o.L *exp10(A[1]) 
+    :EI      = o.EI*exp10(A[2]) 
     Δx       = x₁-x₂
     :L       = norm(Δx)
     :T       = EI*(L-L₀)
@@ -126,13 +122,12 @@ Spring(nod::Vector{Node};EI) = Spring(coord(nod)[1],coord(nod)[2],EI,norm(coord(
     R        = vcat(F₁,-F₁)
     return R
 end
-
 Muscade.doflist(     ::Type{Spring{D}}) where{D}=(
     inod  = (( 1 for i=1: D)...,(2 for i=1:D)...,3,3),
     class = ((:X for i=1:2D)...,:A,:A),
     field = ((Symbol(:tx,i) for i=1: D)...,(Symbol(:tx,i) for i=1: D)...,:ΞL₀,:ΞEI)) # \Xi
 Muscade.espyable(    ::Type{<:Spring}) = (EI=scalar,L₀=scalar,L=scalar,T=scalar)
-Muscade.request2draw(::Type{<:Spring}) = @request ()
+
 
 
 

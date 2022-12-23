@@ -267,4 +267,18 @@ function describe(model::Model,nodID::NodID)
         printstyled(@sprintf("%s\n",typeof(model.eleobj[eleID])),color=:cyan)
     end
  end
+function describe(model)
+    @printf "\nModel '%s'\n" model.ID
+    for class ∈ (:X,:U,:A)
+       ndof    = getndof(model,class)
+       ndof>0 && @printf "\n   Dofs of class %s:\n" class
+       for idof = 1:ndof
+            dof     = model.dof[class][idof] 
+            doftyp  = model.doftyp[dof.idoftyp]
+            @printf "      field=:%-15s NodID(%i)\n" doftyp.field dof.nodID.inod 
+        end
+    end
+end
 
+
+ 
