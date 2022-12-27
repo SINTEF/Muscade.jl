@@ -1,7 +1,7 @@
 ###### scaling functions
 function scaledlagrangian(scale,eleobj::E,Λs,Xs,Us,As, t,ε,dbg) where{E<:AbstractElement}
     Λ     =       Λs.*scale.Λ                 
-    X     = Tuple(xs.*scale.X for xs∈Xs)
+    X     = Tuple(xs.*scale.X for xs∈Xs)  # TODO Tuple is slow
     U     = Tuple(us.*scale.U for us∈Us)
     A     =       As.*scale.A
     L     = lagrangian(eleobj,Λ,X,U,A, t,ε,dbg)

@@ -11,7 +11,7 @@ module Muscade
     export ℝ1,ℤ1,𝕣1,𝕫1,𝔹1,𝕓1
     export ℝ2,ℤ2,𝕣2,𝕫2,𝔹2,𝕓2
     export ℝ11,ℤ11,𝕣11,𝕫11,𝔹11,𝕓11
-    export toggle
+    export toggle,@once
 
     include("core/Adiff.jl")
     export  ∂ℝ #\partial \bbR
@@ -37,7 +37,7 @@ module Muscade
     export getndof,getnele,getdofID,describe
 
     include("core/BasicElements.jl")
-    export XdofCost,UdofCost,AdofCost,DofLoad,DofHold
+    export XdofCost,UdofCost,AdofCost,DofLoad,DofHold,Spring
 
     include("core/Assemble.jl")
     include("core/Solve.jl")

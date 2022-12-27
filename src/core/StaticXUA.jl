@@ -106,11 +106,11 @@ function staticXUA(pstate,dbg;model::Model,time::AbstractVector{𝕣},
     cΔy²,cLy²,cΔa²,cLa²= maxΔy^2,maxLy^2,maxΔa^2,maxLa^2
     state              = allocate(pstate,[settime(deepcopy(initial),t) for t∈time]) 
     nA                 = getndof(model,:A)
-    La                 = Vector{𝕣}(undef,nA   )
-    Laa                = Matrix{𝕣}(undef,nA,nA)
+    La                 = Vector{𝕣 }(undef,nA   )
+    Laa                = Matrix{𝕣 }(undef,nA,nA)
     Δy                 = Vector{𝕣1}(undef,length(time))
     y∂a                = Vector{𝕣2}(undef,length(time))
-    Δy²,Ly²            = Vector{𝕣}(undef,length(time)),Vector{𝕣}(undef,length(time))
+    Δy²,Ly²            = Vector{𝕣 }(undef,length(time)),Vector{𝕣}(undef,length(time))
     for iiter          = 1:maxiter
         verbose && @printf "    A-iteration %3d\n" iiter
         La            .= 0
@@ -132,7 +132,7 @@ function staticXUA(pstate,dbg;model::Model,time::AbstractVector{𝕣},
         end    
         if all(Δy².≤cΔy²) && all(Ly².≤cLy²) && Δa².≤cΔa² && La².≤cLa² 
             verbose && @printf "\n    StaticXUA converged in %3d A-iterations.\n" iiter
-            verbose && @printf "    maxₜ(|ΔY|)=%7.1e  |∂L/∂Y|=%7.1e  |ΔA|=%7.1e  |∂L/∂A|=%7.1e\n" √(maximum(Δy²)) √(maximum(Ly²)) √(Δa²) √(La²)
+            verbose && @printf "    maxₜ(|ΔY|)=%7.1e  maxₜ(|∂L/∂Y|)=%7.1e  |ΔA|=%7.1e  |∂L/∂A|=%7.1e\n" √(maximum(Δy²)) √(maximum(Ly²)) √(Δa²) √(La²)
             break#out of the iiter loop
         end
         iiter==maxiter && muscadeerror(@sprintf("no convergence after %3d iterations. |Δy|=%7.1e |Ly|=%7.1e |Δa|=%7.1e |La|=%7.1e\n",iiter,√(maximum(Δy²)),√(maximum(Ly²)),√(Δa²),√(La²)))
