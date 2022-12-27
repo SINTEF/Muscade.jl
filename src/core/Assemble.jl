@@ -90,14 +90,14 @@ end
 ######## Generic assembler
 
 abstract type Assembler end
-function assemble!(asm::Assembler,dis,model,state,ε,dbg)
-    zero!(asm)
+function assemble!(out,asm,dis,model,state,ε,dbg)
+    zero!(out)
     for ieletyp ∈ eachindex(model.eleobj)
         eleobj  = model.eleobj[ieletyp]
-        assemblesequential!(asm,dis[ieletyp], eleobj,state,ε,(dbg...,ieletyp=ieletyp))
+        assemblesequential!(out,asm[ieletyp],dis[ieletyp], eleobj,state,ε,(dbg...,ieletyp=ieletyp))
     end
 end
-function assemblesequential!(asm::Assembler,dis, eleobj,state,ε,dbg) 
+function assemblesequential!(out,asm,dis,eleobj,state,ε,dbg) 
     scale     = dis.scale
     for iele  ∈ eachindex(eleobj)
         index = dis.index[iele]
@@ -105,7 +105,7 @@ function assemblesequential!(asm::Assembler,dis, eleobj,state,ε,dbg)
         Xe    = Tuple(x[index.X] for x∈state.X)
         Ue    = Tuple(u[index.U] for u∈state.U)
         Ae    = state.A[index.A]
-        addin!(asm,index,scale,eleobj[iele],Λe,Xe,Ue,Ae, state.time,ε,(dbg...,iele=iele))
+        addin!(out,asm[iele],scale,eleobj[iele],Λe,Xe,Ue,Ae, state.time,ε,(dbg...,iele=iele))
     end
 end
 
