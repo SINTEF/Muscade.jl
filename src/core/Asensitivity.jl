@@ -15,7 +15,7 @@ function zero!(asm::ASMsensitivityA)
     asm.Lλa .= 0
     asm.Lλx .= 0
 end
-function addin!(asm::ASMsensitivityA,scale,ieletyp,iele,eleobj,Λ,X,U,A, t,ε,dbg) 
+function addin!(asm::ASMsensitivityA,index,scale,eleobj,Λ,X,U,A, t,ε,dbg) 
     Nx,Na           = getndof(typeof(eleobj),:X),getndof(typeof(eleobj),:A) # in the element
     Nz              = 2Nx+Na                                  
     iλ,ix,ia        = 1:Nx, Nx+1:2Nx ,2Nx+1:2Nx+Na
@@ -23,9 +23,8 @@ function addin!(asm::ASMsensitivityA,scale,ieletyp,iele,eleobj,Λ,X,U,A, t,ε,db
     ΔΛ,ΔX,ΔA        = view(ΔZ,iλ),view(ΔZ,ix),view(ΔZ,ia) # TODO Static?
     L               = scaledlagrangian(scale,eleobj, Λ+ΔΛ, (∂0(X)+ΔX,),U,A+ΔA, t,ε,dbg)
     Lz,Lzz          = value_∂{1,Nz}(∂{2,Nz}(L)) 
-    i               = asm.dis[ieletyp][iele].index
-    iΛ = iX         = Vector(i.X)
-    iA              = Vector(i.A)                          # index of element dofs into model La
+    iΛ = iX         = Vector(index.X)
+    iA              = Vector(index.A)                          # index of element dofs into model La
     asm.La[iA]     += Lz[ia]  
     asm.Lλx[iΛ,iX] += Lzz[iλ,ix]
     asm.Lλa[iΛ,iA] += Lzz[iλ,ia]

@@ -4,8 +4,8 @@ end
 function AllAdofs(model::Model,dis)
     scale  = Vector{𝕣}(undef,getndof(model,:A))
     for di ∈ dis
-        for d ∈ di
-            scale[d.index.A] = d.scale.A
+        for i ∈ di.index
+            scale[i.A] = di.scale.A
         end
     end
     return AllAdofs(scale)
@@ -30,10 +30,10 @@ function AllΛXUdofs(model::Model,dis)
     Xscale = Vector{𝕣}(undef,nX)
     Uscale = Vector{𝕣}(undef,nU)
     for di ∈ dis
-        for d ∈ di
-            Λscale[d.index.X] = d.scale.Λ
-            Xscale[d.index.X] = d.scale.X
-            Uscale[d.index.U] = d.scale.U
+        for i ∈ di.index
+            Λscale[i.X] = di.scale.Λ
+            Xscale[i.X] = di.scale.X
+            Uscale[i.U] = di.scale.U
         end
     end
     return AllΛXUdofs(Λscale,Xscale,Uscale,nX,nU)
@@ -75,7 +75,7 @@ function zero!(asm::ASMstaticΛXU_A)
     asm.Lya .= 0
     asm.Laa .= 0
 end
-function addin!(asm::ASMstaticΛXU_A,scale,ieletyp,iele,eleobj,Λ,X,U,A, t,ε,dbg) 
+function addin!(asm::ASMstaticΛXU_A,index,scale,eleobj,Λ,X,U,A, t,ε,dbg) 
     Nx,Nu,Na        = length(X[1]),length(U[1]),length(A) # in the element
     Nz              = 2Nx+Nu+Na                           # Z = [Y;A]=[Λ;X;U;A]       
     iλ,ix,iu,ia     = 1:Nx, Nx+1:2Nx, 2Nx+1:2Nx+Nu, 2Nx+Nu+1:2Nx+Nu+Na # index into element vectors ΔZ and Lz
@@ -85,9 +85,9 @@ function addin!(asm::ASMstaticΛXU_A,scale,ieletyp,iele,eleobj,Λ,X,U,A, t,ε,db
 
     L               = scaledlagrangian(scale,eleobj, Λ+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A+ΔA, t,ε,dbg)
     Lz,Lzz          = value_∂{1,Nz}(∂{2,Nz}(L)) 
-    i               = asm.dis[ieletyp][iele].index
-    iY              = Vector([i.X;i.X.+asm.nX;i.U.+2asm.nX]) # index of element dofs into model Ly
-    iA              = Vector(i.A)                          # index of element dofs into model La
+    i               = index
+    iY              = Vector([index.X;index.X.+asm.nX;index.U.+2asm.nX]) # index of element dofs into model Ly
+    iA              = Vector(index.A)                          # index of element dofs into model La
     asm.La[iA]     += Lz[ia]  
     asm.Ly[iY]     += Lz[iy]  
     asm.Laa[iA,iA] += Lzz[ia,ia]

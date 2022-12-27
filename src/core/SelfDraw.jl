@@ -2,10 +2,10 @@ export draw,request2draw
 
 request2draw(::AbstractElement) = () # by default, an element does not need access to element-results to plot
 draw(axe,key,out,::AbstractElement;kwargs...) = nothing # by default, an element draws nothing
-function draw(axe,key,out,dis,eleobj,iele,state,dbg;kwargs...) 
+function draw(axe,key,out,dis::Disassembler,eleobj,iele,state,dbg;kwargs...) 
     # typestable kernel
     for ie ∈ iele
-        index = dis[ie].index
+        index = dis.index[ie]
         Λe    = state.Λ[index.X]                 
         Xe    = Tuple(x[index.X] for x∈state.X)
         Ue    = Tuple(u[index.U] for u∈state.U)

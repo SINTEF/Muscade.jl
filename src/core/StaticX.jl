@@ -6,8 +6,8 @@ end
 function AllXdofs(model::Model,dis)
     scale  = Vector{𝕣}(undef,getndof(model,:X))
     for di ∈ dis
-        for d ∈ di
-            scale[d.index.X] = d.scale.X
+        for i ∈ di.index
+            scale[i.X] = di.scale.X
         end
     end
     return AllXdofs(scale)
@@ -32,11 +32,11 @@ function zero!(asm::ASMstaticX)
     asm.Lλ  .= 0
     asm.Lλx .= 0
 end
-function addin!(asm::ASMstaticX,scale,ieletyp,iele,eleobj,Λ,X,U,A, t,ε,dbg) 
+function addin!(asm::ASMstaticX,index,scale,eleobj,Λ,X,U,A, t,ε,dbg) 
     Nx            = length(Λ)                   
     ΔX            = δ{1,Nx,𝕣}()                 # NB: precedence==1, input must not be Adiff 
     Lλ            = scaledresidual(scale,eleobj, (∂0(X)+ΔX,),U,A, t,ε,dbg)
-    i             = Vector(asm.dis[ieletyp][iele].index.X)    
+    i             = Vector(index.X)    
     asm.Lλ[ i  ] += value{1}(Lλ)            
     asm.Lλx[i,i] += ∂{1,Nx}(Lλ)                     
 end

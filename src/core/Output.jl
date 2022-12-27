@@ -25,9 +25,9 @@ function getdof(state::Vector{S};class::Symbol=:X,field::Symbol,nodID::Vector{No
 end
 
 # Elemental results
-function extractkernel!(out,key,eleobj,eleID,dis,state::State,dbg) # typestable kernel
+function extractkernel!(out,key,eleobj,eleID,dis::Disassembler,state::State,dbg) # typestable kernel
     for (iele,ei) ∈ enumerate(eleID)
-        index = dis[ei.iele].index
+        index = dis.index[ei.iele]
         Λ     = state.Λ[index.X]                 
         X     = Tuple(x[index.X] for x∈state.X)
         U     = Tuple(u[index.U] for u∈state.U)

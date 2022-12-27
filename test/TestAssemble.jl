@@ -63,18 +63,18 @@ dis = Muscade.Disassembler(model)
 
 
 @testset "Disassembler" begin
-    @test  dis[1][1].index.X == [1,2]
-    @test  dis[1][1].index.U == []
-    @test  dis[1][1].index.A == [1,2]
-    @test  dis[2][1].index.X == [1,2,3]
-    @test  dis[2][1].index.U == []
-    @test  dis[2][1].index.A == [3,4]
-    @test  dis[1][1].scale.X ≈  [1,1]
-    @test  dis[1][1].scale.U ≈  𝕫[]
-    @test  dis[1][1].scale.A ≈  [3,4]
-    @test  dis[2][1].scale.X ≈  [1,1,2]
-    @test  dis[2][1].scale.U ≈  𝕫[]
-    @test  dis[2][1].scale.A ≈  [5,1]
+    @test  dis[1].index[1].X == [1,2]
+    @test  dis[1].index[1].U == []
+    @test  dis[1].index[1].A == [1,2]
+    @test  dis[2].index[1].X == [1,2,3]
+    @test  dis[2].index[1].U == []
+    @test  dis[2].index[1].A == [3,4]
+    @test  dis[1].scale.X ≈  [1,1]
+    @test  dis[1].scale.U ≈  𝕫[]
+    @test  dis[1].scale.A ≈  [3,4]
+    @test  dis[2].scale.X ≈  [1,1,2]
+    @test  dis[2].scale.U ≈  𝕫[]
+    @test  dis[2].scale.A ≈  [5,1]
 end
 
 asm = Muscade.ASMstaticX(model,dis)
