@@ -51,7 +51,7 @@ mutable struct Model
                     end           
     eleobj      :: Vector{Any}             # model.ele[eleID]or  model.eleobj[ieletyp][iele]
     doftyp      :: Vector{DofTyp}          # model.doftyp[idoftyp]
-    Λscale      :: 𝕣
+    scaleΛ      :: 𝕣
 end
 
 # Model construction - private

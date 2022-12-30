@@ -14,12 +14,12 @@ request2draw(::Type{E}) where{E<:AbstractElement}  = ()
 doflist(     ::Type{E}) where{E<:AbstractElement}  = (inod=𝕫[],class=Symbol[],field=Symbol[])
 ### Not part of element API, not exported by Muscade
 
-getndof(E::DataType)              = length(doflist(E).inod)
 getnnod(E::DataType)              = maximum(doflist(E).inod) 
 getdoflist(E::DataType)           = doflist(E).inod, doflist(E).class, doflist(E).field
 getidof(E::DataType,class)        = findall(doflist(E).class.==class)  
+getndof(E::DataType)              = length(doflist(E).inod)
 getndof(E::DataType,class)        = length(getidof(E,class))  
-getndofs(E::DataType)             = getndof(E,:X),getndof(E,:U),getndof(E,:A)
+getndof(E::DataType,class::Tuple) = (getndof(E,c) for c∈class)
 
 ####### Lagrangian from residual and residual from Lagrangian
 # an assembler that calls "lagrangian" will call the element's own method if implemented, or this one, which then calls the element's residual method

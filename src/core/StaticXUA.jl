@@ -1,64 +1,4 @@
-struct AllAdofs <: DofGroup 
-    scale :: 𝕣1
-end
-function AllAdofs(model::Model,dis)
-    scale  = Vector{𝕣}(undef,getndof(model,:A))
-    for di ∈ dis
-        for i ∈ di.index
-            scale[i.A] = di.scale.A
-        end
-    end
-    return AllAdofs(scale)
-end
-function decrement!(s::State,a::𝕣1,gr::AllAdofs) 
-    s.A .-= a.*gr.scale
-end
-Base.getindex(s::State,gr::AllAdofs) = s.A./gr.scale # not used by solver
-getndof(gr::AllAdofs) = length(gr.scale)
 
-#------------------------------------
-
-struct AllΛXUdofs <: DofGroup 
-    Λscale :: 𝕣1
-    Xscale :: 𝕣1
-    Uscale :: 𝕣1
-    nX     :: 𝕣
-    nU     :: 𝕣
-end
-function AllΛXUdofs(model::Model,dis)
-    nX     = getndof(model,:X)
-    nU     = getndof(model,:U)
-    Λscale = Vector{𝕣}(undef,nX)
-    Xscale = Vector{𝕣}(undef,nX)
-    Uscale = Vector{𝕣}(undef,nU)
-    for di ∈ dis
-        for i ∈ di.index
-            Λscale[i.X] = di.scale.Λ
-            Xscale[i.X] = di.scale.X
-            Uscale[i.U] = di.scale.U
-        end
-    end
-    return AllΛXUdofs(Λscale,Xscale,Uscale,nX,nU)
-end
-function decrement!(s::State,y::𝕣1,gr::AllΛXUdofs) 
-    nX,nU = length(s.X[1]),length(s.U[1])
-    s.Λ    .-= y[    1: nX   ].*gr.Λscale
-    s.X[1] .-= y[ nX+1:2nX   ].*gr.Xscale
-    s.U[1] .-= y[2nX+1:2nX+nU].*gr.Uscale
-end
-function Base.getindex(s::State,gr::AllΛXUdofs) # not used by solver
-    nX,nU = length(s.X[1]),length(s.U[1])
-    y = 𝕣1(undef,2nX+nU)
-    y[    1: nX   ] = s.Λ    ./gr.Λscale
-    y[ nX+1:2nX   ] = s.X[1] ./gr.Xscale
-    y[2nX+1:2nX+nU] = s.U[1] ./gr.Uscale
-    return y
-end
-getndof(gr::AllΛXUdofs) = length(2gr.nX+gr.nU)
-
-#------------------------------------
-
-#asm[ieletyp][iele].iLy...
 struct OUTstaticΛXU_A  
     Ly    :: 𝕣1
     La    :: 𝕣1
@@ -66,17 +6,18 @@ struct OUTstaticΛXU_A
     Lya   :: SparseMatrixCSC{𝕣,𝕫} 
     Laa   :: SparseMatrixCSC{𝕣,𝕫} 
 end   
-struct ASMstaticΛXU_A{nY,nA,nYY,nYA,nAA}  
-    iLy   :: SVector{nY,𝕫}
-    iLa   :: SVector{nA,𝕫}
-    iLyy  :: SMatrix{nY,nY,𝕫,nYY} 
-    iLya  :: SMatrix{nY,nA,𝕫,nYA} 
-    iLaa  :: SMatrix{nA,nA,𝕫,nAA} 
-end   
-function prepare(::Type{ASMstaticΛXU_A},model::Model,dis) 
-    Adofgr             = AllAdofs(  model,dis)
-    Ydofgr             = AllΛXUdofs(model,dis)
-
+function prepare(::Type{OUTstaticΛXU_A},model,dis) 
+    Ydofgr             = allΛXUdofs(model,dis)
+    Adofgr             = allAdofs(  model,dis)
+    nY,nA              = getndof(Ydofgr,Adofgr)
+    narray,neletyp     = 5,getneletyp(model)
+    asm                = Matrix{𝕫2}(undef,narray,neletyp)  
+    Ly                 = preparevec!(@view(asm,1,:),Ydofgr,dis) 
+    La                 = preparevec!(@view(asm,2,:),Adofgr,dis) 
+    Lyy                = preparemat!(@view(asm,3,:),@view(asm,1,:),@view(asm,1,:),nY,nY) 
+    Lya                = preparemat!(@view(asm,4,:),@view(asm,1,:),@view(asm,2,:),nY,nA) 
+    Laa                = preparemat!(@view(asm,5,:),@view(asm,2,:),@view(asm,2,:),nA,nA) 
+    out                = OUTstaticΛXU_A(Ly,La,Lyy,Lya,Laa)
     return out,asm,Adofgr,Ydofgr
 end
 function zero!(out::OUTstaticΛXU_A)
@@ -86,21 +27,20 @@ function zero!(out::OUTstaticΛXU_A)
     out.Lya.nzval .= 0
     out.Laa.nzval .= 0
 end
-function addin!(out,asm,scale,eleobj,Λ,X,U,A, t,ε,dbg) 
+function addin!(out,asm,iele,scale,eleobj,Λ,X,U,A, t,ε,dbg) 
     Nx,Nu,Na        = length(X[1]),length(U[1]),length(A) # in the element
-    # TODO a adiff functions for this?
     Nz              = 2Nx+Nu+Na                           # Z = [Y;A]=[Λ;X;U;A]       
-    iλ,ix,iu,ia     = 1:Nx, Nx+1:2Nx, 2Nx+1:2Nx+Nu, 2Nx+Nu+1:2Nx+Nu+Na # index into element vectors ΔZ and Lz
     ΔZ              = variate{2,Nz}(δ{1,Nz,𝕣}())                 
+    iλ,ix,iu,ia     = gradientpartition(Nx,Nx,Nu,Na) # index into element vectors ΔZ and Lz
     ΔΛ,ΔX,ΔU,ΔA     = view(ΔZ,iλ),view(ΔZ,ix),view(ΔZ,iu),view(ΔZ,ia) # TODO Static?
     L               = scaledlagrangian(scale,eleobj, Λ+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A+ΔA, t,ε,dbg)
     Lz,Lzz          = value_∂{1,Nz}(∂{2,Nz}(L)) 
-    iy              = 1:2Nx+Nu  
-    out.La[asm.iLa]         += Lz[ia]  
-    out.Ly[asm.iLy]         += Lz[iy]  
-    out.Laa.nzval[asm.iLaa] += Lzz[ia,ia]
-    out.Lya.nzval[asm.iLya] += Lzz[iy,ia]
-    out.Lyy.nzval[asm.iLyy] += Lzz[iy,iy]
+    iy              = 1:(2Nx+Nu)  
+    addinvec!(out.La       ,asm[1],iele,@view(Lz,ia))
+    addinvec!(out.Ly       ,asm[2],iele,@view(Lz,iy))
+    addinvec!(out.Laa.nzval,asm[3],iele,@view(Lzz,ia,ia))
+    addinvec!(out.Lya.nzval,asm[4],iele,@view(Lzz,iy,ia))
+    addinvec!(out.Lyy.nzval,asm[5],iele,@view(Lzz,iy,iy))
 end
 
 #------------------------------------
@@ -111,7 +51,7 @@ function staticXUA(pstate,dbg;model::Model,time::AbstractVector{𝕣},
 
     verbose && @printf "    staticXUA solver\n\n"
     dis                = initial.dis
-    asm,out,Adofgr,Ydofgr = prepare(ASMstaticΛXU_A,model,dis)
+    asm,out,Adofgr,Ydofgr = prepare(OUTstaticΛXU_A,model,dis)
     cΔy²,cLy²,cΔa²,cLa²= maxΔy^2,maxLy^2,maxΔa^2,maxLa^2
     state              = allocate(pstate,[settime(deepcopy(initial),t) for t∈time]) 
     nA                 = getndof(model,:A)
@@ -136,8 +76,8 @@ function staticXUA(pstate,dbg;model::Model,time::AbstractVector{𝕣},
         Δa²,La²        = sum(Δa.^2),sum(La.^2)
         for step       ∈ eachindex(time)
             ΔY         = Δy[step] - y∂a[step] * Δa
-            decrement!(state[step],ΔY,Ydofgr)
-            decrement!(state[step],Δa,Adofgr)
+            decrement!(state[step],0,ΔY,Ydofgr)
+            decrement!(state[step],0,Δa,Adofgr)
         end    
         if all(Δy².≤cΔy²) && all(Ly².≤cLy²) && Δa².≤cΔa² && La².≤cLa² 
             verbose && @printf "\n    StaticXUA converged in %3d A-iterations.\n" iiter
