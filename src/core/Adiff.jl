@@ -216,6 +216,13 @@ end
 
 ## Find NaN in derivatives
 hasnan(a::∂ℝ   )             = hasnan(a.x) || hasnan(a.dx)
-hasnan(a::AV{R}) where{R<:ℝ} = any(hasnan.(a))
 hasnan(a::ℝ   )              = isnan(a)
+function hasnan(a::AV{R}) where{R<:ℝ} 
+    for el∈a
+        if hasnan(el)
+            return true
+        end
+    end
+    return false
+end 
 

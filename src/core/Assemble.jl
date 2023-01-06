@@ -154,23 +154,6 @@ allUdofs(model::Model,dis)   = DofGroup(dis, 𝕫[],𝕫[],1:getndof(model,:U),�
 allAdofs(model::Model,dis)   = DofGroup(dis, 𝕫[],𝕫[],𝕫[],1:getndof(model,:A))
 allΛXUdofs(model::Model,dis) = DofGroup(dis, 1:getndof(model,:X),1:getndof(model,:X),1:getndof(model,:U),𝕫[])
 
-# function prepare
-#   allocate asm = Matrix{𝕫2}(undef,narray,neletyp)
-#   for each array
-#   pass view asm[iarray,:] to preparevec/perparemat
-# function preparevec/perparemat
-#   for each ieletyp
-#   asm[ieletyp] = Matrix{𝕫2}(undef,ndof/nnz,nele)
-#   asm[ieletyp][idof/inz,iele] = ...
-# function assemble!
-#   for each ieletyp
-#   pass view asm[:,ieletyp] to assemblekernel!
-# function assemblekernel!
-#   for each iele
-#   pass asm[:] and iele to addin!
-# function addin!
-#   for each array
-#   use asm[iarray][:,iele] 
 
 ######## Prepare assemblers
 
@@ -248,7 +231,6 @@ function asmmat!(asm,iasm,jasm,nidof,njdof)
             npair += sum(iasm[ieletyp][:,iele].≠0)*sum(jasm[ieletyp][:,iele].≠0)
         end
     end
- #   @show npair
     # 2) traverse all elements 
     #       prepare a Vector A of all (jmoddof,imoddof) (in that order, for sort to work!) pairs of model dofs ::Vector{Tuple{Int64, Int64}}(undef,N)
     A = Vector{Tuple{𝕫,𝕫}}(undef,npair)
@@ -263,10 +245,8 @@ function asmmat!(asm,iasm,jasm,nidof,njdof)
             end
         end
     end
- #   @show A
     # 3) sortperm(A)
     I = sortperm(A)
- #   @show A[I]
     # 4) traverse A[I] 
     #      count nnz
     #      create a list J that to each element of A[I] associates an entry 1≤inz≤nnz into nzval
@@ -277,7 +257,6 @@ function asmmat!(asm,iasm,jasm,nidof,njdof)
             nnz +=1
         end
     end    
- #   @show nnz
     J      = 𝕫1(undef,npair) # to each pair in A[I] associate a unique entry number
     K      = 𝕫1(undef,npair) # to each pair in A    associate a unique entry number
     nzval  = ones(𝕣,nnz) # could this be left undef and still get past the sparse constructor?
@@ -300,10 +279,6 @@ function asmmat!(asm,iasm,jasm,nidof,njdof)
         J[ipair] = inz 
     end    
     K[I] = J
- #   @show J
- #   @show K
- #   @show colptr
- #   @show rowval
     # 5) traverse all elements again to distribute J into asm
     ipair = 0
     for ieletyp ∈ eachindex(iasm)
@@ -314,15 +289,35 @@ function asmmat!(asm,iasm,jasm,nidof,njdof)
             if (iasm[ieletyp][ieledof,iele]≠0)  &&  (jasm[ieletyp][jeledof,iele]≠0)
                 ipair += 1
                 ientry = ieledof+nieledof*(jeledof-1) 
- #               @show K[ipair],ientry
                 asm[ieletyp][ientry,iele] = K[ipair]  
             end
         end
- #       @show asm[ieletyp]
     end
-    
     # 6)
     return SparseMatrixCSC(nidof,njdof,colptr,rowval,nzval)   
+end
+
+
+
+######## Generic assembler
+
+function assemble!(out,asm,dis,model,state,ε,dbg)
+    zero!(out)
+    for ieletyp ∈ eachindex(model.eleobj)
+        eleobj  = model.eleobj[ieletyp]
+        assemblesequential!(out,view(asm,:,ieletyp),dis.dis[ieletyp], eleobj,state,ε,(dbg...,ieletyp=ieletyp))
+    end
+end
+function assemblesequential!(out,asm,dis,eleobj,state::State{Nxder,Nuder},ε,dbg) where{Nxder,Nuder}
+    scale     = dis.scale
+    for iele  ∈ 1:lastindex(eleobj)
+        index = dis.index[iele]
+        Λe    = state.Λ[index.X]                 
+        Xe    = NTuple{Nxder}(x[index.X] for x∈state.X)
+        Ue    = NTuple{Nuder}(u[index.U] for u∈state.U)
+        Ae    = state.A[index.A]
+        addin!(out,asm,iele,scale,eleobj[iele],Λe,Xe,Ue,Ae, state.time,ε,(dbg...,iele=iele))
+    end
 end
 
 #### addin
@@ -344,41 +339,20 @@ function addin!(outA::AbstractSparseArray,asm,iele,a)
     end
 end
 
-######## Generic assembler
-
-function assemble!(out,asm,dis,model,state,ε,dbg)
-    zero!(out)
-    for ieletyp ∈ eachindex(model.eleobj)
-        eleobj  = model.eleobj[ieletyp]
-        assemblesequential!(out,view(asm,:,ieletyp),dis.dis[ieletyp], eleobj,state,ε,(dbg...,ieletyp=ieletyp))
-    end
-end
-function assemblesequential!(out,asm,dis,eleobj,state,ε,dbg) 
-    scale     = dis.scale
-    for iele  ∈ eachindex(eleobj)
-        index = dis.index[iele]
-        Λe    = state.Λ[index.X]                 
-        Xe    = Tuple(x[index.X] for x∈state.X)
-        Ue    = Tuple(u[index.U] for u∈state.U)
-        Ae    = state.A[index.A]
-        addin!(out,asm,iele,scale,eleobj[iele],Λe,Xe,Ue,Ae, state.time,ε,(dbg...,iele=iele))
-    end
-end
-
 ###### scaled functions
 
-function scaledlagrangian(scale,eleobj::E,Λs,Xs,Us,As, t,ε,dbg) where{E<:AbstractElement}
+function scaledlagrangian(scale,eleobj::E,Λs,Xs::NTuple{Nxder},Us::NTuple{Nuder},As, t,ε,dbg) where{E<:AbstractElement,Nxder,Nuder}
     Λ     =       Λs.*scale.Λ                 
-    X     = Tuple(xs.*scale.X for xs∈Xs)  # TODO Tuple is slow, not typestable
-    U     = Tuple(us.*scale.U for us∈Us)
+    X     = NTuple{Nxder}(xs.*scale.X for xs∈Xs)  # TODO Tuple is slow, not typestable
+    U     = NTuple{Nuder}(us.*scale.U for us∈Us)
     A     =       As.*scale.A
     L     = lagrangian(eleobj,Λ,X,U,A, t,ε,dbg)
     hasnan(L) && muscadeerror(dbg,"NaN in a Lagrangian or its partial derivatives")
     return L
 end    
-function scaledresidual(scale,eleobj::E, Xs,Us,As, t,ε,dbg) where{E<:AbstractElement} 
-    X     = Tuple(xs.*scale.X for xs∈Xs)
-    U     = Tuple(us.*scale.U for us∈Us)
+function scaledresidual(scale,eleobj::E, Xs::NTuple{Nxder},Us::NTuple{Nuder},As, t,ε,dbg) where{E<:AbstractElement,Nxder,Nuder} 
+    X     = NTuple{Nxder}(xs.*scale.X for xs∈Xs)  # TODO Tuple is slow, not typestable
+    U     = NTuple{Nuder}(us.*scale.U for us∈Us)
     A     =       As.*scale.A
     R     = scale.Λ .* residual(eleobj, X,U,A, t,ε,dbg) 
     hasnan(R) && muscadeerror(dbg,"NaN in a residual or its partial derivatives")
