@@ -92,7 +92,7 @@ setscale!(model;scale=(X=(tx1=1.,tx2=1.,rx3=2.),A=(Δseadrag=3.,Δskydrag=4.,ΔL
     @test model.doftyp[5].scale ≈ 2.
     @test model.doftyp[5].dofID == [DofID(:X, 3)]
 
-    @test model.Λscale          ≈ 2.
+    @test model.scaleΛ          ≈ 2.
 end
 
 @testset "model inspection" begin

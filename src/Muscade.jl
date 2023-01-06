@@ -40,6 +40,7 @@ module Muscade
     export XdofCost,UdofCost,AdofCost,DofLoad,DofHold,Spring
 
     include("core/Assemble.jl")
+ 
     include("core/Solve.jl")
     export solve
 
@@ -49,9 +50,6 @@ module Muscade
     include("core/StaticXUA.jl")
     export staticXUA
 
-    include("core/Asensitivity.jl")
-    export Asensitivity
-    
     include("core/Output.jl")
     export getdof,getresult
 

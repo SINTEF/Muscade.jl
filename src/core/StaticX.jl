@@ -10,8 +10,8 @@ function prepare(::Type{OUTstaticX},model,dis)
     ndof               = getndof(dofgr)
     narray,neletyp     = 2,getneletyp(model)
     asm                = Matrix{𝕫2}(undef,narray,neletyp)  
-    Lλ                 = preparevec!(@view(asm,1,:),dofgr,dis) 
-    Lλx                = preparemat!(@view(asm,2,:),@view(asm,1,:),@view(asm,1,:),ndof,ndof) 
+    Lλ                 = asmvec!(view(asm,1,:),dofgr,dis) 
+    Lλx                = asmmat!(view(asm,2,:),view(asm,1,:),view(asm,1,:),ndof,ndof) 
     out                = OUTstaticX(Lλ,Lλx)
     return out,asm,dofgr
 end
@@ -23,8 +23,8 @@ function addin!(out::OUTstaticX,asm,iele,scale,eleobj,Λ,X,U,A, t,ε,dbg)
     Nx                       = length(Λ)                   
     ΔX                       = δ{1,Nx,𝕣}()                 # NB: precedence==1, input must not be Adiff 
     Lλ                       = scaledresidual(scale,eleobj, (∂0(X)+ΔX,),U,A, t,ε,dbg)
-    addinvec!(out.Lλ       ,asm[1],iele,value{1}(Lλ) )
-    addinvec!(out.Lλx.nzval,asm[2],iele,∂{1,Nx}(Lλ)  )
+    addin!(out.Lλ       ,asm[1],iele,value{1}(Lλ) )
+    addin!(out.Lλx.nzval,asm[2],iele,∂{1,Nx}(Lλ)  )
 end
 
 ###---------------------
@@ -37,7 +37,7 @@ function staticX(pstate,dbg;model::Model,time::AbstractVector{𝕣},
     verb             = verbose
     verb && @printf "    staticX solver\n\n"
     dis              = initial.dis
-    asm,out,dofgr    = prepare(OUTstaticX,model,dis)
+    out,asm,dofgr    = prepare(OUTstaticX,model,dis)
     asmt,solt,citer  = 0.,0.,0
     cΔx²,cLλ²        = maxΔx^2,maxresidual^2
     state            = allocate(pstate,Vector{State}(undef,saveiter ? maxiter : length(time))) # state is not a return argument so that data is not lost in case of exception

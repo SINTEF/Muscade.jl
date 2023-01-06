@@ -26,7 +26,7 @@ T = typeof(turbine)
     @test Muscade.getidof(T,:A)  == [3,4]
     @test Muscade.getndof(T)     == 4
     @test Muscade.getndof(T,:X)  == 2
-    @test Muscade.getndofs(T)    == (2,0,2)
+    @test Muscade.getndof(T,(:X,:U,:A))    == (2,0,2)
     @test Muscade.getnnod(T)     == 2
 end
 

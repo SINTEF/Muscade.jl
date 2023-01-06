@@ -61,13 +61,14 @@ getidoftyp(model,class,field)     = firstindex(doftyp.class==class && doftyp.fie
 getidoftyp(model,dofID::DofID)    = model.dof[dofID].idoftyp
 getieletyp(model,E)               = firstindex(eltype(eleobj) == E                        for eleobj∈model.eleobj)
 getdoftyp(model,args...)          = model.doftyp[getidoftyp(model,args...)]  
+getneletyp(model)                 = length(model.ele)
 
 Base.getindex(nod::AbstractArray,nodID::NodID)   = nod[nodID.inod   ]
 Base.getindex(dof::NamedTuple{(:X,:U,:A), Tuple{Dof1, Dof1, Dof1}},dofID::DofID)   = dof[dofID.class  ][dofID.idof]
 Base.getindex(ele::AbstractArray,eleID::EleID)   = ele[eleID.ieletyp][eleID.iele]
 Base.getindex(A  ::AbstractArray,id::AbstractArray{ID})   = [A[i] for i ∈ id]
 getndof(model::Model,class::Symbol) = length(model.dof[class])
-getndof(model::Model,class::Tuple) = (getndof(model,c) for c∈class)
+getndof(model::Model,class::Tuple) = ntuple(i->getndof(model,class[i]),length(class))
 getndof(model::Model)             = sum(length(d) for d∈model.dof)
 getnele(model::Model,ieletyp)     = length(model.ele[ieletyp])
 getnele(model::Model)             = sum(length(e) for e∈model.ele)
@@ -182,7 +183,7 @@ function setscale!(model;scale=nothing,Λscale=nothing)  # scale = (X=(tx=10,rx=
         end
     end
     if ~isnothing(Λscale)
-        model.Λscale = Λscale
+        model.scaleΛ = Λscale
     end
 end
 

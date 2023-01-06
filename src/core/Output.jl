@@ -25,7 +25,7 @@ function getdof(state::Vector{S};class::Symbol=:X,field::Symbol,nodID::Vector{No
 end
 
 # Elemental results
-function extractkernel!(out,key,eleobj,eleID,dis::Disassembler,state::State,dbg) # typestable kernel
+function extractkernel!(out,key,eleobj,eleID,dis::EletypDisassembler,state::State,dbg) # typestable kernel
     for (iele,ei) ∈ enumerate(eleID)
         index = dis.index[ei.iele]
         Λ     = state.Λ[index.X]                 
@@ -41,7 +41,7 @@ function getresult(state::Vector{S},req; eleID::Vector{EleID})where {S<:State}
     ieletyp             = eleID[begin].ieletyp
     all(e.ieletyp== ieletyp for e∈eleID) || muscadeerror("All elements must be of the same element type")
     eleobj              = state[begin].model.eleobj[ieletyp]
-    dis                 = state[begin].dis[ieletyp]
+    dis                 = state[begin].dis.dis[ieletyp]
     key,nkey            = makekey(req,espyable(eltype(eleobj)))
     nstep,nele          = length(state),length(eleID)
     out                 = Array{𝕣,3}(undef,nkey,nele,nstep)

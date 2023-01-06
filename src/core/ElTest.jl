@@ -7,7 +7,7 @@ function test_static_element(ele::eletyp; δX,X,U,A, t::Float64=0.,ε::Float64=0
     iXdof            = Muscade.getidof(eletyp,:X)
     iUdof            = Muscade.getidof(eletyp,:U)
     iAdof            = Muscade.getidof(eletyp,:A)
-    nX,nU,nA         = Muscade.getndofs(eletyp)
+    nX,nU,nA         = Muscade.getndof(eletyp,(:X,:U,:A))
     L,Lδx,Lx,Lu,La   = Muscade.gradient(ele,δX,[X],[U],A, t,ε,dbg)
 
     if verbose

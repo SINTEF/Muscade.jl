@@ -63,42 +63,96 @@ dis = Muscade.Disassembler(model)
 
 
 @testset "Disassembler" begin
-    @test  dis[1].index[1].X == [1,2]
-    @test  dis[1].index[1].U == []
-    @test  dis[1].index[1].A == [1,2]
-    @test  dis[2].index[1].X == [1,2,3]
-    @test  dis[2].index[1].U == []
-    @test  dis[2].index[1].A == [3,4]
-    @test  dis[1].scale.X ≈  [1,1]
-    @test  dis[1].scale.U ≈  𝕫[]
-    @test  dis[1].scale.A ≈  [3,4]
-    @test  dis[2].scale.X ≈  [1,1,2]
-    @test  dis[2].scale.U ≈  𝕫[]
-    @test  dis[2].scale.A ≈  [5,1]
+    @test  dis.dis[1].index[1].X == [1,2]
+    @test  dis.dis[1].index[1].U == []
+    @test  dis.dis[1].index[1].A == [1,2]
+    @test  dis.dis[2].index[1].X == [1,2,3]
+    @test  dis.dis[2].index[1].U == []
+    @test  dis.dis[2].index[1].A == [3,4]
+    @test  dis.scaleX ≈  [1,1,2]
+    @test  dis.scaleU ≈  𝕫[]
+    @test  dis.scaleA ≈  [3,4,5,1]
 end
 
-asm = Muscade.ASMstaticX(model,dis)
-nX  = Muscade.getndof(model,:X)
-nU  = Muscade.getndof(model,:U)
-nA  = Muscade.getndof(model,:A)
-Λ   =  zeros(nX)
-X   = (zeros(nX),)
-U   = (zeros(nU),)
-A   =  zeros(nA)
-t   = 0.
-ε   = 0.
-dbg = ()
-state = Muscade.State(Λ,X,U,A, t,ε,model,dis)
-Muscade.assemble!(asm,dis,model,state,ε,dbg)
-
-@testset "ASMstaticX" begin
-    @test  asm.Lλ ≈ [-304261.42399716884, -6.0, 0.0]
-    @test  asm.Lλx ≈ sparse([1,2,3,2,3], [1,2,2,3,3], [20646.13919595113, 2098.3270620494404, 20983.270620494404, 20983.2706204944, 6.294981186148321e6], 3, 3)
+dofgr       = Muscade.allXdofs(model,dis)
+Λ,X,U,A     = Muscade.indexedstate(dofgr)
+nΛ,nX,nU,nA = Muscade.gradientstructure(dofgr,dis.dis[1]) # number of dofs of each class in the gradient returned by an element
+iΛ,iX,iU,iA = Muscade.gradientpartition(nΛ,nX,nU,nA)  # indices into said gradient
+@testset "dofgr" begin
+    @test dofgr.nX == 3
+    @test dofgr.nU == 0
+    @test dofgr.nA == 4
+    @test dofgr.iΛ == Int64[]
+    @test dofgr.iX == 1:3
+    @test dofgr.iU == Int64[]
+    @test dofgr.iA == Int64[]
+    @test dofgr.jΛ == 1:0
+    @test dofgr.jX == 1:3
+    @test dofgr.jU == 4:3
+    @test dofgr.jA == 4:3
+    @test dofgr.scaleΛ == Float64[]
+    @test dofgr.scaleX ≈  [1.0, 1.0, 2.0]
+    @test dofgr.scaleU == Float64[]
+    @test dofgr.scaleA == Float64[]
+end
+@testset "state" begin
+    @test Λ == [0, 0 ,0]
+    @test X == [1, 2, 3]
+    @test U == Int64[]
+    @test A == [0, 0, 0, 0]
+    @test nΛ == 0
+    @test nX == 2
+    @test nU == 0
+    @test nA == 0
+    @test iΛ == 1:0
+    @test iX == 1:2
+    @test iU == 3:2
+    @test iA == 3:2
 end
 
-gr = Muscade.AllXdofs(model,dis)
-@testset "AllXdofs" begin
-    @test  gr.scale ≈ [1.0, 1.0, 2.0]
+neletyp     = 2
+asmvec      = Vector{𝕫2}(undef,neletyp)  
+Lλ          = Muscade.asmvec!(asmvec,dofgr,dis) 
+@testset "asmvec" begin
+    @test typeof(Lλ)== Vector{Float64}
+    @test length(Lλ)== 3
+    @test asmvec[1] == [1; 2;;]
+    @test asmvec[2] == [1; 2; 3;;]
+end
+out,asm,dofgr = Muscade.prepare(Muscade.OUTstaticX,model,dis)
+Muscade.zero!(out)
+@testset "prepare" begin
+    @test  out.Lλ ≈ [0,0,0]
+    @test  out.Lλx ≈ sparse([1,2,3,2,3], [1,2,2,3,3], [0,0,0,0,0], 3, 3)
+    @test  asm[1,1] == [1; 2;;]
+    @test  asm[1,2] == [1; 2; 3;;]
+    @test  asm[2,1] == [1; 2; 4; 5;;]
+    @test  asm[2,2] == [1; 2; 3; 4; 5; 6; 7; 8; 9;;]
+end
+@testset "dofgr again" begin
+    @test dofgr.nX == 3
+    @test dofgr.nU == 0
+    @test dofgr.nA == 4
+    @test dofgr.iΛ == Int64[]
+    @test dofgr.iX == 1:3
+    @test dofgr.iU == Int64[]
+    @test dofgr.iA == Int64[]
+    @test dofgr.jΛ == 1:0
+    @test dofgr.jX == 1:3
+    @test dofgr.jU == 4:3
+    @test dofgr.jA == 4:3
+    @test dofgr.scaleΛ == Float64[]
+    @test dofgr.scaleX ≈  [1.0, 1.0, 2.0]
+    @test dofgr.scaleU == Float64[]
+    @test dofgr.scaleA == Float64[]
+end
+
+state = Muscade.State(model,dis)
+Muscade.assemble!(out,asm,dis,model,state, 0.,())
+
+@testset "assemble" begin
+    @test  out.Lλ ≈ [-304261.42399716884, -6.0, 0.0]
+    @test  out.Lλx ≈ sparse([1,2,3,2,3], [1,2,2,3,3], [20646.13919595113, 2098.3270620494404, 20983.270620494404, 20983.2706204944, 6.294981186148321e6], 3, 3)
 end
 
 end

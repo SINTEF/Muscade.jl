@@ -1,3 +1,26 @@
+######## state and initstate
+# at each step, contains the complete, unscaled state of the system
+struct State{Nxder,Nuder,D}
+    Λ     :: 𝕣1
+    X     :: NTuple{Nxder,𝕣1}
+    U     :: NTuple{Nuder,𝕣1}
+    A     :: 𝕣1
+    time  :: 𝕣
+    ε     :: 𝕣
+    model :: Model
+    dis   :: D
+end
+# a constructor that provides an initial state
+State(model::Model,dis;time=-∞) = State(zeros(getndof(model,:X)),(zeros(getndof(model,:X)),),(zeros(getndof(model,:U)),),zeros(getndof(model,:A)),time,0.,model,dis)
+settime(s,t) = State(s.Λ,s.X,s.U,s.A,t,0.,s.model,s.dis)  
+
+
+## find the last assigned array-element in a vector 
+lastassigned(state) = state
+function lastassigned(v::Vector)
+    i = findlast([isassigned(v,i) for i=1:length(v)])
+    return isnothing(i) ? nothing : lastassigned(v[i])
+end
 
 ######## The disassembler
 
@@ -29,11 +52,11 @@ end
 function Disassembler(model::Model)
     neletyp                   = length(model.eleobj)  
     dis                       = Vector{EletypDisassembler}(undef,neletyp)
-    nX,nU,nA                  = getndof(model,(:X,:U,:A))
-    scaleΛ                    = Vector{𝕣}(undef,nX) # scale for state
-    scaleX                    = Vector{𝕣}(undef,nX)
-    scaleU                    = Vector{𝕣}(undef,nU)
-    scaleA                    = Vector{𝕣}(undef,nA)
+    NX,NU,NA                  = getndof(model,(:X,:U,:A))
+    scaleΛ                    = Vector{𝕣}(undef,NX) # scale for state
+    scaleX                    = Vector{𝕣}(undef,NX)
+    scaleU                    = Vector{𝕣}(undef,NU)
+    scaleA                    = Vector{𝕣}(undef,NA)
     for ieletyp               = 1:neletyp
         nele                  = length(model.eleobj[ieletyp])  
         E                     = eltype(model.eleobj[ieletyp])
@@ -85,7 +108,7 @@ function Disassembler(model::Model)
         end # for iele
         dis[ieletyp]          = EletypDisassembler{nX,nU,nA}(index,scale)
     end # for ieletyp
-    return Disassembler(dis,scaleΛ,scaleX,scaleU,scaleA)
+    return Disassembler{NX,NU,NA}(dis,scaleΛ,scaleX,scaleU,scaleA)
 end
 
 #### DofGroup
@@ -93,7 +116,7 @@ end
 struct DofGroup{T1,T2,T3,T4,T5,T6,T7,T8} 
     nX     :: 𝕫 # of the _model_
     nU     :: 𝕫
-    nA     :: 𝕣
+    nA     :: 𝕫
 
     iΛ     :: T1   # state.Λ[iΛ] <-> y[jΛ]*Λscale
     iX     :: T2 
@@ -105,24 +128,24 @@ struct DofGroup{T1,T2,T3,T4,T5,T6,T7,T8}
     jU     :: T7 
     jA     :: T8 
 
-    Λscale :: 𝕣1
-    Xscale :: 𝕣1
-    Uscale :: 𝕣1
-    Ascale :: 𝕣1
+    scaleΛ :: 𝕣1
+    scaleX :: 𝕣1
+    scaleU :: 𝕣1
+    scaleA :: 𝕣1
 end
 function DofGroup(dis::Disassembler,iΛ,iX,iU,iA) 
     # constructor for dofgroup with permutation within classe.  The datastructure of DofGroup supports dofgroups with arbitrary permutations - write another constructor
     nX,nU,nA    = length(dis.scaleX),length(dis.scaleU),length(dis.scaleA) # number of dofs in _model_
     nλ,nx,nu,na = length(iΛ),length(iX),length(iU),length(iA)              # number of dofs of each class in group
     jΛ,jX,jU,jA = gradientpartition(nλ,nx,nu,na)                               # we stack classes on top of each other in group vectors
-    Λs,Xs,Us,As = dis.Λscale[iΛ],dis.Xscale[iX],dis.Uscale[iU],dis.Ascale[iA]
+    Λs,Xs,Us,As = dis.scaleΛ[iΛ],dis.scaleX[iX],dis.scaleU[iU],dis.scaleA[iA]
     return DofGroup(nX,nU,nA, iΛ,iX,iU,iA,  jΛ,jX,jU,jA, Λs,Xs,Us,As)
 end
 function decrement!(s::State,der::𝕫,y::𝕣1,gr::DofGroup) 
-    for i ∈ eachindex(gr.iΛ); s.Λ[       gr.iΛ[i]] -= y[gr.jΛ[i]] * gr.Λscale[i]; end
-    for i ∈ eachindex(gr.iX); s.X[der+1][gr.iX[i]] -= y[gr.jX[i]] * gr.Xscale[i]; end
-    for i ∈ eachindex(gr.iU); s.U[der+1][gr.iU[i]] -= y[gr.jU[i]] * gr.Uscale[i]; end
-    for i ∈ eachindex(gr.iA); s.A[       gr.iA[i]] -= y[gr.jA[i]] * gr.Ascale[i]; end
+    for i ∈ eachindex(gr.iΛ); s.Λ[       gr.iΛ[i]] -= y[gr.jΛ[i]] * gr.scaleΛ[i]; end
+    for i ∈ eachindex(gr.iX); s.X[der+1][gr.iX[i]] -= y[gr.jX[i]] * gr.scaleX[i]; end
+    for i ∈ eachindex(gr.iU); s.U[der+1][gr.iU[i]] -= y[gr.jU[i]] * gr.scaleU[i]; end
+    for i ∈ eachindex(gr.iA); s.A[       gr.iA[i]] -= y[gr.jA[i]] * gr.scaleA[i]; end
 end
 getndof(gr::DofGroup) = length(gr.iΛ)+length(gr.iX)+length(gr.iU)+length(gr.iA)
 allΛdofs(model::Model,dis)   = DofGroup(dis, 1:getndof(model,:X),𝕫[],𝕫[],𝕫[])
@@ -131,19 +154,17 @@ allUdofs(model::Model,dis)   = DofGroup(dis, 𝕫[],𝕫[],1:getndof(model,:U),�
 allAdofs(model::Model,dis)   = DofGroup(dis, 𝕫[],𝕫[],𝕫[],1:getndof(model,:A))
 allΛXUdofs(model::Model,dis) = DofGroup(dis, 1:getndof(model,:X),1:getndof(model,:X),1:getndof(model,:U),𝕫[])
 
-# asm[iarray,ieletyp][idof/inz,iele] has value zero for gradient/hessian terms that are not to be added in.
-#
 # function prepare
 #   allocate asm = Matrix{𝕫2}(undef,narray,neletyp)
 #   for each array
-#   pass @view asm[iarray,:] to preparevec/perparemat
+#   pass view asm[iarray,:] to preparevec/perparemat
 # function preparevec/perparemat
 #   for each ieletyp
 #   asm[ieletyp] = Matrix{𝕫2}(undef,ndof/nnz,nele)
 #   asm[ieletyp][idof/inz,iele] = ...
 # function assemble!
 #   for each ieletyp
-#   pass @view asm[:,ieletyp] to assemblekernel!
+#   pass view asm[:,ieletyp] to assemblekernel!
 # function assemblekernel!
 #   for each iele
 #   pass asm[:] and iele to addin!
@@ -152,6 +173,9 @@ allΛXUdofs(model::Model,dis) = DofGroup(dis, 1:getndof(model,:X),1:getndof(mode
 #   use asm[iarray][:,iele] 
 
 ######## Prepare assemblers
+
+# asm[iarray,ieletyp][idof/ientry,iele] has value zero for terms from element gradient/hessian that are not to be added in. Otherwise, the value they
+# have is where in the matrix/vector/nzval to put the values
 
 function indexedstate(gr::DofGroup)
     # create a "state"  (Λ,X,U,A) of indices into the group - with zeros for modeldofs not in group
@@ -176,64 +200,89 @@ function gradientstructure(dofgr,dis::EletypDisassembler)
 end
 function gradientpartition(nΛ,nX,nU,nA)
     # indices into the class partitions of the gradient returned by an element
-    iΛ          =          (1:nΛ)  
-    iX          = nΛ+      (1:nX)
-    iU          = nΛ+nX+   (1:nU)  
-    iA          = nΛ+nX+nU+(1:nA)
+    iΛ          =           (1:nΛ)
+    iX          = nΛ      .+(1:nX)
+    iU          = nΛ+nX   .+(1:nU) 
+    iA          = nΛ+nX+nU.+(1:nA)
     return iΛ,iX,iU,iA
 end
-
-# asm[ieletyp][idof|inz,iele] (its a @view)
-# dofgr.iX[iXdof],dofgr.jX
-# dis[ieletyp].index[iele].X|U|A[ieledof]
-function preparevec!(asm,dofgr,dis) 
+nonzeros(v) = v[v.≠0]
+function asmvec!(asm,dofgr,dis) 
     # asm[ieletyp] == undef, please fill 
-    Λ,X,U,A  = indexedstate(gr)                   # create a state of indices into the group - with zeros for modeldofs not in group
+    Λ,X,U,A  = indexedstate(dofgr)      # create a state of indices into the group - with zeros for modeldofs not in group
     for (ieletyp,di) ∈ enumerate(dis.dis)
         nΛ,nX,nU,nA = gradientstructure(dofgr,di) # number of dofs of each class in the gradient returned by an element
-        iΛ,iX,iU,iU = gradientpartition(nΛ,nX,nU,nA)  # indices into said gradient
-        # asm[ieletyp][idof,iele] (its a @view)
-        asm[ieletyp] = zeros(𝕫,undef,nΛ+nX+nU+nA,length(di.index))
+        iΛ,iX,iU,iA = gradientpartition(nΛ,nX,nU,nA)  # indices into said gradient
+        # asm[ieletyp][idof,iele] (its a view)
+        asm[ieletyp] = zeros(𝕫,nΛ+nX+nU+nA,length(di.index))
         for (iele,index) ∈ enumerate(di.index)
-            asm[ieletyp][iΛ,iele] = Λ[index.X]
-            asm[ieletyp][iX,iele] = X[index.X]
-            asm[ieletyp][iU,iele] = U[index.U]
-            asm[ieletyp][iA,iele] = A[index.A]
+            asm[ieletyp][iΛ,iele] = nonzeros(Λ[index.X])  
+            asm[ieletyp][iX,iele] = nonzeros(X[index.X])
+            asm[ieletyp][iU,iele] = nonzeros(U[index.U])
+            asm[ieletyp][iA,iele] = nonzeros(A[index.A])
         end
     end
     return 𝕣1(undef,getndof(dofgr))
 end
-function preparemat!(asm,iasm,jasm,nidof,njdof) 
+function asmfullmat!(asm,iasm,jasm,nidof,njdof) 
+    for ieletyp ∈ eachindex(iasm)
+        nieledof,nele = size(iasm[ieletyp])
+        njeledof      = size(jasm[ieletyp],1)
+        asm[ieletyp]  = zeros(𝕫,nieledof*njeledof,nele)
+        for iele=1:nele, jeledof=1:njeledof, ieledof=1:nieledof
+            i,j = iasm[ieletyp][ieledof,iele], jasm[ieletyp][jeledof,iele]
+            if (i≠0)  &&  (j≠0)
+                ientry = ieledof+nieledof*(jeledof-1)
+                asm[ieletyp][ientry,iele] = i+nieledof(j-1)
+            end
+        end
+    end
+    return 𝕣2(undef,nidof,njdof)
+end
+function asmmat!(asm,iasm,jasm,nidof,njdof) 
     # 1) traverse all eletyp
-    #    compute number npair of contribution
+    #    compute number npairs of contribution
     npair = 0
     for ieletyp ∈ eachindex(iasm)
         for iele = 1:size(iasm[ieletyp],2)
             npair += sum(iasm[ieletyp][:,iele].≠0)*sum(jasm[ieletyp][:,iele].≠0)
         end
     end
+ #   @show npair
     # 2) traverse all elements 
     #       prepare a Vector A of all (jmoddof,imoddof) (in that order, for sort to work!) pairs of model dofs ::Vector{Tuple{Int64, Int64}}(undef,N)
     A = Vector{Tuple{𝕫,𝕫}}(undef,npair)
     ipair = 0
     for ieletyp ∈ eachindex(iasm)
-        neledof,nele = size(iasm[ieletyp])
-        for iele=1:nele, jeledof=1:neledof, ieledof=1:neledof
+        nieledof,nele = size(iasm[ieletyp])
+        njeledof      = size(jasm[ieletyp],1)
+        for iele=1:nele, jeledof=1:njeledof, ieledof=1:nieledof
             if (iasm[ieletyp][ieledof,iele]≠0)  &&  (jasm[ieletyp][jeledof,iele]≠0)
                 ipair += 1
                 A[ipair] = (jasm[ieletyp][jeledof,iele] , iasm[ieletyp][ieledof,iele]) # NB: (j,i), not (i,j), because of lexicographic sortperm
             end
         end
     end
+ #   @show A
     # 3) sortperm(A)
     I = sortperm(A)
+ #   @show A[I]
     # 4) traverse A[I] 
-    #      find nnz
-    #      create a list J that to each element of A associates an entry 1≤inz≤nnz into nzval
+    #      count nnz
+    #      create a list J that to each element of A[I] associates an entry 1≤inz≤nnz into nzval
     #      prepare sparse
-    J      = 𝕫1(undex,npair)
-    nzval  = ones(𝕣,nnz) # could this be left undef?
-    colptr = 𝕫1(undef,njdof+1)
+    nnz    = 0
+    for ipair = 1:npair
+        if (ipair==1) || (A[I[ipair]]≠A[I[ipair-1]]) 
+            nnz +=1
+        end
+    end    
+ #   @show nnz
+    J      = 𝕫1(undef,npair) # to each pair in A[I] associate a unique entry number
+    K      = 𝕫1(undef,npair) # to each pair in A    associate a unique entry number
+    nzval  = ones(𝕣,nnz) # could this be left undef and still get past the sparse constructor?
+    colptr = 𝕫1(undef,njdof+1) # Column icol is in colptr[icol]:(colptr[icol+1]-1)
+    colptr[njdof+1] = nnz+1
     rowval = 𝕫1(undef,nnz)
     inz    = 0
     icol   = 1
@@ -245,38 +294,55 @@ function preparemat!(asm,iasm,jasm,nidof,njdof)
             rowval[inz] = i
             while j>icol
                 icol +=1
-                colptr[icol] = inz  # Column icol is in colptr[icol]:(colptr[icol+1]-1)
+                colptr[icol] = inz  
             end
         end
         J[ipair] = inz 
     end    
+    K[I] = J
+ #   @show J
+ #   @show K
+ #   @show colptr
+ #   @show rowval
     # 5) traverse all elements again to distribute J into asm
     ipair = 0
     for ieletyp ∈ eachindex(iasm)
-        neledof,nele = size(iasm[ieletyp])
-        asm[ieletyp] = zeros(𝕫,neledof^2,nele)
-        for iele=1:nele, jeledof=1:neledof, ieledof=1:neledof
+        nieledof,nele = size(iasm[ieletyp]  )
+        njeledof      = size(jasm[ieletyp],1)
+        asm[ieletyp]  = zeros(𝕫,nieledof*njeledof,nele)
+        for iele=1:nele, jeledof=1:njeledof, ieledof=1:nieledof
             if (iasm[ieletyp][ieledof,iele]≠0)  &&  (jasm[ieletyp][jeledof,iele]≠0)
                 ipair += 1
-                ientry = ieledof+neledof*(jeledof-1) # TODO check transposition
-                asm[ieletyp][ientry,iele] = J[ipair]  
+                ientry = ieledof+nieledof*(jeledof-1) 
+ #               @show K[ipair],ientry
+                asm[ieletyp][ientry,iele] = K[ipair]  
             end
         end
+ #       @show asm[ieletyp]
     end
+    
     # 6)
     return SparseMatrixCSC(nidof,njdof,colptr,rowval,nzval)   
 end
 
-####
+#### addin
 
-function addinvec!(vec::Vector,asm,iele,array)
-    for (i,eli) ∈ enumerate(array)
+function addin!(out::DenseArray,asm,iele,a) 
+    for (i,ai) ∈ enumerate(a)
         j = asm[i,iele]
         if j≠0
-            vec[j]+=eli
+            out[j]+=ai
         end
     end
 end   
+function addin!(outA::AbstractSparseArray,asm,iele,a)
+    for (i,ai) ∈ enumerate(a)
+        j = asm[i,iele]
+        if j≠0
+            out.nzval[j]+=ai
+        end
+    end
+end
 
 ######## Generic assembler
 
@@ -284,7 +350,7 @@ function assemble!(out,asm,dis,model,state,ε,dbg)
     zero!(out)
     for ieletyp ∈ eachindex(model.eleobj)
         eleobj  = model.eleobj[ieletyp]
-        assemblesequential!(out,@view(asm,:,ieletyp),dis.dis[ieletyp], eleobj,state,ε,(dbg...,ieletyp=ieletyp))
+        assemblesequential!(out,view(asm,:,ieletyp),dis.dis[ieletyp], eleobj,state,ε,(dbg...,ieletyp=ieletyp))
     end
 end
 function assemblesequential!(out,asm,dis,eleobj,state,ε,dbg) 

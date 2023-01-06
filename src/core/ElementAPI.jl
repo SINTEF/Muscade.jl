@@ -19,7 +19,7 @@ getdoflist(E::DataType)           = doflist(E).inod, doflist(E).class, doflist(E
 getidof(E::DataType,class)        = findall(doflist(E).class.==class)  
 getndof(E::DataType)              = length(doflist(E).inod)
 getndof(E::DataType,class)        = length(getidof(E,class))  
-getndof(E::DataType,class::Tuple) = (getndof(E,c) for c∈class)
+getndof(E::DataType,class::Tuple) = ntuple(i->getndof(E,class[i]),length(class))
 
 ####### Lagrangian from residual and residual from Lagrangian
 # an assembler that calls "lagrangian" will call the element's own method if implemented, or this one, which then calls the element's residual method
