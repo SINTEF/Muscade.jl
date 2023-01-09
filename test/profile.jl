@@ -20,9 +20,9 @@ e8              = addelement!(model,XdofCost ,[n1], field=:tx1      ,cost=f2)
 e9              = addelement!(model,XdofCost ,[n1], field=:tx2      ,cost=f2)
 e10             = addelement!(model,AdofCost ,[n4], field=:ΞL₀      ,cost=f3)
 e10             = addelement!(model,AdofCost ,[n4], field=:ΞEI      ,cost=f3)
-@time state     = solve(staticXUA;model,time=[.5,1.],verbose=false)
+state     = solve(staticXUA;model,time=[.5,1.],verbose=false)
+@btime state     = solve(staticXUA;model,time=[.5,1.],verbose=false)
 
-#@btime state  = solve(staticXUA;model,time=[.5,1.],verbose=false)
 Profile.clear()
 Profile.@profile for i=1:1000
     local state  = solve(staticXUA;model,time=[.5,1.],verbose=false);
