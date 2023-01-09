@@ -57,11 +57,11 @@ module Muscade
     export draw
     
     module Unit
-        include("Core/Unit.jl")
+        include("core/Unit.jl")
         export unit,←,→,convert
     end
     module ElTest
-        include("Core/ElTest.jl")
+        include("core/ElTest.jl")
         export test_static_element#,nodes_for_element_test
     end
 end
