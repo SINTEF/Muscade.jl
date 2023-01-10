@@ -101,18 +101,28 @@ function staticXUA(pstate,dbg;model::Model,
         for step     ∈ eachindex(state)
             for iYiter = 1:maxYiter
                 assemble!(out1,asm1,dis,model,state[step], 0.,(dbg...,solver=:StaticXUA,step=step))
-                Δy[ step]  = try out1.Lyy\out1.Ly          catch; muscadeerror(@sprintf("Incremental solution failed at step=%i, iAiter=%i",step,iAiter)) end
+                try if iAiter==1 && step==1 && iYiter==1
+                    global  facLyys     = lu(out1.Lyy) 
+                else
+                    lu!(facLyys,out1.Lyy) 
+                end catch; muscadeerror(@sprintf("Incremental Y-solution failed at step=%i, iAiter=%i, iYiter",step,iAiter,iYiter)) end
+                Δy[ step]  = facLyys\out1.Ly
                 decrement!(state[step],0,Δy[ step],Ydofgr)
-                Δy²[step],Ly²[step] = sum(Δy[step].^2),sum(out2.Ly.^2)
-                if all(Δy².≤cΔy²) && all(Ly².≤cLy²) 
-                    verbose && @printf "        step % i converged in %3d Y-iterations:   maxₜ(|ΔY|)=%7.1e  maxₜ(|∂L/∂Y|)=%7.1e\n" step iYiter √(maximum(Δy²)) √(maximum(Ly²))
-                    break#out of the iYter loop
+                Δy²s,Ly²s = sum(Δy[step].^2),sum(out2.Ly.^2)
+                if Δy²s≤cΔy² && Ly²s≤cLy² 
+                    verbose && @printf "        step % i Y-converged in %3d Y-iterations:   |ΔY|=%7.1e  |∂L/∂Y|=%7.1e\n" step iYiter √(Δy²s) √(Ly²s)
+                    break#out of iYiter
                 end
-                iYiter==maxYiter && muscadeerror(@sprintf("no convergence after %3d Y-iterations. |Δy|=%7.1e |Ly|=%7.1e\n",iYiter,√(maximum(Δy²)),√(maximum(Ly²))))
+                iYiter==maxYiter && muscadeerror(@sprintf("no Y-convergence after %3d Y-iterations. |ΔY|=%7.1e |Ly|=%7.1e\n",iYiter,√(Δy²s),√(Ly²s)))
             end
             assemble!(out2,asm2,dis,model,state[step], 0.,(dbg...,solver=:StaticXUA,step=step))
-            Δy[ step]  = try out2.Lyy\out2.Ly  catch; muscadeerror(@sprintf("Incremental solution failed at step=%i, iAiter=%i",step,iAiter)) end
-            y∂a[step]  = try out2.Lyy\out2.Lya catch; muscadeerror(@sprintf("Incremental solution failed at step=%i, iAiter=%i",step,iAiter)) end
+            try if iAiter==1 && step==1
+                global  facLyy = lu(out2.Lyy) 
+            else
+                lu!(facLyy,out2.Lyy)
+            end catch; muscadeerror(@sprintf("Incremental solution failed at step=%i, iAiter=%i",step,iAiter));end
+            Δy[ step]  = facLyy\out2.Ly  
+            y∂a[step]  = facLyy\out2.Lya 
             La       .+= out2.La  - out2.Lya' * Δy[ step]  
             Laa      .+= out2.Laa - out2.Lya' * y∂a[step]
             Δy²[step],Ly²[step] = sum(Δy[step].^2),sum(out2.Ly.^2)
@@ -127,9 +137,9 @@ function staticXUA(pstate,dbg;model::Model,
         if all(Δy².≤cΔy²) && all(Ly².≤cLy²) && Δa².≤cΔa² && La².≤cLa² 
             verbose && @printf "\n    StaticXUA converged in %3d A-iterations.\n" iAiter
             verbose && @printf "    maxₜ(|ΔY|)=%7.1e  maxₜ(|∂L/∂Y|)=%7.1e  |ΔA|=%7.1e  |∂L/∂A|=%7.1e\n" √(maximum(Δy²)) √(maximum(Ly²)) √(Δa²) √(La²)
-            break#out of the iAiter loop
+            break#out of iAiter
         end
-        iAiter==maxAiter && muscadeerror(@sprintf("no convergence after %3d A-iterations. |Δy|=%7.1e |Ly|=%7.1e |Δa|=%7.1e |La|=%7.1e\n",iAiter,√(maximum(Δy²)),√(maximum(Ly²)),√(Δa²),√(La²)))
+        iAiter==maxAiter && muscadeerror(@sprintf("no convergence after %3d A-iterations. |ΔY|=%7.1e |Ly|=%7.1e |ΔA|=%7.1e |La|=%7.1e\n",iAiter,√(maximum(Δy²)),√(maximum(Ly²)),√(Δa²),√(La²)))
     end
     return
 end

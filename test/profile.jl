@@ -21,12 +21,12 @@ e9              = addelement!(model,XdofCost ,[n1], field=:tx2      ,cost=f2)
 e10             = addelement!(model,AdofCost ,[n4], field=:ΞL₀      ,cost=f3)
 e10             = addelement!(model,AdofCost ,[n4], field=:ΞEI      ,cost=f3)
 stateX          = solve(staticX;  model,time=[.5,1.],verbose=false)
-state           = solve(staticXUA;model,initial=stateX,verbose=false)
-@btime state    = solve(staticXUA;model,initial=stateX,verbose=false)
+state           = solve(staticXUA;model,initial=stateX,maxYiter= 0,verbose=false)
+#@btime state    = solve(staticXUA;model,initial=stateX,maxYiter= 0,verbose=false) 
 
 Profile.clear()
-Profile.@profile for i=1:1000
-    local state  = solve(staticXUA;model,initial=stateX,verbose=false);
+Profile.@profile for i=1:5000
+    local state  = solve(staticXUA;model,initial=stateX,maxYiter= 50,verbose=false);
 end
 ProfileView.view(fontsize=30);
 # After clicking on a bar, you can type warntype_last() and see the result of 
