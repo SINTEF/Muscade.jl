@@ -1,9 +1,9 @@
 
 ###--------------------- ASMstaticX: for good old static FEM
 
-struct OUTstaticX  
-    Lλ    :: 𝕣1
-    Lλx   :: SparseMatrixCSC{𝕣,𝕫} 
+struct OUTstaticX{Tλ,Tλx} 
+    Lλ    :: Tλ
+    Lλx   :: Tλx 
 end   
 function prepare(::Type{OUTstaticX},model,dis) 
     dofgr              = allXdofs(model,dis)
@@ -16,15 +16,15 @@ function prepare(::Type{OUTstaticX},model,dis)
     return out,asm,dofgr
 end
 function zero!(out::OUTstaticX)
-    out.Lλ        .= 0
-    out.Lλx.nzval .= 0
+    zero!(out.Lλ)
+    zero!(out.Lλx)
 end
 function addin!(out::OUTstaticX,asm,iele,scale,eleobj,Λ,X,U,A, t,ε,dbg) 
     Nx                       = length(Λ)                   
     ΔX                       = δ{1,Nx,𝕣}()                 # NB: precedence==1, input must not be Adiff 
     Lλ                       = scaledresidual(scale,eleobj, (∂0(X)+ΔX,),U,A, t,ε,dbg)
-    addin!(out.Lλ       ,asm[1],iele,value{1}(Lλ) )
-    addin!(out.Lλx.nzval,asm[2],iele,∂{1,Nx}(Lλ)  )
+    addin!(out.Lλ ,asm[1],iele,value{1}(Lλ) )
+    addin!(out.Lλx,asm[2],iele,∂{1,Nx}(Lλ)  )
 end
 
 ###---------------------

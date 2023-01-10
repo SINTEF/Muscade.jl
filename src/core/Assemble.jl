@@ -157,7 +157,7 @@ allΛXUdofs(model::Model,dis) = DofGroup(dis, 1:getndof(model,:X),1:getndof(mode
 
 ######## Prepare assemblers
 
-# asm[iarray,ieletyp][idof/ientry,iele] has value zero for terms from element gradient/hessian that are not to be added in. Otherwise, the value they
+# asm[iarray,ieletyp][ieledof/ientry,iele] has value zero for terms from element gradient/hessian that are not to be added in. Otherwise, the value they
 # have is where in the matrix/vector/nzval to put the values
 
 function indexedstate(gr::DofGroup)
@@ -207,22 +207,22 @@ function asmvec!(asm,dofgr,dis)
     end
     return 𝕣1(undef,getndof(dofgr))
 end
-function asmfullmat!(asm,iasm,jasm,nidof,njdof) 
+function asmfullmat!(asm,iasm,jasm,nimoddof,njmoddof) 
     for ieletyp ∈ eachindex(iasm)
         nieledof,nele = size(iasm[ieletyp])
         njeledof      = size(jasm[ieletyp],1)
         asm[ieletyp]  = zeros(𝕫,nieledof*njeledof,nele)
         for iele=1:nele, jeledof=1:njeledof, ieledof=1:nieledof
-            i,j = iasm[ieletyp][ieledof,iele], jasm[ieletyp][jeledof,iele]
-            if (i≠0)  &&  (j≠0)
+            imoddof,jmoddof = iasm[ieletyp][ieledof,iele], jasm[ieletyp][jeledof,iele]
+            if (imoddof≠0)  &&  (jmoddof≠0)
                 ientry = ieledof+nieledof*(jeledof-1)
-                asm[ieletyp][ientry,iele] = i+nieledof(j-1)
+                asm[ieletyp][ientry,iele] = imoddof+nimoddof*(jmoddof-1)
             end
         end
     end
-    return 𝕣2(undef,nidof,njdof)
+    return 𝕣2(undef,nimoddof,njmoddof)
 end
-function asmmat!(asm,iasm,jasm,nidof,njdof) 
+function asmmat!(asm,iasm,jasm,nimoddof,njmoddof) 
     # 1) traverse all eletyp
     #    compute number npairs of contribution
     npair = 0
@@ -260,8 +260,8 @@ function asmmat!(asm,iasm,jasm,nidof,njdof)
     J      = 𝕫1(undef,npair) # to each pair in A[I] associate a unique entry number
     K      = 𝕫1(undef,npair) # to each pair in A    associate a unique entry number
     nzval  = ones(𝕣,nnz) # could this be left undef and still get past the sparse constructor?
-    colptr = 𝕫1(undef,njdof+1) # Column icol is in colptr[icol]:(colptr[icol+1]-1)
-    colptr[njdof+1] = nnz+1
+    colptr = 𝕫1(undef,njmoddof+1) # Column icol is in colptr[icol]:(colptr[icol+1]-1)
+    colptr[njmoddof+1] = nnz+1
     rowval = 𝕫1(undef,nnz)
     inz    = 0
     icol   = 1
@@ -294,12 +294,12 @@ function asmmat!(asm,iasm,jasm,nidof,njdof)
         end
     end
     # 6)
-    return SparseMatrixCSC(nidof,njdof,colptr,rowval,nzval)   
+    return SparseMatrixCSC(nimoddof,njmoddof,colptr,rowval,nzval)   
 end
 
 
-
 ######## Generic assembler
+
 
 function assemble!(out,asm,dis,model,state,ε,dbg)
     zero!(out)
@@ -320,7 +320,13 @@ function assemblesequential!(out,asm,dis,eleobj,state::State{Nxder,Nuder},ε,dbg
     end
 end
 
-#### addin
+#### addin and zero!
+function zero!(out::DenseArray)
+    out .= 0
+end
+function zero!(out::AbstractSparseArray)
+    out.nzval .= 0
+end
 
 function addin!(out::DenseArray,asm,iele,a) 
     for (i,ai) ∈ enumerate(a)
@@ -330,7 +336,7 @@ function addin!(out::DenseArray,asm,iele,a)
         end
     end
 end   
-function addin!(outA::AbstractSparseArray,asm,iele,a)
+function addin!(out::AbstractSparseArray,asm,iele,a)
     for (i,ai) ∈ enumerate(a)
         j = asm[i,iele]
         if j≠0

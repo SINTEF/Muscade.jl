@@ -1,10 +1,10 @@
 
-struct OUTstaticΛXU_A  
-    Ly    :: 𝕣1
-    La    :: 𝕣1
-    Lyy   :: SparseMatrixCSC{𝕣,𝕫} 
-    Lya   :: SparseMatrixCSC{𝕣,𝕫} 
-    Laa   :: SparseMatrixCSC{𝕣,𝕫} # TODO make this a full matrix?
+struct OUTstaticΛXU_A{Ty,Ta,Tyy,Tya,Taa}  
+    Ly    :: Ty
+    La    :: Ta
+    Lyy   :: Tyy 
+    Lya   :: Tya 
+    Laa   :: Taa
 end   
 function prepare(::Type{OUTstaticΛXU_A},model,dis) 
     Ydofgr             = allΛXUdofs(model,dis)
@@ -15,17 +15,17 @@ function prepare(::Type{OUTstaticΛXU_A},model,dis)
     Ly                 = asmvec!(view(asm,1,:),Ydofgr,dis) 
     La                 = asmvec!(view(asm,2,:),Adofgr,dis) 
     Lyy                = asmmat!(view(asm,3,:),view(asm,1,:),view(asm,1,:),nY,nY) 
-    Lya                = asmmat!(view(asm,4,:),view(asm,1,:),view(asm,2,:),nY,nA) 
-    Laa                = asmmat!(view(asm,5,:),view(asm,2,:),view(asm,2,:),nA,nA)  
+    Lya                = asmfullmat!(view(asm,4,:),view(asm,1,:),view(asm,2,:),nY,nA) 
+    Laa                = asmfullmat!(view(asm,5,:),view(asm,2,:),view(asm,2,:),nA,nA)  
     out                = OUTstaticΛXU_A(Ly,La,Lyy,Lya,Laa)
     return out,asm,Adofgr,Ydofgr
 end
 function zero!(out::OUTstaticΛXU_A)
-    out.Ly        .= 0
-    out.La        .= 0
-    out.Lyy.nzval .= 0
-    out.Lya.nzval .= 0
-    out.Laa.nzval .= 0
+    zero!(out.Ly )
+    zero!(out.La )
+    zero!(out.Lyy)
+    zero!(out.Lya)
+    zero!(out.Laa)
 end
 function addin!(out::OUTstaticΛXU_A,asm,iele,scale,eleobj,Λ,X,U,A, t,ε,dbg) 
     Nx,Nu,Na        = length(X[1]),length(U[1]),length(A) # in the element
@@ -36,18 +36,18 @@ function addin!(out::OUTstaticΛXU_A,asm,iele,scale,eleobj,Λ,X,U,A, t,ε,dbg)
     L               = scaledlagrangian(scale,eleobj, Λ+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A+ΔA, t,ε,dbg)
     Lz,Lzz          = value_∂{1,Nz}(∂{2,Nz}(L)) 
     iy              = 1:(2Nx+Nu)  
-    addin!(out.Ly       ,asm[1],iele,view(Lz,iy))
-    addin!(out.La       ,asm[2],iele,view(Lz,ia))
-    addin!(out.Lyy.nzval,asm[3],iele,view(Lzz,iy,iy))
-    addin!(out.Lya.nzval,asm[4],iele,view(Lzz,iy,ia))
-    addin!(out.Laa.nzval,asm[5],iele,view(Lzz,ia,ia))  
+    addin!(out.Ly ,asm[1],iele,view(Lz,iy))
+    addin!(out.La ,asm[2],iele,view(Lz,ia))
+    addin!(out.Lyy,asm[3],iele,view(Lzz,iy,iy))
+    addin!(out.Lya,asm[4],iele,view(Lzz,iy,ia))
+    addin!(out.Laa,asm[5],iele,view(Lzz,ia,ia))  
 end
 
 #------------------------------------
 
-struct OUTstaticΛXU  
-    Ly    :: 𝕣1
-    Lyy   :: SparseMatrixCSC{𝕣,𝕫} 
+struct OUTstaticΛXU{Ty,Tyy}  
+    Ly    :: Ty
+    Lyy   :: Tyy 
 end   
 function prepare(::Type{OUTstaticΛXU},model,dis) 
     Ydofgr             = allΛXUdofs(model,dis)
@@ -60,10 +60,9 @@ function prepare(::Type{OUTstaticΛXU},model,dis)
     return out,asm,Ydofgr
 end
 function zero!(out::OUTstaticΛXU)
-    out.Ly        .= 0
-    out.Lyy.nzval .= 0
+    zero!(out.Ly )
+    zero!(out.Lyy)
 end
-
 function addin!(out::OUTstaticΛXU,asm,iele,scale,eleobj,Λ,X,U,A, t,ε,dbg) 
     Nx,Nu           = length(X[1]),length(U[1]) # in the element
     Ny              = 2Nx+Nu                           # Y=[Λ;X;U]       
@@ -73,8 +72,8 @@ function addin!(out::OUTstaticΛXU,asm,iele,scale,eleobj,Λ,X,U,A, t,ε,dbg)
     L               = scaledlagrangian(scale,eleobj, Λ+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A, t,ε,dbg)
     Ly,Lyy          = value_∂{1,Ny}(∂{2,Ny}(L)) 
     iy              = 1:(2Nx+Nu)  
-    addin!(out.Ly       ,asm[1],iele,view(Ly,iy))
-    addin!(out.Lyy.nzval,asm[2],iele,view(Lyy,iy,iy))
+    addin!(out.Ly ,asm[1],iele,view(Ly,iy))
+    addin!(out.Lyy,asm[2],iele,view(Lyy,iy,iy))
 end
 
 #------------------------------------
@@ -112,8 +111,8 @@ function staticXUA(pstate,dbg;model::Model,
                 iYiter==maxYiter && muscadeerror(@sprintf("no convergence after %3d Y-iterations. |Δy|=%7.1e |Ly|=%7.1e\n",iYiter,√(maximum(Δy²)),√(maximum(Ly²))))
             end
             assemble!(out2,asm2,dis,model,state[step], 0.,(dbg...,solver=:StaticXUA,step=step))
-            Δy[ step]  = try out2.Lyy\out2.Ly          catch; muscadeerror(@sprintf("Incremental solution failed at step=%i, iAiter=%i",step,iAiter)) end
-            y∂a[step]  = try out2.Lyy\Matrix(out2.Lya) catch; muscadeerror(@sprintf("Incremental solution failed at step=%i, iAiter=%i",step,iAiter)) end
+            Δy[ step]  = try out2.Lyy\out2.Ly  catch; muscadeerror(@sprintf("Incremental solution failed at step=%i, iAiter=%i",step,iAiter)) end
+            y∂a[step]  = try out2.Lyy\out2.Lya catch; muscadeerror(@sprintf("Incremental solution failed at step=%i, iAiter=%i",step,iAiter)) end
             La       .+= out2.La  - out2.Lya' * Δy[ step]  
             Laa      .+= out2.Laa - out2.Lya' * y∂a[step]
             Δy²[step],Ly²[step] = sum(Δy[step].^2),sum(out2.Ly.^2)
