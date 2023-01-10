@@ -347,7 +347,7 @@ function scaledlagrangian(scale,eleobj::E,Λs,Xs::NTuple{Nxder},Us::NTuple{Nuder
     U     = NTuple{Nuder}(us.*scale.U for us∈Us)
     A     =       As.*scale.A
     L     = lagrangian(eleobj,Λ,X,U,A, t,ε,dbg)
-    hasnan(L) && muscadeerror(dbg,"NaN in a Lagrangian or its partial derivatives")
+    hasnan(L) && muscadeerror((dbg...,eletype=E),"NaN in a Lagrangian or its partial derivatives")
     return L
 end    
 function scaledresidual(scale,eleobj::E, Xs::NTuple{Nxder},Us::NTuple{Nuder},As, t,ε,dbg) where{E<:AbstractElement,Nxder,Nuder} 

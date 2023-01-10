@@ -46,36 +46,37 @@ end
 
 #------------------------------------
 
-function staticXUA(pstate,dbg;model::Model,time::AbstractVector{𝕣},
-    initial::State=State(model,Disassembler(model)),
+function staticXUA(pstate,dbg;model::Model,
+    initial::Vector{State},
     maxiter::ℤ=50,maxΔy::ℝ=1e-5,maxLy::ℝ=∞,maxΔa::ℝ=1e-5,maxLa::ℝ=∞,verbose::𝕓=true)
 
     verbose && @printf "    staticXUA solver\n\n"
-    dis                = initial.dis
+    dis                = Disassembler(model)
     out,asm,Adofgr,Ydofgr = prepare(OUTstaticΛXU_A,model,dis)
+    state              = allocate(pstate,deepcopy.(initial)) 
     cΔy²,cLy²,cΔa²,cLa²= maxΔy^2,maxLy^2,maxΔa^2,maxLa^2
-    state              = allocate(pstate,[settime(deepcopy(initial),t) for t∈time]) 
     nA                 = getndof(model,:A)
     La                 = Vector{𝕣 }(undef,nA   )
     Laa                = Matrix{𝕣 }(undef,nA,nA)
-    Δy                 = Vector{𝕣1}(undef,length(time))
-    y∂a                = Vector{𝕣2}(undef,length(time))
-    Δy²,Ly²            = Vector{𝕣 }(undef,length(time)),Vector{𝕣}(undef,length(time))
+    Δy                 = Vector{𝕣1}(undef,length(state))
+    y∂a                = Vector{𝕣2}(undef,length(state))
+    Δy²,Ly²            = Vector{𝕣 }(undef,length(state)),Vector{𝕣}(undef,length(state))
     for iiter          = 1:maxiter
         verbose && @printf "    A-iteration %3d\n" iiter
         La            .= 0
         Laa           .= 0
-        for step     ∈ eachindex(time)
+        for step     ∈ eachindex(state)
             assemble!(out,asm,dis,model,state[step], 0.,(dbg...,solver=:StaticXUA,step=step))
             Δy[ step]  = try out.Lyy\out.Ly  catch; muscadeerror(@sprintf("Incremental solution failed at step=%i, iiter=%i",step,iiter)) end
             y∂a[step]  = try out.Lyy\Matrix(out.Lya) catch; muscadeerror(@sprintf("Incremental solution failed at step=%i, iiter=%i",step,iiter)) end
-            La       .+= out.La  - out.Lya' * Δy[ step]  # TODO is it correct to add out.La and out.Laa nstep times?
+            La       .+= out.La  - out.Lya' * Δy[ step]  
             Laa      .+= out.Laa - out.Lya' * y∂a[step]
             Δy²[step],Ly²[step] = sum(Δy[step].^2),sum(out.Ly.^2)
         end    
         Δa             = Laa\La 
         Δa²,La²        = sum(Δa.^2),sum(La.^2)
-        for step       ∈ eachindex(time)
+        @show Δa²,La²
+        for step       ∈ eachindex(state)
             ΔY         = Δy[step] - y∂a[step] * Δa
             decrement!(state[step],0,ΔY,Ydofgr)
             decrement!(state[step],0,Δa,Adofgr)
