@@ -196,8 +196,7 @@ function asmvec!(asm,dofgr,dis)
     for (ieletyp,di) ∈ enumerate(dis.dis)
         nΛ,nX,nU,nA = gradientstructure(dofgr,di) # number of dofs of each class in the gradient returned by an element
         iΛ,iX,iU,iA = gradientpartition(nΛ,nX,nU,nA)  # indices into said gradient
-        # asm[ieletyp][idof,iele] (its a view)
-        asm[ieletyp] = zeros(𝕫,nΛ+nX+nU+nA,length(di.index))
+        asm[ieletyp] = zeros(𝕫,nΛ+nX+nU+nA,length(di.index)) # asm[ieletyp][idof,iele] (its a view)
         for (iele,index) ∈ enumerate(di.index)
             asm[ieletyp][iΛ,iele] = nonzeros(Λ[index.X])  
             asm[ieletyp][iX,iele] = nonzeros(X[index.X])

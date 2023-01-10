@@ -25,10 +25,12 @@ state           = solve(staticXUA;model,initial=stateX,maxYiter= 0,verbose=false
 #@btime state    = solve(staticXUA;model,initial=stateX,maxYiter= 0,verbose=false) 
 
 Profile.clear()
-Profile.@profile for i=1:5000
-    local state  = solve(staticXUA;model,initial=stateX,maxYiter= 50,verbose=false);
+Profile.@profile for i=1:25000
+    local stateX          = solve(staticX;  model,time=[.5,1.],verbose=false)
+#    local state  = solve(staticXUA;model,initial=stateX,maxYiter= 50,verbose=false);
 end
 ProfileView.view(fontsize=30);
+
 # After clicking on a bar, you can type warntype_last() and see the result of 
 # code_warntype for the call represented by that bar.
 ;

@@ -48,7 +48,12 @@ function staticX(pstate,dbg;model::Model,time::AbstractVector{𝕣},
         for iiter    = 1:maxiter
             citer   += 1
             asmt+=@elapsed assemble!(out,asm,dis,model,s, 0.,(dbg...,solver=:StaticX,step=step,iiter=iiter))
-            solt+=@elapsed Δx = try out.Lλx\out.Lλ catch; muscadeerror(@sprintf("Incremental solution failed at step=%i, iiter=%i",step,iiter)) end
+            solt+=@elapsed try if step==1 && iiter==1
+                global facLλx = lu(out.Lλx) 
+            else
+                lu!(facLλx,out.Lλx) 
+            end catch; muscadeerror(@sprintf("Incremental solution failed at step=%i, iiter",step,iiter)) end
+            solt+=@elapsed Δx  = facLλx\out.Lλ
             Δx²,Lλ²  = sum(Δx.^2),sum(out.Lλ.^2)
             decrement!(s,0,Δx,dofgr)
             saveiter && (state[iiter]=State(s.Λ,deepcopy(s.X),s.U,s.A,s.time,0.,model,dis))

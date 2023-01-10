@@ -71,7 +71,10 @@ precedence(a::AA) = precedence(eltype(a))
 npartial(  a::AA) = npartial(eltype(a))
 precedence(a::ℝ)  = precedence(typeof(a))
 npartial(a::ℝ)    = npartial(typeof(a))
-constants(a...)                                           = 1+maximum(precedence.(a))
+#constants(a...)                                           = 1+maximum(precedence.(a))
+constants(a) = 1+precedence(a) 
+constants(a,args...) = max(1+precedence(a),constants(args...)) 
+
 
 struct δ{P,N,R}       dum::𝕫   end # need dum, because syntax δ{P,N,R}() collides with default constructor
 struct variate{P,N}            end
