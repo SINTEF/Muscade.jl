@@ -148,10 +148,10 @@ function decrement!(s::State,der::𝕫,y::𝕣1,gr::DofGroup)
     for i ∈ eachindex(gr.iA); s.A[       gr.iA[i]] -= y[gr.jA[i]] * gr.scaleA[i]; end
 end
 getndof(gr::DofGroup) = length(gr.iΛ)+length(gr.iX)+length(gr.iU)+length(gr.iA)
-allΛdofs(model::Model,dis)   = DofGroup(dis, 1:getndof(model,:X),𝕫[],𝕫[],𝕫[])
-allXdofs(model::Model,dis)   = DofGroup(dis, 𝕫[],1:getndof(model,:X),𝕫[],𝕫[])
-allUdofs(model::Model,dis)   = DofGroup(dis, 𝕫[],𝕫[],1:getndof(model,:U),𝕫[])
-allAdofs(model::Model,dis)   = DofGroup(dis, 𝕫[],𝕫[],𝕫[],1:getndof(model,:A))
+allΛdofs(  model::Model,dis) = DofGroup(dis, 1:getndof(model,:X),𝕫[],𝕫[],𝕫[])
+allXdofs(  model::Model,dis) = DofGroup(dis, 𝕫[],1:getndof(model,:X),𝕫[],𝕫[])
+allUdofs(  model::Model,dis) = DofGroup(dis, 𝕫[],𝕫[],1:getndof(model,:U),𝕫[])
+allAdofs(  model::Model,dis) = DofGroup(dis, 𝕫[],𝕫[],𝕫[],1:getndof(model,:A))
 allΛXUdofs(model::Model,dis) = DofGroup(dis, 1:getndof(model,:X),1:getndof(model,:X),1:getndof(model,:U),𝕫[])
 
 
