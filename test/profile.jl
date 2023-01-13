@@ -10,10 +10,10 @@ e1              = addelement!(model,Spring{2},[n1,n2,n4], EI=1)
 e2              = addelement!(model,Spring{2},[n1,n3,n4], EI=1)
 @once f1 f1(t)  = t
 e3              = addelement!(model,DofLoad  ,[n1], field=:tx1      ,value=f1)
-e4              = addelement!(model,DofHold  ,[n2], field=:tx1)
-e5              = addelement!(model,DofHold  ,[n2], field=:tx2)
-e6              = addelement!(model,DofHold  ,[n3], field=:tx1)
-e7              = addelement!(model,DofHold  ,[n3], field=:tx2)
+e4              = addelement!(model,Hold  ,[n2], field=:tx1)
+e5              = addelement!(model,Hold  ,[n2], field=:tx2)
+e6              = addelement!(model,Hold  ,[n3], field=:tx1)
+e7              = addelement!(model,Hold  ,[n3], field=:tx2)
 @once f2 f2(x)  = 1x^2
 @once f3 f3(a)  = 0.11a^2
 e8              = addelement!(model,XdofCost ,[n1], field=:tx1      ,cost=f2)

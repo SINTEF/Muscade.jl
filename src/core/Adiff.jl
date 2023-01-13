@@ -5,28 +5,31 @@ using   Printf
 
 ## Type and construction
 AA = AbstractArray
-AV = AbstractVector  
+AV = AbstractVector
+SV = SVector  
+SA = SArray 
+SM = SMatrix
 # Types
 # P precedence 
 # N number of partials 
 # R type of the variable  (and partials)
 struct ∂ℝ{P,N,R} <:ℝ where{R<:ℝ}  # P for precedence, N number of partials, R type of the variable (∂ℝ can be nested)
     x  :: R
-    dx :: SVector{N,R}
+    dx :: SV{N,R}
 end
 
 # Constructors 
-∂ℝ{P,N}(x::R ,dx::AV{R  }) where{P,N,R<:ℝ      } = ∂ℝ{P,N,R}(x,SVector{N,R}(dx))
-∂ℝ{P,N}(x::R             ) where{P,N,R<:ℝ      } = ∂ℝ{P,N,R}(x,SVector{N,R}(zero(R)                 for j=1:N))
-∂ℝ{P,N}(x::R,i::ℤ        ) where{P,N,R<:ℝ      } = ∂ℝ{P,N,R}(x,SVector{N,R}(i==j ? one(R) : zero(R) for j=1:N))
+∂ℝ{P,N}(x::R ,dx::AV{R  }) where{P,N,R<:ℝ      } = ∂ℝ{P,N,R}(x,SV{N,R}(dx))
+∂ℝ{P,N}(x::R             ) where{P,N,R<:ℝ      } = ∂ℝ{P,N,R}(x,SV{N,R}(zero(R)                 for j=1:N))
+∂ℝ{P,N}(x::R,i::ℤ        ) where{P,N,R<:ℝ      } = ∂ℝ{P,N,R}(x,SV{N,R}(i==j ? one(R) : zero(R) for j=1:N))
 function ∂ℝ{P,N}(x::Rx,dx::AV{Rdx}) where{P,N,Rx<:ℝ,Rdx<:ℝ}
     R = promote_type(Rx,Rdx)
     return ∂ℝ{P,N}(convert(R,x),convert.(R,dx))
 end
 
 # zeros, ones
-Base.zero(T::Type{∂ℝ{P,N,R}}) where{P,N,R<:ℝ}    = ∂ℝ{P,N,R}(zero(R), SVector{N,R}(zero(R) for j=1:N))
-Base.one( T::Type{∂ℝ{P,N,R}}) where{P,N,R<:ℝ}    = ∂ℝ{P,N,R}(one( R), SVector{N,R}(zero(R) for j=1:N))
+Base.zero(T::Type{∂ℝ{P,N,R}}) where{P,N,R<:ℝ}    = ∂ℝ{P,N,R}(zero(R), SV{N,R}(zero(R) for j=1:N))
+Base.one( T::Type{∂ℝ{P,N,R}}) where{P,N,R<:ℝ}    = ∂ℝ{P,N,R}(one( R), SV{N,R}(zero(R) for j=1:N))
 Base.isnan(   a::∂ℝ)                             = isnan(   VALUE(a))
 Base.isone(   a::∂ℝ)                             = isone(   VALUE(a))
 Base.iszero(  a::∂ℝ)                             = iszero(  VALUE(a))
@@ -51,10 +54,10 @@ function Base.promote_rule(::Type{∂ℝ{Pa,Na,Ra}},::Type{∂ℝ{Pb,Nb,Rb}}) wh
 end
 
 # conversions
-Base.convert(::Type{∂ℝ{P,N,Ra}},b::∂ℝ{P,N,Rb}) where{P,N,Ra<:ℝ,Rb<:ℝ} = ∂ℝ{P,N }(convert( Ra,b.x) ,convert.(Ra,b.dx))
-Base.convert(::Type{∂ℝ{P,N,Ra}},b::ℝ         ) where{P,N,Ra<:ℝ       } = ∂ℝ{P,N }(convert(Ra,b  ) ,SVector{N,Ra}(zero(Ra) for j=1:N))
+Base.convert(::Type{∂ℝ{P,N,Ra}},b::∂ℝ{P,N,Rb}) where{P,N,Ra<:ℝ,Rb<:ℝ} = ∂ℝ{P ,N }(convert(Ra,b.x) ,convert.(Ra,b.dx))
+Base.convert(::Type{∂ℝ{P,N,Ra}},b::ℝ         ) where{P,N,Ra<:ℝ      } = ∂ℝ{P ,N }(convert(Ra,b  ) ,SV{N,Ra}(zero(Ra) for j=1:N))
 function Base.convert(::Type{∂ℝ{Pa,Na,Ra}},b::∂ℝ{Pb,Nb,Rb}) where{Pa,Pb,Na,Nb,Ra<:ℝ,Rb<:ℝ}
-    if Pa> Pb return                                                     ∂ℝ{Pa,Na}(convert(Ra,b.x) ,convert.(Ra,b.dx)  )
+    if Pa> Pb return                                                    ∂ℝ{Pa,Na}(convert(Ra,b.x) ,convert.(Ra,b.dx))
     else      error("Cannot convert precedence ",Pb," to ",Pa)
     end
 end
@@ -75,14 +78,13 @@ constants( a,args...) = max(1+precedence(a),constants(args...))
 struct δ{P,N,R}       dum::𝕫   end # need dum, because syntax δ{P,N,R}() collides with default constructor
 struct variate{P,N}            end
 struct directional{P,N}        end 
-δ{P,N  }(δa::AV{R}) where{P,N,R<:ℝ} = SVector{N,∂ℝ{P,1,R}}(∂ℝ{P,1}(zero(R),SVector{1,R}(δa[i])) for i=1:N)
-δ{P,N,R}(         ) where{P,N,R<:ℝ} = SVector{N,∂ℝ{P,N,R}}(∂ℝ{P,N}(zero(R),                i  ) for i=1:N)
+δ{P,N  }(δa::AV{R}) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,1,R}}(∂ℝ{P,1}(zero(R),SV{1,R}(δa[i])) for i=1:N)
+δ{P,N,R}(         ) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,N,R}}(∂ℝ{P,N}(zero(R),           i  ) for i=1:N)
 
-variate{P,N}(a::AV{R}) where{P,N,R<:ℝ} = SVector{N,∂ℝ{P,N,R}}(∂ℝ{P,N}(a[i]   ,i) for i=1:N)
-variate{P  }(a::R    ) where{P,  R<:ℝ} =                      ∂ℝ{P,1}(a,SVector{1,R}(one(R)))
+variate{P,N}(a::AV{R}) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,N,R}}(∂ℝ{P,N}(a[i]   ,i) for i=1:N)
+variate{P  }(a::R    ) where{P,  R<:ℝ} =                 ∂ℝ{P,1}(a,SV{1,R}(one(R)))
 
-directional{P}(a::SVector{N,R},δa::SVector{N,R}) where{P,N,R<:ℝ} = 
-     SVector{N,∂ℝ{P,1,R}}(∂ℝ{P,1}(a[i],SVector{1,R}(δa[i])) for i=1:N)
+directional{P}(a::SV{N,R},δa::SV{N,R}) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,1,R}}(∂ℝ{P,1}(a[i],SV{1,R}(δa[i])) for i=1:N)
 
 # Analyse
 VALUE(a::ℝ )                           =        a
@@ -98,14 +100,14 @@ value{P}(a::R        ) where{P  ,R<:ℝ} = a
 value{P}(a::AA{R}    ) where{P  ,R   } = value{P}.(a)
 
 # no ∂{P}(a) syntax: in case a does not contain adiffs 
-∂{P,N}(a::          ∂ℝ{P,N,R} ) where{  P,N,R   } = a.dx
-∂{P,N}(a::                 R  ) where{  P,N,R<:ℝ} = SVector{  N,R}(zero(R)    for i=1:N      )
-∂{P,N}(a::SVector{M,∂ℝ{P,N,R}}) where{M,P,N,R   } = SMatrix{M,N,R}(a[i].dx[j] for i=1:M,j∈1:N) # ∂(a,x)[i,j] = ∂a[i]/∂x[j]
-∂{P,N}(a::SVector{M,       R }) where{M,P,N,R   } = SMatrix{M,N,R}(zero(R)    for i=1:M,j=1:N)
-∂{P  }(a::          ∂ℝ{P,1,R} ) where{  P,  R   } = a.dx[1]
-∂{P  }(a::SVector{N,∂ℝ{P,1,R}}) where{M,P,N,R   } = SVector{  N,R}(a[i].dx[1] for i=1:N     ) # ∂(a,x)[i]    = ∂a[i]/∂x
-#∂{P,N}(a::SArray{M,∂ℝ{P,N,R}}) where{M,P,N,R}  = SArray{(M...,N),R}(a[i].dx[j] for i∈eachindex(a),j∈1:N) # ∂(a,x)[i,...,j] = ∂a[i,...]/∂x[j]
-#∂{P,N}(a::SArray{M,       R }) where{M,P,N,R}  = SArray{(M...,N),R}(zero(R)    for i∈eachindex(a),j∈1:N)
+∂{P,N}(a::     ∂ℝ{P,N,R} ) where{  P,N,R   } = a.dx
+∂{P,N}(a::            R  ) where{  P,N,R<:ℝ} = SV{  N,R}(zero(R)    for i=1:N      )
+∂{P,N}(a::SV{M,∂ℝ{P,N,R}}) where{M,P,N,R   } = SM{M,N,R}(a[i].dx[j] for i=1:M,j∈1:N) # ∂(a,x)[i,j] = ∂a[i]/∂x[j]
+∂{P,N}(a::SV{M,       R }) where{M,P,N,R   } = SM{M,N,R}(zero(R)    for i=1:M,j=1:N)
+∂{P  }(a::     ∂ℝ{P,1,R} ) where{  P,  R   } = a.dx[1]
+∂{P  }(a::SV{N,∂ℝ{P,1,R}}) where{M,P,N,R   } = SV{  N,R}(a[i].dx[1] for i=1:N     ) # ∂(a,x)[i]    = ∂a[i]/∂x
+#∂{P,N}(a::SA{M,∂ℝ{P,N,R}}) where{M,P,N,R}  = SA{(M...,N),R}(a[i].dx[j] for i∈eachindex(a),j∈1:N) # ∂(a,x)[i,...,j] = ∂a[i,...]/∂x[j]
+#∂{P,N}(a::SA{M,       R }) where{M,P,N,R}  = SA{(M...,N),R}(zero(R)    for i∈eachindex(a),j∈1:N)
 
 value_∂{P,N}(a) where{  P,N}= value{P}(a),∂{P,N}(a)
 value_∂{P  }(a) where{  P,N}= value{P}(a),∂{P  }(a)
