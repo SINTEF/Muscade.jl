@@ -4,17 +4,16 @@ using   Printf
 
 
 ## Type and construction
-
+AA = AbstractArray
+AV = AbstractVector  
 # Types
-# P for precedence 
+# P precedence 
 # N number of partials 
-# R type of the variable 
+# R type of the variable  (and partials)
 struct ∂ℝ{P,N,R} <:ℝ where{R<:ℝ}  # P for precedence, N number of partials, R type of the variable (∂ℝ can be nested)
     x  :: R
     dx :: SVector{N,R}
 end
-const AV{R}        = AbstractVector{R}
-const AA{R}        = AbstractArray{R}
 
 # Constructors 
 ∂ℝ{P,N}(x::R ,dx::AV{R  }) where{P,N,R<:ℝ      } = ∂ℝ{P,N,R}(x,SVector{N,R}(dx))
@@ -60,52 +59,56 @@ function Base.convert(::Type{∂ℝ{Pa,Na,Ra}},b::∂ℝ{Pb,Nb,Rb}) where{Pa,Pb,
     end
 end
 
-
-## Pack and unpack
-
+# Pack and unpack
 precedence( ::Type{<:∂ℝ{P,N,R}}) where{P,N,R<:ℝ}          = P
 npartial(   ::Type{<:∂ℝ{P,N,R}}) where{P,N,R<:ℝ}          = N
 precedence( ::Type{<:ℝ})                                  = 0
-npartial(   ::Type{<:ℝ })                                 = 0
-precedence(a::AA) = precedence(eltype(a))
-npartial(  a::AA) = npartial(eltype(a))
-precedence(a::ℝ)  = precedence(typeof(a))
-npartial(a::ℝ)    = npartial(typeof(a))
-#constants(a...)                                           = 1+maximum(precedence.(a))
-constants(a) = 1+precedence(a) 
-constants(a,args...) = max(1+precedence(a),constants(args...)) 
-
-
-struct δ{P,N,R}       dum::𝕫   end # need dum, because syntax δ{P,N,R}() collides with default constructor
-struct variate{P,N}            end
-struct ∂{P,N}                  end 
-struct value{P,N}              end
-struct value_∂{P,N}            end
+npartial(   ::Type{<:ℝ})                                  = 0
+precedence(a::AA)     = precedence(eltype(a))
+npartial(  a::AA)     = npartial(eltype(a))
+precedence(a::ℝ)      = precedence(typeof(a))
+npartial(  a::ℝ)      = npartial(typeof(a))
+constants( a)         = 1+precedence(a) 
+constants( a,args...) = max(1+precedence(a),constants(args...)) 
 
 # variate
-δ{      P,N,R}(                    ) where{P,N,R<:ℝ} = SVector{N,∂ℝ{P,N,R}}(∂ℝ{P,N}(zero(R),i) for i=1:N)
-variate{P,N  }(a::AbstractVector{R}) where{P,N,R<:ℝ} = SVector{N,∂ℝ{P,N,R}}(∂ℝ{P,N}(a[i]   ,i) for i=1:N)
-variate{P    }(a::R                ) where{P,  R<:ℝ} =                    ∂ℝ{P,1}(a,SVector{1,R}(one(R)))
+struct δ{P,N,R}       dum::𝕫   end # need dum, because syntax δ{P,N,R}() collides with default constructor
+struct variate{P,N}            end
+struct directional{P,N}        end 
+δ{P,N  }(δa::AV{R}) where{P,N,R<:ℝ} = SVector{N,∂ℝ{P,1,R}}(∂ℝ{P,1}(zero(R),SVector{1,R}(δa[i])) for i=1:N)
+δ{P,N,R}(         ) where{P,N,R<:ℝ} = SVector{N,∂ℝ{P,N,R}}(∂ℝ{P,N}(zero(R),                i  ) for i=1:N)
+
+variate{P,N}(a::AV{R}) where{P,N,R<:ℝ} = SVector{N,∂ℝ{P,N,R}}(∂ℝ{P,N}(a[i]   ,i) for i=1:N)
+variate{P  }(a::R    ) where{P,  R<:ℝ} =                      ∂ℝ{P,1}(a,SVector{1,R}(one(R)))
+
+directional{P}(a::SVector{N,R},δa::SVector{N,R}) where{P,N,R<:ℝ} = 
+     SVector{N,∂ℝ{P,1,R}}(∂ℝ{P,1}(a[i],SVector{1,R}(δa[i])) for i=1:N)
 
 # Analyse
 VALUE(a::ℝ )                           =        a
 VALUE(a::∂ℝ)                           = VALUE( a.x)
 VALUE(a::AA)                           = VALUE.(a)
 
+struct ∂{P,N}                  end 
+struct value{P,N}              end
+struct value_∂{P,N}            end
+
 value{P}(a::∂ℝ{P,N,R}) where{P,N,R   } = a.x
 value{P}(a::R        ) where{P  ,R<:ℝ} = a
 value{P}(a::AA{R}    ) where{P  ,R   } = value{P}.(a)
 
-∂{P,N}(a::          ∂ℝ{P,N,R} ) where{  P,N,R} = a.dx
+# no ∂{P}(a) syntax: in case a does not contain adiffs 
+∂{P,N}(a::          ∂ℝ{P,N,R} ) where{  P,N,R   } = a.dx
 ∂{P,N}(a::                 R  ) where{  P,N,R<:ℝ} = SVector{  N,R}(zero(R)    for i=1:N      )
-∂{P,N}(a::SVector{M,∂ℝ{P,N,R}}) where{M,P,N,R} = SMatrix{M,N,R}(a[i].dx[j] for i=1:M,j∈1:N) # ∂(a,x)[i,j] = ∂a[i]/∂x[j]
-∂{P,N}(a::SVector{M,       R }) where{M,P,N,R} = SMatrix{M,N,R}(zero(R)    for i=1:M,j=1:N)
-∂{P,N}(a::Vector{∂ℝ{P,N,R}})    where{  P,N,R} = SMatrix{N,N,R}(a[i].dx[j] for i=1:N,j∈1:N) # ∂(a,x)[i,j] = ∂a[i]/∂x[j]
-∂{P,N}(a::Vector{       R })    where{  P,N,R} = SMatrix{N,N,R}(zero(R)    for i=1:N,j=1:N)
+∂{P,N}(a::SVector{M,∂ℝ{P,N,R}}) where{M,P,N,R   } = SMatrix{M,N,R}(a[i].dx[j] for i=1:M,j∈1:N) # ∂(a,x)[i,j] = ∂a[i]/∂x[j]
+∂{P,N}(a::SVector{M,       R }) where{M,P,N,R   } = SMatrix{M,N,R}(zero(R)    for i=1:M,j=1:N)
+∂{P  }(a::          ∂ℝ{P,1,R} ) where{  P,  R   } = a.dx[1]
+∂{P  }(a::SVector{N,∂ℝ{P,1,R}}) where{M,P,N,R   } = SVector{  N,R}(a[i].dx[1] for i=1:N     ) # ∂(a,x)[i]    = ∂a[i]/∂x
 #∂{P,N}(a::SArray{M,∂ℝ{P,N,R}}) where{M,P,N,R}  = SArray{(M...,N),R}(a[i].dx[j] for i∈eachindex(a),j∈1:N) # ∂(a,x)[i,...,j] = ∂a[i,...]/∂x[j]
 #∂{P,N}(a::SArray{M,       R }) where{M,P,N,R}  = SArray{(M...,N),R}(zero(R)    for i∈eachindex(a),j∈1:N)
 
 value_∂{P,N}(a) where{  P,N}= value{P}(a),∂{P,N}(a)
+value_∂{P  }(a) where{  P,N}= value{P}(a),∂{P  }(a)
 
 ## Binary operations
 for OP∈(:(>),:(<),:(==),:(>=),:(<=),:(!=))
@@ -133,11 +136,13 @@ macro Op2(OP,AB,A,B)
         end
     end)
 end
-@Op2(Base.:(+), a.dx+b.dx,                                  a.dx,               b.dx               )
-@Op2(Base.:(-), a.dx-b.dx,                                  a.dx,               -b.dx              )
-@Op2(Base.:(*), a.dx*b.x+a.x*b.dx,                          a.dx*b,             a*b.dx             )
-@Op2(Base.:(/), a.dx/b.x-a.x/b.x^2*b.dx,                    a.dx/b,             -a/b.x^2*b.dx      )
-@Op2(Base.:(^), a.dx*b.x*a.x^(b.x-1)+log(a.x)*a.x^b.x*b.dx, a.dx*b*a.x^(b  -1), log(a)*a ^b.x*b.dx )
+
+@Op2(Base.hypot,(a.dx*a.x+b.dx*b.x)/hypot(a.x,b.x),          a.dx*a.x/hypot(a.x,b), b.dx*b.x/hypot(a,b.x))   
+@Op2(Base.:(+),  a.dx+b.dx,                                  a.dx,                  b.dx                 )
+@Op2(Base.:(-),  a.dx-b.dx,                                  a.dx,                  -b.dx                )
+@Op2(Base.:(*),  a.dx*b.x+a.x*b.dx,                          a.dx*b,                a*b.dx               )
+@Op2(Base.:(/),  a.dx/b.x-a.x/b.x^2*b.dx,                    a.dx/b,                -a/b.x^2*b.dx        ) 
+@Op2(Base.:(^),  a.dx*b.x*a.x^(b.x-1)+log(a.x)*a.x^b.x*b.dx, a.dx*b*a.x^(b  -1),    log(a)*a ^b.x*b.dx   )
 @inline Base.:(^)(a::∂ℝ{P,N,R},b::Integer) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(a.x^b ,a.dx*b*a.x^(b-1) )
 
 ## Functions
