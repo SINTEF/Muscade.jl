@@ -59,19 +59,22 @@ function KKT(a::∂ℝ{Pa,Na,Ra},b::∂ℝ{Pb,Nb,Rb},γ::𝕣) where{Pa,Pb,Na,Nb
         return ∂ℝ{Pb,Nb}(convert(R,KKT(g  ,λ.x,γ)),convert.(R,            slack(g  ,λ.x,γ)*λ.dx))
     end
 end
+off,equal,inequal = :off,:equal,:inequal # because @espy has its own way with symbols...
 
 #-------------------------------------------------
 
-struct Constraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,Tg} <: AbstractElement
-    g        :: Tg # Function
-    equality :: 𝕓
+struct Constraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,Tg,Tkind} <: AbstractElement
+    g        :: Tg    # g(x,t) for Xconstraints, or g(x,u,a,t) otherwise
+    kind     :: Tkind # kind(t)->symbol, or Symbol for Aconstraints
 end
+Constraint{    λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield                       }(g,kind) where{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield} =
+    Constraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,typeof(g),typeof(kind)}(g,kind)
 Constraint(nod::Vector{Node};xinod::NTuple{Nx,𝕫},xfield::NTuple{Nx,Symbol},
                                          uinod::NTuple{Nu,𝕫},ufield::NTuple{Nu,Symbol},
                                          ainod::NTuple{Na,𝕫},afield::NTuple{Na,Symbol},
                                          λinod::𝕫, λclass::Symbol, λfield,
-                                         g::Function ,equality::𝕓) where{Nx,Nu,Na} =
-                 Constraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,typeof(g)}(g,equality)
+                                         g::Function ,kind::Function) where{Nx,Nu,Na} =
+                 Constraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield}(g,kind)
 doflist(::Type{<:Constraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield}}) where{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield} = 
    (inod =(xinod...           ,uinod...           ,ainod...           ,λinod ), 
     class=(ntuple(i->:X,Nx)...,ntuple(i->:U,Nu)...,ntuple(i->:A,Na)...,Symbol(λclass)), 
@@ -81,36 +84,54 @@ doflist(::Type{<:Constraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afi
     P          = constants(δX,∂0(X))
     X∂         = directional{P}(∂0(X),δX) 
     x,λ        = X∂[SVector{Nx}(1:Nx)], -X∂[Nx+1] 
-    g          = o.g(x)
-    gλ         = o.equality ? g*λ : KKT(g,λ,ε)
-    return ∂{P}(gλ)    # = δ(gλ) = δg*λ+δλ*g = δx∘∇ₓg*λ+δλ*g   
+    g          = o.g(x,t)
+    m = if o.kind(t)==off;     λ^2 # what to minimize
+    elseif o.kind(t)==equal;   g*λ
+    elseif o.kind(t)==inequal; KKT(g,λ,ε) 
+    else MuscadeException("kind(t) must have value :off, :equal or :inequal",dbg)
+    end
+    return ∂{P}(m)    # = δ(gλ) = δg*λ+δλ*g = δx∘∇ₓg*λ+δλ*g   
 end
 @espy function residual(o::Constraint{Xclass,Nx,0,0}, X,U,A, t,ε,dbg) where{Nx}
     P          = constants(∂0(X))
     x,λ        = ∂0(X)[SVector{Nx}(1:Nx)], -∂0(X)[Nx+1]
     x∂         = variate{P,Nx}(x) 
-    g,∇ₓg      = value_∂{P,Nx}(o.g(x∂)) 
-    zerothis   = o.equality ? g : slack(g,λ,ε)
-    return  SVector{Nx+1}(∇ₓg*λ...,zerothis)
+    g,∇ₓg      = value_∂{P,Nx}(o.g(x∂,t)) 
+    z = if o.kind(t)==off;     λ # what to set to zero
+    elseif o.kind(t)==equal;   g
+    elseif o.kind(t)==inequal; slack(g,λ,ε) 
+    else MuscadeException("kind(t) must have value :off, :equal or :inequal",dbg)
+    end
+    return  SVector{Nx+1}((∇ₓg*λ)...,z)
 end
 @espy function lagrangian(o::Constraint{Uclass,Nx,Nu,Na}, δX,X,U,A, t,ε,dbg) where{Nx,Nu,Na}
     x,u,a,λ    = ∂0(X),∂0(U)[SVector{Nu}(1:Nu)],A,-∂0(U)[Nu+1] 
-    g          = o.g(x,u,a)
-    return o.equality ? g*λ : KKT(g,λ,ε) 
+    g          = o.g(x,u,a,t)
+    m = if o.kind(t)==off;     λ^2 # what to minimize
+    elseif o.kind(t)==equal;   g*λ
+    elseif o.kind(t)==inequal; KKT(g,λ,ε) 
+    else MuscadeException("kind(t) must have value :off, :equal or :inequal",dbg)
+    end
+    return m 
 end
 @espy function lagrangian(o::Constraint{Aclass,Nx,Nu,Na}, δX,X,U,A, t,ε,dbg) where{Nx,Nu,Na}
-    x,u,a,λ    = ∂0(X),∂0(U),A[SVector{Nu}(1:Nu)],-∂0(A)[Nu+1] 
-    g          = o.g(x,u,a)
-    return o.equality ? g*λ : KKT(g,λ,ε) 
+    x,u,a,λ    = ∂0(X),∂0(U),A[SVector{Nu}(1:Nu)],-A[Nu+1] 
+    g          = o.g(x,u,a,t)
+    m = if o.kind==off;     λ^2 # what to minimize
+    elseif o.kind==equal;   g*λ
+    elseif o.kind==inequal; KKT(g,λ,ε) 
+    else MuscadeException("kind must have value :off, :equal or :inequal",dbg)
+    end
+    return m 
 end
 
 #-------------------------------------------------
 
-id1(v) = v[1]
 struct Hold <: AbstractElement end  
-
+# id1(v,t) = v[1]
+# eq(t)    = :equal
 Hold(nod::Vector{Node};field::Symbol,λfield::Symbol=Symbol(:λ,field)) = 
-#   Constraint{λclass,Nx,Nu,Na,xinod,xfield, uinod,ufield,ainod,afield,λinod,λfield,typeof(g  )}
-    Constraint{Xclass,1, 0, 0, (1,),(field,),(),   (),    (),   (),    1,    λfield,typeof(id1)}(id1,true)
+    Constraint{Xclass,1, 0, 0, (1,),(field,),(),   (),    (),   (),    1,    λfield}((v,t)->v[1] , t->:equal)
+#   Constraint{λclass,Nx,Nu,Na,xinod,xfield, uinod,ufield,ainod,afield,λinod,λfield}
 
 #-------------------------------------------------
