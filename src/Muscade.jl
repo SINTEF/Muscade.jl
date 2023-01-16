@@ -37,9 +37,9 @@ module Muscade
     export getndof,getnele,getdofID,describe
 
     include("core/BasicElements.jl")
-    export XdofCost,UdofCost,AdofCost,DofLoad
-    export HolonomicConstraint,Hold
-    export Spring
+    export DofCost,DofLoad
+    export Xclass,Uclass,Aclass
+    export Constraint,Hold
 
     include("core/Assemble.jl")
  

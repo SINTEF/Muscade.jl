@@ -1,39 +1,30 @@
-struct XdofCost{Tcost,Field,Derivative} <: AbstractElement
-    cost :: Tcost # Function 
-end
-XdofCost(nod::Vector{Node};field::Symbol,cost::Tcost,derivative=0::𝕫) where{Tcost<:Function} = XdofCost{Tcost,field,derivative}(cost)
-Muscade.doflist(::Type{XdofCost{Tcost,Field,Derivative}}) where{Tcost,Field,Derivative} = (inod =(1,), class=(:X,), field=(Field,))
-@espy function Muscade.lagrangian(o::XdofCost{Tcost,Field,Derivative}, δX,X,U,A, t,ε,dbg) where{Tcost,Field,Derivative}
-    :J = o.cost(∂n(X,Derivative)[1])
-    return J
-end
-Muscade.espyable(::Type{<:XdofCost}) = (J=scalar,)
-
-#-------------------------------------------------
-# TODO extend this element (or create a new one "UdofLoad", that creates a U-dof acting on a X-dof and associates a cost to the Udof)
-struct UdofCost{Tcost,Field,Derivative} <: AbstractElement
-    cost :: Tcost # Function 
-end
-UdofCost(nod::Vector{Node};field::Symbol,cost::Tcost,derivative=0::𝕫) where{Tcost<:Function} = UdofCost{Tcost,field,derivative}(cost)
-Muscade.doflist(::Type{UdofCost{Tcost,Field,Derivative}}) where{Tcost,Field,Derivative} = (inod =(1,), class=(:U,), field=(Field,))
-@espy function Muscade.lagrangian(o::UdofCost{Tcost,Field,Derivative}, δX,X,U,A, t,ε,dbg) where{Tcost,Field,Derivative}
-    :J = o.cost(∂n(XU,Derivative)[1])
-    return J
-end
-Muscade.espyable(::Type{<:UdofCost}) = (J=scalar,)
+struct Xclass end
+struct Uclass end
+struct Aclass end
+Base.Symbol(::Type{Xclass}) = :X
+Base.Symbol(::Type{Uclass}) = :U
+Base.Symbol(::Type{Aclass}) = :A
 
 #-------------------------------------------------
 
-struct AdofCost{Tcost,Field} <: AbstractElement
+struct DofCost{Derivative,Class,Field,Tcost} <: AbstractElement
     cost :: Tcost # Function 
 end
-AdofCost(nod::Vector{Node};field::Symbol,cost::Tcost) where{Tcost<:Function} = AdofCost{Tcost,field}(cost)
-Muscade.doflist(::Type{AdofCost{Tcost,Field}}) where{Tcost,Field} = (inod=(1,), class=(:A,), field=(Field,))
-@espy function Muscade.lagrangian(o::AdofCost{Tcost,Field}, δX,X,U,A, t,ε,dbg) where{Tcost,Field}
+DofCost(nod::Vector{Node};class::DataType,field::Symbol,cost::Tcost,derivative=0::𝕫) where{Tcost<:Function} = DofCost{derivative,class,field,Tcost}(cost)
+doflist(::Type{<:DofCost{Derivative,Class,Field}}) where{Derivative,Class,Field} = (inod =(1,), class=(Symbol(Class),), field=(Field,))
+espyable(::Type{<:DofCost}) = (J=scalar,)
+@espy function lagrangian(o::DofCost{Derivative,Xclass}, δX,X,U,A, t,ε,dbg) where{Derivative}
+    :J = o.cost(∂n(X,Derivative)[1],t)
+    return J
+end
+@espy function lagrangian(o::DofCost{Derivative,Uclass}, δX,X,U,A, t,ε,dbg) where{Derivative}
+    :J = o.cost(∂n(U,Derivative)[1],t)
+    return J
+end
+@espy function lagrangian(o::DofCost{Derivative,Aclass}, δX,X,U,A, t,ε,dbg) where{Derivative}
     :J = o.cost(A[1])
     return J
 end
-Muscade.espyable(::Type{<:AdofCost}) = (J=scalar,)
 
 #-------------------------------------------------
 
@@ -41,12 +32,12 @@ struct DofLoad{Tvalue,Field} <: AbstractElement
     value      :: Tvalue # Function
 end
 DofLoad(nod::Vector{Node};field::Symbol,value::Tvalue) where{Tvalue<:Function} = DofLoad{Tvalue,field}(value)
-Muscade.doflist(::Type{DofLoad{Tvalue,Field}}) where{Tvalue,Field}=(inod=(1,), class=(:X,), field=(Field,))
-@espy function Muscade.residual(o::DofLoad, X,U,A, t,ε,dbg) 
+doflist(::Type{DofLoad{Tvalue,Field}}) where{Tvalue,Field}=(inod=(1,), class=(:X,), field=(Field,))
+@espy function residual(o::DofLoad, X,U,A, t,ε,dbg) 
     :F = o.value(t)
     return SVector{1}(-F)
 end
-Muscade.espyable(::Type{<:DofLoad}) = (F=scalar,)
+espyable(::Type{<:DofLoad}) = (F=scalar,)
 
 #-------------------------------------------------
 
@@ -70,12 +61,7 @@ function KKT(a::∂ℝ{Pa,Na,Ra},b::∂ℝ{Pb,Nb,Rb},γ::𝕣) where{Pa,Pb,Na,Nb
 end
 
 #-------------------------------------------------
-struct Xclass end
-struct Uclass end
-struct Aclass end
-Base.Symbol(::Type{Xclass}) = :X
-Base.Symbol(::Type{Uclass}) = :U
-Base.Symbol(::Type{Aclass}) = :A
+
 struct Constraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,Tg} <: AbstractElement
     g        :: Tg # Function
     equality :: 𝕓
@@ -128,30 +114,3 @@ Hold(nod::Vector{Node};field::Symbol,λfield::Symbol=Symbol(:λ,field)) =
     Constraint{Xclass,1, 0, 0, (1,),(field,),(),   (),    (),   (),    1,    λfield,typeof(id1)}(id1,true)
 
 #-------------------------------------------------
-
-struct Spring{D} <: AbstractElement
-    x₁     :: SVector{D,𝕣}  # x1,x2,x3
-    x₂     :: SVector{D,𝕣} 
-    EI     :: 𝕣
-    L      :: 𝕣
-end
-Spring{D}(nod::Vector{Node};EI) where{D}= Spring{D}(coord(nod)[1],coord(nod)[2],EI,norm(coord(nod)[1]-coord(nod)[2]))
-@espy function Muscade.residual(o::Spring{D}, X,U,A, t,ε,dbg) where{D}
-    x₁       = ∂0(X)[SVector{D}(i   for i∈1:D)]+o.x₁
-    x₂       = ∂0(X)[SVector{D}(i+D for i∈1:D)]+o.x₂
-    :L₀      = o.L *exp10(A[1]) 
-    :EI      = o.EI*exp10(A[2]) 
-    Δx       = x₁-x₂
-    :L       = norm(Δx)
-    :T       = EI*(L-L₀)
-    F₁       = Δx/L*T # external force on node 1
-    R        = vcat(F₁,-F₁)
-    return R
-end
-Muscade.doflist(     ::Type{Spring{D}}) where{D}=(
-    inod  = (( 1 for i=1: D)...,(2 for i=1:D)...,3,3),
-    class = ((:X for i=1:2D)...,:A,:A),
-    field = ((Symbol(:tx,i) for i=1: D)...,(Symbol(:tx,i) for i=1: D)...,:ΞL₀,:ΞEI)) # \Xi
-Muscade.espyable(    ::Type{<:Spring}) = (EI=scalar,L₀=scalar,L=scalar,T=scalar)
-
-

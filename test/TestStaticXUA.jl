@@ -3,6 +3,7 @@ module TestStaticXUA
 using Test
 using Muscade
 
+include("SomeElements.jl")
 
 model           = Model(:TestModel)
 n1              = addnode!(model,𝕣[ 0, 0])  # moving node
@@ -17,12 +18,12 @@ e4              = addelement!(model,Hold  ,[n2], field=:tx1)
 e5              = addelement!(model,Hold  ,[n2], field=:tx2)
 e6              = addelement!(model,Hold  ,[n3], field=:tx1)
 e7              = addelement!(model,Hold  ,[n3], field=:tx2)
-@once f2 f2(x)  = 1x^2
+@once f2 f2(x,t)= 1x^2
 @once f3 f3(a)  = 0.1a^2
-e8              = addelement!(model,XdofCost ,[n1], field=:tx1      ,cost=f2)
-e9              = addelement!(model,XdofCost ,[n1], field=:tx2      ,cost=f2)
-e10             = addelement!(model,AdofCost ,[n4], field=:ΞL₀      ,cost=f3)
-e10             = addelement!(model,AdofCost ,[n4], field=:ΞEI      ,cost=f3)
+e8              = addelement!(model,DofCost ,class=Xclass, field=:tx1,[n1]      ,cost=f2)
+e9              = addelement!(model,DofCost ,class=Xclass, field=:tx2,[n1]      ,cost=f2)
+e10             = addelement!(model,DofCost ,class=Aclass, field=:ΞL₀,[n4]      ,cost=f3)
+e11             = addelement!(model,DofCost ,class=Aclass, field=:ΞEI,[n4]      ,cost=f3)
 @testset "StaticX" begin
     stateX           = solve(staticX;model,time=[0.,1.],verbose=false)
     @test stateX[2].X[1] ≈ [ 1.000830542358214,    0.056562064402879385,    0.0,    0.0,    0.0,    0.0,   -1.0006330261310143,    0.006289232571302405,    0.0006330261310144671,   -0.006289232571302405]
