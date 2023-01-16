@@ -70,62 +70,62 @@ function KKT(a::∂ℝ{Pa,Na,Ra},b::∂ℝ{Pb,Nb,Rb},γ::𝕣) where{Pa,Pb,Na,Nb
 end
 
 #-------------------------------------------------
-# TODO 1) scaling 2) optimisation constraints on X,U,A
-struct PhysicalConstraint{N,xinod,xfield,λinod,λfield,Tg} <: AbstractElement
+struct Xclass end
+struct Uclass end
+struct Aclass end
+Base.Symbol(::Type{Xclass}) = :X
+Base.Symbol(::Type{Uclass}) = :U
+Base.Symbol(::Type{Aclass}) = :A
+struct Constraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,Tg} <: AbstractElement
     g        :: Tg # Function
     equality :: 𝕓
 end
-PhysicalConstraint(nod::Vector{Node};xinod::NTuple{N,𝕫},xfield::NTuple{N,Symbol}, 
-                                     λinod::         𝕫 ,λfield::         Symbol ,
-                                     g::Function       ,equality::𝕓) where{N} =
-    PhysicalConstraint{N,xinod,xfield,λinod,λfield,typeof(g)}(g,equality)
-Muscade.doflist(::Type{<:PhysicalConstraint{N,xinod,xfield,λinod,λfield}}) where{N,xinod,xfield,λinod,λfield} = 
-   (inod=(xinod...,λinod), class=ntuple(i->:X,N+1), field=(xfield...,λfield)) 
-# @espy function Muscade.lagrangian(o::PhysicalConstraint{N}, δX,X,U,A, t,ε,dbg) where{N}  # TODO performance gain of uncommenting this code?
-#     P          = constants(δX,∂0(X))
-#     X∂         = directional{P}(∂0(X),δX) 
-#     x,λ        = X∂[SVector{N}(1:N)], -X∂[N+1] 
-#     g          = o.g(x)
-#     gλ         = o.equality ? g*λ : KKT(g,λ,ε)
-#     return ∂{P}(gλ)    # = δ(gλ) = δg*λ+δλ*g = δx∘∇ₓg*λ+δλ*g   
-# end
-@espy function Muscade.residual(o::PhysicalConstraint{N}, X,U,A, t,ε,dbg) where{N}
-    P          = constants(∂0(X))
-    x,λ        = ∂0(X)[SVector{N}(1:N)], -∂0(X)[N+1]
-    x∂         = variate{P,N}(x) 
-    g,∇ₓg      = value_∂{P,N}(o.g(x∂)) 
-    zerothis   = o.equality ? g : slack(g,λ,ε)
-    return  SVector{N+1}(∇ₓg*λ...,zerothis)
-end
+Constraint(nod::Vector{Node};xinod::NTuple{Nx,𝕫},xfield::NTuple{Nx,Symbol},
+                                         uinod::NTuple{Nu,𝕫},ufield::NTuple{Nu,Symbol},
+                                         ainod::NTuple{Na,𝕫},afield::NTuple{Na,Symbol},
+                                         λinod::𝕫, λclass::Symbol, λfield,
+                                         g::Function ,equality::𝕓) where{Nx,Nu,Na} =
+                 Constraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,typeof(g)}(g,equality)
+doflist(::Type{<:Constraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield}}) where{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield} = 
+   (inod =(xinod...           ,uinod...           ,ainod...           ,λinod ), 
+    class=(ntuple(i->:X,Nx)...,ntuple(i->:U,Nu)...,ntuple(i->:A,Na)...,Symbol(λclass)), 
+    field=(xfield...          ,ufield...          ,afield...          ,λfield)) 
 
-id1(v) = v[1]
-struct Hold <: AbstractElement end  
-Hold(nod::Vector{Node};field::Symbol,λfield::Symbol=Symbol(:λ,field)) = PhysicalConstraint{1,(1,),(field,),1,λfield,typeof(id1)}(id1,true)
+@espy function lagrangian(o::Constraint{Xclass,Nx,0,0}, δX,X,U,A, t,ε,dbg) where{Nx}  
+    P          = constants(δX,∂0(X))
+    X∂         = directional{P}(∂0(X),δX) 
+    x,λ        = X∂[SVector{Nx}(1:Nx)], -X∂[Nx+1] 
+    g          = o.g(x)
+    gλ         = o.equality ? g*λ : KKT(g,λ,ε)
+    return ∂{P}(gλ)    # = δ(gλ) = δg*λ+δλ*g = δx∘∇ₓg*λ+δλ*g   
+end
+@espy function residual(o::Constraint{Xclass,Nx,0,0}, X,U,A, t,ε,dbg) where{Nx}
+    P          = constants(∂0(X))
+    x,λ        = ∂0(X)[SVector{Nx}(1:Nx)], -∂0(X)[Nx+1]
+    x∂         = variate{P,Nx}(x) 
+    g,∇ₓg      = value_∂{P,Nx}(o.g(x∂)) 
+    zerothis   = o.equality ? g : slack(g,λ,ε)
+    return  SVector{Nx+1}(∇ₓg*λ...,zerothis)
+end
+@espy function lagrangian(o::Constraint{Uclass,Nx,Nu,Na}, δX,X,U,A, t,ε,dbg) where{Nx,Nu,Na}
+    x,u,a,λ    = ∂0(X),∂0(U)[SVector{Nu}(1:Nu)],A,-∂0(U)[Nu+1] 
+    g          = o.g(x,u,a)
+    return o.equality ? g*λ : KKT(g,λ,ε) 
+end
+@espy function lagrangian(o::Constraint{Aclass,Nx,Nu,Na}, δX,X,U,A, t,ε,dbg) where{Nx,Nu,Na}
+    x,u,a,λ    = ∂0(X),∂0(U),A[SVector{Nu}(1:Nu)],-∂0(A)[Nu+1] 
+    g          = o.g(x,u,a)
+    return o.equality ? g*λ : KKT(g,λ,ε) 
+end
 
 #-------------------------------------------------
 
-struct OptimisationConstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,Tg} <: AbstractElement
-    g        :: Tg # Function
-    equality :: 𝕓
-end
-OptimisationConstraint(nod::Vector{Node};xinod::NTuple{Nx,𝕫},xfield::NTuple{Nx,Symbol},
-                                         uinod::NTuple{Nu,𝕫},ufield::NTuple{Nu,Symbol},
-                                         ainod::NTuple{Na,𝕫},afield::NTuple{Na,Symbol},
-                                         λinod::          𝕫 ,λfield::          Symbol ,
-                                         g::Function        ,equality::𝕓) where{Nx,Nu,Na} =
-    OptimisationConstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,typeof(g)}(g,equality)
-Muscade.doflist(::Type{<:OptimisationConstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield}}) 
-                                          where{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield} = 
-   (inod =(xinod...           ,uinod...           ,ainod...           ,λinod ), 
-    class=(ntuple(i->:X,Nx)...,ntuple(i->:U,Nu)...,ntuple(i->:A,Na)...,:Z    ), # TODO 
-    field=(xfield...          ,ufield...          ,afield...          ,λfield)) 
-@espy function Muscade.lagrangian(o::OptimisationConstraint{Nx,Nu,Na}, δX,X,U,A, t,ε,dbg) where{N}
-    x,u,a      = ∂0(X),∂0(U),a 
-    μ          = ???? # TODO what class of dof is μ? Probably :U ? What happens in multi steps?
-    g          = o.g(x,u,a)
-    gμ         = o.equality ? g*μ : KKT(g,μ,ε)
-    return gμ 
-end
+id1(v) = v[1]
+struct Hold <: AbstractElement end  
+
+Hold(nod::Vector{Node};field::Symbol,λfield::Symbol=Symbol(:λ,field)) = 
+#   Constraint{λclass,Nx,Nu,Na,xinod,xfield, uinod,ufield,ainod,afield,λinod,λfield,typeof(g  )}
+    Constraint{Xclass,1, 0, 0, (1,),(field,),(),   (),    (),   (),    1,    λfield,typeof(id1)}(id1,true)
 
 #-------------------------------------------------
 

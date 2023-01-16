@@ -29,7 +29,7 @@ lagrangian(out,key,eleobj::E,δX,X,U,A, t,ε,dbg) where{E<:AbstractElement} = δ
 function residual(eleobj::E, X,U,A, t,ε,dbg) where{E<:AbstractElement} 
     P            = constants(∂0(X),∂0(U),A,t)
     Nx           = length(∂0(X))
-    δX           = δ{P,Nx,𝕣}()                        
+    δX           = δ{P,Nx,𝕣}()   
     L            = lagrangian(eleobj,δX,X,U,A, t,ε,dbg)
     return ∂{P,Nx}(L)
 end

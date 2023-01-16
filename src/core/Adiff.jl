@@ -105,12 +105,12 @@ value{P}(a::AA{R}    ) where{P  ,R   } = value{P}.(a)
 ∂{P,N}(a::SV{M,∂ℝ{P,N,R}}) where{M,P,N,R   } = SM{M,N,R}(a[i].dx[j] for i=1:M,j∈1:N) # ∂(a,x)[i,j] = ∂a[i]/∂x[j]
 ∂{P,N}(a::SV{M,       R }) where{M,P,N,R   } = SM{M,N,R}(zero(R)    for i=1:M,j=1:N)
 ∂{P  }(a::     ∂ℝ{P,1,R} ) where{  P,  R   } = a.dx[1]
-∂{P  }(a::SV{N,∂ℝ{P,1,R}}) where{M,P,N,R   } = SV{  N,R}(a[i].dx[1] for i=1:N     ) # ∂(a,x)[i]    = ∂a[i]/∂x
+∂{P  }(a::SV{N,∂ℝ{P,1,R}}) where{  P,N,R   } = SV{  N,R}(a[i].dx[1] for i=1:N     ) # ∂(a,x)[i]    = ∂a[i]/∂x
 #∂{P,N}(a::SA{M,∂ℝ{P,N,R}}) where{M,P,N,R}  = SA{(M...,N),R}(a[i].dx[j] for i∈eachindex(a),j∈1:N) # ∂(a,x)[i,...,j] = ∂a[i,...]/∂x[j]
 #∂{P,N}(a::SA{M,       R }) where{M,P,N,R}  = SA{(M...,N),R}(zero(R)    for i∈eachindex(a),j∈1:N)
 
 value_∂{P,N}(a) where{  P,N}= value{P}(a),∂{P,N}(a)
-value_∂{P  }(a) where{  P,N}= value{P}(a),∂{P  }(a)
+value_∂{P  }(a) where{  P  }= value{P}(a),∂{P  }(a)
 
 ## Binary operations
 for OP∈(:(>),:(<),:(==),:(>=),:(<=),:(!=))
