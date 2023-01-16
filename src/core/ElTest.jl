@@ -2,13 +2,13 @@ using  Printf
 using  Muscade 
 
 
-function test_static_element(ele::eletyp; δX,X,U,A, t::Float64=0.,ε::Float64=0., verbose::Bool=true,dbg = ()) where{eletyp<:AbstractElement}
+function test_static_element(ele::eletyp; δX,X,U,A, t::Float64=0.,γ::Float64=0., verbose::Bool=true,dbg = ()) where{eletyp<:AbstractElement}
     inod,class,field = Muscade.getdoflist(eletyp)
     iXdof            = Muscade.getidof(eletyp,:X)
     iUdof            = Muscade.getidof(eletyp,:U)
     iAdof            = Muscade.getidof(eletyp,:A)
     nX,nU,nA         = Muscade.getndof(eletyp,(:X,:U,:A))
-    L,Lδx,Lx,Lu,La   = Muscade.gradient(ele,δX,[X],[U],A, t,ε,dbg)
+    L,Lδx,Lx,Lu,La   = Muscade.gradient(ele,δX,[X],[U],A, t,γ,dbg)
 
     if verbose
         @printf "\nElement type: %s\n" typeof(el)

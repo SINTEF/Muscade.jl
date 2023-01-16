@@ -27,13 +27,13 @@ function zero!(out::OUTstaticΛXU_A)
     zero!(out.Lya)
     zero!(out.Laa)
 end
-function addin!(out::OUTstaticΛXU_A,asm,iele,scale,eleobj,Λ,X,U,A, t,ε,dbg) 
+function addin!(out::OUTstaticΛXU_A,asm,iele,scale,eleobj,Λ,X,U,A, t,γ,dbg) 
     Nx,Nu,Na        = length(X[1]),length(U[1]),length(A) # in the element
     Nz              = 2Nx+Nu+Na                           # Z = [Y;A]=[Λ;X;U;A]       
     ΔZ              = variate{2,Nz}(δ{1,Nz,𝕣}())                 
     iλ,ix,iu,ia     = gradientpartition(Nx,Nx,Nu,Na) # index into element vectors ΔZ and Lz
     ΔΛ,ΔX,ΔU,ΔA     = view(ΔZ,iλ),view(ΔZ,ix),view(ΔZ,iu),view(ΔZ,ia) # TODO Static?
-    L               = scaledlagrangian(scale,eleobj, Λ+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A+ΔA, t,ε,dbg)
+    L               = scaledlagrangian(scale,eleobj, Λ+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A+ΔA, t,γ,dbg)
     Lz,Lzz          = value_∂{1,Nz}(∂{2,Nz}(L)) 
     iy              = 1:(2Nx+Nu)  
     addin!(out.Ly ,asm[1],iele,view(Lz,iy))
@@ -63,13 +63,13 @@ function zero!(out::OUTstaticΛXU)
     zero!(out.Ly )
     zero!(out.Lyy)
 end
-function addin!(out::OUTstaticΛXU,asm,iele,scale,eleobj,Λ,X,U,A, t,ε,dbg) 
+function addin!(out::OUTstaticΛXU,asm,iele,scale,eleobj,Λ,X,U,A, t,γ,dbg) 
     Nx,Nu           = length(X[1]),length(U[1]) # in the element
     Ny              = 2Nx+Nu                           # Y=[Λ;X;U]       
     ΔY              = variate{2,Ny}(δ{1,Ny,𝕣}())                 
     iλ,ix,iu,_      = gradientpartition(Nx,Nx,Nu,0) # index into element vectors ΔY and Ly
     ΔΛ,ΔX,ΔU        = view(ΔY,iλ),view(ΔY,ix),view(ΔY,iu)
-    L               = scaledlagrangian(scale,eleobj, Λ+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A, t,ε,dbg)
+    L               = scaledlagrangian(scale,eleobj, Λ+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A, t,γ,dbg)
     Ly,Lyy          = value_∂{1,Ny}(∂{2,Ny}(L)) 
     iy              = 1:(2Nx+Nu)  
     addin!(out.Ly ,asm[1],iele,view(Ly,iy))

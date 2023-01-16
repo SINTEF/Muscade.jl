@@ -19,10 +19,10 @@ function zero!(out::OUTstaticX)
     zero!(out.Lλ)
     zero!(out.Lλx)
 end
-function addin!(out::OUTstaticX,asm,iele,scale,eleobj,Λ,X,U,A, t,ε,dbg) 
+function addin!(out::OUTstaticX,asm,iele,scale,eleobj,Λ,X,U,A, t,γ,dbg) 
     Nx                       = length(Λ)                   
     ΔX                       = δ{1,Nx,𝕣}()                 # NB: precedence==1, input must not be Adiff 
-    Lλ                       = scaledresidual(scale,eleobj, (∂0(X)+ΔX,),U,A, t,ε,dbg)
+    Lλ                       = scaledresidual(scale,eleobj, (∂0(X)+ΔX,),U,A, t,γ,dbg)
     addin!(out.Lλ ,asm[1],iele,value{1}(Lλ) )
     addin!(out.Lλx,asm[2],iele,∂{1,Nx}(Lλ)  )
 end

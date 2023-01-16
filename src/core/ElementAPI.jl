@@ -23,26 +23,26 @@ getndof(E::DataType,class::Tuple) = ntuple(i->getndof(E,class[i]),length(class))
 
 ####### Lagrangian from residual and residual from Lagrangian
 # an assembler that calls "lagrangian" will call the element's own method if implemented, or this one, which then calls the element's residual method
-lagrangian(        eleobj::E,δX,X,U,A, t,ε,dbg) where{E<:AbstractElement} = δX ∘₁ residual(        eleobj,X,U,A, t,ε,dbg)
-lagrangian(out,key,eleobj::E,δX,X,U,A, t,ε,dbg) where{E<:AbstractElement} = δX ∘₁ residual(out,key,eleobj,X,U,A, t,ε,dbg)
+lagrangian(        eleobj::E,δX,X,U,A, t,γ,dbg) where{E<:AbstractElement} = δX ∘₁ residual(        eleobj,X,U,A, t,γ,dbg)
+lagrangian(out,key,eleobj::E,δX,X,U,A, t,γ,dbg) where{E<:AbstractElement} = δX ∘₁ residual(out,key,eleobj,X,U,A, t,γ,dbg)
 # an assembler that calls "residual" will call the element's own method if implemented, or this one, which then calls the element's lagrangian method
-function residual(eleobj::E, X,U,A, t,ε,dbg) where{E<:AbstractElement} 
+function residual(eleobj::E, X,U,A, t,γ,dbg) where{E<:AbstractElement} 
     P            = constants(∂0(X),∂0(U),A,t)
     Nx           = length(∂0(X))
     δX           = δ{P,Nx,𝕣}()   
-    L            = lagrangian(eleobj,δX,X,U,A, t,ε,dbg)
+    L            = lagrangian(eleobj,δX,X,U,A, t,γ,dbg)
     return ∂{P,Nx}(L)
 end
 # if an element implements neither lagrangian nor residual, the above code will flat-spin recursively
 
 ####### For testing: get all the gradients. 
-function gradient(eleobj::E,Λ,X,U,A, t,ε,dbg) where{E<:AbstractElement}
+function gradient(eleobj::E,Λ,X,U,A, t,γ,dbg) where{E<:AbstractElement}
     P            = constants(Λ,∂0(X),∂0(U),A,t)
     nX,nU,nA     = length(Λ),length(∂0(U)),length(A)
     N            = 2nX+nU+nA
     iΛ,iX,iU,iA  = (1:nX) , (1:nX) .+ nX , (1:nU) .+ 2nX , (1:nA) .+ (2nX+nU)  
     ΔY           = δ{P,N,𝕣}()                        
-    L            = lagrangian(eleobj,Λ+ΔY[iΛ],(∂0(X)+ΔY[iX],),(∂0(U)+ΔY[iU],),A+ΔY[iA], t,ε,dbg)
+    L            = lagrangian(eleobj,Λ+ΔY[iΛ],(∂0(X)+ΔY[iX],),(∂0(U)+ΔY[iU],),A+ΔY[iA], t,γ,dbg)
     Ly           = ∂{P,N}(L)
     return (L=value{P}(L), Lλ=Ly[iΛ], Lx=Ly[iX], Lu=Ly[iU], La=Ly[iA])
 end

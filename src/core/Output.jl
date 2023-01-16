@@ -32,7 +32,7 @@ function extractkernel!(out,key,eleobj,eleID,dis::EletypDisassembler,state::Stat
         X     = Tuple(x[index.X] for x∈state.X)
         U     = Tuple(u[index.U] for u∈state.U)
         A     = state.A[index.A]
-        _     = lagrangian(view(out,:,iele),key,eleobj[ei.iele],Λ,X,U,A,state.time,state.ε,(dbg...,iele=ei.iele))
+        _     = lagrangian(view(out,:,iele),key,eleobj[ei.iele],Λ,X,U,A,state.time,state.γ,(dbg...,iele=ei.iele))
     end
 end
 function getresult(state::Vector{S},req; eleID::Vector{EleID})where {S<:State}

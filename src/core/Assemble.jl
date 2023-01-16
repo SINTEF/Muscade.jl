@@ -6,7 +6,7 @@ struct State{Nxder,Nuder,D}
     U     :: NTuple{Nuder,𝕣1}
     A     :: 𝕣1
     time  :: 𝕣
-    ε     :: 𝕣
+    γ     :: 𝕣
     model :: Model
     dis   :: D
 end
@@ -300,14 +300,14 @@ end
 ######## Generic assembler
 
 
-function assemble!(out,asm,dis,model,state,ε,dbg)
+function assemble!(out,asm,dis,model,state,γ,dbg)
     zero!(out)
     for ieletyp ∈ eachindex(model.eleobj)
         eleobj  = model.eleobj[ieletyp]
-        assemblesequential!(out,view(asm,:,ieletyp),dis.dis[ieletyp], eleobj,state,ε,(dbg...,ieletyp=ieletyp))
+        assemblesequential!(out,view(asm,:,ieletyp),dis.dis[ieletyp], eleobj,state,γ,(dbg...,ieletyp=ieletyp))
     end
 end
-function assemblesequential!(out,asm,dis,eleobj,state::State{Nxder,Nuder},ε,dbg) where{Nxder,Nuder}
+function assemblesequential!(out,asm,dis,eleobj,state::State{Nxder,Nuder},γ,dbg) where{Nxder,Nuder}
     scale     = dis.scale
     for iele  ∈ 1:lastindex(eleobj)
         index = dis.index[iele]
@@ -315,7 +315,7 @@ function assemblesequential!(out,asm,dis,eleobj,state::State{Nxder,Nuder},ε,dbg
         Xe    = NTuple{Nxder}(x[index.X] for x∈state.X)
         Ue    = NTuple{Nuder}(u[index.U] for u∈state.U)
         Ae    = state.A[index.A]
-        addin!(out,asm,iele,scale,eleobj[iele],Λe,Xe,Ue,Ae, state.time,ε,(dbg...,iele=iele))
+        addin!(out,asm,iele,scale,eleobj[iele],Λe,Xe,Ue,Ae, state.time,γ,(dbg...,iele=iele))
     end
 end
 
@@ -346,20 +346,20 @@ end
 
 ###### scaled functions
 
-function scaledlagrangian(scale,eleobj::E,Λs,Xs::NTuple{Nxder},Us::NTuple{Nuder},As, t,ε,dbg) where{E<:AbstractElement,Nxder,Nuder}
+function scaledlagrangian(scale,eleobj::E,Λs,Xs::NTuple{Nxder},Us::NTuple{Nuder},As, t,γ,dbg) where{E<:AbstractElement,Nxder,Nuder}
     Λ     =       Λs.*scale.Λ                 
     X     = NTuple{Nxder}(xs.*scale.X for xs∈Xs)  # TODO Tuple is slow, not typestable
     U     = NTuple{Nuder}(us.*scale.U for us∈Us)
     A     =       As.*scale.A
-    L     = lagrangian(eleobj,Λ,X,U,A, t,ε,dbg)
+    L     = lagrangian(eleobj,Λ,X,U,A, t,γ,dbg)
     hasnan(L) && muscadeerror((dbg...,eletype=E),"NaN in a Lagrangian or its partial derivatives")
     return L
 end    
-function scaledresidual(scale,eleobj::E, Xs::NTuple{Nxder},Us::NTuple{Nuder},As, t,ε,dbg) where{E<:AbstractElement,Nxder,Nuder} 
+function scaledresidual(scale,eleobj::E, Xs::NTuple{Nxder},Us::NTuple{Nuder},As, t,γ,dbg) where{E<:AbstractElement,Nxder,Nuder} 
     X     = NTuple{Nxder}(xs.*scale.X for xs∈Xs)  # TODO Tuple is slow, not typestable
     U     = NTuple{Nuder}(us.*scale.U for us∈Us)
     A     =       As.*scale.A
-    R     = scale.Λ .* residual(eleobj, X,U,A, t,ε,dbg) 
+    R     = scale.Λ .* residual(eleobj, X,U,A, t,γ,dbg) 
     hasnan(R) && muscadeerror(dbg,"NaN in a residual or its partial derivatives")
     return R
 end

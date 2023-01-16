@@ -11,7 +11,7 @@ function draw(axe,key,out,dis::EletypDisassembler,eleobj,iele,state,dbg;kwargs..
         Ue    = Tuple(u[index.U] for u∈state.U)
         Ae    = state.A[index.A]
         eo    = eleobj[ie]
-        draw(axe,key,out, eo, Λe,Xe,Ue,Ae, state.time,state.ε,(dbg...,iele=ie);kwargs...)
+        draw(axe,key,out, eo, Λe,Xe,Ue,Ae, state.time,state.γ,(dbg...,iele=ie);kwargs...)
     end
     return
 end
