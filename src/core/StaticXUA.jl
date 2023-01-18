@@ -80,7 +80,7 @@ end
 
 function staticXUA(pstate,dbg;model::Model,
     initial::Vector{State},
-    maxAiter::ℤ=50,maxYiter::ℤ=0,maxΔy::ℝ=1e-5,maxLy::ℝ=∞,maxΔa::ℝ=1e-5,maxLa::ℝ=∞,verbose::𝕓=true)
+    maxAiter::ℤ=50,maxYiter::ℤ=0,maxΔy::ℝ=1e-5,maxLy::ℝ=∞,maxΔa::ℝ=1e-5,maxLa::ℝ=∞,γ0::𝕣=1.,γfac::𝕣=.5,verbose::𝕓=true)
 
     verbose && @printf "    staticXUA solver\n\n"
     dis                = Disassembler(model)
@@ -94,13 +94,14 @@ function staticXUA(pstate,dbg;model::Model,
     Δy                 = Vector{𝕣1}(undef,length(state))
     y∂a                = Vector{𝕣2}(undef,length(state))
     Δy²,Ly²            = Vector{𝕣 }(undef,length(state)),Vector{𝕣}(undef,length(state))
+    γ                  = γ0
     for iAiter          = 1:maxAiter
         verbose && @printf "    A-iteration %3d\n" iAiter
         La            .= 0
         Laa           .= 0
         for step     ∈ eachindex(state)
             for iYiter = 1:maxYiter
-                assemble!(out1,asm1,dis,model,state[step], 0.,(dbg...,solver=:StaticXUA,step=step))
+                assemble!(out1,asm1,dis,model,state[step], γ,(dbg...,solver=:StaticXUA,step=step))
                 try if iAiter==1 && step==1 && iYiter==1
                     global  facLyys     = lu(out1.Lyy) 
                 else
@@ -115,7 +116,7 @@ function staticXUA(pstate,dbg;model::Model,
                 end
                 iYiter==maxYiter && muscadeerror(@sprintf("no Y-convergence after %3d Y-iterations. |ΔY|=%7.1e |Ly|=%7.1e\n",iYiter,√(Δy²s),√(Ly²s)))
             end
-            assemble!(out2,asm2,dis,model,state[step], 0.,(dbg...,solver=:StaticXUA,step=step))
+            assemble!(out2,asm2,dis,model,state[step], γ,(dbg...,solver=:StaticXUA,step=step))
             try if iAiter==1 && step==1
                 global  facLyy = lu(out2.Lyy) 
             else
@@ -134,6 +135,7 @@ function staticXUA(pstate,dbg;model::Model,
             decrement!(state[step],0,ΔY,Ydofgr)
             decrement!(state[step],0,Δa,Adofgr)
         end    
+        γ             *= γfac
         if all(Δy².≤cΔy²) && all(Ly².≤cLy²) && Δa².≤cΔa² && La².≤cLa² 
             verbose && @printf "\n    StaticXUA converged in %3d A-iterations.\n" iAiter
             verbose && @printf "    maxₜ(|ΔY|)=%7.1e  maxₜ(|∂L/∂Y|)=%7.1e  |ΔA|=%7.1e  |∂L/∂A|=%7.1e\n" √(maximum(Δy²)) √(maximum(Ly²)) √(Δa²) √(La²)

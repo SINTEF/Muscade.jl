@@ -44,8 +44,7 @@ espyable(::Type{<:DofLoad}) = (F=scalar,)
 S(  λ,g,γ) = (g+λ    -hypot(g-λ,2γ))/2 # Modified interior point method's take on KKT's-complementary slackness 
 S∂g(λ,g,γ) = (1-(g-λ)/hypot(g-λ,2γ))/2
 
-#KKT(λ        ,g         ,γ::𝕣,λₛ,gₛ)                 = λ*g # A pseudo-potential with strange derivatives
-KKT(λ::𝕣        ,g::𝕣         ,γ::𝕣,λₛ,gₛ)                 = λ*g # A pseudo-potential with strange derivatives
+KKT(λ::𝕣        ,g::𝕣         ,γ::𝕣,λₛ,gₛ)                 = 0 # A pseudo-potential with strange derivatives
 KKT(λ::∂ℝ{P,N,R},g::∂ℝ{P,N,R},γ::𝕣,λₛ,gₛ) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(0, S∂g(λ.x/λₛ,g.x/gₛ,γ)*λ.x*g.dx + gₛ*S(λ.x/λₛ,g.x/gₛ,γ)*λ.dx)
 KKT(λ:: ℝ       ,g::∂ℝ{P,N,R},γ::𝕣,λₛ,gₛ) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(0, S∂g(λ.x/λₛ,g.x/gₛ,γ)*λ.x*g.dx                           )
 KKT(λ::∂ℝ{P,N,R},g:: ℝ       ,γ::𝕣,λₛ,gₛ) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(0,                                gₛ*S(λ.x/λₛ,g.x/gₛ,γ)*λ.dx)
@@ -112,8 +111,6 @@ end
 #-------------------------------------------------
 
 struct Hold <: AbstractElement end  
-# id1(v,t) = v[1]
-# eq(t)    = :equal
 Hold(nod::Vector{Node};field::Symbol,λfield::Symbol=Symbol(:λ,field)) = 
     Constraint{Xclass,1, 0, 0, (1,),(field,),(),   (),    (),   (),    1,    λfield}((v,t)->v[1] , t->:equal,1.,1.)
 #   Constraint{λclass,Nx,Nu,Na,xinod,xfield, uinod,ufield,ainod,afield,λinod,λfield}

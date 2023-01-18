@@ -1,4 +1,3 @@
-
 using  Muscade
 using  StaticArrays,LinearAlgebra #,GLMakie
 
@@ -23,12 +22,12 @@ struct Turbine{Tsea,Tsky} <: AbstractElement
     sky     :: Tsky  # function
 end
 Turbine(nod::Vector{Node};seadrag,sea,skydrag,sky) = Turbine(SVector(coord(nod)[1][1],coord(nod)[1][2]),coord(nod)[1][3],seadrag,sea,skydrag,sky)  
-@espy function Muscade.residual(o::Turbine, X,U,A, t,ε,dbg)
+@espy function Muscade.residual(o::Turbine, X,U,A, t,γ,dbg)
     :x = ∂0(X)+o.xₘ  
     R  = -o.sea(t,x)*o.seadrag*(1+A[1]) - o.sky(t,x)*o.skydrag*(1+A[2])
     return R 
 end
-function Muscade.draw(axe,key,out, o::Turbine, δX,X,U,A, t,ε,dbg)
+function Muscade.draw(axe,key,out, o::Turbine, δX,X,U,A, t,γ,dbg)
     x    = ∂0(X)+o.xₘ  
     lines!(axe,SMatrix{2,3}(x[1],x[1],x[2],x[2],o.z-10,o.z+10)' ,color=:orange, linewidth=5)
 end
@@ -52,7 +51,7 @@ p = SVector(   2.82040487827,  -24.86027164695,   153.69500343165, -729.52107422
               -5856.85610233072, 9769.49700812681,-11141.12651712473, 8260.66447746395,-3582.36704093187,
                 687.83550335374)
 
-@espy function Muscade.lagrangian(o::AnchorLine, δX,X,U,A, t,ε,dbg)
+@espy function Muscade.lagrangian(o::AnchorLine, δX,X,U,A, t,γ,dbg)
     xₘtop,Δxₘtop,xₘbot,L,buoyancy = o.xₘtop,o.Δxₘtop,o.xₘbot,o.L*(1+A[1]),o.buoyancy*(1+A[2])      # a for anchor, t for TDP, f for fairlead
     x        = ∂0(X)  
     :Xtop    = SVector(x[1],x[2],0.) + xₘtop
@@ -70,8 +69,8 @@ p = SVector(   2.82040487827,  -24.86027164695,   153.69500343165, -729.52107422
     δW      += δX[3  ] *  m3 
     return δW
 end
-function Muscade.draw(axe,key,out, o::AnchorLine, δX,X,U,A, t,ε,dbg)
-    Muscade.lagrangian(out,key,o, δX,X,U,A, t,ε,(dbg...,espy2draw=true))
+function Muscade.draw(axe,key,out, o::AnchorLine, δX,X,U,A, t,γ,dbg)
+    Muscade.lagrangian(out,key,o, δX,X,U,A, t,γ,(dbg...,espy2draw=true))
     Laf,Xbot,Xtop,ΔXtop,ΔXchain,cr,xaf,Ltf = o.L, o.xₘbot, out[key.Xtop],out[key.ΔXtop],out[key.ΔXchain], out[key.cr], out[key.xaf], out[key.ltf]
     n     = ΔXchain./xaf  # horizontal normal vector from anchor to fairlead
     xat   = Laf-Ltf
@@ -111,7 +110,7 @@ struct Spring{D} <: AbstractElement
     L      :: 𝕣
 end
 Spring{D}(nod::Vector{Node};EI) where{D}= Spring{D}(coord(nod)[1],coord(nod)[2],EI,norm(coord(nod)[1]-coord(nod)[2]))
-@espy function Muscade.residual(o::Spring{D}, X,U,A, t,ε,dbg) where{D}
+@espy function Muscade.residual(o::Spring{D}, X,U,A, t,γ,dbg) where{D}
     x₁       = ∂0(X)[SVector{D}(i   for i∈1:D)]+o.x₁
     x₂       = ∂0(X)[SVector{D}(i+D for i∈1:D)]+o.x₂
     :L₀      = o.L *exp10(A[1]) 

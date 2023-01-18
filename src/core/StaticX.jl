@@ -32,7 +32,7 @@ end
 function staticX(pstate,dbg;model::Model,time::AbstractVector{𝕣},
                     initial::State=State(model,Disassembler(model)),
                     maxiter::ℤ=50,maxΔx::ℝ=1e-5,maxresidual::ℝ=∞,
-                    verbose::𝕓=true,saveiter::𝔹=false)
+                    verbose::𝕓=true,saveiter::𝔹=false,γ0::𝕣=1.,γfac::𝕣=.5)
     # important: this code assumes that there is no χ in state.
     verb             = verbose
     verb && @printf "    staticX solver\n\n"
@@ -45,6 +45,7 @@ function staticX(pstate,dbg;model::Model,time::AbstractVector{𝕣},
     for (step,t)     ∈ enumerate(time)
         verb && @printf "    step %3d" step
         s            = settime(s,t)
+        γ            = γ0
         for iiter    = 1:maxiter
             citer   += 1
             asmt+=@elapsed assemble!(out,asm,dis,model,s, 0.,(dbg...,solver=:StaticX,step=step,iiter=iiter))
@@ -56,6 +57,7 @@ function staticX(pstate,dbg;model::Model,time::AbstractVector{𝕣},
             solt+=@elapsed Δx  = facLλx\out.Lλ
             Δx²,Lλ²  = sum(Δx.^2),sum(out.Lλ.^2)
             decrement!(s,0,Δx,dofgr)
+            γ       *= γfac
             saveiter && (state[iiter]=State(s.Λ,deepcopy(s.X),s.U,s.A,s.time,0.,model,dis))
             if Δx²≤cΔx² && Lλ²≤cLλ² 
                 verb && @printf " converged in %3d iterations. |Δx|=%7.1e |Lλ|=%7.1e\n" iiter √(Δx²) √(Lλ²)
