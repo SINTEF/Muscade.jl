@@ -41,22 +41,23 @@ espyable(::Type{<:DofLoad}) = (F=scalar,)
 
 #-------------------------------------------------
 
-slack(g,λ,γ) = (g+λ)/2-hypot(γ,(g-λ)/2) # Modified interior point method's take on KKT's-complementary slackness 
+S(  λ,g,γ) = (g+λ    -hypot(g-λ,2γ))/2 # Modified interior point method's take on KKT's-complementary slackness 
+S∂g(λ,g,γ) = (1-(g-λ)/hypot(g-λ,2γ))/2
 
-KKT(      g,λ,γ) = g*λ # A pseudo-potential with strange derivatives
-KKT(g::∂ℝ{P,N,R},λ::∂ℝ{P,N,R},γ::𝕣) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(KKT(g.x,λ.x,γ) , λ.x*g.dx + slack(g.x,λ.x,γ)*λ.dx)
-KKT(g::∂ℝ{P,N,R},λ:: ℝ       ,γ::𝕣) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(KKT(g.x,λ  ,γ) , λ  *g.dx                            )
-KKT(g:: ℝ       ,λ::∂ℝ{P,N,R},γ::𝕣) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(KKT(g  ,λ.x,γ) ,            slack(g  ,λ.x,γ)*λ.dx)
-function KKT(a::∂ℝ{Pa,Na,Ra},b::∂ℝ{Pb,Nb,Rb},γ::𝕣) where{Pa,Pb,Na,Nb,Ra<:ℝ,Rb<:ℝ}
-    if Pa==Pb
-        R = promote_type(Ra,Rb)
-        return ∂ℝ{Pa,Na}(convert(R,KKT(g.x,λ.x,γ)),convert.(R,λ.x*g.dx + slack(g.x,λ.x,γ)*λ.dx))
-    elseif Pa> Pb
-        R = promote_type(Ra,typeof(b))
-        return ∂ℝ{Pa,Na}(convert(R,KKT(g.x,λ  ,γ)),convert.(R,λ  *g.dx                            ))
+KKT(λ,g,γ,λₛ,gₛ) = 0 # A pseudo-potential with strange derivatives
+KKT(λ::∂ℝ{P,N,R},g::∂ℝ{P,N,R},γ::𝕣,λₛ,gₛ) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(0, S∂(λ.x/λₛ,g.x/gₛ,γ)*λ.x*g.dx + gₛ*S(λ.x/λₛ,g.x/gₛ,γ)*λ.dx)
+KKT(λ:: ℝ       ,g::∂ℝ{P,N,R},γ::𝕣,λₛ,gₛ) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(0, S∂(λ.x/λₛ,g.x/gₛ,γ)*λ.x*g.dx                           )
+KKT(λ::∂ℝ{P,N,R},g:: ℝ       ,γ::𝕣,λₛ,gₛ) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(0,                               gₛ*S(λ.x/λₛ,g.x/gₛ,γ)*λ.dx)
+function KKT(λ::∂ℝ{Pλ,Nλ,Rλ},g::∂ℝ{Pg,Ng,Rg},γ::𝕣,λₛ,gₛ) where{Pλ,Pg,Nλ,Ng,Rλ<:ℝ,Rg<:ℝ}
+    if Pλ==Pg
+        R = promote_type(Rλ,Rg)
+        return ∂ℝ{Pλ,Nλ}(convert(R,KKT(λ.x,g.x,γ,λₛ,gₛ)),convert.(R,     S∂(λ.x/λₛ,g.x/gₛ,γ)*λ.x*g.dx + gₛ*S(λ.x/λₛ,g.x/gₛ,γ)*λ.dx))
+    elseif Pλ> Pg
+        R = promote_type(Rλ,typeof(b))
+        return ∂ℝ{Pλ,Nλ}(convert(R,KKT(λ  ,g.x,γ,λₛ,gₛ)),convert.(R,     S∂(λ.x/λₛ,g.x/gₛ,γ)*λ.x*g.dx                            ))
     else
-        R = promote_type(typeof(a),Rb)
-        return ∂ℝ{Pb,Nb}(convert(R,KKT(g  ,λ.x,γ)),convert.(R,            slack(g  ,λ.x,γ)*λ.dx))
+        R = promote_type(typeof(a),Rg)
+        return ∂ℝ{Pg,Ng}(convert(R,KKT(λ.x,g  ,γ,λₛ,gₛ)),convert.(R,                                   gₛ*S(λ.x/λₛ,g.x/gₛ,γ)*λ.dx))
     end
 end
 
@@ -65,64 +66,46 @@ end
 struct Constraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,Tg,Tkind} <: AbstractElement
     g        :: Tg    # g(x,t) for Xconstraints, or g(x,u,a,t) otherwise
     kind     :: Tkind # kind(t)->symbol, or Symbol for Aconstraints
+    gₛ        :: 𝕣
+    λₛ        :: 𝕣  
 end
-Constraint{    λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield                       }(g,kind) where{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield} =
-    Constraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,typeof(g),typeof(kind)}(g,kind)
+Constraint{    λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield                       }(g,kind,gₛ,λₛ) where
+              {λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield} =
+    Constraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,typeof(g),typeof(kind)}(g,kind,gₛ,λₛ)
 Constraint(nod::Vector{Node};xinod::NTuple{Nx,𝕫},xfield::NTuple{Nx,Symbol},
                                          uinod::NTuple{Nu,𝕫},ufield::NTuple{Nu,Symbol},
                                          ainod::NTuple{Na,𝕫},afield::NTuple{Na,Symbol},
                                          λinod::𝕫, λclass::Symbol, λfield,
+                                         gₛ::𝕣=1.,λₛ::𝕣=1.,
                                          g::Function ,kind::Function) where{Nx,Nu,Na} =
-                 Constraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield}(g,kind)
-doflist(::Type{<:Constraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield}}) where{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield} = 
+                 Constraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield}(g,kind,gₛ,λₛ)
+doflist(::Type{<:Constraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield}}) where
+                           {λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield} = 
    (inod =(xinod...           ,uinod...           ,ainod...           ,λinod         ), 
     class=(ntuple(i->:X,Nx)...,ntuple(i->:U,Nu)...,ntuple(i->:A,Na)...,Symbol(λclass)), 
     field=(xfield...          ,ufield...          ,afield...          ,λfield        )) 
 
-off,equal,inequal = :off,:equal,:inequal # because @espy has its own ways with symbols...
+off,equal,inequal = :off,:equal,:inequal # because @espy has its own ways with symbols... TODO improve @espy
 @espy function residual(o::Constraint{Xclass,Nx,0,0}, X,U,A, t,γ,dbg) where{Nx}
     P          = constants(∂0(X))
-    x,λ        = ∂0(X)[SVector{Nx}(1:Nx)], -∂0(X)[Nx+1]
+    x,λ        = ∂0(X)[SVector{Nx}(1:Nx)], ∂0(X)[Nx+1]
     x∂         = variate{P,Nx}(x) 
-    g,∇ₓg      = value_∂{P,Nx}(o.g(x∂,t)) 
-    z = if o.kind(t)==off;     λ # what to set to zero
-    elseif o.kind(t)==equal;   g
-    elseif o.kind(t)==inequal; slack(g,λ,γ) 
+    g,g∂x      = value_∂{P,Nx}(o.g(x∂,t)) 
+    return if o.kind(t)==off;     SVector{Nx+1}((                      0.)...,-gₛ/λₛ*λ           ) 
+    elseif    o.kind(t)==equal;   SVector{Nx+1}((                  -g∂x*λ)...,-     g           )
+    elseif    o.kind(t)==inequal; SVector{Nx+1}((-S∂g(λ/o.λₛ,g/gₛ,γ)*g∂x*λ)...,-gₛ*S(λ/o.λₛ,g/gₛ,γ)) 
     else MuscadeException("kind(t) must have value :off, :equal or :inequal",dbg)
     end
-    return  SVector{Nx+1}((∇ₓg*λ)...,z)
 end
-@espy function lagrangian(o::Constraint{Xclass,Nx,0,0}, δX,X,U,A, t,γ,dbg) where{Nx}  
-    P          = constants(δX,∂0(X))
-    X∂         = directional{P}(∂0(X),δX) 
-    x,λ        = X∂[SVector{Nx}(1:Nx)], -X∂[Nx+1] 
-    g          = o.g(x,t)
-    m = if o.kind(t)==off;     λ^2 # what to minimize
-    elseif o.kind(t)==equal;   g*λ
-    elseif o.kind(t)==inequal; KKT(g,λ,γ) 
+@espy function lagrangian(o::Constraint{class,Nx,Nu,Na}, δX,X,U,A, t,γ,dbg) where{class<:Union{Uclass,Aclass},Nx,Nu,Na}
+    if class==Uclass; x,u,a,λ = ∂0(X),∂0(U)[SVector{Nu}(1:Nu)],A                   ,∂0(U)[Nu+1] end
+    if class==Aclass; x,u,a,λ = ∂0(X),∂0(U)                   ,A[SVector{Na}(1:Na)],A[    Na+1] end
+    g = o.g(x,u,a,t)
+    return if o.kind(t)==off;     -o.gₛ/(2o.λₛ)*λ^2 
+    elseif    o.kind(t)==equal;   -g*λ
+    elseif    o.kind(t)==inequal; -KKT(λ,g,γ,o.λₛ,o.gₛ) 
     else MuscadeException("kind(t) must have value :off, :equal or :inequal",dbg)
     end
-    return ∂{P}(m)    # = δ(gλ) = δg*λ+δλ*g = δx∘∇ₓg*λ+δλ*g   
-end
-@espy function lagrangian(o::Constraint{Uclass,Nx,Nu,Na}, δX,X,U,A, t,γ,dbg) where{Nx,Nu,Na}
-    x,u,a,λ    = ∂0(X),∂0(U)[SVector{Nu}(1:Nu)],A,-∂0(U)[Nu+1] 
-    g          = o.g(x,u,a,t)
-    m = if o.kind(t)==off;     λ^2 # what to minimize
-    elseif o.kind(t)==equal;   g*λ
-    elseif o.kind(t)==inequal; KKT(g,λ,γ) 
-    else MuscadeException("kind(t) must have value :off, :equal or :inequal",dbg)
-    end
-    return m 
-end
-@espy function lagrangian(o::Constraint{Aclass,Nx,Nu,Na}, δX,X,U,A, t,γ,dbg) where{Nx,Nu,Na}
-    x,u,a,λ    = ∂0(X),∂0(U),A[SVector{Nu}(1:Nu)],-A[Nu+1] 
-    g          = o.g(x,u,a,t)
-    m = if o.kind==off;     λ^2 # what to minimize
-    elseif o.kind==equal;   g*λ
-    elseif o.kind==inequal; KKT(g,λ,γ) 
-    else MuscadeException("kind must have value :off, :equal or :inequal",dbg)
-    end
-    return m 
 end
 
 #-------------------------------------------------
@@ -131,7 +114,7 @@ struct Hold <: AbstractElement end
 # id1(v,t) = v[1]
 # eq(t)    = :equal
 Hold(nod::Vector{Node};field::Symbol,λfield::Symbol=Symbol(:λ,field)) = 
-    Constraint{Xclass,1, 0, 0, (1,),(field,),(),   (),    (),   (),    1,    λfield}((v,t)->v[1] , t->:equal)
+    Constraint{Xclass,1, 0, 0, (1,),(field,),(),   (),    (),   (),    1,    λfield}((v,t)->v[1] , t->:equal,1.,1.)
 #   Constraint{λclass,Nx,Nu,Na,xinod,xfield, uinod,ufield,ainod,afield,λinod,λfield}
 
 #-------------------------------------------------
