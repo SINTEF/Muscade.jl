@@ -2,7 +2,6 @@ module TestElementAPI
 
 using Test,StaticArrays
 using Muscade
-using Muscade.ElTest
 
 include("SomeElements.jl")
 

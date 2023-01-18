@@ -44,20 +44,21 @@ espyable(::Type{<:DofLoad}) = (F=scalar,)
 S(  λ,g,γ) = (g+λ    -hypot(g-λ,2γ))/2 # Modified interior point method's take on KKT's-complementary slackness 
 S∂g(λ,g,γ) = (1-(g-λ)/hypot(g-λ,2γ))/2
 
-KKT(λ,g,γ,λₛ,gₛ) = 0 # A pseudo-potential with strange derivatives
-KKT(λ::∂ℝ{P,N,R},g::∂ℝ{P,N,R},γ::𝕣,λₛ,gₛ) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(0, S∂(λ.x/λₛ,g.x/gₛ,γ)*λ.x*g.dx + gₛ*S(λ.x/λₛ,g.x/gₛ,γ)*λ.dx)
-KKT(λ:: ℝ       ,g::∂ℝ{P,N,R},γ::𝕣,λₛ,gₛ) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(0, S∂(λ.x/λₛ,g.x/gₛ,γ)*λ.x*g.dx                           )
-KKT(λ::∂ℝ{P,N,R},g:: ℝ       ,γ::𝕣,λₛ,gₛ) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(0,                               gₛ*S(λ.x/λₛ,g.x/gₛ,γ)*λ.dx)
+#KKT(λ        ,g         ,γ::𝕣,λₛ,gₛ)                 = λ*g # A pseudo-potential with strange derivatives
+KKT(λ::𝕣        ,g::𝕣         ,γ::𝕣,λₛ,gₛ)                 = λ*g # A pseudo-potential with strange derivatives
+KKT(λ::∂ℝ{P,N,R},g::∂ℝ{P,N,R},γ::𝕣,λₛ,gₛ) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(0, S∂g(λ.x/λₛ,g.x/gₛ,γ)*λ.x*g.dx + gₛ*S(λ.x/λₛ,g.x/gₛ,γ)*λ.dx)
+KKT(λ:: ℝ       ,g::∂ℝ{P,N,R},γ::𝕣,λₛ,gₛ) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(0, S∂g(λ.x/λₛ,g.x/gₛ,γ)*λ.x*g.dx                           )
+KKT(λ::∂ℝ{P,N,R},g:: ℝ       ,γ::𝕣,λₛ,gₛ) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(0,                                gₛ*S(λ.x/λₛ,g.x/gₛ,γ)*λ.dx)
 function KKT(λ::∂ℝ{Pλ,Nλ,Rλ},g::∂ℝ{Pg,Ng,Rg},γ::𝕣,λₛ,gₛ) where{Pλ,Pg,Nλ,Ng,Rλ<:ℝ,Rg<:ℝ}
     if Pλ==Pg
         R = promote_type(Rλ,Rg)
-        return ∂ℝ{Pλ,Nλ}(convert(R,KKT(λ.x,g.x,γ,λₛ,gₛ)),convert.(R,     S∂(λ.x/λₛ,g.x/gₛ,γ)*λ.x*g.dx + gₛ*S(λ.x/λₛ,g.x/gₛ,γ)*λ.dx))
+        return ∂ℝ{Pλ,Nλ}(convert(R,KKT(λ.x,g.x,γ,λₛ,gₛ)),convert.(R,     S∂g(λ.x/λₛ,g.x/gₛ,γ)*λ.x*g.dx + gₛ*S(λ.x/λₛ,g.x/gₛ,γ)*λ.dx))
     elseif Pλ> Pg
         R = promote_type(Rλ,typeof(b))
-        return ∂ℝ{Pλ,Nλ}(convert(R,KKT(λ  ,g.x,γ,λₛ,gₛ)),convert.(R,     S∂(λ.x/λₛ,g.x/gₛ,γ)*λ.x*g.dx                            ))
+        return ∂ℝ{Pλ,Nλ}(convert(R,KKT(λ  ,g.x,γ,λₛ,gₛ)),convert.(R,     S∂g(λ.x/λₛ,g.x/gₛ,γ)*λ.x*g.dx                            ))
     else
         R = promote_type(typeof(a),Rg)
-        return ∂ℝ{Pg,Ng}(convert(R,KKT(λ.x,g  ,γ,λₛ,gₛ)),convert.(R,                                   gₛ*S(λ.x/λₛ,g.x/gₛ,γ)*λ.dx))
+        return ∂ℝ{Pg,Ng}(convert(R,KKT(λ.x,g  ,γ,λₛ,gₛ)),convert.(R,                                    gₛ*S(λ.x/λₛ,g.x/gₛ,γ)*λ.dx))
     end
 end
 
@@ -87,13 +88,13 @@ doflist(::Type{<:Constraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afi
 
 off,equal,inequal = :off,:equal,:inequal # because @espy has its own ways with symbols... TODO improve @espy
 @espy function residual(o::Constraint{Xclass,Nx,0,0}, X,U,A, t,γ,dbg) where{Nx}
-    P          = constants(∂0(X))
+    P,gₛ,λₛ     = constants(∂0(X)),o.gₛ,o.λₛ
     x,λ        = ∂0(X)[SVector{Nx}(1:Nx)], ∂0(X)[Nx+1]
     x∂         = variate{P,Nx}(x) 
     g,g∂x      = value_∂{P,Nx}(o.g(x∂,t)) 
-    return if o.kind(t)==off;     SVector{Nx+1}((                      0.)...,-gₛ/λₛ*λ           ) 
-    elseif    o.kind(t)==equal;   SVector{Nx+1}((                  -g∂x*λ)...,-     g           )
-    elseif    o.kind(t)==inequal; SVector{Nx+1}((-S∂g(λ/o.λₛ,g/gₛ,γ)*g∂x*λ)...,-gₛ*S(λ/o.λₛ,g/gₛ,γ)) 
+    return if o.kind(t)==off;     SVector{Nx+1}(         ntuple(i->0,Nx)...,-gₛ/λₛ*λ         ) 
+    elseif    o.kind(t)==equal;   SVector{Nx+1}((                -g∂x*λ)...,-     g         )
+    elseif    o.kind(t)==inequal; SVector{Nx+1}((-S∂g(λ/λₛ,g/gₛ,γ)*g∂x*λ)...,-gₛ*S(λ/λₛ,g/gₛ,γ)) 
     else MuscadeException("kind(t) must have value :off, :equal or :inequal",dbg)
     end
 end
