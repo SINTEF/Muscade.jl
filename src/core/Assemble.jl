@@ -348,7 +348,7 @@ end
 
 function scaledlagrangian(scale,eleobj::E,Λs,Xs::NTuple{Nxder},Us::NTuple{Nuder},As, t,γ,dbg) where{E<:AbstractElement,Nxder,Nuder}
     Λ     =       Λs.*scale.Λ                 
-    X     = NTuple{Nxder}(xs.*scale.X for xs∈Xs)  # TODO Tuple is slow, not typestable
+    X     = NTuple{Nxder}(xs.*scale.X for xs∈Xs)  
     U     = NTuple{Nuder}(us.*scale.U for us∈Us)
     A     =       As.*scale.A
     L     = lagrangian(eleobj,Λ,X,U,A, t,γ,dbg)
@@ -356,11 +356,10 @@ function scaledlagrangian(scale,eleobj::E,Λs,Xs::NTuple{Nxder},Us::NTuple{Nuder
     return L
 end    
 function scaledresidual(scale,eleobj::E, Xs::NTuple{Nxder},Us::NTuple{Nuder},As, t,γ,dbg) where{E<:AbstractElement,Nxder,Nuder} 
-    X     = NTuple{Nxder}(xs.*scale.X for xs∈Xs)  # TODO Tuple is slow, not typestable
+    X     = NTuple{Nxder}(xs.*scale.X for xs∈Xs)  
     U     = NTuple{Nuder}(us.*scale.U for us∈Us)
     A     =       As.*scale.A
     R     = scale.Λ .* residual(eleobj, X,U,A, t,γ,dbg) 
     hasnan(R) && muscadeerror(dbg,"NaN in a residual or its partial derivatives")
     return R
 end
-

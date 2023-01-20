@@ -39,7 +39,7 @@ module Muscade
     include("core/BasicElements.jl")
     export DofCost,DofLoad
     export Xclass,Uclass,Aclass
-    export Constraint,Hold
+    export Constraint,Hold,off,equal,inequal
 
     include("core/Assemble.jl")
  
@@ -53,7 +53,7 @@ module Muscade
     export staticXUA
 
     include("core/Output.jl")
-    export getdof,getresult
+    export getdof,getresult,findlastassigned
 
     include("core/SelfDraw.jl")
     export draw

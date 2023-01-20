@@ -48,20 +48,20 @@ function staticX(pstate,dbg;model::Model,time::AbstractVector{𝕣},
         γ            = γ0
         for iiter    = 1:maxiter
             citer   += 1
-            asmt+=@elapsed assemble!(out,asm,dis,model,s, 0.,(dbg...,solver=:StaticX,step=step,iiter=iiter))
+            asmt+=@elapsed assemble!(out,asm,dis,model,s, γ,(dbg...,solver=:StaticX,step=step,iiter=iiter))
             solt+=@elapsed try if step==1 && iiter==1
                 global facLλx = lu(out.Lλx) 
             else
                 lu!(facLλx,out.Lλx) 
-            end catch; muscadeerror(@sprintf("Incremental solution failed at step=%i, iiter",step,iiter)) end
+            end catch; muscadeerror(@sprintf("Incremental solution failed at step=%i, iiter=%i",step,iiter)) end
             solt+=@elapsed Δx  = facLλx\out.Lλ
             Δx²,Lλ²  = sum(Δx.^2),sum(out.Lλ.^2)
             decrement!(s,0,Δx,dofgr)
             γ       *= γfac
-            saveiter && (state[iiter]=State(s.Λ,deepcopy(s.X),s.U,s.A,s.time,0.,model,dis))
+            saveiter && (state[iiter]=State(s.Λ,deepcopy(s.X),s.U,s.A,s.time,γ,model,dis))
             if Δx²≤cΔx² && Lλ²≤cLλ² 
                 verb && @printf " converged in %3d iterations. |Δx|=%7.1e |Lλ|=%7.1e\n" iiter √(Δx²) √(Lλ²)
-                ~saveiter && (state[step]=State(s.Λ,deepcopy(s.X),s.U,s.A,s.time,0.,model,dis))
+                ~saveiter && (state[step]=State(s.Λ,deepcopy(s.X),s.U,s.A,s.time,γ,model,dis))
                 break#out of the iiter loop
             end
             iiter==maxiter && muscadeerror(@sprintf(" no convergence after %3d iterations |Δx|:%g / %g, |Lλ|:%g / %g",iiter,√(Δx²),maxΔx,√(Lλ²)^2,maxresidual))

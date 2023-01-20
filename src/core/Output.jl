@@ -127,3 +127,5 @@ function describe(state::State;class::Symbol=:all)
         printstyled("Not a valid class\n",color=:red,bold=true)
     end
 end
+
+findlastassigned(v::Vector) = findlast([isassigned(v,i) for i=1:length(v)])
