@@ -86,7 +86,7 @@ function Constraint(nod::Vector{Node};xinod::NTuple{Nx,𝕫}=(),xfield::NTuple{N
                                          gₛ::𝕣=1.,λₛ::𝕣=1.,
                                          g::Function ,mode::Function) where{Nx,Nu,Na} 
     (λclass==:X && (Nu>0||Na>0)) && muscadeerror("Constraints with λclass=:X must have Nu==0 and Naa=0")                                     
-    return Constraint{class2type(λclass),Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield}(g,mode,gₛ,λₛ)
+    return Constraint{class2type(λclass),Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,typeof(g),typeof(mode)}(g,mode,gₛ,λₛ)
 end
 doflist(::Type{<:Constraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield}}) where
                            {λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield} = 
@@ -123,5 +123,33 @@ struct Hold <: AbstractElement end
 Hold(nod::Vector{Node};field::Symbol,λfield::Symbol=Symbol(:λ,field)) = 
     Constraint{Xclass,1, 0, 0, (1,),(field,),(),   (),    (),   (),    1,    λfield}((v,t)->v[1] , t->:equal,1.,1.)
 #   Constraint{λclass,Nx,Nu,Na,xinod,xfield, uinod,ufield,ainod,afield,λinod,λfield}
+
+# #-------------------------------------------------
+# struct QuickElement{Nx,xinod,xfield,Tg} <: AbstractElement
+#     g        :: Tg    
+# end
+# #QuickElement{Nx,xinod,xfield}(g) where{Nx,xinod,xfield} = QuickElement{Nx,xinod,xfield,typeof(g)}(g)
+# function QuickElement(nod::Vector{Node};xinod::NTuple{Nx,𝕫}=(),xfield::NTuple{Nx,Symbol}=(),g::Function) where{Nx} 
+#     (λclass==:X && (Nu>0||Na>0)) && muscadeerror("Constraints with λclass=:X must have Nu==0 and Naa=0")                                     
+#     return QuickElement{Nx,xinod,xfield,typeof(g)}(g)
+# end
+# doflist(::Type{<:QuickElement{Nx,xinod,xfield}}) where{Nx,xinod,xfield} = 
+#    (inod =(xinod...           ,uinod...           ,ainod...           ,λinod         ), 
+#     class=(ntuple(i->:X,Nx)...,ntuple(i->:U,Nu)...,ntuple(i->:A,Na)...,Symbol(λclass)), 
+#     field=(xfield...          ,ufield...          ,afield...          ,λfield        )) 
+
+# off_,equal_,inequal_ = :off,:equal,:inequal # because @espy has its own ways with symbols... TODO improve @espy
+# @espy function residual(o::QuickElement{Xclass,Nx}, X,U,A, t,γ,dbg) where{Nx}
+#     P,gₛ,λₛ     = constants(∂0(X)),o.gₛ,o.λₛ
+#     x,λ        = ∂0(X)[SVector{Nx}(1:Nx)], ∂0(X)[Nx+1]
+#     x∂         = variate{P,Nx}(x) 
+#     g,g∂x      = value_∂{P,Nx}(o.g(x∂,t)) 
+#     return if o.mode(t)==off_;     SVector{Nx+1}(         ntuple(i->0,Nx)...,-gₛ/λₛ*λ         ) 
+#     elseif    o.mode(t)==equal_;   SVector{Nx+1}((                -g∂x*λ)...,-     g         )
+#     elseif    o.mode(t)==inequal_; SVector{Nx+1}((-S∂g(λ/λₛ,g/gₛ,γ)*g∂x*λ)...,-gₛ*S(λ/λₛ,g/gₛ,γ)) 
+#     else MuscadeException("mode(t) must have value :off, :equal or :inequal",dbg)
+#     end
+# end
+
 
 #-------------------------------------------------
