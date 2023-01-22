@@ -3,6 +3,10 @@ module TestConstraints
 using Test,StaticArrays
 using Muscade
 
+Constraint{    λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield                       }(g,mode,gₛ,λₛ) where
+              {λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield} =
+    Constraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,typeof(g),typeof(mode)}(g,mode,gₛ,λₛ)
+
 t,γ,dbg    = 0.,1.,(status=:testing,)
 
 #---------------------------------------------------------
