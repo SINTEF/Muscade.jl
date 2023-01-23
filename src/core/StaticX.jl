@@ -25,6 +25,10 @@ function addin!(out::OUTstaticX,asm,iele,scale,eleobj,Λ,X,U,A, t,γ,dbg)
     Lλ                       = scaledresidual(scale,eleobj, (∂0(X)+ΔX,),U,A, t,γ,dbg)
     addin!(out.Lλ ,asm[1],iele,value{1}(Lλ) )
     addin!(out.Lλx,asm[2],iele,∂{1,Nx}(Lλ)  )
+    # @show dbg
+    # @show X[1]
+    # @show value{1}(Lλ)
+    # @show ∂{1,Nx}(Lλ)
 end
 
 ###---------------------
