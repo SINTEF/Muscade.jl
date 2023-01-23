@@ -126,13 +126,13 @@ end
 
 #-------------------------------------------------
 
-struct QuickFix{Nx,xinod,xfield,Tg} <: AbstractElement
-    g        :: Tg    # R = g(X,X′,X″,t)
+struct QuickFix{Nx,inod,field,Tres} <: AbstractElement
+    res        :: Tres    # R = res(X,X′,X″,t)
 end
-QuickFix(nod::Vector{Node};xinod::NTuple{Nx,𝕫},xfield::NTuple{Nx,Symbol},g::Function) where{Nx} = QuickFix{Nx,xinod,xfield,typeof(g)}(g)
-doflist(::Type{<:QuickFix{Nx,xinod,xfield}}) where{Nx,xinod,xfield} = (inod =xinod,class=ntuple(i->:X,Nx),field=(xfield)) 
-@espy function residual(o::QuickFix{Xclass,Nx}, X,U,A, t,γ,dbg) where{Nx}
-    :R = o.g(∂0(X),∂1(X),∂2(X),t)
+QuickFix(nod::Vector{Node};inod::NTuple{Nx,𝕫},field::NTuple{Nx,Symbol},res::Function) where{Nx} = QuickFix{Nx,inod,field,typeof(res)}(res)
+doflist(::Type{<:QuickFix{Nx,inod,field}}) where{Nx,inod,field} = (inod =inod,class=ntuple(i->:X,Nx),field=(field)) 
+@espy function residual(o::QuickFix, X,U,A, t,γ,dbg) 
+    :R = o.res(∂0(X),∂1(X),∂2(X),t)
     return R
 end
 

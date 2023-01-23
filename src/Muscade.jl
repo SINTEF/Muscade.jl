@@ -37,9 +37,11 @@ module Muscade
     export getndof,getnele,getdofID,describe
 
     include("core/BasicElements.jl")
-    export DofCost,DofLoad
     export Xclass,Uclass,Aclass
-    export Constraint,Hold,off,equal,inequal
+    export off,equal,inequal
+    export DofCost,DofLoad
+    export Constraint,Hold
+    export QuickFix
 
     include("core/Assemble.jl")
  

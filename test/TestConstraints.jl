@@ -178,25 +178,5 @@ state           = solve(staticX;model,time=[0.],verbose=false) # because there i
 end
 
 
-## Graphical demo of the convergence
-#
-# using GLMakie
-# state           = solve(staticX;model,time=[0.],verbose=false,γ0=.25,γfac=.1,saveiter=true) # because there is zero physical stiffness in this model, setting γ0=0 gives singularity if one or more constraint is inactive
-# last = findlastassigned(state)
-# X  = state[last].X[1][1:2] 
-# x1 = [0,[state[i].X[1][1] for i ∈1:last]...]
-# x2 = [0,[state[i].X[1][2] for i ∈1:last]...]
-# fig      = Figure(resolution = (800,800))
-# display(fig) # open interactive window (gets closed down by "save")
-# axe = Axis(fig[1,1],title="Modified interior point")
-# a1 = -4:.01:2
-# a2 = -0:.01:2
-# b = f1.(a1)
-# c = f2.(a2)
-# scatter!(axe,x1,x2)
-# lines!(  axe,x1,x2,color = :black, linewidth = 1)
-# lines!(  axe,a1,b ,color = :red, linewidth = 1)
-# lines!(  axe,a2,c ,color = :blue, linewidth = 1)
-
 
 end
