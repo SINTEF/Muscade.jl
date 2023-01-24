@@ -1,5 +1,5 @@
 ```@meta
-CurrentModule = Muscade.jl
+CurrentModule = Muscade
 ```
 
 # Muscade.jl
@@ -28,5 +28,5 @@ some code
 
 
 ```@autodocs
-Modules = [Muscade.jl]
+Modules = [Muscade]
 ```

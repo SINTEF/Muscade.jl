@@ -32,8 +32,8 @@ b = f1.(a1)
 c = f2.(a2)
 scatter!(axe,x1,x2)
 lines!(  axe,x1,x2,color = :black, linewidth = 1)
-lines!(  axe,a1,b ,color = :red, linewidth = 1)
-lines!(  axe,a2,c ,color = :blue, linewidth = 1)
+lines!(  axe,a1,b ,color = :red,   linewidth = 1)
+lines!(  axe,a2,c ,color = :blue,  linewidth = 1)
 
 
 #-----------------------------------------------------------------
@@ -70,7 +70,7 @@ lines!(  axe,a2,c ,color = :blue, linewidth = 1)
 # @once f f(x)    = 0.4x.+.08+.5x.^2
 
 # γ0              = 1.
-# γfac            = .8
+# γfac            = .5
 
 # model           = Model(:TestModel)
 # n1              = addnode!(model,𝕣[0]) 

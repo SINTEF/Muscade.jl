@@ -2,7 +2,7 @@ using Documenter, EspyInsideFunction
 
 push!(LOAD_PATH,"../src")
 makedocs(sitename ="Muscade.jl",
-        modules   = [EspyInsideFunction],
+#        modules   = [EspyInsideFunction],
         format    = Documenter.HTML(prettyurls = false),
         pages     = ["index.md"],
         source  = "src",

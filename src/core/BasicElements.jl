@@ -12,10 +12,42 @@ function class2type(class)
 end
 #-------------------------------------------------
 
+"""
+`DofCost{Derivative,Class,Field,Tcost} <: AbstractElement`
+
+An element with a single node, for adding a cost to a given dof.  
+
+# Named arguments to the constructor
+- `class::Symbol`, either `:X`, `:U` or `:A`.
+- `field::Symbol`.
+- `cost::Function`, where `cost(x::ℝ,t::ℝ) → ℝ`.
+
+# Requestable internal variables
+- `J`, the value of the cost.
+
+# Examples
+```jldoctest
+using Muscade
+model = Model(:TestModel)
+node  = addnode!(model,𝕣[0,0])
+e     = addelement!(model,DofCost,[node];class=:X,field=:tx,cost=(x,t)->x^2)
+
+# output
+
+EleID(1, 1)
+```    
+See also: [`Hold`](@ref), [`DofLoad`](@ref)
+"""
 struct DofCost{Derivative,Class,Field,Tcost} <: AbstractElement
     cost :: Tcost # Function 
 end
-DofCost(nod::Vector{Node};class::DataType,field::Symbol,cost::Tcost,derivative=0::𝕫) where{Tcost<:Function} = DofCost{derivative,class,field,Tcost}(cost)
+function DofCost(nod::Vector{Node};class::Symbol,field::Symbol,cost::Tcost,derivative=0::𝕫) where{Tcost<:Function}
+    return if class==:X; DofCost{derivative,Xclass,field,Tcost}(cost)
+    elseif    class==:U; DofCost{derivative,Uclass,field,Tcost}(cost)
+    elseif    class==:A; DofCost{derivative,Aclass,field,Tcost}(cost)
+    else muscadeerror("class must be :X, :U or :A")
+    end
+end
 doflist(::Type{<:DofCost{Derivative,Class,Field}}) where{Derivative,Class,Field} = (inod =(1,), class=(Symbol(Class),), field=(Field,))
 espyable(::Type{<:DofCost}) = (J=scalar,)
 @espy function lagrangian(o::DofCost{Derivative,Xclass}, δX,X,U,A, t,γ,dbg) where{Derivative}
@@ -33,6 +65,32 @@ end
 
 #-------------------------------------------------
 
+"""
+`DofLoad{Tvalue,Field} <: AbstractElement`
+
+An element to apply a loading term to a single X-dof.  
+
+# Named arguments to the constructor
+- `field::Symbol`.
+- `value::Function`, where `value(t::ℝ) → ℝ`.
+
+# Requestable internal variables
+- `F`, the value of the load.
+
+# Examples
+```jldoctest
+using Muscade
+model = Model(:TestModel)
+node  = addnode!(model,𝕣[0,0])
+e     = addelement!(model,DofLoad,[node];field=:tx,value=t->3t-1)
+
+# output
+
+EleID(1, 1)
+```    
+
+See also: [`Hold`](@ref), [`DofCost`](@ref)  
+"""
 struct DofLoad{Tvalue,Field} <: AbstractElement
     value      :: Tvalue # Function
 end
@@ -46,7 +104,7 @@ espyable(::Type{<:DofLoad}) = (F=scalar,)
 
 #-------------------------------------------------
 
-S(  λ,g,γ) = (g+λ    -hypot(g-λ,2γ))/2 # Modified interior point method's take on KKT's-complementary slackness 
+S(λ,g,γ) = (g+λ-hypot(g-λ,2γ))/2 # Modified interior point method's take on KKT's-complementary slackness 
 
 KKT(λ::𝕣        ,g::𝕣         ,γ::𝕣,λₛ,gₛ)                 = 0 # A pseudo-potential with strange derivatives
 KKT(λ::∂ℝ{P,N,R},g::∂ℝ{P,N,R},γ::𝕣,λₛ,gₛ) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(0, λ.x*g.dx + gₛ*S(λ.x/λₛ,g.x/gₛ,γ)*λ.dx)
@@ -67,9 +125,69 @@ end
 
 #-------------------------------------------------
 
+"""
+`off(t) → :off`
+
+See also: [`Constraint`](@ref), [`equal`](@ref), [`inequal`](@ref)
+"""
 off(t)     = :off
+"""
+`equal(t) → :equal`
+
+See also: [`Constraint`](@ref), [`off`](@ref), [`inequal`](@ref)
+"""
 equal(t)   = :equal
+"""
+`inequal(t) → :inequal`
+
+See also: [`Constraint`](@ref), [`off`](@ref), [`equal`](@ref)
+"""
 inequal(t) = :inequal
+# length of comment                                           stop here|
+"""
+`Constraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,Tg,Tkind} <: AbstractElement`
+
+An element to apply physical/optimisation equality/inequality constraints on dofs. 
+
+The constraints are holonomic, i.e. they apply to the values, not the time derivatives, of the involved dofs. 
+This element is very general but not very user-friendly to construct, factory functions are provided for better useability. 
+The sign convention is that the gap `g≥0` and the Lagrange multiplier `λ≥0`.
+
+# Named arguments to the constructor
+- `xinod::NTuple{Nx,𝕫}=()` For each X-dof to be constrained, its element-node number.
+- `xfield::NTuple{Nx,Symbol}=()` For each X-dof to be constrained, its field.
+- `uinod::NTuple{Nu,𝕫}=()` For each U-dof to be constrained, its element-node number.
+- `ufield::NTuple{Nu,Symbol}=()` For each U-dof to be constrained, its field.
+- `ainod::NTuple{Na,𝕫}=()` For each A-dof to be constrained, its element-node number.
+- `afield::NTuple{Na,Symbol}=()` For each A-dof to be constrained, its field.
+- `λinod::𝕫` The element-node number of the Lagrange multiplier.
+- `λclass::Symbol` The class of the Lagrange multiplier. `:X` for physical constraints, `:U` for optimisation constraints. `:A` is experimental.
+- `λfield::Symbol` The field of the Lagrange multiplier.
+- `gₛ::𝕣=1.` A scale for the gap.
+- `λₛ::𝕣=1.` A scale for the Lagrange multiplier.
+- `g::Function` For physical constraints: `g(X::ℝ1,t::ℝ) -> ℝ`, for physical constraints and `g(X::ℝ1,U::ℝ1,A::ℝ1,t::ℝ) -> ℝ`, for optimisation constraints.
+- `mode::Function`, where `mode(t::ℝ) -> Symbol`, with value `:equal`, `:inequal` or `:off` at any time. An `:off` constraint will set the Lagrange multiplier to zero.
+
+# Examples
+```jldoctest
+using Muscade
+model           = Model(:TestModel)
+n1              = addnode!(model,𝕣[0]) 
+e1              = addelement!(model,Constraint,[n1],xinod=(1,),xfield=(:t1,),
+                              λinod=1, λclass=:X, λfield=:λ1,g=(x,t)->x[1]+.1,mode=inequal)
+e2              = addelement!(model,QuickFix  ,[n1],inod=(1,),field=(:t1,),res=(x,u,a,t)->0.4x.+.08+.5x.^2)
+state           = solve(staticX;model,time=[0.],verbose=false) 
+X               = state[1].X[1]
+
+# output
+
+2-element Vector{Float64}:
+ -0.09999867546403915
+  0.045000397353771225
+```    
+
+See also: [`Hold`,`off`,`equal`,`inequal`](@ref)
+"""
 struct Constraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,Tg,Tkind} <: AbstractElement
     g        :: Tg    # g(x,t) for Xconstraints, or g(x,u,a,t) otherwise
     mode     :: Tkind # mode(t)->symbol, or Symbol for Aconstraints
@@ -116,6 +234,29 @@ end
 
 #-------------------------------------------------
 
+"""
+`Hold <: AbstractElement`
+
+An element to set a single X-dof to zero.  
+
+# Named arguments to the constructor
+- `field::Symbol`. The field of the X-dof to constraint.
+- `λfield::Symbol=Symbol(:λ,field)`. The field of the Lagrange multiplier.
+
+# Examples
+```jldoctest
+using Muscade
+model = Model(:TestModel)
+node  = addnode!(model,𝕣[0,0])
+e     = addelement!(model,Hold,[node];field=:tx)
+
+# output
+
+EleID(1, 1)
+```    
+
+See also: [`Constraint`](@ref), [`DofLoad`](@ref), [`DofCost`](@ref) 
+"""
 struct Hold <: AbstractElement end  
 function Hold(nod::Vector{Node};field::Symbol,λfield::Symbol=Symbol(:λ,field)) 
     g(v,t)=v[1]
@@ -125,6 +266,37 @@ end
 
 #-------------------------------------------------
 
+"""
+`QuickFix <: AbstractElement`
+
+An element for creating simple elements with "one line" of code.  
+Elements thus created have several limitations:
+- no internal state.
+- no initialisation.
+- physical elements with only X-dofs.
+- only `R` can be espied.
+The element is intended for testing.  Muscade-based application should not include this in their API. 
+
+# Named arguments to the constructor
+- `inod::NTuple{Nx,𝕫}`. The element-node numbers of the X-dofs.
+- `field::NTuple{Nx,Symbol}`. The fields of the X-dofs.
+- `res::Function`, where `res(X::ℝ1,X′::ℝ1,X″::ℝ1,t::ℝ) → ℝ1`, the residual.
+
+# Examples
+A one-dimensional linear elastic spring with stiffness 2.
+```julia-repl
+using Muscade
+model = Model(:TestModel)
+node1  = addnode!(model,𝕣[0])
+node2  = addnode!(model,𝕣[1])
+e = addelement!(model,QuickFix,[node1,node2];inod=(1,2),field=(:tx1,:tx1),
+                res=(X,X′,X″,t)->Svector{2}(2*(X[1]-X[2]),2*(X[2]-X[1])) )
+
+# output
+
+EleID(1, 1)                       
+```    
+"""
 struct QuickFix{Nx,inod,field,Tres} <: AbstractElement
     res        :: Tres    # R = res(X,X′,X″,t)
 end
