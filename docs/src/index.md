@@ -1,5 +1,5 @@
 ```@meta
-CurrentModule = Muscade
+CurrentModule = Muscade.jl
 ```
 
 # Muscade.jl

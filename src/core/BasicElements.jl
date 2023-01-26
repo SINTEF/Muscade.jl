@@ -1,4 +1,4 @@
-struct Xclass end
+struct Xclass end   # these 12 lines can be eliminated if @espy stops messing around with Symbols...
 struct Uclass end
 struct Aclass end
 Base.Symbol(::Type{Xclass}) = :X

@@ -99,11 +99,12 @@ value{P}(a::∂ℝ{P,N,R}) where{P,N,R   } = a.x
 value{P}(a::R        ) where{P  ,R<:ℝ} = a
 value{P}(a::AA{R}    ) where{P  ,R   } = value{P}.(a)
 
-# no ∂{P}(a) syntax: in case a does not contain adiffs 
+# ∂{P}(a) is handled as ∂{P,1}(a) and returns a scalar 
 ∂{P,N}(a::     ∂ℝ{P,N,R} ) where{  P,N,R   } = a.dx
 ∂{P,N}(a::            R  ) where{  P,N,R<:ℝ} = SV{  N,R}(zero(R)    for i=1:N      )
 ∂{P,N}(a::SV{M,∂ℝ{P,N,R}}) where{M,P,N,R   } = SM{M,N,R}(a[i].dx[j] for i=1:M,j∈1:N) # ∂(a,x)[i,j] = ∂a[i]/∂x[j]
 ∂{P,N}(a::SV{M,       R }) where{M,P,N,R   } = SM{M,N,R}(zero(R)    for i=1:M,j=1:N)
+∂{P  }(a::            R  ) where{  P,  R<:ℝ} = zero(R)
 ∂{P  }(a::     ∂ℝ{P,1,R} ) where{  P,  R   } = a.dx[1]
 ∂{P  }(a::SV{N,∂ℝ{P,1,R}}) where{  P,N,R   } = SV{  N,R}(a[i].dx[1] for i=1:N     ) # ∂(a,x)[i]    = ∂a[i]/∂x
 #∂{P,N}(a::SA{M,∂ℝ{P,N,R}}) where{M,P,N,R}  = SA{(M...,N),R}(a[i].dx[j] for i∈eachindex(a),j∈1:N) # ∂(a,x)[i,...,j] = ∂a[i,...]/∂x[j]

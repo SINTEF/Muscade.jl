@@ -152,17 +152,19 @@ end
 copies(n,a::T) where{T} = NTuple{n,T}(deepcopy(a) for i∈1:n)
 
 # @once f f(x)= x^2 # do not parse f again if not modified (prevent recompilation when passing function as arg from script)
-macro once(tag,ex)
+using MacroTools: postwalk,gensym_ids,rmlines,unblock 
+macro once(ex)
+    ex  = postwalk(rmlines,ex)
+    ex  = postwalk(unblock,ex)
     qex = QuoteNode(ex)
-    tag = Symbol(:once_,tag)
-    return esc(quote
-        if ~@isdefined($tag)
-            $tag = :nope
-        end
-        if $tag  ≠ $qex
+    ex  = esc(ex)
+    tag = gensym("tag")
+    return quote
+        if ~@isdefined($tag) || $tag≠$qex
             $tag = $qex
             $ex    
         end 
-    end)
+    end
 end
+
 
