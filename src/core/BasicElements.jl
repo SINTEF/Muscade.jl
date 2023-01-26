@@ -26,7 +26,7 @@ An element with a single node, for adding a cost to a given dof.
 - `J`, the value of the cost.
 
 # Examples
-```jldoctest
+```jldoctest; output = false
 using Muscade
 model = Model(:TestModel)
 node  = addnode!(model,𝕣[0,0])
@@ -78,7 +78,7 @@ An element to apply a loading term to a single X-dof.
 - `F`, the value of the load.
 
 # Examples
-```jldoctest
+```jldoctest; output = false
 using Muscade
 model = Model(:TestModel)
 node  = addnode!(model,𝕣[0,0])
@@ -244,7 +244,7 @@ An element to set a single X-dof to zero.
 - `λfield::Symbol=Symbol(:λ,field)`. The field of the Lagrange multiplier.
 
 # Examples
-```jldoctest
+```jldoctest; output = false
 using Muscade
 model = Model(:TestModel)
 node  = addnode!(model,𝕣[0,0])
@@ -284,7 +284,7 @@ The element is intended for testing.  Muscade-based application should not inclu
 
 # Examples
 A one-dimensional linear elastic spring with stiffness 2.
-```julia-repl
+```jldoctest; output = false
 using Muscade
 model = Model(:TestModel)
 node1  = addnode!(model,𝕣[0])
