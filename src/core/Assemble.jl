@@ -181,6 +181,32 @@ function gradientstructure(dofgr,dis::EletypDisassembler)
     nA       = length(dofgr.iA)==0 ? 0 : length(dis.scale.A) 
     return nΛ,nX,nU,nA
 end
+# function gradientpartition(nΛ,nX,nU,nA)
+#     # indices into the class partitions of the gradient returned by an element
+#     iΛ          =           SVector{nΛ}(1:nΛ)
+#     iX          = nΛ      .+SVector{nX}(1:nX)
+#     iU          = nΛ+nX   .+SVector{nU}(1:nU) 
+#     iA          = nΛ+nX+nU.+SVector{nA}(1:nA)
+#     return iΛ,iX,iU,iA
+# end
+# nonzeros(v) = v[v.≠0]
+# function asmvec!(asm,dofgr,dis) 
+#     # asm[ieletyp] == undef, please fill 
+#     Λ,X,U,A  = indexedstate(dofgr)      # create a state of indices into the group - with zeros for modeldofs not in group
+#     for (ieletyp,di) ∈ enumerate(dis.dis)
+#         nΛ,nX,nU,nA = gradientstructure(dofgr,di) # number of dofs of each class in the gradient returned by an element
+#         iΛ,iX,iU,iA = gradientpartition(nΛ,nX,nU,nA)  # indices into said gradient TODO type unstable, barrier function
+#         asm[ieletyp] = zeros(𝕫,nΛ+nX+nU+nA,length(di.index)) # asm[ieletyp][idof,iele] (its a view)
+#         for (iele,index) ∈ enumerate(di.index)
+#             asm[ieletyp][iΛ,iele] .= nonzeros(Λ[index.X])  
+#             asm[ieletyp][iX,iele] .= nonzeros(X[index.X])
+#             asm[ieletyp][iU,iele] .= nonzeros(U[index.U])
+#             asm[ieletyp][iA,iele] .= nonzeros(A[index.A])
+#         end
+#     end
+#     return 𝕣1(undef,getndof(dofgr))
+# end
+
 function gradientpartition(nΛ,nX,nU,nA)
     # indices into the class partitions of the gradient returned by an element
     iΛ          =           (1:nΛ)
@@ -195,13 +221,13 @@ function asmvec!(asm,dofgr,dis)
     Λ,X,U,A  = indexedstate(dofgr)      # create a state of indices into the group - with zeros for modeldofs not in group
     for (ieletyp,di) ∈ enumerate(dis.dis)
         nΛ,nX,nU,nA = gradientstructure(dofgr,di) # number of dofs of each class in the gradient returned by an element
-        iΛ,iX,iU,iA = gradientpartition(nΛ,nX,nU,nA)  # indices into said gradient
+        iΛ,iX,iU,iA = gradientpartition(nΛ,nX,nU,nA)  # indices into said gradient TODO type unstable, barrier function
         asm[ieletyp] = zeros(𝕫,nΛ+nX+nU+nA,length(di.index)) # asm[ieletyp][idof,iele] (its a view)
         for (iele,index) ∈ enumerate(di.index)
-            asm[ieletyp][iΛ,iele] = nonzeros(Λ[index.X])  
-            asm[ieletyp][iX,iele] = nonzeros(X[index.X])
-            asm[ieletyp][iU,iele] = nonzeros(U[index.U])
-            asm[ieletyp][iA,iele] = nonzeros(A[index.A])
+            asm[ieletyp][iΛ,iele] .= nonzeros(Λ[index.X])  
+            asm[ieletyp][iX,iele] .= nonzeros(X[index.X])
+            asm[ieletyp][iU,iele] .= nonzeros(U[index.U])
+            asm[ieletyp][iA,iele] .= nonzeros(A[index.A])
         end
     end
     return 𝕣1(undef,getndof(dofgr))
@@ -319,7 +345,7 @@ function assemblesequential!(out,asm,dis,eleobj,state::State{Nxder,Nuder},γ,dbg
     end
 end
 
-#### addin and zero!
+#### addtoarray and zero!
 function zero!(out::DenseArray)
     out .= 0
 end
@@ -327,7 +353,7 @@ function zero!(out::AbstractSparseArray)
     out.nzval .= 0
 end
 
-function addin!(out::DenseArray,asm,iele,a) 
+function addtoarray!(out::DenseArray,asm,iele,a) 
     for (i,ai) ∈ enumerate(a)
         j = asm[i,iele]
         if j≠0
@@ -335,7 +361,7 @@ function addin!(out::DenseArray,asm,iele,a)
         end
     end
 end   
-function addin!(out::AbstractSparseArray,asm,iele,a)
+function addtoarray!(out::AbstractSparseArray,asm,iele,a)
     for (i,ai) ∈ enumerate(a)
         j = asm[i,iele]
         if j≠0

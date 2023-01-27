@@ -1,8 +1,6 @@
 using  Muscade
 using  StaticArrays,LinearAlgebra #,GLMakie
 
-export Turbine,AnchorLine
-
 function horner(p::AbstractVector,x::Number) # avoiding to use e.g. Polynomials.jl just for test code
     y = zero(x) # not typestable if eltype(p)≠typeof(x)
     for i ∈ reverse(p) 
@@ -101,7 +99,6 @@ Muscade.espyable(    ::Type{<:AnchorLine}) = (Xtop=(3,),ΔXtop=(3,),ΔXchain=(2,
 Muscade.request2draw(::Type{<:AnchorLine}) = @request (Xtop,ΔXtop,ΔXchain,cr,xaf,ltf)
 
 #### Spring
-
 
 struct Spring{D} <: AbstractElement
     x₁     :: SVector{D,𝕣}  # x1,x2,x3
