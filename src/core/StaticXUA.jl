@@ -65,9 +65,9 @@ function zero!(out::OUTstaticΛXU)
     zero!(out.Ly )
     zero!(out.Lyy)
 end
-function addin!(out::OUTstaticΛXU,asm,iele,scale,eleobj::E,Λ,X,U,A, t,γ,dbg) where{E}
-    Nx,Nu           = getndof(E,(:X,:U))
-    Ny              = 2Nx+Nu                           # Y=[Λ;X;U]   
+function addin!(out::OUTstaticΛXU,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxdir,<:SVector{Nx}},
+                                                             U::NTuple{Nudir,<:SVector{Nu}},A, t,γ,dbg) where{E,Nxdir,Nx,Nudir,Nu}
+    Ny              = 2Nx+Nu                           # Y=[Λ;X;U]  TODO compile time? 
     if Ny==0; return end # don't waste time on Acost elements...    
     ΔY              = variate{2,Ny}(δ{1,Ny,𝕣}())                 
     iλ,ix,iu,_      = gradientpartition(Nx,Nx,Nu,0) # index into element vectors ΔY and Ly
