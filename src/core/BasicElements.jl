@@ -38,27 +38,36 @@ EleID(1, 1)
 ```    
 See also: [`Hold`](@ref), [`DofLoad`](@ref)
 """
-struct DofCost{Derivative,Class,Field,Tcost} <: AbstractElement
+abstract type DofCost <: AbstractElement end
+struct XdofCost{Derivative,Field,Tcost} <: DofCost
+    cost :: Tcost # Function 
+end
+struct UdofCost{Derivative,Field,Tcost} <: DofCost
+    cost :: Tcost # Function 
+end
+struct AdofCost{Derivative,Field,Tcost} <: DofCost
     cost :: Tcost # Function 
 end
 function DofCost(nod::Vector{Node};class::Symbol,field::Symbol,cost::Tcost,derivative=0::𝕫) where{Tcost<:Function}
-    return if class==:X; DofCost{derivative,Xclass,field,Tcost}(cost)
-    elseif    class==:U; DofCost{derivative,Uclass,field,Tcost}(cost)
-    elseif    class==:A; DofCost{derivative,Aclass,field,Tcost}(cost)
+    return if class==:X; XdofCost{derivative,field,Tcost}(cost)
+    elseif    class==:U; UdofCost{derivative,field,Tcost}(cost)
+    elseif    class==:A; AdofCost{derivative,field,Tcost}(cost)
     else muscadeerror("class must be :X, :U or :A")
     end
 end
-doflist(::Type{<:DofCost{Derivative,Class,Field}}) where{Derivative,Class,Field} = (inod =(1,), class=(Symbol(Class),), field=(Field,))
+doflist(::Type{<:XdofCost{Derivative,Field}}) where{Derivative,Field} = (inod =(1,), class=(:X,), field=(Field,))
+doflist(::Type{<:UdofCost{Derivative,Field}}) where{Derivative,Field} = (inod =(1,), class=(:U,), field=(Field,))
+doflist(::Type{<:AdofCost{Derivative,Field}}) where{Derivative,Field} = (inod =(1,), class=(:A,), field=(Field,))
 espyable(::Type{<:DofCost}) = (J=scalar,)
-@espy function lagrangian(o::DofCost{Derivative,Xclass}, δX,X,U,A, t,γ,dbg) where{Derivative}
+@espy function lagrangian(o::XdofCost{Derivative}, δX,X,U,A, t,γ,dbg) where{Derivative}
     :J = o.cost(∂n(X,Derivative)[1],t)
     return J
 end
-@espy function lagrangian(o::DofCost{Derivative,Uclass}, δX,X,U,A, t,γ,dbg) where{Derivative}
+@espy function lagrangian(o::UdofCost{Derivative}, δX,X,U,A, t,γ,dbg) where{Derivative}
     :J = o.cost(∂n(U,Derivative)[1],t)
     return J
 end
-@espy function lagrangian(o::DofCost{Derivative,Aclass}, δX,X,U,A, t,γ,dbg) where{Derivative}
+@espy function lagrangian(o::AdofCost{Derivative}, δX,X,U,A, t,γ,dbg) where{Derivative}
     :J = o.cost(A[1])
     return J
 end
@@ -195,11 +204,11 @@ struct Constraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod
     λₛ        :: 𝕣  
 end
 function Constraint(nod::Vector{Node};xinod::NTuple{Nx,𝕫}=(),xfield::NTuple{Nx,Symbol}=(),
-                                         uinod::NTuple{Nu,𝕫}=(),ufield::NTuple{Nu,Symbol}=(),
-                                         ainod::NTuple{Na,𝕫}=(),afield::NTuple{Na,Symbol}=(),
-                                         λinod::𝕫, λclass::Symbol, λfield::Symbol,
-                                         gₛ::𝕣=1.,λₛ::𝕣=1.,
-                                         g::Function ,mode::Function) where{Nx,Nu,Na} 
+                                      uinod::NTuple{Nu,𝕫}=(),ufield::NTuple{Nu,Symbol}=(),
+                                      ainod::NTuple{Na,𝕫}=(),afield::NTuple{Na,Symbol}=(),
+                                      λinod::𝕫, λclass::Symbol, λfield::Symbol,
+                                      gₛ::𝕣=1.,λₛ::𝕣=1.,
+                                      g::Function ,mode::Function) where{Nx,Nu,Na} 
     (λclass==:X && (Nu>0||Na>0)) && muscadeerror("Constraints with λclass=:X must have Nu==0 and Naa=0")                                     
     return Constraint{class2type(λclass),Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,typeof(g),typeof(mode)}(g,mode,gₛ,λₛ)
 end
