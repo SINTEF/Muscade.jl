@@ -1,17 +1,3 @@
-struct Xclass end   # these 12 lines can be eliminated if @espy stops messing around with Symbols...
-struct Uclass end
-struct Aclass end
-Base.Symbol(::Type{Xclass}) = :X
-Base.Symbol(::Type{Uclass}) = :U
-Base.Symbol(::Type{Aclass}) = :A
-function class2type(class)
-    class==:X && return Xclass 
-    class==:U && return Uclass 
-    class==:A && return Aclass 
-    muscadeerror("class must be :X,:U or :A")
-end
-#-------------------------------------------------
-
 """
 `DofCost{Derivative,Class,Field,Tcost} <: AbstractElement`
 
@@ -197,8 +183,21 @@ X               = state[1].X[1]
 
 See also: [`Hold`,`off`,`equal`,`inequal`](@ref)
 """
-struct Constraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,Tg,Tkind} <: AbstractElement
-    g        :: Tg    # g(x,t) for Xconstraints, or g(x,u,a,t) otherwise
+abstract type Constraint <: AbstractElement end
+struct Xconstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,Tg,Tkind} <: Constraint
+    g        :: Tg    # g(x,t) 
+    mode     :: Tkind # mode(t)->symbol, or Symbol for Aconstraints
+    gₛ        :: 𝕣
+    λₛ        :: 𝕣  
+end
+struct Uconstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,Tg,Tkind} <: Constraint
+    g        :: Tg    # g(x,u,a,t)
+    mode     :: Tkind # mode(t)->symbol, or Symbol for Aconstraints
+    gₛ        :: 𝕣
+    λₛ        :: 𝕣  
+end
+struct Aconstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,Tg,Tkind} <: Constraint
+    g        :: Tg    # g(a) 
     mode     :: Tkind # mode(t)->symbol, or Symbol for Aconstraints
     gₛ        :: 𝕣
     λₛ        :: 𝕣  
@@ -209,17 +208,31 @@ function Constraint(nod::Vector{Node};xinod::NTuple{Nx,𝕫}=(),xfield::NTuple{N
                                       λinod::𝕫, λclass::Symbol, λfield::Symbol,
                                       gₛ::𝕣=1.,λₛ::𝕣=1.,
                                       g::Function ,mode::Function) where{Nx,Nu,Na} 
-    (λclass==:X && (Nu>0||Na>0)) && muscadeerror("Constraints with λclass=:X must have Nu==0 and Naa=0")                                     
-    return Constraint{class2type(λclass),Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,typeof(g),typeof(mode)}(g,mode,gₛ,λₛ)
+    (λclass==:X && (Nu>0||Na>0)) && muscadeerror("Constraints with λclass=:X must have Nu==0 and Naa=0") 
+    return if λclass==:X; Xconstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,typeof(g),typeof(mode)}(g,mode,gₛ,λₛ)
+    elseif    λclass==:U; Uconstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,typeof(g),typeof(mode)}(g,mode,gₛ,λₛ)
+    elseif    λclass==:A; Aconstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,typeof(g),typeof(mode)}(g,mode,gₛ,λₛ)
+    else muscadeerror("class must be :X, :U or :A")
+    end
 end
-doflist(::Type{<:Constraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield}}) where
-                           {λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield} = 
+doflist(::Type{<:Xconstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield}}) where
+                            {Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield} = 
+   (inod =(xinod...           ,uinod...           ,ainod...           ,λinod ), 
+    class=(ntuple(i->:X,Nx)...,ntuple(i->:U,Nu)...,ntuple(i->:A,Na)...,:X    ), 
+    field=(xfield...          ,ufield...          ,afield...          ,λfield)) 
+doflist(::Type{<:Uconstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield}}) where
+                            {Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield} = 
    (inod =(xinod...           ,uinod...           ,ainod...           ,λinod         ), 
-    class=(ntuple(i->:X,Nx)...,ntuple(i->:U,Nu)...,ntuple(i->:A,Na)...,Symbol(λclass)), 
+    class=(ntuple(i->:X,Nx)...,ntuple(i->:U,Nu)...,ntuple(i->:A,Na)...,:U), 
+    field=(xfield...          ,ufield...          ,afield...          ,λfield        )) 
+doflist(::Type{<:Aconstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield}}) where
+                            {Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield} = 
+   (inod =(xinod...           ,uinod...           ,ainod...           ,λinod         ), 
+    class=(ntuple(i->:X,Nx)...,ntuple(i->:U,Nu)...,ntuple(i->:A,Na)...,:A), 
     field=(xfield...          ,ufield...          ,afield...          ,λfield        )) 
 
 off_,equal_,inequal_ = :off,:equal,:inequal # because @espy has its own ways with symbols... TODO improve @espy
-@espy function residual(o::Constraint{Xclass,Nx}, X,U,A, t,γ,dbg) where{Nx}
+@espy function residual(o::Xconstraint{Nx}, X,U,A, t,γ,dbg) where{Nx}
     P,gₛ,λₛ     = constants(∂0(X)),o.gₛ,o.λₛ
     x,λ        = ∂0(X)[SVector{Nx}(1:Nx)], ∂0(X)[Nx+1]
     x∂         = variate{P,Nx}(x) 
@@ -230,10 +243,18 @@ off_,equal_,inequal_ = :off,:equal,:inequal # because @espy has its own ways wit
     else MuscadeException("mode(t) must have value :off, :equal or :inequal",dbg)
     end
 end
-@espy function lagrangian(o::Constraint{class,Nx,Nu,Na}, δX,X,U,A, t,γ,dbg) where{class<:Union{Uclass,Aclass},Nx,Nu,Na}
-    if class==Uclass; x,u,a,λ = ∂0(X),∂0(U)[SVector{Nu}(1:Nu)],A                   ,∂0(U)[Nu+1] end
-    if class==Aclass; x,u,a,λ = ∂0(X),∂0(U)                   ,A[SVector{Na}(1:Na)],A[    Na+1] end
-    g = o.g(x,u,a,t)
+@espy function lagrangian(o::Uconstraint{Nx,Nu,Na}, δX,X,U,A, t,γ,dbg) where{Nx,Nu,Na}
+    x,u,a,λ = ∂0(X),∂0(U)[SVector{Nu}(1:Nu)],A,∂0(U)[Nu+1]
+    g       = o.g(x,u,a,t)
+    return if o.mode(t)==off_;     -o.gₛ/(2o.λₛ)*λ^2 
+    elseif    o.mode(t)==equal_;   -g*λ
+    elseif    o.mode(t)==inequal_; -KKT(λ,g,γ,o.λₛ,o.gₛ) 
+    else MuscadeException("mode(t) must have value :off, :equal or :inequal",dbg)
+    end
+end
+@espy function lagrangian(o::Aconstraint{Nx,Nu,Na}, δX,X,U,A, t,γ,dbg) where{Nx,Nu,Na}
+    x,u,a,λ = ∂0(X),∂0(U),A[SVector{Na}(1:Na)],A[    Na+1] 
+    g       = o.g(a)
     return if o.mode(t)==off_;     -o.gₛ/(2o.λₛ)*λ^2 
     elseif    o.mode(t)==equal_;   -g*λ
     elseif    o.mode(t)==inequal_; -KKT(λ,g,γ,o.λₛ,o.gₛ) 
@@ -269,8 +290,8 @@ See also: [`Constraint`](@ref), [`DofLoad`](@ref), [`DofCost`](@ref)
 struct Hold <: AbstractElement end  
 function Hold(nod::Vector{Node};field::Symbol,λfield::Symbol=Symbol(:λ,field)) 
     g(v,t)=v[1]
-    return Constraint{Xclass,1, 0, 0, (1,),(field,),(),   (),    (),   (),    1,    λfield, typeof(g),typeof(equal)}(g,equal,1.,1.)
-    #      Constraint{λclass,Nx,Nu,Na,xinod,xfield, uinod,ufield,ainod,afield,λinod,λfield}
+    return Xconstraint{1, 0, 0, (1,),(field,),(),   (),    (),   (),    1,    λfield, typeof(g),typeof(equal)}(g,equal,1.,1.)
+    #      Xconstraint{Nx,Nu,Na,xinod,xfield, uinod,ufield,ainod,afield,λinod,λfield}
 end
 
 #-------------------------------------------------
