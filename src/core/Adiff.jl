@@ -4,11 +4,11 @@ using   Printf
 
 
 ## Type and construction
-AA = AbstractArray
-AV = AbstractVector
-SV = SVector  
-SA = SArray 
-SM = SMatrix
+const AA = AbstractArray
+const AV = AbstractVector
+const SV = SVector  
+const SA = SArray 
+const SM = SMatrix
 # Types
 # P precedence 
 # N number of partials 

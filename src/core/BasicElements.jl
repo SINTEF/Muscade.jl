@@ -237,28 +237,25 @@ off_,equal_,inequal_ = :off,:equal,:inequal # because @espy has its own ways wit
     x,λ        = ∂0(X)[SVector{Nx}(1:Nx)], ∂0(X)[Nx+1]
     x∂         = variate{P,Nx}(x) 
     g,g∂x      = value_∂{P,Nx}(o.g(x∂,t)) 
-    return if o.mode(t)==off_;     SVector{Nx+1}(ntuple(i->0,Nx)...,-gₛ/λₛ*λ         ) 
-    elseif    o.mode(t)==equal_;   SVector{Nx+1}((       -g∂x*λ)...,-g              )
+    return if o.mode(t)==equal_;   SVector{Nx+1}((       -g∂x*λ)...,-g              )
     elseif    o.mode(t)==inequal_; SVector{Nx+1}((       -g∂x*λ)...,-gₛ*S(λ/λₛ,g/gₛ,γ)) 
-    else MuscadeException("mode(t) must have value :off, :equal or :inequal",dbg)
+    else                           SVector{Nx+1}(ntuple(i->0,Nx)...,-gₛ/λₛ*λ         ) # off
     end
 end
 @espy function lagrangian(o::Uconstraint{Nx,Nu,Na}, δX,X,U,A, t,γ,dbg) where{Nx,Nu,Na}
     x,u,a,λ = ∂0(X),∂0(U)[SVector{Nu}(1:Nu)],A,∂0(U)[Nu+1]
     g       = o.g(x,u,a,t)
-    return if o.mode(t)==off_;     -o.gₛ/(2o.λₛ)*λ^2 
-    elseif    o.mode(t)==equal_;   -g*λ
+    return if o.mode(t)==equal_;   -g*λ
     elseif    o.mode(t)==inequal_; -KKT(λ,g,γ,o.λₛ,o.gₛ) 
-    else MuscadeException("mode(t) must have value :off, :equal or :inequal",dbg)
+    else                           -o.gₛ/(2o.λₛ)*λ^2     # off
     end
 end
 @espy function lagrangian(o::Aconstraint{Nx,Nu,Na}, δX,X,U,A, t,γ,dbg) where{Nx,Nu,Na}
     x,u,a,λ = ∂0(X),∂0(U),A[SVector{Na}(1:Na)],A[    Na+1] 
     g       = o.g(a)
-    return if o.mode(t)==off_;     -o.gₛ/(2o.λₛ)*λ^2 
-    elseif    o.mode(t)==equal_;   -g*λ
+    return if o.mode(t)==equal_;   -g*λ
     elseif    o.mode(t)==inequal_; -KKT(λ,g,γ,o.λₛ,o.gₛ) 
-    else MuscadeException("mode(t) must have value :off, :equal or :inequal",dbg)
+    else                           -o.gₛ/(2o.λₛ)*λ^2     # off  
     end
 end
 
