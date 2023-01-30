@@ -1,7 +1,7 @@
 name = "Muscade"
 uuid = "93488820-1883-11ed-0c34-05177b029e4d"
 authors = ["Philippe Maincon <philippe.maincon@sintef.no>"]
-version = "0.2.3"
+version = "0.2.2"
 
 [deps]
 EspyInsideFunction = "d6b55740-5cb4-11ec-1cb9-93db9984c461"
@@ -18,4 +18,5 @@ EspyInsideFunction = "0.2"
 GLMakie = "0.7"
 SpecialFunctions = "2"
 StaticArrays = "1"
+MacroTools = "0.5"
 julia = "1.8"
