@@ -48,4 +48,20 @@ L2       = lagrangian(anchorline, δX,[X],[U],A, 0.,0.,())
    @test L2 ≈ 5.590087401683872
 end
 
+
+### Spring
+
+T = Spring{2}
+@testset "Element utility functions" begin
+    @test Muscade.getdoflist(T)  == ((1, 1, 2, 2, 3, 3), (:X, :X, :X, :X, :A, :A), (:tx1, :tx2, :tx1, :tx2, :ΞL₀, :ΞEI))
+    @test Muscade.getidof(T,:X)  == [1,2,3,4]
+    @test Muscade.getidof(T,:U)  == []
+    @test Muscade.getidof(T,:A)  == [5,6]
+    @test Muscade.getndof(T)     == 6
+    @test Muscade.getndof(T,:X)  == 4
+    @test Muscade.getndof(T,(:X,:U,:A))    == (4,0,2)
+    @test Muscade.getnnod(T)     == 3
+end
+
+
 end

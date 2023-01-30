@@ -195,13 +195,13 @@ function asmvec!(asm,dofgr,dis)
     Λ,X,U,A  = indexedstate(dofgr)      # create a state of indices into the group - with zeros for modeldofs not in group
     for (ieletyp,di) ∈ enumerate(dis.dis)
         nΛ,nX,nU,nA = gradientstructure(dofgr,di) # number of dofs of each class in the gradient returned by an element
-        iΛ,iX,iU,iA = gradientpartition(nΛ,nX,nU,nA)  # indices into said gradient
+        iΛ,iX,iU,iA = gradientpartition(nΛ,nX,nU,nA)  # indices into said gradient TODO type unstable, barrier function
         asm[ieletyp] = zeros(𝕫,nΛ+nX+nU+nA,length(di.index)) # asm[ieletyp][idof,iele] (its a view)
         for (iele,index) ∈ enumerate(di.index)
-            asm[ieletyp][iΛ,iele] = nonzeros(Λ[index.X])  
-            asm[ieletyp][iX,iele] = nonzeros(X[index.X])
-            asm[ieletyp][iU,iele] = nonzeros(U[index.U])
-            asm[ieletyp][iA,iele] = nonzeros(A[index.A])
+            asm[ieletyp][iΛ,iele] .= nonzeros(Λ[index.X])  
+            asm[ieletyp][iX,iele] .= nonzeros(X[index.X])
+            asm[ieletyp][iU,iele] .= nonzeros(U[index.U])
+            asm[ieletyp][iA,iele] .= nonzeros(A[index.A])
         end
     end
     return 𝕣1(undef,getndof(dofgr))
@@ -319,7 +319,7 @@ function assemblesequential!(out,asm,dis,eleobj,state::State{Nxder,Nuder},γ,dbg
     end
 end
 
-#### addin and zero!
+#### addtoarray and zero!
 function zero!(out::DenseArray)
     out .= 0
 end
@@ -327,22 +327,37 @@ function zero!(out::AbstractSparseArray)
     out.nzval .= 0
 end
 
-function addin!(out::DenseArray,asm,iele,a) 
-    for (i,ai) ∈ enumerate(a)
-        j = asm[i,iele]
-        if j≠0
-            out[j]+=ai
+function add_value!(out::𝕣1,asm,iele,a::SVector{M,∂ℝ{P,N,𝕣}},ias) where{P,N,M}
+    for (iasm,ia) ∈ enumerate(ias)
+        iout = asm[iasm,iele]
+        if iout≠0
+            out[iout]+=a[ia].x
         end
     end
 end   
-function addin!(out::AbstractSparseArray,asm,iele,a)
-    for (i,ai) ∈ enumerate(a)
-        j = asm[i,iele]
-        if j≠0
-            out.nzval[j]+=ai
+function add_value!(out::𝕣1,asm,iele,a::SVector{M,𝕣},ias) where{M}
+    for (iasm,ia) ∈ enumerate(ias)
+        iout = asm[iasm,iele]
+        if iout≠0
+            out[iout]+=a[ia]
         end
     end
-end
+end   
+add_value!(out,asm,iele,a) = add_value!(out,asm,iele,a,eachindex(a)) 
+struct add_∂!{P} end 
+function add_∂!{P}(out::Array,asm,iele,a::SVector{M,∂ℝ{P,N,R}},i1as,i2as) where{P,N,R,M}
+    for (i1asm,i1a) ∈ enumerate(i1as), (i2asm,i2a) ∈ enumerate(i2as)
+        iasm = i1asm+length(i1as)*(i2asm-1)
+        iout = asm[iasm,iele]
+        if iout≠0
+            out[iout]+=a[i1a].dx[i2a]  
+        end
+    end
+end  
+add_∂!{P}(out::SparseMatrixCSC,args...) where{P}                      = add_∂!{P}(out.nzval,args...)
+add_∂!{P}(out::Array,asm,iele,a::SVector{M,R},args...) where{P,M,R}   = nothing
+add_∂!{P}(out::Array,asm,iele,a::SVector{M,∂ℝ{P,N,R}}) where{P,N,R,M} = add_∂!{P}(out,asm,iele,a,1:M,1:N)
+
 
 ###### scaled functions
 

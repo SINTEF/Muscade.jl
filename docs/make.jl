@@ -1,8 +1,7 @@
-using Documenter, EspyInsideFunction
+using Documenter, Muscade
 
 push!(LOAD_PATH,"../src")
 makedocs(sitename ="Muscade.jl",
-#        modules   = [EspyInsideFunction],
         format    = Documenter.HTML(prettyurls = false),
         pages     = ["index.md"],
         source  = "src",

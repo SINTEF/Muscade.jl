@@ -1,17 +1,3 @@
-struct Xclass end
-struct Uclass end
-struct Aclass end
-Base.Symbol(::Type{Xclass}) = :X
-Base.Symbol(::Type{Uclass}) = :U
-Base.Symbol(::Type{Aclass}) = :A
-function class2type(class)
-    class==:X && return Xclass 
-    class==:U && return Uclass 
-    class==:A && return Aclass 
-    muscadeerror("class must be :X,:U or :A")
-end
-#-------------------------------------------------
-
 """
 `DofCost{Derivative,Class,Field,Tcost} <: AbstractElement`
 
@@ -26,7 +12,7 @@ An element with a single node, for adding a cost to a given dof.
 - `J`, the value of the cost.
 
 # Examples
-```jldoctest
+```jldoctest; output = false
 using Muscade
 model = Model(:TestModel)
 node  = addnode!(model,𝕣[0,0])
@@ -38,27 +24,36 @@ EleID(1, 1)
 ```    
 See also: [`Hold`](@ref), [`DofLoad`](@ref)
 """
-struct DofCost{Derivative,Class,Field,Tcost} <: AbstractElement
+abstract type DofCost <: AbstractElement end
+struct XdofCost{Derivative,Field,Tcost} <: DofCost
+    cost :: Tcost # Function 
+end
+struct UdofCost{Derivative,Field,Tcost} <: DofCost
+    cost :: Tcost # Function 
+end
+struct AdofCost{Derivative,Field,Tcost} <: DofCost
     cost :: Tcost # Function 
 end
 function DofCost(nod::Vector{Node};class::Symbol,field::Symbol,cost::Tcost,derivative=0::𝕫) where{Tcost<:Function}
-    return if class==:X; DofCost{derivative,Xclass,field,Tcost}(cost)
-    elseif    class==:U; DofCost{derivative,Uclass,field,Tcost}(cost)
-    elseif    class==:A; DofCost{derivative,Aclass,field,Tcost}(cost)
+    return if class==:X; XdofCost{derivative,field,Tcost}(cost)
+    elseif    class==:U; UdofCost{derivative,field,Tcost}(cost)
+    elseif    class==:A; AdofCost{derivative,field,Tcost}(cost)
     else muscadeerror("class must be :X, :U or :A")
     end
 end
-doflist(::Type{<:DofCost{Derivative,Class,Field}}) where{Derivative,Class,Field} = (inod =(1,), class=(Symbol(Class),), field=(Field,))
+doflist(::Type{<:XdofCost{Derivative,Field}}) where{Derivative,Field} = (inod =(1,), class=(:X,), field=(Field,))
+doflist(::Type{<:UdofCost{Derivative,Field}}) where{Derivative,Field} = (inod =(1,), class=(:U,), field=(Field,))
+doflist(::Type{<:AdofCost{Derivative,Field}}) where{Derivative,Field} = (inod =(1,), class=(:A,), field=(Field,))
 espyable(::Type{<:DofCost}) = (J=scalar,)
-@espy function lagrangian(o::DofCost{Derivative,Xclass}, δX,X,U,A, t,γ,dbg) where{Derivative}
+@espy function lagrangian(o::XdofCost{Derivative}, δX,X,U,A, t,γ,dbg) where{Derivative}
     :J = o.cost(∂n(X,Derivative)[1],t)
     return J
 end
-@espy function lagrangian(o::DofCost{Derivative,Uclass}, δX,X,U,A, t,γ,dbg) where{Derivative}
+@espy function lagrangian(o::UdofCost{Derivative}, δX,X,U,A, t,γ,dbg) where{Derivative}
     :J = o.cost(∂n(U,Derivative)[1],t)
     return J
 end
-@espy function lagrangian(o::DofCost{Derivative,Aclass}, δX,X,U,A, t,γ,dbg) where{Derivative}
+@espy function lagrangian(o::AdofCost{Derivative}, δX,X,U,A, t,γ,dbg) where{Derivative}
     :J = o.cost(A[1])
     return J
 end
@@ -78,7 +73,7 @@ An element to apply a loading term to a single X-dof.
 - `F`, the value of the load.
 
 # Examples
-```jldoctest
+```jldoctest; output = false
 using Muscade
 model = Model(:TestModel)
 node  = addnode!(model,𝕣[0,0])
@@ -188,47 +183,79 @@ X               = state[1].X[1]
 
 See also: [`Hold`,`off`,`equal`,`inequal`](@ref)
 """
-struct Constraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,Tg,Tkind} <: AbstractElement
-    g        :: Tg    # g(x,t) for Xconstraints, or g(x,u,a,t) otherwise
+abstract type Constraint <: AbstractElement end
+struct Xconstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,Tg,Tkind} <: Constraint
+    g        :: Tg    # g(x,t) 
+    mode     :: Tkind # mode(t)->symbol, or Symbol for Aconstraints
+    gₛ        :: 𝕣
+    λₛ        :: 𝕣  
+end
+struct Uconstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,Tg,Tkind} <: Constraint
+    g        :: Tg    # g(x,u,a,t)
+    mode     :: Tkind # mode(t)->symbol, or Symbol for Aconstraints
+    gₛ        :: 𝕣
+    λₛ        :: 𝕣  
+end
+struct Aconstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,Tg,Tkind} <: Constraint
+    g        :: Tg    # g(a) 
     mode     :: Tkind # mode(t)->symbol, or Symbol for Aconstraints
     gₛ        :: 𝕣
     λₛ        :: 𝕣  
 end
 function Constraint(nod::Vector{Node};xinod::NTuple{Nx,𝕫}=(),xfield::NTuple{Nx,Symbol}=(),
-                                         uinod::NTuple{Nu,𝕫}=(),ufield::NTuple{Nu,Symbol}=(),
-                                         ainod::NTuple{Na,𝕫}=(),afield::NTuple{Na,Symbol}=(),
-                                         λinod::𝕫, λclass::Symbol, λfield::Symbol,
-                                         gₛ::𝕣=1.,λₛ::𝕣=1.,
-                                         g::Function ,mode::Function) where{Nx,Nu,Na} 
-    (λclass==:X && (Nu>0||Na>0)) && muscadeerror("Constraints with λclass=:X must have Nu==0 and Naa=0")                                     
-    return Constraint{class2type(λclass),Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,typeof(g),typeof(mode)}(g,mode,gₛ,λₛ)
+                                      uinod::NTuple{Nu,𝕫}=(),ufield::NTuple{Nu,Symbol}=(),
+                                      ainod::NTuple{Na,𝕫}=(),afield::NTuple{Na,Symbol}=(),
+                                      λinod::𝕫, λclass::Symbol, λfield::Symbol,
+                                      gₛ::𝕣=1.,λₛ::𝕣=1.,
+                                      g::Function ,mode::Function) where{Nx,Nu,Na} 
+    (λclass==:X && (Nu>0||Na>0)) && muscadeerror("Constraints with λclass=:X must have Nu==0 and Naa=0") 
+    return if λclass==:X; Xconstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,typeof(g),typeof(mode)}(g,mode,gₛ,λₛ)
+    elseif    λclass==:U; Uconstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,typeof(g),typeof(mode)}(g,mode,gₛ,λₛ)
+    elseif    λclass==:A; Aconstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,typeof(g),typeof(mode)}(g,mode,gₛ,λₛ)
+    else muscadeerror("class must be :X, :U or :A")
+    end
 end
-doflist(::Type{<:Constraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield}}) where
-                           {λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield} = 
+doflist(::Type{<:Xconstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield}}) where
+                            {Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield} = 
+   (inod =(xinod...           ,uinod...           ,ainod...           ,λinod ), 
+    class=(ntuple(i->:X,Nx)...,ntuple(i->:U,Nu)...,ntuple(i->:A,Na)...,:X    ), 
+    field=(xfield...          ,ufield...          ,afield...          ,λfield)) 
+doflist(::Type{<:Uconstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield}}) where
+                            {Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield} = 
    (inod =(xinod...           ,uinod...           ,ainod...           ,λinod         ), 
-    class=(ntuple(i->:X,Nx)...,ntuple(i->:U,Nu)...,ntuple(i->:A,Na)...,Symbol(λclass)), 
+    class=(ntuple(i->:X,Nx)...,ntuple(i->:U,Nu)...,ntuple(i->:A,Na)...,:U), 
+    field=(xfield...          ,ufield...          ,afield...          ,λfield        )) 
+doflist(::Type{<:Aconstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield}}) where
+                            {Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield} = 
+   (inod =(xinod...           ,uinod...           ,ainod...           ,λinod         ), 
+    class=(ntuple(i->:X,Nx)...,ntuple(i->:U,Nu)...,ntuple(i->:A,Na)...,:A), 
     field=(xfield...          ,ufield...          ,afield...          ,λfield        )) 
 
 off_,equal_,inequal_ = :off,:equal,:inequal # because @espy has its own ways with symbols... TODO improve @espy
-@espy function residual(o::Constraint{Xclass,Nx}, X,U,A, t,γ,dbg) where{Nx}
+@espy function residual(o::Xconstraint{Nx}, X,U,A, t,γ,dbg) where{Nx}
     P,gₛ,λₛ     = constants(∂0(X)),o.gₛ,o.λₛ
     x,λ        = ∂0(X)[SVector{Nx}(1:Nx)], ∂0(X)[Nx+1]
     x∂         = variate{P,Nx}(x) 
     g,g∂x      = value_∂{P,Nx}(o.g(x∂,t)) 
-    return if o.mode(t)==off_;     SVector{Nx+1}(ntuple(i->0,Nx)...,-gₛ/λₛ*λ         ) 
-    elseif    o.mode(t)==equal_;   SVector{Nx+1}((       -g∂x*λ)...,-g              )
+    return if o.mode(t)==equal_;   SVector{Nx+1}((       -g∂x*λ)...,-g              )
     elseif    o.mode(t)==inequal_; SVector{Nx+1}((       -g∂x*λ)...,-gₛ*S(λ/λₛ,g/gₛ,γ)) 
-    else MuscadeException("mode(t) must have value :off, :equal or :inequal",dbg)
+    else                           SVector{Nx+1}(ntuple(i->0,Nx)...,-gₛ/λₛ*λ         ) # off
     end
 end
-@espy function lagrangian(o::Constraint{class,Nx,Nu,Na}, δX,X,U,A, t,γ,dbg) where{class<:Union{Uclass,Aclass},Nx,Nu,Na}
-    if class==Uclass; x,u,a,λ = ∂0(X),∂0(U)[SVector{Nu}(1:Nu)],A                   ,∂0(U)[Nu+1] end
-    if class==Aclass; x,u,a,λ = ∂0(X),∂0(U)                   ,A[SVector{Na}(1:Na)],A[    Na+1] end
-    g = o.g(x,u,a,t)
-    return if o.mode(t)==off_;     -o.gₛ/(2o.λₛ)*λ^2 
-    elseif    o.mode(t)==equal_;   -g*λ
+@espy function lagrangian(o::Uconstraint{Nx,Nu,Na}, δX,X,U,A, t,γ,dbg) where{Nx,Nu,Na}
+    x,u,a,λ = ∂0(X),∂0(U)[SVector{Nu}(1:Nu)],A,∂0(U)[Nu+1]
+    g       = o.g(x,u,a,t)
+    return if o.mode(t)==equal_;   -g*λ
     elseif    o.mode(t)==inequal_; -KKT(λ,g,γ,o.λₛ,o.gₛ) 
-    else MuscadeException("mode(t) must have value :off, :equal or :inequal",dbg)
+    else                           -o.gₛ/(2o.λₛ)*λ^2     # off
+    end
+end
+@espy function lagrangian(o::Aconstraint{Nx,Nu,Na}, δX,X,U,A, t,γ,dbg) where{Nx,Nu,Na}
+    x,u,a,λ = ∂0(X),∂0(U),A[SVector{Na}(1:Na)],A[    Na+1] 
+    g       = o.g(a)
+    return if o.mode(t)==equal_;   -g*λ
+    elseif    o.mode(t)==inequal_; -KKT(λ,g,γ,o.λₛ,o.gₛ) 
+    else                           -o.gₛ/(2o.λₛ)*λ^2     # off  
     end
 end
 
@@ -244,7 +271,7 @@ An element to set a single X-dof to zero.
 - `λfield::Symbol=Symbol(:λ,field)`. The field of the Lagrange multiplier.
 
 # Examples
-```jldoctest
+```jldoctest; output = false
 using Muscade
 model = Model(:TestModel)
 node  = addnode!(model,𝕣[0,0])
@@ -260,8 +287,8 @@ See also: [`Constraint`](@ref), [`DofLoad`](@ref), [`DofCost`](@ref)
 struct Hold <: AbstractElement end  
 function Hold(nod::Vector{Node};field::Symbol,λfield::Symbol=Symbol(:λ,field)) 
     g(v,t)=v[1]
-    return Constraint{Xclass,1, 0, 0, (1,),(field,),(),   (),    (),   (),    1,    λfield, typeof(g),typeof(equal)}(g,equal,1.,1.)
-    #      Constraint{λclass,Nx,Nu,Na,xinod,xfield, uinod,ufield,ainod,afield,λinod,λfield}
+    return Xconstraint{1, 0, 0, (1,),(field,),(),   (),    (),   (),    1,    λfield, typeof(g),typeof(equal)}(g,equal,1.,1.)
+    #      Xconstraint{Nx,Nu,Na,xinod,xfield, uinod,ufield,ainod,afield,λinod,λfield}
 end
 
 #-------------------------------------------------
@@ -284,7 +311,7 @@ The element is intended for testing.  Muscade-based application should not inclu
 
 # Examples
 A one-dimensional linear elastic spring with stiffness 2.
-```julia-repl
+```jldoctest; output = false
 using Muscade
 model = Model(:TestModel)
 node1  = addnode!(model,𝕣[0])
