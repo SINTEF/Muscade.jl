@@ -35,14 +35,13 @@ function addin!(out::OUTstaticΛXU_A,asm,iele,scale,eleobj::E,Λ,X,U,A, t,γ,dbg
     iλ,ix,iu,ia     = gradientpartition(Nx,Nx,Nu,Na) # index into element vectors ΔZ and Lz
     iy              = 1:Ny  
     ΔΛ,ΔX,ΔU,ΔA     = view(ΔZ,iλ),view(ΔZ,ix),view(ΔZ,iu),view(ΔZ,ia) # TODO Static?
-
     L               = scaledlagrangian(scale,eleobj, Λ+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A+ΔA, t,γ,dbg)
-    Lz,Lzz          = value_∂{1,Nz}(∂{2,Nz}(L)) 
-    addtoarray!(out.Ly ,asm[1],iele,view(Lz ,iy   ))
-    addtoarray!(out.La ,asm[2],iele,view(Lz ,ia   ))
-    addtoarray!(out.Lyy,asm[3],iele,view(Lzz,iy,iy))
-    addtoarray!(out.Lya,asm[4],iele,view(Lzz,iy,ia))
-    addtoarray!(out.Laa,asm[5],iele,view(Lzz,ia,ia))  
+    ∇L              = ∂{2,Nz}(L)
+    add_value!(out.Ly ,asm[1],iele,∇L,iy   )
+    add_value!(out.La ,asm[2],iele,∇L,ia   )
+    add_∂!{1}( out.Lyy,asm[3],iele,∇L,iy,iy)
+    add_∂!{1}( out.Lya,asm[4],iele,∇L,iy,ia)
+    add_∂!{1}( out.Laa,asm[5],iele,∇L,ia,ia)
 end
 
 #------------------------------------
@@ -73,9 +72,9 @@ function addin!(out::OUTstaticΛXU,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxdir,<
     iλ,ix,iu,_      = gradientpartition(Nx,Nx,Nu,0) # index into element vectors ΔY and Ly
     ΔΛ,ΔX,ΔU        = view(ΔY,iλ),view(ΔY,ix),view(ΔY,iu)
     L               = scaledlagrangian(scale,eleobj, Λ+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A, t,γ,dbg)
-    Ly,Lyy          = value_∂{1,Ny}(∂{2,Ny}(L)) 
-    addtoarray!(out.Ly ,asm[1],iele,Ly )
-    addtoarray!(out.Lyy,asm[2],iele,Lyy)
+    ∇L              = ∂{2,Ny}(L)
+    add_value!(out.Ly ,asm[1],iele,∇L)
+    add_∂!{1}( out.Lyy,asm[2],iele,∇L)
 end
 
 #------------------------------------
@@ -113,7 +112,7 @@ function staticXUA(pstate,dbg;model::Model,
                 decrement!(state[step],0,Δy[ step],Ydofgr)
                 Δy²s,Ly²s = sum(Δy[step].^2),sum(out2.Ly.^2)
                 if Δy²s≤cΔy² && Ly²s≤cLy² 
-                    verbose && @printf "        step % i Y-converged in %3d Y-iterations:   |ΔY|=%7.1e  |∂L/∂Y|=%7.1e\n" step iYiter √(Δy²s) √(Ly²s)
+                    verbose && @printf "        step % i Y-converged in %3d Y-iterations:   |ΔY|=%7.1e  |∇L/∂Y|=%7.1e\n" step iYiter √(Δy²s) √(Ly²s)
                     break#out of iYiter
                 end
                 iYiter==maxYiter && muscadeerror(@sprintf("no Y-convergence after %3d Y-iterations. |ΔY|=%7.1e |Ly|=%7.1e\n",iYiter,√(Δy²s),√(Ly²s)))
@@ -140,7 +139,7 @@ function staticXUA(pstate,dbg;model::Model,
         γ             *= γfac
         if all(Δy².≤cΔy²) && all(Ly².≤cLy²) && Δa².≤cΔa² && La².≤cLa² 
             verbose && @printf "\n    StaticXUA converged in %3d A-iterations.\n" iAiter
-            verbose && @printf "    maxₜ(|ΔY|)=%7.1e  maxₜ(|∂L/∂Y|)=%7.1e  |ΔA|=%7.1e  |∂L/∂A|=%7.1e\n" √(maximum(Δy²)) √(maximum(Ly²)) √(Δa²) √(La²)
+            verbose && @printf "    maxₜ(|ΔY|)=%7.1e  maxₜ(|∇L/∂Y|)=%7.1e  |ΔA|=%7.1e  |∇L/∂A|=%7.1e\n" √(maximum(Δy²)) √(maximum(Ly²)) √(Δa²) √(La²)
             break#out of iAiter
         end
         iAiter==maxAiter && muscadeerror(@sprintf("no convergence after %3d A-iterations. |ΔY|=%7.1e |Ly|=%7.1e |ΔA|=%7.1e |La|=%7.1e\n",iAiter,√(maximum(Δy²)),√(maximum(Ly²)),√(Δa²),√(La²)))
