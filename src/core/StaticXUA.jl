@@ -27,8 +27,8 @@ function zero!(out::OUTstaticΛXU_A)
     zero!(out.Lya)
     zero!(out.Laa)
 end
-function addin!(out::OUTstaticΛXU_A,asm,iele,scale,eleobj::E,Λ,X,U,A, t,γ,dbg) where{E} 
-    Nx,Nu,Na        = getndof(E,(:X,:U,:A))
+function addin!(out::OUTstaticΛXU_A,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxdir,<:SVector{Nx}},
+                                                               U::NTuple{Nudir,<:SVector{Nu}},A::SVector{Na}, t,γ,dbg) where{E,Nxdir,Nx,Nudir,Nu,Na} # TODO make Nx,Nu,Na types
     Ny              = 2Nx+Nu                           # Y=[Λ;X;U]   
     Nz              = 2Nx+Nu+Na                        # Z = [Y;A]=[Λ;X;U;A]       
     ΔZ              = variate{2,Nz}(δ{1,Nz,𝕣}())                 
