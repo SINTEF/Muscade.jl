@@ -79,11 +79,9 @@ end
 
 #------------------------------------
 
-function staticXUA(pstate,dbg;model::Model,
-    initial::Vector{State},
+function staticXUA(pstate,dbg;model::Model,initial::Vector{State},
     maxAiter::ℤ=50,maxYiter::ℤ=0,maxΔy::ℝ=1e-5,maxLy::ℝ=∞,maxΔa::ℝ=1e-5,maxLa::ℝ=∞,γ0::𝕣=1.,γfac::𝕣=.5,verbose::𝕓=true)
 
-    verbose && @printf "    staticXUA solver\n\n"
     dis                = Disassembler(model)
     out1,asm1,Ydofgr   = prepare(OUTstaticΛXU  ,model,dis)
     out2,asm2,Adofgr,_ = prepare(OUTstaticΛXU_A,model,dis)

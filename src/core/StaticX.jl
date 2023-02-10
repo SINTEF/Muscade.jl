@@ -35,7 +35,6 @@ function staticX(pstate,dbg;model::Model,time::AbstractVector{𝕣},
                     verbose::𝕓=true,saveiter::𝔹=false,γ0::𝕣=1.,γfac::𝕣=.5)
     # important: this code assumes that there is no χ in state.
     verb             = verbose
-    verb && @printf "    staticX solver\n\n"
     dis              = initial.dis
     out,asm,dofgr    = prepare(OUTstaticX,model,dis)
     asmt,solt,citer  = 0.,0.,0
