@@ -66,6 +66,6 @@ module Muscade
     end
     module ElTest
         include("ElTest.jl")
-        export test_static_element#,nodes_for_element_test
+        export test_static_element,gradient
     end
 end

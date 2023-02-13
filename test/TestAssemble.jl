@@ -16,7 +16,7 @@ U        = @SVector 𝕣[]
 A        = @SVector [0.,0.]  # [Δseadrag,Δskydrag]
 
 
-L,Lδx,Lx,Lu,La   = Muscade.gradient(turbine,δX,[X],[U],A, 0.,0.,())
+L,Lδx,Lx,Lu,La   = gradient(turbine,δX,[X],[U],A, 0.,0.,())
 
 @testset "Turbine gradient" begin
     @test Lδx           ≈ [-2, -3]
@@ -42,7 +42,7 @@ anchorline      = AnchorLine(SVector(0.,0.,100.), SVector(0,2.,0), SVector(94.,0
 X        = @SVector [0.,0.,0.]
 U        = @SVector 𝕣[]
 A        = @SVector [0.,0.]  # [Δseadrag,Δskydrag]
-L,Lδx,Lx,Lu,La   = Muscade.gradient(anchorline,δX,[X],[U],A, 0.,0.,())
+L,Lδx,Lx,Lu,La   = gradient(anchorline,δX,[X],[U],A, 0.,0.,())
 @testset "anchorline1" begin
     @test Lδx           ≈ [-12.25628901693551, 0.2607721067433087, 24.51257803387102]
     @test Lx            ≈ [-0.91509745608786, 0.14708204066349, 1.3086506986891027]

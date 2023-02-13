@@ -1,5 +1,5 @@
 module TestUnit
-include("../src/core/Unit.jl")
+include("../src/Unit.jl")
 
 using Test
 
