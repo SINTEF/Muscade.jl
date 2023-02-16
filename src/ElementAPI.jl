@@ -22,50 +22,46 @@ getndof(E::DataType,class)        = length(getidof(E,class))
 getndof(E::DataType,class::Tuple) = ntuple(i->getndof(E,class[i]),length(class))
 
 ####### Lagrangian from residual and residual from Lagrangian
-# function implemented(::Type{T}) where{T} 
-#     return (Val{hasmethod(residual  ,(T,   NTuple,NTuple,𝕣1,𝕣,𝕣,NamedTuple))},
-#             Val{hasmethod(lagrangian,(T,𝕣1,NTuple,NTuple,𝕣1,𝕣,𝕣,NamedTuple))})
-# end
 @generated function implemented(eleobj) 
     r = hasmethod(residual  ,(eleobj,   NTuple,NTuple,𝕣1,𝕣,𝕣,NamedTuple))
     l = hasmethod(lagrangian,(eleobj,𝕣1,NTuple,NTuple,𝕣1,𝕣,𝕣,NamedTuple))
     return :(Val{$r},Val{$l})
 end
 
-# if residual or lagrange outputs just one vector or number, this element does not implementinequality constraints, so append minγfac=0.
-defminγfac(x::Union{Number,AbstractVector})               = x,0.
-defminγfac(x::Tuple)                                      = x
+# if residual or lagrange outputs just one vector or number, this element does not implementinequality constraints, so append α=0.
+defα(x::Union{Number,AbstractVector})               = x,0.
+defα(x::Tuple)                                      = x
 
 getresidual(          ::Type{<:Val}     ,::Type{<:Val}     ,args...) = muscadeerror(args[end],"No method 'lagrangian' or 'residual' for this element")
 getlagrangian(        ::Type{<:Val}     ,::Type{<:Val}     ,args...) = muscadeerror(args[end],"No method 'lagrangian' or 'residual' for this element")
 
 # Go straight
-getresidual(          ::Type{Val{true}} ,::Type{<:Val}     ,args...) = defminγfac(residual(  args...))
-getlagrangian(        ::Type{<:Val}     ,::Type{Val{true}} ,args...) = defminγfac(lagrangian(args...))
+getresidual(          ::Type{Val{true}} ,::Type{<:Val}     ,args...) = defα(residual(  args...))
+getlagrangian(        ::Type{<:Val}     ,::Type{Val{true}} ,args...) = defα(lagrangian(args...))
 
 # Swap
 # TODO merge the function pairs into one with Julia 1.9
 function getresidual(  ::Type{Val{false}},::Type{Val{true}} ,eleobj, X,U,A, t,γ,dbg)  
-    P            = constants(∂0(X),∂0(U),A,t)
-    Nx           = length(∂0(X))
-    δX           = δ{P,Nx,𝕣}()   
-    L,minγfac    = defminγfac(lagrangian(eleobj,δX,X,U,A, t,γ,dbg))
-    return ∂{P,Nx}(L),minγfac
+    P   = constants(∂0(X),∂0(U),A,t)
+    Nx  = length(∂0(X))
+    δX  = δ{P,Nx,𝕣}()   
+    L,α = defα(lagrangian(eleobj,δX,X,U,A, t,γ,dbg))
+    return ∂{P,Nx}(L),α
 end
 function getresidual(::Type{Val{false}},::Type{Val{true}} ,out,key,eleobj,X,U,A, t,γ,dbg)  
-    P            = constants(∂0(X),∂0(U),A,t)
-    Nx           = length(∂0(X))
-    δX           = δ{P,Nx,𝕣}()   
-    L,minγfac    = defminγfac(lagrangian(out,key,eleobj,δX,X,U,A, t,γ,dbg))
-    return ∂{P,Nx}(L),minγfac
+    P   = constants(∂0(X),∂0(U),A,t)
+    Nx  = length(∂0(X))
+    δX  = δ{P,Nx,𝕣}()   
+    L,α = defα(lagrangian(out,key,eleobj,δX,X,U,A, t,γ,dbg))
+    return ∂{P,Nx}(L),α
 end
 function getlagrangian(::Type{Val{true}} ,::Type{Val{false}},eleobj,δX,X,U,A, t,γ,dbg) 
-    (R,minγfac) = defminγfac(residual(eleobj,X,U,A, t,γ,dbg))
-    return (δX ∘₁ R,minγfac)
+    R,α = defα(residual(eleobj,X,U,A, t,γ,dbg))
+    return δX ∘₁ R , α
 end
 function getlagrangian(::Type{Val{true}} ,::Type{Val{false}},out,key,eleobj,δX,X,U,A, t,γ,dbg) 
-    (R,minγfac) = defminγfac(residual(out,key,eleobj,X,U,A, t,γ,dbg))
-    return (δX ∘₁ R,minγfac)
+    R,α = defα(residual(out,key,eleobj,X,U,A, t,γ,dbg))
+    return δX ∘₁ R , α
 end
 
 ###### scaled functions
@@ -75,7 +71,7 @@ function scaledlagrangian(scale,eleobj::E,Λs,Xs::NTuple{Nxder},Us::NTuple{Nuder
     X     = NTuple{Nxder}(xs.*scale.X for xs∈Xs)  
     U     = NTuple{Nuder}(us.*scale.U for us∈Us)
     A     =       As.*scale.A
-    L,minγfac = getlagrangian(implemented(eleobj)...,eleobj,Λ,X,U,A, t,γ,dbg)
+    L,α   = getlagrangian(implemented(eleobj)...,eleobj,Λ,X,U,A, t,γ,dbg)
     hasnan(L) && muscadeerror((dbg...,eletype=E),"NaN in a Lagrangian or its partial derivatives")
     return L
 end    
@@ -83,7 +79,7 @@ function scaledresidual(scale,eleobj::E, Xs::NTuple{Nxder},Us::NTuple{Nuder},As,
     X     = NTuple{Nxder}(xs.*scale.X for xs∈Xs)  
     U     = NTuple{Nuder}(us.*scale.U for us∈Us)
     A     =       As.*scale.A
-    R,minγfac = getresidual(implemented(eleobj)...,eleobj, X,U,A, t,γ,dbg) 
+    R,α   = getresidual(implemented(eleobj)...,eleobj, X,U,A, t,γ,dbg) 
     hasnan(R) && muscadeerror(dbg,"NaN in a residual or its partial derivatives")
     return R.*scale.Λ 
 end
