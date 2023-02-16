@@ -78,7 +78,7 @@ req     = @request cr,ltf
 out,key = getresult(state,req, eleID=e2)
 cr      = out[key.cr ,:,1] # out[ikey,iele,istep]
 ltf     = out[key.ltf,:,1]
-@testset "getdof" begin
+@testset "getdof2" begin
     @test  cr  ≈ [118.69592125130082, 23.961941539907585, 235.51441727552435]
     @test  ltf ≈ [183.68229160771097, 121.62396272109176, 238.96209627282917]
 end
@@ -86,7 +86,7 @@ end
 out,key = getresult(state[1],req, eleID=e2)
 cr      = out[key.cr ,:] # out[ikey,iele]
 ltf     = out[key.ltf,:]
-@testset "getdof" begin
+@testset "getdof3" begin
     @test  cr  ≈ [118.69592125130082, 23.961941539907585, 235.51441727552435]
     @test  ltf ≈ [183.68229160771097, 121.62396272109176, 238.96209627282917]
 end

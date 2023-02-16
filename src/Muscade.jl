@@ -28,7 +28,7 @@ module Muscade
 
     include("ElementAPI.jl")
     export AbstractElement
-    export lagrangian,residual,espyable,draw,request2draw 
+    export lagrangian,residual,espyable,draw,request2draw
     export ∂0,∂1,∂2
     export doflist
 

@@ -8,7 +8,7 @@ function gradient(eleobj::E,Λ,X,U,A, t,γ,dbg) where{E<:AbstractElement}
     N            = 2nX+nU+nA
     iΛ,iX,iU,iA  = (1:nX) , (1:nX) .+ nX , (1:nU) .+ 2nX , (1:nA) .+ (2nX+nU)  
     ΔY           = δ{P,N,𝕣}()                        
-    L            = lagrangian(eleobj,Λ+ΔY[iΛ],(∂0(X)+ΔY[iX],),(∂0(U)+ΔY[iU],),A+ΔY[iA], t,γ,dbg)
+    L,minγfac    = Muscade.getlagrangian(Muscade.implemented(E)...,eleobj,Λ+ΔY[iΛ],(∂0(X)+ΔY[iX],),(∂0(U)+ΔY[iU],),A+ΔY[iA], t,γ,dbg)
     Ly           = ∂{P,N}(L)
     return (L=value{P}(L), Lλ=Ly[iΛ], Lx=Ly[iX], Lu=Ly[iU], La=Ly[iA])
 end

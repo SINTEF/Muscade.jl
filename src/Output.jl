@@ -25,14 +25,14 @@ function getdof(state::Vector{S};class::Symbol=:X,field::Symbol,nodID::Vector{No
 end
 
 # Elemental results
-function extractkernel!(out,key,eleobj,eleID,dis::EletypDisassembler,state::State,dbg) # typestable kernel
+function extractkernel!(out,key,eleobj::Vector{E},eleID,dis::EletypDisassembler,state::State,dbg) where{E}# typestable kernel
     for (iele,ei) ∈ enumerate(eleID)
         index = dis.index[ei.iele]
         Λ     = state.Λ[index.X]                 
         X     = Tuple(x[index.X] for x∈state.X)
         U     = Tuple(u[index.U] for u∈state.U)
         A     = state.A[index.A]
-        _     = lagrangian(view(out,:,iele),key,eleobj[ei.iele],Λ,X,U,A,state.time,state.γ,(dbg...,iele=ei.iele))
+        _     = getlagrangian(implemented(E)...,view(out,:,iele),key,eleobj[ei.iele],Λ,X,U,A,state.time,state.γ,(dbg...,iele=ei.iele))
     end
 end
 function getresult(state::Vector{S},req; eleID::Vector{EleID})where {S<:State}

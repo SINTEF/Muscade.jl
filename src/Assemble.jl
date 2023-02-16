@@ -359,22 +359,3 @@ add_∂!{P}(out::Array,asm,iele,a::SVector{M,R},args...) where{P,M,R}   = nothin
 add_∂!{P}(out::Array,asm,iele,a::SVector{M,∂ℝ{P,N,R}}) where{P,N,R,M} = add_∂!{P}(out,asm,iele,a,1:M,1:N)
 
 
-###### scaled functions
-
-function scaledlagrangian(scale,eleobj::E,Λs,Xs::NTuple{Nxder},Us::NTuple{Nuder},As, t,γ,dbg) where{E<:AbstractElement,Nxder,Nuder}
-    Λ     =       Λs.*scale.Λ                 
-    X     = NTuple{Nxder}(xs.*scale.X for xs∈Xs)  
-    U     = NTuple{Nuder}(us.*scale.U for us∈Us)
-    A     =       As.*scale.A
-    L     = lagrangian(eleobj,Λ,X,U,A, t,γ,dbg)
-    hasnan(L) && muscadeerror((dbg...,eletype=E),"NaN in a Lagrangian or its partial derivatives")
-    return L
-end    
-function scaledresidual(scale,eleobj::E, Xs::NTuple{Nxder},Us::NTuple{Nuder},As, t,γ,dbg) where{E<:AbstractElement,Nxder,Nuder} 
-    X     = NTuple{Nxder}(xs.*scale.X for xs∈Xs)  
-    U     = NTuple{Nuder}(us.*scale.U for us∈Us)
-    A     =       As.*scale.A
-    R     = scale.Λ .* residual(eleobj, X,U,A, t,γ,dbg) 
-    hasnan(R) && muscadeerror(dbg,"NaN in a residual or its partial derivatives")
-    return R
-end
