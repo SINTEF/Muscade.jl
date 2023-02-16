@@ -29,7 +29,7 @@ getndof(E::DataType,class::Tuple) = ntuple(i->getndof(E,class[i]),length(class))
 end
 
 # if residual or lagrange outputs just one vector or number, this element does not implementinequality constraints, so append α=0.
-defα(x::Union{Number,AbstractVector})               = x,0.
+defα(x::Union{Number,AbstractVector})               = x,∞
 defα(x::Tuple)                                      = x
 
 getresidual(          ::Type{<:Val}     ,::Type{<:Val}     ,args...) = muscadeerror(args[end],"No method 'lagrangian' or 'residual' for this element")
@@ -73,7 +73,7 @@ function scaledlagrangian(scale,eleobj::E,Λs,Xs::NTuple{Nxder},Us::NTuple{Nuder
     A     =       As.*scale.A
     L,α   = getlagrangian(implemented(eleobj)...,eleobj,Λ,X,U,A, t,γ,dbg)
     hasnan(L) && muscadeerror((dbg...,eletype=E),"NaN in a Lagrangian or its partial derivatives")
-    return L
+    return L,α
 end    
 function scaledresidual(scale,eleobj::E, Xs::NTuple{Nxder},Us::NTuple{Nuder},As, t,γ,dbg) where{E<:AbstractElement,Nxder,Nuder} 
     X     = NTuple{Nxder}(xs.*scale.X for xs∈Xs)  
@@ -81,5 +81,5 @@ function scaledresidual(scale,eleobj::E, Xs::NTuple{Nxder},Us::NTuple{Nuder},As,
     A     =       As.*scale.A
     R,α   = getresidual(implemented(eleobj)...,eleobj, X,U,A, t,γ,dbg) 
     hasnan(R) && muscadeerror(dbg,"NaN in a residual or its partial derivatives")
-    return R.*scale.Λ 
+    return R.*scale.Λ ,α
 end

@@ -5,6 +5,7 @@ struct OUTstaticΛXU_A{Ty,Ta,Tyy,Tya,Taa}
     Lyy   :: Tyy 
     Lya   :: Tya 
     Laa   :: Taa
+    α     :: Ref{𝕣}
 end   
 function prepare(::Type{OUTstaticΛXU_A},model,dis) 
     Ydofgr             = allΛXUdofs(model,dis)
@@ -17,7 +18,7 @@ function prepare(::Type{OUTstaticΛXU_A},model,dis)
     Lyy                = asmmat!(view(asm,3,:),view(asm,1,:),view(asm,1,:),nY,nY) 
     Lya                = asmfullmat!(view(asm,4,:),view(asm,1,:),view(asm,2,:),nY,nA) 
     Laa                = asmfullmat!(view(asm,5,:),view(asm,2,:),view(asm,2,:),nA,nA)  
-    out                = OUTstaticΛXU_A(Ly,La,Lyy,Lya,Laa)
+    out                = OUTstaticΛXU_A(Ly,La,Lyy,Lya,Laa,Ref{𝕣}())
     return out,asm,Adofgr,Ydofgr
 end
 function zero!(out::OUTstaticΛXU_A)
@@ -26,6 +27,7 @@ function zero!(out::OUTstaticΛXU_A)
     zero!(out.Lyy)
     zero!(out.Lya)
     zero!(out.Laa)
+    out.α[] = ∞    
 end
 function addin!(out::OUTstaticΛXU_A,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxdir,<:SVector{Nx}},
                                                                U::NTuple{Nudir,<:SVector{Nu}},A::SVector{Na}, t,γ,dbg) where{E,Nxdir,Nx,Nudir,Nu,Na} # TODO make Nx,Nu,Na types
@@ -35,13 +37,14 @@ function addin!(out::OUTstaticΛXU_A,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxdir
     iλ,ix,iu,ia     = gradientpartition(Nx,Nx,Nu,Na) # index into element vectors ΔZ and Lz
     iy              = 1:Ny  
     ΔΛ,ΔX,ΔU,ΔA     = view(ΔZ,iλ),view(ΔZ,ix),view(ΔZ,iu),view(ΔZ,ia) # TODO Static?
-    L               = scaledlagrangian(scale,eleobj, Λ+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A+ΔA, t,γ,dbg)
+    L,α             = scaledlagrangian(scale,eleobj, Λ+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A+ΔA, t,γ,dbg)
     ∇L              = ∂{2,Nz}(L)
     add_value!(out.Ly ,asm[1],iele,∇L,iy   )
     add_value!(out.La ,asm[2],iele,∇L,ia   )
     add_∂!{1}( out.Lyy,asm[3],iele,∇L,iy,iy)
     add_∂!{1}( out.Lya,asm[4],iele,∇L,iy,ia)
     add_∂!{1}( out.Laa,asm[5],iele,∇L,ia,ia)
+    out.α[]         = min(out.α[],α)
 end
 
 #------------------------------------
@@ -49,6 +52,7 @@ end
 struct OUTstaticΛXU{Ty,Tyy}  
     Ly    :: Ty
     Lyy   :: Tyy 
+    α     :: Ref{𝕣}
 end   
 function prepare(::Type{OUTstaticΛXU},model,dis) 
     Ydofgr             = allΛXUdofs(model,dis)
@@ -57,12 +61,13 @@ function prepare(::Type{OUTstaticΛXU},model,dis)
     asm                = Matrix{𝕫2}(undef,narray,neletyp)  
     Ly                 = asmvec!(view(asm,1,:),Ydofgr,dis) 
     Lyy                = asmmat!(view(asm,2,:),view(asm,1,:),view(asm,1,:),nY,nY) 
-    out                = OUTstaticΛXU(Ly,Lyy)
+    out                = OUTstaticΛXU(Ly,Lyy,Ref{𝕣}())
     return out,asm,Ydofgr
 end
 function zero!(out::OUTstaticΛXU)
     zero!(out.Ly )
     zero!(out.Lyy)
+    out.α[] = ∞    
 end
 function addin!(out::OUTstaticΛXU,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxdir,<:SVector{Nx}},
                                                              U::NTuple{Nudir,<:SVector{Nu}},A, t,γ,dbg) where{E,Nxdir,Nx,Nudir,Nu}
@@ -71,16 +76,17 @@ function addin!(out::OUTstaticΛXU,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxdir,<
     ΔY              = variate{2,Ny}(δ{1,Ny,𝕣}())                 
     iλ,ix,iu,_      = gradientpartition(Nx,Nx,Nu,0) # index into element vectors ΔY and Ly
     ΔΛ,ΔX,ΔU        = view(ΔY,iλ),view(ΔY,ix),view(ΔY,iu)
-    L               = scaledlagrangian(scale,eleobj, Λ+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A, t,γ,dbg)
+    L,α             = scaledlagrangian(scale,eleobj, Λ+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A, t,γ,dbg)
     ∇L              = ∂{2,Ny}(L)
     add_value!(out.Ly ,asm[1],iele,∇L)
     add_∂!{1}( out.Lyy,asm[2],iele,∇L)
+    out.α[]         = min(out.α[],α)
 end
 
 #------------------------------------
 
 function staticXUA(pstate,dbg;model::Model,initial::Vector{State},
-    maxAiter::ℤ=50,maxYiter::ℤ=0,maxΔy::ℝ=1e-5,maxLy::ℝ=∞,maxΔa::ℝ=1e-5,maxLa::ℝ=∞,γ0::𝕣=1.,γfac::𝕣=.5,verbose::𝕓=true)
+    maxAiter::ℤ=50,maxYiter::ℤ=0,maxΔy::ℝ=1e-5,maxLy::ℝ=∞,maxΔa::ℝ=1e-5,maxLa::ℝ=∞,γ0::𝕣=1.,γfac1::𝕣=.5,γfac2::𝕣=100.,verbose::𝕓=true)
 
     dis                = Disassembler(model)
     out1,asm1,Ydofgr   = prepare(OUTstaticΛXU  ,model,dis)
@@ -134,7 +140,7 @@ function staticXUA(pstate,dbg;model::Model,initial::Vector{State},
             decrement!(state[step],0,ΔY,Ydofgr)
             decrement!(state[step],0,Δa,Adofgr)
         end    
-        γ             *= γfac
+        γ             *= γfac1*exp(-(out2.α[]/γfac2)^2)
         if all(Δy².≤cΔy²) && all(Ly².≤cLy²) && Δa².≤cΔa² && La².≤cLa² 
             verbose && @printf "\n    StaticXUA converged in %3d A-iterations.\n" iAiter
             verbose && @printf "    maxₜ(|ΔY|)=%7.1e  maxₜ(|∇L/∂Y|)=%7.1e  |ΔA|=%7.1e  |∇L/∂A|=%7.1e\n" √(maximum(Δy²)) √(maximum(Ly²)) √(Δa²) √(La²)

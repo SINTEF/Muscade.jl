@@ -99,7 +99,7 @@ espyable(::Type{<:DofLoad}) = (F=scalar,)
 
 #-------------------------------------------------
 
-McCormick(a,b)= α->a*exp(-(α/b)^2)            # provided as input to solvers, used by their Addin
+#McCormick(a,b)= α->a*exp(-(α/b)^2)            # provided as input to solvers, used by their Addin
 decided(λ,g,γ)  = abs(VALUE(λ)-VALUE(g))/γ    # used by constraint elements
 
 S(λ,g,γ) = (g+λ-hypot(g-λ,2γ))/2 # Modified interior point method's take on KKT's-complementary slackness 

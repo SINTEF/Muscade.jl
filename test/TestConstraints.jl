@@ -182,8 +182,8 @@ state           = solve(staticX;model,time=[0.],verbose=false) # because there i
 
 @testset "interior point" begin
     X = state[findlastassigned(state)].X[1][1:2]
-    @test g1(X,0)   ≈ 1.323559124521978e-7
-    @test g2(X,0)   ≈ 3.600555414096096e-7
+    @test g1(X,0)   ≈ 0.0
+    @test g2(X,0)   ≈ -2.7755575615628914e-17
 end
 
 
