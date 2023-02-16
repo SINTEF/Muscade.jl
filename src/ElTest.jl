@@ -2,18 +2,18 @@ using  Printf
 using  Muscade 
 
 ####### For testing: get all the gradients. 
-function gradient(eleobj::E,Λ,X,U,A, t,γ,dbg) where{E<:AbstractElement}
+function gradient(eleobj,Λ,X,U,A, t,γ,dbg) 
     P            = constants(Λ,∂0(X),∂0(U),A,t)
     nX,nU,nA     = length(Λ),length(∂0(U)),length(A)
     N            = 2nX+nU+nA
     iΛ,iX,iU,iA  = (1:nX) , (1:nX) .+ nX , (1:nU) .+ 2nX , (1:nA) .+ (2nX+nU)  
     ΔY           = δ{P,N,𝕣}()                        
-    L,minγfac    = Muscade.getlagrangian(Muscade.implemented(E)...,eleobj,Λ+ΔY[iΛ],(∂0(X)+ΔY[iX],),(∂0(U)+ΔY[iU],),A+ΔY[iA], t,γ,dbg)
+    L,minγfac    = Muscade.getlagrangian(Muscade.implemented(eleobj)...,eleobj,Λ+ΔY[iΛ],(∂0(X)+ΔY[iX],),(∂0(U)+ΔY[iU],),A+ΔY[iA], t,γ,dbg)
     Ly           = ∂{P,N}(L)
     return (L=value{P}(L), Lλ=Ly[iΛ], Lx=Ly[iX], Lu=Ly[iU], La=Ly[iA])
 end
 
-function test_static_element(ele::eletyp; δX,X,U,A, t::Float64=0.,γ::Float64=0., verbose::Bool=true,dbg = ()) where{eletyp<:AbstractElement}
+function test_static_element(ele::eletyp; δX,X,U,A, t::Float64=0.,γ::Float64=0., verbose::Bool=true,dbg = NamedTuple()) where{eletyp<:AbstractElement}
     inod,class,field = Muscade.getdoflist(eletyp)
     iXdof            = Muscade.getidof(eletyp,:X)
     iUdof            = Muscade.getidof(eletyp,:U)

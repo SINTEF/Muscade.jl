@@ -231,7 +231,9 @@ doflist(::Type{<:Aconstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λi
     class=(ntuple(i->:X,Nx)...,ntuple(i->:U,Nu)...,ntuple(i->:A,Na)...,:A), 
     field=(xfield...          ,ufield...          ,afield...          ,λfield        )) 
 
-off_,equal_,inequal_ = :off,:equal,:inequal # because @espy has its own ways with symbols... TODO improve @espy
+const off_     = :off # because @espy has its own ways with symbols... TODO improve @espy
+const equal_   = :equal
+const inequal_ = :inequal 
 @espy function residual(o::Xconstraint{Nx}, X,U,A, t,γ,dbg) where{Nx}
     P,gₛ,λₛ     = constants(∂0(X)),o.gₛ,o.λₛ
     x,λ        = ∂0(X)[SVector{Nx}(1:Nx)], ∂0(X)[Nx+1]
