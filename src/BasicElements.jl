@@ -242,29 +242,26 @@ const inequal_ = :inequal
     x,λ        = ∂0(X)[SVector{Nx}(1:Nx)], ∂0(X)[Nx+1]
     x∂         = variate{P,Nx}(x) 
     g,g∂x      = value_∂{P,Nx}(o.g(x∂,t)) 
-    R =    if o.mode(t)==equal_;   SVector{Nx+1}((       -g∂x*λ)...,-g              )
-    elseif    o.mode(t)==inequal_; SVector{Nx+1}((       -g∂x*λ)...,-gₛ*S(λ/λₛ,g/gₛ,γ)) 
-    else                           SVector{Nx+1}(ntuple(i->0,Nx)...,-gₛ/λₛ*λ         ) # off
+    return if o.mode(t)==equal_;   SVector{Nx+1}((       -g∂x*λ)...,-g              ) ,∞
+    elseif    o.mode(t)==inequal_; SVector{Nx+1}((       -g∂x*λ)...,-gₛ*S(λ/λₛ,g/gₛ,γ)) ,decided(λ/λₛ,g/gₛ,γ)
+    elseif    o.mode(t)==off_;     SVector{Nx+1}(ntuple(i->0,Nx)...,-gₛ/λₛ*λ         ) ,∞
     end
-    return R,decided(λ/λₛ,g/gₛ,γ)
 end
 @espy function lagrangian(o::Uconstraint{Nx,Nu,Na}, δX,X,U,A, t,γ,dbg) where{Nx,Nu,Na}
     x,u,a,λ = ∂0(X),∂0(U)[SVector{Nu}(1:Nu)],A,∂0(U)[Nu+1]
     g       = o.g(x,u,a,t)
-    L  =   if o.mode(t)==equal_;   -g*λ
-    elseif    o.mode(t)==inequal_; -KKT(λ,g,γ,o.λₛ,o.gₛ) 
-    else                           -o.gₛ/(2o.λₛ)*λ^2     # off
+    return if o.mode(t)==equal_;   -g*λ                  ,∞
+    elseif    o.mode(t)==inequal_; -KKT(λ,g,γ,o.λₛ,o.gₛ)  ,decided(λ/o.λₛ,g/o.gₛ,γ)
+    elseif    o.mode(t)==off_;     -o.gₛ/(2o.λₛ)*λ^2      ,∞
     end
-    return L,decided(λ/o.λₛ,g/o.gₛ,γ)
 end
 @espy function lagrangian(o::Aconstraint{Nx,Nu,Na}, δX,X,U,A, t,γ,dbg) where{Nx,Nu,Na}
     x,u,a,λ = ∂0(X),∂0(U),A[SVector{Na}(1:Na)],A[    Na+1] 
     g       = o.g(a)
-    L =    if o.mode(t)==equal_;   -g*λ
-    elseif    o.mode(t)==inequal_; -KKT(λ,g,γ,o.λₛ,o.gₛ) 
-    else                           -o.gₛ/(2o.λₛ)*λ^2     # off  
+    L =    if o.mode(t)==equal_;   -g*λ                  ,∞
+    elseif    o.mode(t)==inequal_; -KKT(λ,g,γ,o.λₛ,o.gₛ)  ,decided(λ/o.λₛ,g/o.gₛ,γ)
+    elseif    o.mode(t)==off_;     -o.gₛ/(2o.λₛ)*λ^2      ,∞ 
     end
-    return L,decided(λ/o.λₛ,g/o.gₛ,γ)
 end
 
 #-------------------------------------------------
