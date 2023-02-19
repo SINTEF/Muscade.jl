@@ -42,7 +42,7 @@ end
 # dis.dis[ieletyp].index.[iele].X|U|A[ieledof]
 # dis.dis[ieletyp].scale.Λ|X|U|A[ieledof]
 # dis.scaleΛ|X|U|A[imoddof]
-struct Disassembler{nX,nU,nA}
+struct Disassembler#{nX,nU,nA}
     dis     :: Vector{EletypDisassembler} 
     scaleΛ  :: 𝕣1
     scaleX  :: 𝕣1
@@ -108,7 +108,7 @@ function Disassembler(model::Model)
         end # for iele
         dis[ieletyp]          = EletypDisassembler{nX,nU,nA}(index,scale)
     end # for ieletyp
-    return Disassembler{NX,NU,NA}(dis,scaleΛ,scaleX,scaleU,scaleA)
+    return Disassembler(dis,scaleΛ,scaleX,scaleU,scaleA)
 end
 
 #### DofGroup
