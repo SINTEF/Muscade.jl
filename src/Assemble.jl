@@ -1,27 +1,3 @@
-######## state and initstate
-# at each step, contains the complete, unscaled state of the system
-struct State{Nxder,Nuder,D}
-    Λ     :: 𝕣1
-    X     :: NTuple{Nxder,𝕣1}
-    U     :: NTuple{Nuder,𝕣1}
-    A     :: 𝕣1
-    time  :: 𝕣
-    γ     :: 𝕣
-    model :: Model
-    dis   :: D
-end
-# a constructor that provides an initial state
-State(model::Model,dis;time=-∞) = State(zeros(getndof(model,:X)),(zeros(getndof(model,:X)),),(zeros(getndof(model,:U)),),zeros(getndof(model,:A)),time,0.,model,dis)
-settime(s,t) = State(s.Λ,s.X,s.U,s.A,t,0.,s.model,s.dis)  
-
-
-## find the last assigned array-element in a vector 
-lastassigned(state) = state
-function lastassigned(v::Vector)
-    i = findlast([isassigned(v,i) for i=1:length(v)])
-    return isnothing(i) ? nothing : lastassigned(v[i])
-end
-
 ######## The disassembler
 
 struct XUA{T,nX,nU,nA} 
@@ -42,7 +18,7 @@ end
 # dis.dis[ieletyp].index.[iele].X|U|A[ieledof]
 # dis.dis[ieletyp].scale.Λ|X|U|A[ieledof]
 # dis.scaleΛ|X|U|A[imoddof]
-struct Disassembler#{nX,nU,nA}
+struct Disassembler
     dis     :: Vector{EletypDisassembler} 
     scaleΛ  :: 𝕣1
     scaleX  :: 𝕣1
@@ -109,6 +85,30 @@ function Disassembler(model::Model)
         dis[ieletyp]          = EletypDisassembler{nX,nU,nA}(index,scale)
     end # for ieletyp
     return Disassembler(dis,scaleΛ,scaleX,scaleU,scaleA)
+end
+
+######## state and initstate
+# at each step, contains the complete, unscaled state of the system
+struct State{Nxder,Nuder}
+    Λ     :: 𝕣1
+    X     :: NTuple{Nxder,𝕣1}
+    U     :: NTuple{Nuder,𝕣1}
+    A     :: 𝕣1
+    time  :: 𝕣
+    γ     :: 𝕣
+    model :: Model
+    dis   :: Disassembler
+end
+# a constructor that provides an initial state
+State(model::Model,dis;time=-∞) = State(zeros(getndof(model,:X)),(zeros(getndof(model,:X)),),(zeros(getndof(model,:U)),),zeros(getndof(model,:A)),time,0.,model,dis)
+settime(s,t) = State(s.Λ,s.X,s.U,s.A,t,0.,s.model,s.dis)  
+
+
+## find the last assigned array-element in a vector 
+lastassigned(state) = state
+function lastassigned(v::Vector)
+    i = findlast([isassigned(v,i) for i=1:length(v)])
+    return isnothing(i) ? nothing : lastassigned(v[i])
 end
 
 #### DofGroup
