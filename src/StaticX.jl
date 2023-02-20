@@ -1,10 +1,10 @@
 
 ###--------------------- ASMstaticX: for good old static FEM
 
-struct OUTstaticX{Tλ,Tλx} 
+mutable struct OUTstaticX{Tλ,Tλx} 
     Lλ    :: Tλ
     Lλx   :: Tλx 
-    α     :: Ref{𝕣}
+    α     :: 𝕣
 end   
 function prepare(::Type{OUTstaticX},model,dis) 
     dofgr              = allXdofs(model,dis)
@@ -13,13 +13,13 @@ function prepare(::Type{OUTstaticX},model,dis)
     asm                = Matrix{𝕫2}(undef,narray,neletyp)  
     Lλ                 = asmvec!(view(asm,1,:),dofgr,dis) 
     Lλx                = asmmat!(view(asm,2,:),view(asm,1,:),view(asm,1,:),ndof,ndof) 
-    out                = OUTstaticX(Lλ,Lλx,Ref{𝕣}())
+    out                = OUTstaticX(Lλ,Lλx,∞)
     return out,asm,dofgr
 end
 function zero!(out::OUTstaticX)
     zero!(out.Lλ)
     zero!(out.Lλx)
-    out.α[] = ∞    
+    out.α = ∞    
 end
 function addin!(out::OUTstaticX,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxdir,<:SVector{Nx}},U,A, t,γ,dbg) where{E,Nxdir,Nx}
     if Nx==0; return end # don't waste time on Acost elements...   
@@ -27,7 +27,7 @@ function addin!(out::OUTstaticX,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxdir,<:SV
     Lλ,α       = scaledresidual(scale,eleobj, (∂0(X)+ΔX,),U,A, t,γ,dbg)
     add_value!(out.Lλ ,asm[1],iele,Lλ)
     add_∂!{1}( out.Lλx,asm[2],iele,Lλ)
-    out.α[]    = min(out.α[],α)
+    out.α      = min(out.α,α)
 end
 
 ###---------------------
@@ -59,7 +59,7 @@ function staticX(pstate,dbg;model::Model,time::AbstractVector{𝕣},
             solt+=@elapsed Δx  = facLλx\out.Lλ
             Δx²,Lλ²  = sum(Δx.^2),sum(out.Lλ.^2)
             decrement!(s,0,Δx,dofgr)
-            γ       *= γfac1*exp(-(out.α[]/γfac2)^2)
+            γ       *= γfac1*exp(-(out.α/γfac2)^2)
             saveiter && (state[iiter]=State(s.Λ,deepcopy(s.X),s.U,s.A,s.time,γ,model,dis))
             if Δx²≤cΔx² && Lλ²≤cLλ² 
                 verb && @printf " converged in %3d iterations. |Δx|=%7.1e |Lλ|=%7.1e\n" iiter √(Δx²) √(Lλ²)
