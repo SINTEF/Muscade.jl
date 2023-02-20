@@ -43,7 +43,7 @@ function staticX(pstate,dbg;model::Model,time::AbstractVector{𝕣},
     cΔx²,cLλ²        = maxΔx^2,maxresidual^2
     state            = allocate(pstate,Vector{State}(undef,saveiter ? maxiter : length(time))) # state is not a return argument so that data is not lost in case of exception
     s                = initial 
-    local facLλx # ::SuiteSparse.UMFPACK.UmfpackLU{𝕣,𝕫}
+    local facLλx 
     for (step,t)     ∈ enumerate(time)
         verb && @printf "    step %3d" step
         s            = settime(s,t)

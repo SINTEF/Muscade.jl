@@ -100,6 +100,8 @@ function staticXUA(pstate,dbg;model::Model,initial::Vector{State},
     y∂a                = Vector{𝕣2}(undef,length(state))
     Δy²,Ly²            = Vector{𝕣 }(undef,length(state)),Vector{𝕣}(undef,length(state))
     γ                  = γ0
+    local facLyy
+    local facLyys
     for iAiter          = 1:maxAiter
         verbose && @printf "    A-iteration %3d\n" iAiter
         La            .= 0
@@ -108,7 +110,7 @@ function staticXUA(pstate,dbg;model::Model,initial::Vector{State},
             for iYiter = 1:maxYiter
                 assemble!(out1,asm1,dis,model,state[step], γ,(dbg...,solver=:StaticXUA,step=step,iYiter=iYiter))
                 try if iAiter==1 && step==1 && iYiter==1
-                    global  facLyys     = lu(out1.Lyy) 
+                    facLyys = lu(out1.Lyy) 
                 else
                     lu!(facLyys,out1.Lyy) 
                 end catch; muscadeerror(@sprintf("Incremental Y-solution failed at step=%i, iAiter=%i, iYiter",step,iAiter,iYiter)) end
@@ -123,7 +125,7 @@ function staticXUA(pstate,dbg;model::Model,initial::Vector{State},
             end
             assemble!(out2,asm2,dis,model,state[step], γ,(dbg...,solver=:StaticXUA,step=step,iAiter=iAiter))
             try if iAiter==1 && step==1
-                global  facLyy = lu(out2.Lyy) 
+                facLyy = lu(out2.Lyy) 
             else
                 lu!(facLyy,out2.Lyy)
             end catch; muscadeerror(@sprintf("Incremental solution failed at step=%i, iAiter=%i",step,iAiter));end

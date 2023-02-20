@@ -144,7 +144,10 @@ end
 # the function can then do e.g. vec=allocate(pointer,Vector...) and write to vec.
 # and the caller retrievs the data with vec = pointer[] 
 # advantage over "return vec" is if f throws, then vec still contains some data.
-function allocate(pointer::Ref,target)
+
+const Pointer = Base.RefValue
+#function allocate(pointer::Pointer{T},target::T) where{T}
+function allocate(pointer::Pointer,target) # TODO use line above
     pointer[]=target
     return target
 end
