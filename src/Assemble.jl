@@ -197,18 +197,21 @@ nonzeros(v) = v[v.≠0]
 function asmvec!(asm,dofgr,dis) 
     # asm[ieletyp] == undef, please fill 
     Λ,X,U,A  = indexedstate(dofgr)      # create a state of indices into the group - with zeros for modeldofs not in group
-    for (ieletyp,di) ∈ enumerate(dis.dis)
-        nΛ,nX,nU,nA = gradientstructure(dofgr,di) # number of dofs of each class in the gradient returned by an element
-        iΛ,iX,iU,iA = gradientpartition(nΛ,nX,nU,nA)  # indices into said gradient TODO type unstable, barrier function
-        asm[ieletyp] = zeros(𝕫,nΛ+nX+nU+nA,length(di.index)) # asm[ieletyp][idof,iele] (its a view)
-        for (iele,index) ∈ enumerate(di.index)
-            asm[ieletyp][iΛ,iele] .= nonzeros(Λ[index.X])  
-            asm[ieletyp][iX,iele] .= nonzeros(X[index.X])
-            asm[ieletyp][iU,iele] .= nonzeros(U[index.U])
-            asm[ieletyp][iA,iele] .= nonzeros(A[index.A])
-        end
+    for ieletyp ∈ eachindex(dis.dis)
+        asmvec_kernel!(asm,ieletyp,dofgr,dis.dis[ieletyp],Λ,X,U,A)
     end
     return 𝕣1(undef,getndof(dofgr))
+end
+function asmvec_kernel!(asm,ieletyp,dofgr,dis,Λ,X,U,A) 
+    nΛ,nX,nU,nA = gradientstructure(dofgr,dis) # number of dofs of each class in the gradient returned by an element
+    iΛ,iX,iU,iA = gradientpartition(nΛ,nX,nU,nA)  # indices into said gradient TODO type unstable, barrier function
+    asm[ieletyp] = zeros(𝕫,nΛ+nX+nU+nA,length(dis.index)) # asm[ieletyp][idof,iele] (its a view)
+    for (iele,index) ∈ enumerate(dis.index)
+        asm[ieletyp][iΛ,iele] .= nonzeros(Λ[index.X])  
+        asm[ieletyp][iX,iele] .= nonzeros(X[index.X])
+        asm[ieletyp][iU,iele] .= nonzeros(U[index.U])
+        asm[ieletyp][iA,iele] .= nonzeros(A[index.A])
+    end
 end
 function asmfullmat!(asm,iasm,jasm,nimoddof,njmoddof) 
     for ieletyp ∈ eachindex(iasm)
