@@ -15,7 +15,8 @@ n3              = addnode!(model,𝕣[])  # Anod for anchor
 α(i)            = SVector(cos(i*2π/3),sin(i*2π/3))
 e1              =  addelement!(model,Turbine   ,[n1,n2], seadrag=1e6, sea=sea, skydrag=1e5, sky=sky)
 e2              = [addelement!(model,AnchorLine,[n1,n3], Δxₘtop=vcat(5*α(i),[0.]), xₘbot=250*α(i), L=290., buoyancy=-5e3) for i∈0:2]
-state           = solve(staticX;model,time=[0.,1.],verbose=false)
+initialstate    = initialize!(model)
+state           = solve(staticX;initialstate,time=[0.,1.],verbose=false)
 step = 1
 @testset "StaticX" begin
     @test  state[step].Λ ≈ [0.0, 0.0, 0.0]
@@ -23,9 +24,10 @@ step = 1
     @test  state[step].U[1] ≈  Float64[]
     @test  state[step].A ≈ [0.0, 0.0, 0.0, 0.0]
     @test  state[step].time ≈ 0.
+    @test model.locked == true
 end
 
-dis         = Muscade.Disassembler(model)
+dis         = initialstate.dis #Muscade.Disassembler(model)
 dofgr       = Muscade.allXdofs(model,dis)
 s           = deepcopy(state[step])
 Muscade.decrement!(s,0,[1.,1.,-1.],dofgr)

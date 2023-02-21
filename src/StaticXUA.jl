@@ -85,13 +85,13 @@ end
 
 #------------------------------------
 
-function staticXUA(pstate,dbg;model::Model,initial::Vector{State},
+function staticXUA(pstate,dbg;initialstate::Vector{State},
     maxAiter::ℤ=50,maxYiter::ℤ=0,maxΔy::ℝ=1e-5,maxLy::ℝ=∞,maxΔa::ℝ=1e-5,maxLa::ℝ=∞,γ0::𝕣=1.,γfac1::𝕣=.5,γfac2::𝕣=100.,verbose::𝕓=true)
 
-    dis                = Disassembler(model)
+    model,dis          = initialstate[begin].model,initialstate[begin].dis
     out1,asm1,Ydofgr   = prepare(OUTstaticΛXU  ,model,dis)
     out2,asm2,Adofgr,_ = prepare(OUTstaticΛXU_A,model,dis)
-    state              = allocate(pstate,deepcopy.(initial)) 
+    state              = allocate(pstate,deepcopy.(initialstate)) 
     cΔy²,cLy²,cΔa²,cLa²= maxΔy^2,maxLy^2,maxΔa^2,maxLa^2
     nA                 = getndof(model,:A)
     La                 = Vector{𝕣 }(undef,nA   )

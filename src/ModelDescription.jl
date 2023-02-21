@@ -177,7 +177,7 @@ function addelement!(model::Model,::Type{T},nodID::Matrix{NodID};kwargs...) wher
 end
 addelement!(model::Model,::Type{E},nodID::Vector{NodID};kwargs...) where{E<:AbstractElement} = addelement!(model,E,reshape(nodID,(1,length(nodID)));kwargs...)[1] 
 
-function setscale!(model;scale=nothing,Λscale=nothing)  # scale = (X=(tx=10,rx=1),A=(drag=3.))
+function setscale!(model::Model;scale=nothing,Λscale=nothing)  # scale = (X=(tx=10,rx=1),A=(drag=3.))
     assert_unlocked(model)
     if ~isnothing(scale)
         for doftyp ∈ model.doftyp
@@ -191,11 +191,19 @@ function setscale!(model;scale=nothing,Λscale=nothing)  # scale = (X=(tx=10,rx=
     end
 end
 
-assert_unlocked(model) = model.locked && muscadeerror(@sprintf("model %s is initialized and can no longer be edited",model.ID))
-function initialize(model)
+assert_unlocked(model::Model) = model.locked && muscadeerror(@sprintf("model %s is initialized and can no longer be edited",model.ID))
+function initialize!(model::Model)
+    assert_unlocked(model)
     model.locked = true
     return State(model,Disassembler(model))
 end
+function unlock(model::Model,ID::Symbol)
+    ID == model.ID && muscadeerror("ID must be distinct from model.ID")
+    newmodel        = deepcopy(model)
+    newmodel.locked = false
+    newmodel.ID     = ID
+    return newmodel
+end    
 
 ### Obtain printouts describing elements, nodes or dofs of a model
 using Printf

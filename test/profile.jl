@@ -22,14 +22,15 @@ e8              = addelement!(model,DofCost ,[n1], class=:X ,field=:tx1      ,co
 e9              = addelement!(model,DofCost ,[n1], class=:X ,field=:tx2      ,cost=f2)
 e10             = addelement!(model,DofCost ,[n4], class=:A ,field=:ΞL₀      ,cost=f3)
 e10             = addelement!(model,DofCost ,[n4], class=:A ,field=:ΞEI      ,cost=f3)
-stateX          = solve(staticX;  model,time=[.5,1.],verbose=false)
-state           = solve(staticXUA;model,initial=stateX,maxYiter= 50,verbose=false)
-#@btime state    = solve(staticXUA;model,initial=stateX,maxYiter= 0,verbose=false) 
+initialstate    = initialize!(model)
+stateX          = solve(staticX;  initialstate,time=[.5,1.],verbose=false)
+state           = solve(staticXUA;initialstate=stateX,maxYiter= 50,verbose=false)
+#@btime state    = solve(staticXUA;initialstate=stateX,maxYiter= 0,verbose=false) 
 
 Profile.clear()
 Profile.@profile for i=1:1000#25000
-#    local stateX          = solve(staticX;  model,time=[.5,1.],verbose=false)
-    local state  = solve(staticXUA;model,initial=stateX,maxYiter= 50,verbose=false);
+#    local stateX          = solve(staticX;  initialstate,time=[.5,1.],verbose=false)
+    local state  = solve(staticXUA;initialstate=stateX,maxYiter= 50,verbose=false);
 end
 ProfileView.view(fontsize=30);
 

@@ -33,7 +33,8 @@ module Muscade
     export doflist
 
     include("ModelDescription.jl")
-    export Model,addnode!,addelement!,coord,Node,DofID,NodID,EleID,setscale! 
+    export Model,addnode!,addelement!,setscale!,initialize!,unlock
+    export coord,Node,DofID,NodID,EleID
     export getndof,getnele,getdofID,describe
 
     include("BasicElements.jl")

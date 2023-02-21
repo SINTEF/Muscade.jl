@@ -178,7 +178,8 @@ n1              = addnode!(model,𝕣[0,0])
 e1              = addelement!(model,Constraint,[n1],xinod=(1,1),xfield=(:t1,:t2),λinod=1, λclass=:X, λfield=:λ1,g=g1,mode=inequal)
 e2              = addelement!(model,Constraint,[n1],xinod=(1,1),xfield=(:t1,:t2),λinod=1, λclass=:X, λfield=:λ2,g=g2,mode=inequal)
 e3              = addelement!(model,DofLoad   ,[n1],field=:t2,value=gravity)
-state           = solve(staticX;model,time=[0.],verbose=false) # because there is zero physical stiffness in this model, setting γ0=0 gives singularity if one or more constraint is inactive
+initialstate    = initialize!(model)
+state           = solve(staticX;initialstate,time=[0.],verbose=false) # because there is zero physical stiffness in this model, setting γ0=0 gives singularity if one or more constraint is inactive
 
 @testset "interior point" begin
     X = state[findlastassigned(state)].X[1][1:2]
