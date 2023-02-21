@@ -52,6 +52,7 @@ mutable struct Model
     eleobj      :: Vector{Any}             # model.ele[eleID]or  model.eleobj[ieletyp][iele]
     doftyp      :: Vector{DofTyp}          # model.doftyp[idoftyp]
     scaleΛ      :: 𝕣
+    locked      :: 𝕓
 end
 
 # Model construction - private
@@ -88,9 +89,10 @@ end
 
 # Model construction - API
 
-Model(ID=:muscade_model::Symbol) = Model(ID, Vector{Node}(),Vector{Vector{Element}}(),(X=Dof1(),U=Dof1(),A=Dof1()),Vector{Any}(),Vector{DofTyp}(),1.)
+Model(ID=:muscade_model::Symbol) = Model(ID, Vector{Node}(),Vector{Vector{Element}}(),(X=Dof1(),U=Dof1(),A=Dof1()),Vector{Any}(),Vector{DofTyp}(),1.,false)
 
 function addnode!(model::Model,coord::ℝ2) 
+    assert_unlocked(model)
     Δnnod = size(coord,1)
     nodID = [NodID(length(model.nod)+inod) for inod ∈ 1:Δnnod]
     append!(model.nod, [Node(nodID[inod],coord[inod,:],Vector{DofID}(),Vector{EleID}()) for inod = 1:Δnnod] )
@@ -101,6 +103,7 @@ addnode!(model::Model,coord::ℝ1)  = addnode!(model,reshape(coord,(1,length(coo
 coord(nod::AbstractVector{Node}) = [n.coord for n∈nod]
 
 function addelement!(model::Model,::Type{T},nodID::Matrix{NodID};kwargs...) where{T<:AbstractElement}
+    assert_unlocked(model)
     # new element type? make space in model.eletyp and model.eleobj for that
     nod      = [model.nod[nodID[1,i]] for i∈eachindex(nodID[1,:])]
     ele1     = T(nod;kwargs...)
@@ -175,6 +178,7 @@ end
 addelement!(model::Model,::Type{E},nodID::Vector{NodID};kwargs...) where{E<:AbstractElement} = addelement!(model,E,reshape(nodID,(1,length(nodID)));kwargs...)[1] 
 
 function setscale!(model;scale=nothing,Λscale=nothing)  # scale = (X=(tx=10,rx=1),A=(drag=3.))
+    assert_unlocked(model)
     if ~isnothing(scale)
         for doftyp ∈ model.doftyp
             if doftyp.class ∈ keys(scale) && doftyp.field ∈ keys(scale[doftyp.class])
@@ -185,6 +189,12 @@ function setscale!(model;scale=nothing,Λscale=nothing)  # scale = (X=(tx=10,rx=
     if ~isnothing(Λscale)
         model.scaleΛ = Λscale
     end
+end
+
+assert_unlocked(model) = model.locked && muscadeerror(@sprintf("model %s is initialized and can no longer be edited",model.ID))
+function initialize(model)
+    model.locked = true
+    return State(model,Disassembler(model))
 end
 
 ### Obtain printouts describing elements, nodes or dofs of a model
