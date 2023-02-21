@@ -1,12 +1,13 @@
 using Printf
 ######### error management for solver
-function solve(solver!;dbg=NamedTuple(),verbose::𝕓=true,silenterror::𝕓=false,kwargs...) # e.g. solve(SOLstaticX,model,time=1:10)
+function solve(solver;dbg=NamedTuple(),verbose::𝕓=true,silenterror::𝕓=false,kwargs...) # e.g. solve(SOLstaticX,model,time=1:10)
     verbose && printstyled("\n\n\nMuscade:",bold=true,color=:cyan)
-    verbose && printstyled(@sprintf(" %s solver\n\n",nameof(solver!)),color=:cyan)
+    verbose && printstyled(@sprintf(" %s solver\n\n",Symbol(solver)),color=:cyan)
 
-    pstate = Base.RefValue{Vector{State}}() # state is not a return argument of solver!, so that partial results are not lost on error
+    nXdir,nUdir = getnder(solver)
+    pstate = Base.RefValue{Vector{State{nXdir,nUdir}}}() # state is not a return argument of the solver, so that partial results are not lost on error
     try
-        solver!(pstate,(dbg...,solver=nameof(solver!));verbose=verbose,kwargs...) # 
+        solve(solver,pstate,verbose,(dbg...,solver=Symbol(solver));kwargs...) # 
     catch exn
         silenterror || report(exn)
         silenterror || printstyled("\nAborting the analysis.",color=:red)

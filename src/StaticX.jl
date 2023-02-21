@@ -31,18 +31,20 @@ function addin!(out::OUTstaticX,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxdir,<:SV
 end
 
 ###---------------------
-function staticX(pstate,dbg;time::AbstractVector{𝕣},
+struct StaticX end
+getnder(::Type{StaticX}) = (nXder=1,nUder=1)
+function solve(::Type{StaticX},pstate,verbose,dbg;time::AbstractVector{𝕣},
                     initialstate::State,
                     maxiter::ℤ=50,maxΔx::ℝ=1e-5,maxresidual::ℝ=∞,
-                    verbose::𝕓=true,saveiter::𝔹=false,γ0::𝕣=1.,γfac1::𝕣=.5,γfac2::𝕣=100.)
+                    saveiter::𝔹=false,γ0::𝕣=1.,γfac1::𝕣=.5,γfac2::𝕣=100.)
     # important: this code assumes that there is no χ in state.
     verb             = verbose
     model,dis        = initialstate.model,initialstate.dis
     out,asm,dofgr    = prepare(OUTstaticX,model,dis)
     asmt,solt,citer  = 0.,0.,0
     cΔx²,cLλ²        = maxΔx^2,maxresidual^2
-    state            = allocate(pstate,Vector{State}(undef,saveiter ? maxiter : length(time))) # state is not a return argument so that data is not lost in case of exception
-    s                = initialstate 
+    state            = allocate(pstate,Vector{State{1,1}}(undef,saveiter ? maxiter : length(time))) # state is not a return argument so that data is not lost in case of exception
+    s                = State{1,1}(initialstate) 
     local facLλx 
     for (step,t)     ∈ enumerate(time)
         verb && @printf "    step %3d" step

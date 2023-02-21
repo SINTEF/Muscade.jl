@@ -101,8 +101,12 @@ struct State{Nxder,Nuder}
 end
 # a constructor that provides an initial state
 State(model::Model,dis;time=-∞) = State(zeros(getndof(model,:X)),(zeros(getndof(model,:X)),),(zeros(getndof(model,:U)),),zeros(getndof(model,:A)),time,0.,model,dis)
+function State{nXder,nUder}(s::State) where{nXder,nUder}
+    X = ntuple(i->copy(∂n(s.X,i)),nXder)
+    U = ntuple(i->copy(∂n(s.U,i)),nUder)
+    State{nXder,nUder}(copy(s.Λ),X,U,copy(s.A),s.time,0.,s.model,s.dis)
+end 
 settime(s,t) = State(s.Λ,s.X,s.U,s.A,t,0.,s.model,s.dis)  
-
 
 ## find the last assigned array-element in a vector 
 lastassigned(state) = state

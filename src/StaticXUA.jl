@@ -85,20 +85,22 @@ end
 
 #------------------------------------
 
-function staticXUA(pstate,dbg;initialstate::Vector{State},
-    maxAiter::ℤ=50,maxYiter::ℤ=0,maxΔy::ℝ=1e-5,maxLy::ℝ=∞,maxΔa::ℝ=1e-5,maxLa::ℝ=∞,γ0::𝕣=1.,γfac1::𝕣=.5,γfac2::𝕣=100.,verbose::𝕓=true)
+struct StaticXUA end
+getnder(::Type{StaticXUA}) = (nXder=1,nUder=1)
+function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{State{1,1}},
+    maxAiter::ℤ=50,maxYiter::ℤ=0,maxΔy::ℝ=1e-5,maxLy::ℝ=∞,maxΔa::ℝ=1e-5,maxLa::ℝ=∞,γ0::𝕣=1.,γfac1::𝕣=.5,γfac2::𝕣=100.)
 
     model,dis          = initialstate[begin].model,initialstate[begin].dis
     out1,asm1,Ydofgr   = prepare(OUTstaticΛXU  ,model,dis)
     out2,asm2,Adofgr,_ = prepare(OUTstaticΛXU_A,model,dis)
-    state              = allocate(pstate,deepcopy.(initialstate)) 
+    state              = allocate(pstate,[State{1,1}(i) for i ∈ initialstate]) 
     cΔy²,cLy²,cΔa²,cLa²= maxΔy^2,maxLy^2,maxΔa^2,maxLa^2
-    nA                 = getndof(model,:A)
+    nA,nStep           = getndof(model,:A),length(state)
     La                 = Vector{𝕣 }(undef,nA   )
     Laa                = Matrix{𝕣 }(undef,nA,nA)
-    Δy                 = Vector{𝕣1}(undef,length(state))
-    y∂a                = Vector{𝕣2}(undef,length(state))
-    Δy²,Ly²            = Vector{𝕣 }(undef,length(state)),Vector{𝕣}(undef,length(state))
+    Δy                 = Vector{𝕣1}(undef,nStep)
+    y∂a                = Vector{𝕣2}(undef,nStep)
+    Δy²,Ly²            = Vector{𝕣 }(undef,nStep),Vector{𝕣}(undef,nStep)
     γ                  = γ0
     local facLyy
     local facLyys

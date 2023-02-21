@@ -50,10 +50,10 @@ module Muscade
     export solve
 
     include("StaticX.jl")
-    export staticX
+    export StaticX
     
     include("StaticXUA.jl")
-    export staticXUA
+    export StaticXUA
 
     include("Output.jl")
     export getdof,getresult,findlastassigned
