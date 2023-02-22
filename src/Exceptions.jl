@@ -16,7 +16,7 @@ muscadeerror(msg)                      = throw(MuscadeException(msg,(;)))
 muscadeerror()                         = throw(MuscadeException("" ,(;)))
 # relativebacktrace()                    = setdiff(catch_backtrace(),backtrace())[2:end-1]
 function Base.showerror(io::IO, e::MuscadeException)
-    printstyled(io,"MuscadeException ",color=:red)
+    printstyled(io,"MuscadeException: ",color=:red,bold=true)
     println(io, e.msg)
     if e.dbg≠(;)
         println(io,e.dbg)
@@ -24,7 +24,7 @@ function Base.showerror(io::IO, e::MuscadeException)
 end
 report(::Exception)    = rethrow()
 function report(::MuscadeException)
-    println("")
+        print("\n\n")
     cs = Base.catch_stack()
     nex = length(cs)
     for iex = 1:nex-1

@@ -61,13 +61,14 @@ function solve(::Type{StaticX},pstate,verbose,dbg;time::AbstractVector{𝕣},
             Δx²,Lλ²  = sum(Δx.^2),sum(out.Lλ.^2)
             solt+=@elapsed decrement!(s,0,Δx,dofgr)
             γ       *= γfac1*exp(-(out.α/γfac2)^2)
+            verbose && saveiter && @printf("iteration %3d, γ= %7.1e\n",iiter,γ)
             saveiter && (state[iiter]=State(s.Λ,deepcopy(s.X),s.U,s.A,s.time,γ,model,dis))
             if Δx²≤cΔx² && Lλ²≤cLλ² 
                 verbose && @printf " converged in %3d iterations. |Δx|=%7.1e |Lλ|=%7.1e\n" iiter √(Δx²) √(Lλ²)
                 ~saveiter && (state[step]=State(s.Λ,deepcopy(s.X),s.U,s.A,s.time,γ,model,dis))
                 break#out of the iiter loop
             end
-            iiter==maxiter && muscadeerror(@sprintf(" no convergence after %3d iterations |Δx|:%g / %g, |Lλ|:%g / %g",iiter,√(Δx²),maxΔx,√(Lλ²)^2,maxresidual))
+            iiter==maxiter && muscadeerror(@sprintf(" no convergence after %3d iterations |Δx|=%g / %g, |Lλ|=%g / %g",iiter,√(Δx²),maxΔx,√(Lλ²)^2,maxresidual))
         end
     end
     verbose && @printf "\n    nel=%d, ndof=%d, nstep=%d, niter=%d, niter/nstep=%5.2f\n" getnele(model) getndof(dofgr) length(time) citer citer/length(time)

@@ -205,7 +205,10 @@ function unlock(model::Model,ID::Symbol)
     return newmodel
 end    
 
-### Obtain printouts describing elements, nodes or dofs of a model
+### extracting data from the model
+eletyp(model::Model) = eltype.(model.eleobj) 
+
+### getting printout of the model
 using Printf
 function describe(model::Model,eleID::EleID)
     try 
@@ -286,15 +289,22 @@ function describe(model::Model,nodID::NodID)
         printstyled(@sprintf("%s\n",typeof(model.eleobj[eleID])),color=:cyan)
     end
  end
-function describe(model::Model)
+function describe(model::Model,s::Symbol)
     @printf "\nModel '%s'\n" model.ID
-    for class ∈ (:X,:U,:A)
-       ndof    = getndof(model,class)
-       ndof>0 && @printf "\n   Dofs of class %s:\n" class
-       for idof = 1:ndof
-            dof     = model.dof[class][idof] 
-            doftyp  = model.doftyp[dof.idoftyp]
-            @printf "      field=:%-15s NodID(%i)\n" doftyp.field dof.nodID.inod 
+    if s==:dof
+        for class ∈ (:X,:U,:A)
+        ndof    = getndof(model,class)
+        ndof>0 && @printf "\n   Dofs of class %s:\n" class
+        for idof = 1:ndof
+                dof     = model.dof[class][idof] 
+                doftyp  = model.doftyp[dof.idoftyp]
+                @printf "      %6d. field=:%-15s NodID(%i)\n" idof doftyp.field dof.nodID.inod 
+            end
+        end
+    elseif s==:eletyp
+        et = eletyp(model)
+        for i∈eachindex(et)
+            @printf "    %3d. %6d elements of type %s\n" i length(model.eleobj[i]) et[i]
         end
     end
 end

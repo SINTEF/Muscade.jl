@@ -33,13 +33,13 @@ defα(x::Union{Number,AbstractVector})               = x,∞
 defα(x::Tuple)                                      = x
 
 getresidual(          ::Type{<:Val}     ,::Type{<:Val}     ,out,key,eleobj::AbstractElement,args...) = 
-            muscadeerror(args[end],@sprintf("No method 'lagrangian(out,key,eleobj,δX,X,U,A, t,γ,dbg)' or 'residual(out,key,eleobj,X,U,A, t,γ,dbg)' for elements of type '%s'",typeof(eleobj)))
+            muscadeerror(args[end],@sprintf("No method 'Muscade.lagrangian(out,key,eleobj,δX,X,U,A, t,γ,dbg)' or 'Muscade.residual(out,key,eleobj,X,U,A, t,γ,dbg)' for elements of type '%s'",typeof(eleobj)))
 getlagrangian(        ::Type{<:Val}     ,::Type{<:Val}     ,out,key,eleobj::AbstractElement,args...) = 
-            muscadeerror(args[end],@sprintf("No method 'lagrangian(out,key,eleobj,δX,X,U,A, t,γ,dbg)' or 'residual(out,key,eleobj,X,U,A, t,γ,dbg)' for elements of type '%s'",typeof(eleobj)))
+            muscadeerror(args[end],@sprintf("No method 'Muscade.lagrangian(out,key,eleobj,δX,X,U,A, t,γ,dbg)' or 'Muscade.residual(out,key,eleobj,X,U,A, t,γ,dbg)' for elements of type '%s'",typeof(eleobj)))
 getresidual(          ::Type{<:Val}     ,::Type{<:Val}     ,eleobj::AbstractElement,args...) = 
-            muscadeerror(args[end],@sprintf("No method 'lagrangian(eleobj,δX,X,U,A, t,γ,dbg)' or 'residual(eleobj,X,U,A, t,γ,dbg)' for elements of type '%s'",typeof(eleobj)))
+            muscadeerror(args[end],@sprintf("No method 'Muscade.lagrangian(eleobj,δX,X,U,A, t,γ,dbg)' or 'Muscade.residual(eleobj,X,U,A, t,γ,dbg)' for elements of type '%s'",typeof(eleobj)))
 getlagrangian(        ::Type{<:Val}     ,::Type{<:Val}     ,eleobj::AbstractElement,args...) = 
-            muscadeerror(args[end],@sprintf("No method 'lagrangian(eleobj,δX,X,U,A, t,γ,dbg)' or 'residual(eleobj,X,U,A, t,γ,dbg)' for elements of type '%s'",typeof(eleobj)))
+            muscadeerror(args[end],@sprintf("No method 'Muscade.lagrangian(eleobj,δX,X,U,A, t,γ,dbg)' or 'Muscade.residual(eleobj,X,U,A, t,γ,dbg)' for elements of type '%s'",typeof(eleobj)))
 
 # Go straight
 getresidual(          ::Type{Val{true}} ,::Type{<:Val}             ,eleobj::AbstractElement,args...) = defα(residual(          eleobj,args...))

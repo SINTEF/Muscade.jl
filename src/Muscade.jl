@@ -35,7 +35,7 @@ module Muscade
     include("ModelDescription.jl")
     export Model,addnode!,addelement!,setscale!,initialize!,unlock
     export coord,Node,DofID,NodID,EleID
-    export getndof,getnele,getdofID,describe
+    export getndof,getnele,getdofID,describe,eletyp
 
     include("BasicElements.jl")
     export Xclass,Uclass,Aclass

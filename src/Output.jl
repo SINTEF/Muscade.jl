@@ -25,33 +25,58 @@ function getdof(state::Vector{S};class::Symbol=:X,field::Symbol,nodID::Vector{No
 end
 
 # Elemental results
-function extractkernel!(out,key,eleobj::Vector{E},eleID,dis::EletypDisassembler,state::State,dbg) where{E}# typestable kernel
-    for (iele,ei) ∈ enumerate(eleID)
-        index = dis.index[ei.iele]
-        Λ     = state.Λ[index.X]                 
-        X     = Tuple(x[index.X] for x∈state.X)
-        U     = Tuple(u[index.U] for u∈state.U)
-        A     = state.A[index.A]
-        _     = getlagrangian(implemented(eleobj[ei.iele])...,view(out,:,iele),key,eleobj[ei.iele],Λ,X,U,A,state.time,state.γ,(dbg...,iele=ei.iele))
+# function extractkernel!(out,key,eleobj::Vector{E},eleID,dis::EletypDisassembler,state::State,dbg) where{E}# typestable kernel
+#     for (iele,ei) ∈ enumerate(eleID)
+#         index = dis.index[ei.iele]
+#         Λ     = state.Λ[index.X]                 
+#         X     = Tuple(x[index.X] for x∈state.X)
+#         U     = Tuple(u[index.U] for u∈state.U)
+#         A     = state.A[index.A]
+#         _     = getlagrangian(implemented(eleobj[ei.iele])...,view(out,:,iele),key,eleobj[ei.iele],Λ,X,U,A,state.time,state.γ,(dbg...,iele=ei.iele))
+#     end
+# end
+function extractkernel!(nkey,key,iele::AbstractVector{𝕫},eleobj::Vector{E},dis::EletypDisassembler,state::Vector{S},dbg) where{E,S<:State}# typestable kernel
+    nstep,nele          = length(state),length(iele)
+    out                 = Array{𝕣,3}(undef,nkey,nele,nstep)
+    for (istep,s) ∈ enumerate(state)
+        for i ∈ iele
+            index = dis.index[i]
+            Λ     = s.Λ[index.X]                 
+            X     = Tuple(x[index.X] for x∈s.X)
+            U     = Tuple(u[index.U] for u∈s.U)
+            A     = s.A[index.A]
+            _     = getlagrangian(implemented(eleobj[i])...,view(out,:,i,istep),key,eleobj[i],Λ,X,U,A,s.time,s.γ,(dbg...,istep=istep,iele=i))
+        end
     end
+    return out
 end
-function getresult(state::Vector{S},req; eleID::Vector{EleID})where {S<:State}
-    # One element type, some or all elements within the types
+function getresult(state::Vector{S},req,eleID::Vector{EleID})where {S<:State}
+    # Single element type, some elements within the types, multisteps
     # out[ikey,iele,istep]
     ieletyp             = eleID[begin].ieletyp
     all(e.ieletyp== ieletyp for e∈eleID) || muscadeerror("All elements must be of the same element type")
     eleobj              = state[begin].model.eleobj[ieletyp]
     dis                 = state[begin].dis.dis[ieletyp]
     key,nkey            = makekey(req,espyable(eltype(eleobj)))
-    nstep,nele          = length(state),length(eleID)
-    out                 = Array{𝕣,3}(undef,nkey,nele,nstep)
-    for (istep,s) ∈ enumerate(state)
-        extractkernel!(view(out,:,:,istep),key,eleobj,eleID,dis,s,(ieletyp=ieletyp,istep=istep))
-    end
-    return out,key
+    iele                = [e.iele for e∈eleID]
+    return extractkernel!(nkey,key,iele,eleobj,dis,state,(func=:getresult,ieletyp=ieletyp)), key
 end
-function getresult(state::State,req;kwargs...)  
-    out,key = getresult([state],req;kwargs...)
+
+function getresult(state::Vector{S},req,::Type{E}) where{S<:State,E<:AbstractElement}
+    # Single element type, all elements within the types, multisteps
+    # out[ikey,iele,istep]
+    ieletyp = findfirst(E.==eletyp(state[begin].model))
+    isnothing(ieletyp) && muscadeerror("This type of element is not in the model. See 'eletyp(model)'")
+    eleobj              = state[begin].model.eleobj[ieletyp]
+    dis                 = state[begin].dis.dis[ieletyp]
+    key,nkey            = makekey(req,espyable(E))
+    iele                = eachindex(eleobj)
+    return extractkernel!(nkey,key,iele,eleobj,dis,state,(func=:getresult,eletyp=E)), key
+end    
+function getresult(state::State,req,args...)  
+    # Single element type, some or all elements within the types, single step
+    # out[ikey,iele]
+    out,key = getresult([state],req,args...)
     return reshape(out,size(out)[1:2]),key
 end
 
