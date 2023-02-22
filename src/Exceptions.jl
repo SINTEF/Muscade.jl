@@ -14,15 +14,13 @@ Throw a `MuscadeException`, where
 muscadeerror(dbg::NamedTuple,msg)      = throw(MuscadeException(msg,dbg))
 muscadeerror(msg)                      = throw(MuscadeException(msg,(;)))
 muscadeerror()                         = throw(MuscadeException("" ,(;)))
-relativebacktrace()                    = setdiff(catch_backtrace(),backtrace())[2:end-1]
-function showerr(exn::MuscadeException)
-    printstyled("Muscade error: ",color=:red)
-    print(exn.msg)
-    exn.dbg==(;) || print("\n",string(exn.dbg))
-end
-function showerr(exn::Exception)
-    printstyled("Error: ",color=:red)
-    showerror(stdout, exn)
+# relativebacktrace()                    = setdiff(catch_backtrace(),backtrace())[2:end-1]
+function Base.showerror(io::IO, e::MuscadeException)
+    printstyled(io,"MuscadeException ",color=:red)
+    println(io, e.msg)
+    if e.dbg≠(;)
+        println(io,e.dbg)
+    end
 end
 report(::Exception)    = rethrow()
 function report(::MuscadeException)
@@ -30,11 +28,11 @@ function report(::MuscadeException)
     cs = Base.catch_stack()
     nex = length(cs)
     for iex = 1:nex-1
-        showerr(cs[iex][1])
+        showerror(stderr,cs[iex][1])
         Base.show_backtrace(stdout,setdiff(cs[iex][2],cs[iex+1][2])[2:end-1])
         print("\n\nthen caused ")
     end
-    showerr(cs[nex][1])
+    showerror(stderr,cs[nex][1])
     Base.show_backtrace(stdout,setdiff(cs[nex][2],backtrace())[2:end-1])
     print("\n\n")
 end

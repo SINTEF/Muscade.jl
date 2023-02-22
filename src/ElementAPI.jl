@@ -11,7 +11,7 @@ draw(axe,key,out, ::E,args...;kwargs...) where{E<:AbstractElement}    = nothing 
 
 espyable(    ::Type{E}) where{E<:AbstractElement}  = ()
 request2draw(::Type{E}) where{E<:AbstractElement}  = ()
-doflist(     ::Type{E}) where{E<:AbstractElement}  = (inod=𝕫[],class=Symbol[],field=Symbol[])
+doflist(     ::Type{E}) where{E<:AbstractElement}  = muscadeerror(@sprintf("method 'Muscade.doflist' must be provided for elements of type '%s'\n",E))
 ### Not part of element API, not exported by Muscade
 
 getnnod(E::DataType)              = maximum(doflist(E).inod) 
@@ -32,41 +32,49 @@ end
 defα(x::Union{Number,AbstractVector})               = x,∞
 defα(x::Tuple)                                      = x
 
-getresidual(          ::Type{<:Val}     ,::Type{<:Val}     ,args...) = muscadeerror(args[end],"No method 'lagrangian' or 'residual' for this element")
-getlagrangian(        ::Type{<:Val}     ,::Type{<:Val}     ,args...) = muscadeerror(args[end],"No method 'lagrangian' or 'residual' for this element")
+getresidual(          ::Type{<:Val}     ,::Type{<:Val}     ,out,key,eleobj::AbstractElement,args...) = 
+            muscadeerror(args[end],@sprintf("No method 'lagrangian(out,key,eleobj,δX,X,U,A, t,γ,dbg)' or 'residual(out,key,eleobj,X,U,A, t,γ,dbg)' for elements of type '%s'",typeof(eleobj)))
+getlagrangian(        ::Type{<:Val}     ,::Type{<:Val}     ,out,key,eleobj::AbstractElement,args...) = 
+            muscadeerror(args[end],@sprintf("No method 'lagrangian(out,key,eleobj,δX,X,U,A, t,γ,dbg)' or 'residual(out,key,eleobj,X,U,A, t,γ,dbg)' for elements of type '%s'",typeof(eleobj)))
+getresidual(          ::Type{<:Val}     ,::Type{<:Val}     ,eleobj::AbstractElement,args...) = 
+            muscadeerror(args[end],@sprintf("No method 'lagrangian(eleobj,δX,X,U,A, t,γ,dbg)' or 'residual(eleobj,X,U,A, t,γ,dbg)' for elements of type '%s'",typeof(eleobj)))
+getlagrangian(        ::Type{<:Val}     ,::Type{<:Val}     ,eleobj::AbstractElement,args...) = 
+            muscadeerror(args[end],@sprintf("No method 'lagrangian(eleobj,δX,X,U,A, t,γ,dbg)' or 'residual(eleobj,X,U,A, t,γ,dbg)' for elements of type '%s'",typeof(eleobj)))
 
 # Go straight
-getresidual(          ::Type{Val{true}} ,::Type{<:Val}     ,args...) = defα(residual(  args...))
-getlagrangian(        ::Type{<:Val}     ,::Type{Val{true}} ,args...) = defα(lagrangian(args...))
+getresidual(          ::Type{Val{true}} ,::Type{<:Val}             ,eleobj::AbstractElement,args...) = defα(residual(          eleobj,args...))
+getresidual(          ::Type{Val{true}} ,::Type{<:Val}     ,out,key,eleobj::AbstractElement,args...) = defα(residual(  out,key,eleobj,args...))
+getlagrangian(        ::Type{<:Val}     ,::Type{Val{true}}         ,eleobj::AbstractElement,args...) = defα(lagrangian(        eleobj,args...))
+getlagrangian(        ::Type{<:Val}     ,::Type{Val{true}} ,out,key,eleobj::AbstractElement,args...) = defα(lagrangian(out,key,eleobj,args...))
 
 # Swap
 # TODO merge the function pairs into one with Julia 1.9
-function getresidual(  ::Type{Val{false}},::Type{Val{true}} ,eleobj, X,U,A, t,γ,dbg)  
+function getresidual(  ::Type{Val{false}},::Type{Val{true}} ,eleobj::AbstractElement, X,U,A, t,γ,dbg)  
     P   = constants(∂0(X),∂0(U),A,t)
     Nx  = length(∂0(X))
     δX  = δ{P,Nx,𝕣}()   
     L,α = defα(lagrangian(eleobj,δX,X,U,A, t,γ,dbg))
     return ∂{P,Nx}(L),α
 end
-function getresidual(::Type{Val{false}},::Type{Val{true}} ,out,key,eleobj,X,U,A, t,γ,dbg)  
+function getresidual(::Type{Val{false}},::Type{Val{true}} ,out,key,eleobj::AbstractElement,X,U,A, t,γ,dbg)  
     P   = constants(∂0(X),∂0(U),A,t)
     Nx  = length(∂0(X))
     δX  = δ{P,Nx,𝕣}()   
     L,α = defα(lagrangian(out,key,eleobj,δX,X,U,A, t,γ,dbg))
     return ∂{P,Nx}(L),α
 end
-function getlagrangian(::Type{Val{true}} ,::Type{Val{false}},eleobj,δX,X,U,A, t,γ,dbg) 
+function getlagrangian(::Type{Val{true}} ,::Type{Val{false}},eleobj::AbstractElement,δX,X,U,A, t,γ,dbg) 
     R,α = defα(residual(eleobj,X,U,A, t,γ,dbg))
     return δX ∘₁ R , α
 end
-function getlagrangian(::Type{Val{true}} ,::Type{Val{false}},out,key,eleobj,δX,X,U,A, t,γ,dbg) 
+function getlagrangian(::Type{Val{true}} ,::Type{Val{false}},out,key,eleobj::AbstractElement,δX,X,U,A, t,γ,dbg) 
     R,α = defα(residual(out,key,eleobj,X,U,A, t,γ,dbg))
     return δX ∘₁ R , α
 end
 
 ###### scaled functions
 
-function scaledlagrangian(scale,eleobj::E,Λs,Xs::NTuple{Nxder},Us::NTuple{Nuder},As, t,γ,dbg) where{E<:AbstractElement,Nxder,Nuder}
+function scaledlagrangian(scale,eleobj::AbstractElement,Λs,Xs::NTuple{Nxder},Us::NTuple{Nuder},As, t,γ,dbg) where{Nxder,Nuder}
     Λ     =       Λs.*scale.Λ                 
     X     = NTuple{Nxder}(xs.*scale.X for xs∈Xs)  
     U     = NTuple{Nuder}(us.*scale.U for us∈Us)
@@ -75,7 +83,7 @@ function scaledlagrangian(scale,eleobj::E,Λs,Xs::NTuple{Nxder},Us::NTuple{Nuder
     hasnan(L) && muscadeerror((dbg...,eletype=E),"NaN in a Lagrangian or its partial derivatives")
     return L,α
 end    
-function scaledresidual(scale,eleobj::E, Xs::NTuple{Nxder},Us::NTuple{Nuder},As, t,γ,dbg) where{E<:AbstractElement,Nxder,Nuder} 
+function scaledresidual(scale,eleobj::AbstractElement, Xs::NTuple{Nxder},Us::NTuple{Nuder},As, t,γ,dbg) where{Nxder,Nuder} 
     X     = NTuple{Nxder}(xs.*scale.X for xs∈Xs)  
     U     = NTuple{Nuder}(us.*scale.U for us∈Us)
     A     =       As.*scale.A
