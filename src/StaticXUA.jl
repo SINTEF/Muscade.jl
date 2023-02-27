@@ -133,7 +133,7 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{S
                 facLyy = lu(out2.Lyy) 
             else
                 lu!(facLyy,out2.Lyy)
-            end catch; muscadeerror(@sprintf("Incremental solution failed at step=%i, iAiter=%i",step,iAiter));end
+            end catch; muscadeerror(@sprintf("matrix factorization failed at step=%i, iAiter=%i",step,iAiter));end
             solAt+=@elapsed Δy[ step]  = facLyy\out2.Ly  
             solAt+=@elapsed y∂a[step]  = facLyy\out2.Lya 
             solAt+=@elapsed La       .+= out2.La  - out2.Lya' * Δy[ step]  

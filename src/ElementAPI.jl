@@ -9,8 +9,8 @@ abstract type AbstractElement  end
 
 draw(axe,key,out, ::E,args...;kwargs...) where{E<:AbstractElement}    = nothing # by default, an element draws nothing
 
-espyable(    ::Type{E}) where{E<:AbstractElement}  = ()
-request2draw(::Type{E}) where{E<:AbstractElement}  = ()
+espyable(    ::Type{E}) where{E<:AbstractElement}  = (;)
+request2draw(::Type{E}) where{E<:AbstractElement}  = (;)
 doflist(     ::Type{E}) where{E<:AbstractElement}  = muscadeerror(@sprintf("method 'Muscade.doflist' must be provided for elements of type '%s'\n",E))
 ### Not part of element API, not exported by Muscade
 

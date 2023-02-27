@@ -108,13 +108,6 @@ function State{nXder,nUder}(s::State) where{nXder,nUder}
 end 
 settime(s,t) = State(s.Λ,s.X,s.U,s.A,t,0.,s.model,s.dis)  
 
-## find the last assigned array-element in a vector 
-lastassigned(state) = state
-function lastassigned(v::Vector)
-    i = findlast([isassigned(v,i) for i=1:length(v)])
-    return isnothing(i) ? nothing : lastassigned(v[i])
-end
-
 #### DofGroup
 
 struct DofGroup{T1,T2,T3,T4,T5,T6,T7,T8} 
@@ -326,7 +319,7 @@ function assemblesequential!(out,asm,dis,eleobj,state::State{Nxder,Nuder},γ,dbg
     end
 end
 
-#### addtoarray and zero!
+#### zero!
 function zero!(out::DenseArray)
     out .= 0
 end
@@ -334,6 +327,7 @@ function zero!(out::AbstractSparseArray)
     out.nzval .= 0
 end
 
+#### extract value or derivatives from a SVector 'a' of adiffs, and add it directly into vector, full matrix pr sparse matrix 'out'.
 function add_value!(out::𝕣1,asm,iele,a::SVector{M,∂ℝ{P,N,𝕣}},ias) where{P,N,M}
     for (iasm,ia) ∈ enumerate(ias)
         iout = asm[iasm,iele]

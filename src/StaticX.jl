@@ -46,7 +46,6 @@ function solve(::Type{StaticX},pstate,verbose,dbg;time::AbstractVector{𝕣},
     s                = State{1,1}(initialstate) 
     local facLλx 
     for (step,t)     ∈ enumerate(time)
-        verbose && @printf "    step %3d" step
         s            = settime(s,t)
         γ            = γ0
         for iiter    = 1:maxiter
@@ -56,19 +55,20 @@ function solve(::Type{StaticX},pstate,verbose,dbg;time::AbstractVector{𝕣},
                 facLλx = lu(out.Lλx) 
             else
                 lu!(facLλx,out.Lλx) 
-            end catch; muscadeerror(@sprintf("Incremental solution failed at step=%i, iiter=%i",step,iiter)) end
+            end catch; muscadeerror(@sprintf("matrix factorization failed at step=%i, iiter=%i",step,iiter)) end
+#            @show cond(Array(out.Lλx))
             solt+=@elapsed Δx  = facLλx\out.Lλ
             Δx²,Lλ²  = sum(Δx.^2),sum(out.Lλ.^2)
             solt+=@elapsed decrement!(s,0,Δx,dofgr)
             γ       *= γfac1*exp(-(out.α/γfac2)^2)
-            verbose && saveiter && @printf("iteration %3d, γ= %7.1e\n",iiter,γ)
+            verbose && saveiter && @printf("        iteration %3d, γ= %7.1e\n",iiter,γ)
             saveiter && (state[iiter]=State(s.Λ,deepcopy(s.X),s.U,s.A,s.time,γ,model,dis))
             if Δx²≤cΔx² && Lλ²≤cLλ² 
-                verbose && @printf " converged in %3d iterations. |Δx|=%7.1e |Lλ|=%7.1e\n" iiter √(Δx²) √(Lλ²)
+                verbose && @printf "    step %3d converged in %3d iterations. |Δx|=%7.1e |Lλ|=%7.1e\n" step iiter √(Δx²) √(Lλ²)
                 ~saveiter && (state[step]=State(s.Λ,deepcopy(s.X),s.U,s.A,s.time,γ,model,dis))
                 break#out of the iiter loop
             end
-            iiter==maxiter && muscadeerror(@sprintf(" no convergence after %3d iterations |Δx|=%g / %g, |Lλ|=%g / %g",iiter,√(Δx²),maxΔx,√(Lλ²)^2,maxresidual))
+            iiter==maxiter && muscadeerror(@sprintf("no convergence in step %3d after %3d iterations |Δx|=%g / %g, |Lλ|=%g / %g",step,iiter,√(Δx²),maxΔx,√(Lλ²)^2,maxresidual))
         end
     end
     verbose && @printf "\n    nel=%d, ndof=%d, nstep=%d, niter=%d, niter/nstep=%5.2f\n" getnele(model) getndof(dofgr) length(time) citer citer/length(time)

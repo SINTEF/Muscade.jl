@@ -54,7 +54,7 @@ version = "1.6.0"
 
 [[deps.EspyInsideFunction]]
 deps = ["Printf"]
-git-tree-sha1 = "3867faea8ede996b4269f609830f1ae83c21c036"
+path = "C:\\Users\\philippem\\.julia\\dev\\EspyInsideFunction"
 uuid = "d6b55740-5cb4-11ec-1cb9-93db9984c461"
 version = "0.2.1"
 

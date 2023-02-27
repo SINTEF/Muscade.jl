@@ -233,7 +233,7 @@ doflist(::Type{<:Aconstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λi
    (inod =(xinod...           ,uinod...           ,ainod...           ,λinod         ), 
     class=(ntuple(i->:X,Nx)...,ntuple(i->:U,Nu)...,ntuple(i->:A,Na)...,:A), 
     field=(xfield...          ,ufield...          ,afield...          ,λfield        )) 
-
+espyable(::Type{<:Constraint})  = (λ=scalar,g=scalar)
 const off_     = :off # because @espy has its own ways with symbols... TODO improve @espy
 const equal_   = :equal
 const inequal_ = :inequal 
