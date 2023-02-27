@@ -12,6 +12,8 @@ SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
-SpecialFunctions = "2"
-StaticArrays = "1"
 julia = "1.8"
+SpecialFunctions = "2.2"
+StaticArrays = "1.5"
+MacroTools = "0.5.10"
+
