@@ -1,10 +1,5 @@
 module Muscade
-    using  EspyInsideFunction
-    export EspyInsideFunction,@request,makekey,forloop,scalar,@espy,@espydbg
- 
     using  Printf,SparseArrays,StaticArrays,LinearAlgebra
-    # using  Base.Threads
-    # import Base.Threads.@spawn, Base.Threads.nthreads
 
     include("Dialect.jl")
     export ℝ,ℤ,𝕣,𝕫,𝔹,𝕓
@@ -22,6 +17,11 @@ module Muscade
 
     include("Dots.jl")
     export dots,∘₀,∘₁,∘₂,⊗
+
+    include("Espy.jl") 
+    export @request
+    export makekey,forloop,scalar
+    export @espy,@espydbg
 
     include("Exceptions.jl")
     export muscadeerror

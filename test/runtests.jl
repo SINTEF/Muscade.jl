@@ -1,6 +1,10 @@
 module Runtest
     using Test,Documenter,Muscade
     @testset "Muscade.jl package" begin
+        @testset "TestEspy" begin
+            include("TestEspy.jl")
+            include("TestEspy2.jl")
+        end
         @testset "TestElementAPI" begin
             include("TestElementAPI.jl")
         end

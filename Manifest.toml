@@ -2,7 +2,7 @@
 
 julia_version = "1.8.2"
 manifest_format = "2.0"
-project_hash = "f47e6a195c4df30843fb5757d322a07ef412b22f"
+project_hash = "1cb046820fd9c2aba0ce1697c3274b38c3a00f4e"
 
 [[deps.ArgTools]]
 uuid = "0dad84c5-d112-42e6-8d28-ef12dabb789f"
@@ -51,12 +51,6 @@ version = "0.9.3"
 deps = ["ArgTools", "FileWatching", "LibCURL", "NetworkOptions"]
 uuid = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
 version = "1.6.0"
-
-[[deps.EspyInsideFunction]]
-deps = ["Printf"]
-path = "C:\\Users\\philippem\\.julia\\dev\\EspyInsideFunction"
-uuid = "d6b55740-5cb4-11ec-1cb9-93db9984c461"
-version = "0.2.1"
 
 [[deps.FileWatching]]
 uuid = "7b1f6079-737a-58dc-b8bc-7a2ca5c1b5ee"

@@ -45,6 +45,7 @@ doflist(::Type{<:XdofCost{Derivative,Field}}) where{Derivative,Field} = (inod =(
 doflist(::Type{<:UdofCost{Derivative,Field}}) where{Derivative,Field} = (inod =(1,), class=(:U,), field=(Field,))
 doflist(::Type{<:AdofCost{Derivative,Field}}) where{Derivative,Field} = (inod =(1,), class=(:A,), field=(Field,))
 espyable(::Type{<:DofCost}) = (J=scalar,)
+
 @espy function lagrangian(o::XdofCost{Derivative}, δX,X,U,A, t,γ,dbg) where{Derivative}
     :J = o.cost(∂n(X,Derivative)[1],t)
     return J
