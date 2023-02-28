@@ -37,7 +37,7 @@ function addin!(out::OUTstaticΛXU_A,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxdir
     iλ,ix,iu,ia     = gradientpartition(Nx,Nx,Nu,Na) # index into element vectors ΔZ and Lz
     iy              = 1:Ny  
     ΔΛ,ΔX,ΔU,ΔA     = view(ΔZ,iλ),view(ΔZ,ix),view(ΔZ,iu),view(ΔZ,ia) # TODO Static?
-    L,α             = scaledlagrangian(scale,eleobj, Λ+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A+ΔA, t,γ,dbg)
+    L,α             = getlagrangian(implemented(eleobj)...,eleobj, Λ+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A+ΔA, t,γ,dbg)
     ∇L              = ∂{2,Nz}(L)
     add_value!(out.Ly ,asm[1],iele,∇L,iy   )
     add_value!(out.La ,asm[2],iele,∇L,ia   )
@@ -76,7 +76,7 @@ function addin!(out::OUTstaticΛXU,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxdir,<
     ΔY              = variate{2,Ny}(δ{1,Ny,𝕣}())                 
     iλ,ix,iu,_      = gradientpartition(Nx,Nx,Nu,0) # index into element vectors ΔY and Ly
     ΔΛ,ΔX,ΔU        = view(ΔY,iλ),view(ΔY,ix),view(ΔY,iu)
-    L,α             = scaledlagrangian(scale,eleobj, Λ+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A, t,γ,dbg)
+    L,α             = getlagrangian(implemented(eleobj)...,eleobj, Λ+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A, t,γ,dbg)
     ∇L              = ∂{2,Ny}(L)
     add_value!(out.Ly ,asm[1],iele,∇L)
     add_∂!{1}( out.Lyy,asm[2],iele,∇L)

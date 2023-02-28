@@ -319,6 +319,57 @@ function assemblesequential!(out,asm,dis,eleobj,state::State{Nxder,Nuder},γ,dbg
     end
 end
 
+####### Lagrangian from residual and residual from Lagrangian
+@generated function implemented(eleobj) 
+    r = hasmethod(residual  ,(eleobj,   NTuple,NTuple,𝕣1,𝕣,𝕣,NamedTuple))
+    l = hasmethod(lagrangian,(eleobj,𝕣1,NTuple,NTuple,𝕣1,𝕣,𝕣,NamedTuple))
+    return :(Val{$r},Val{$l})
+end
+
+# if residual or lagrange outputs just one vector or number, this element does not implementinequality constraints, so append α=0.
+defα(x::Union{Number,AbstractVector})               = x,∞
+defα(x::Tuple)                                      = x
+
+getresidual(          ::Type{<:Val}     ,::Type{<:Val}     ,out,key,eleobj::AbstractElement,args...) = 
+            muscadeerror(args[end],@sprintf("No method 'Muscade.lagrangian(out,key,eleobj,δX,X,U,A, t,γ,dbg)' or 'Muscade.residual(out,key,eleobj,X,U,A, t,γ,dbg)' for elements of type '%s'",typeof(eleobj)))
+getlagrangian(        ::Type{<:Val}     ,::Type{<:Val}     ,out,key,eleobj::AbstractElement,args...) = 
+            muscadeerror(args[end],@sprintf("No method 'Muscade.lagrangian(out,key,eleobj,δX,X,U,A, t,γ,dbg)' or 'Muscade.residual(out,key,eleobj,X,U,A, t,γ,dbg)' for elements of type '%s'",typeof(eleobj)))
+getresidual(          ::Type{<:Val}     ,::Type{<:Val}     ,eleobj::AbstractElement,args...) = 
+            muscadeerror(args[end],@sprintf("No method 'Muscade.lagrangian(eleobj,δX,X,U,A, t,γ,dbg)' or 'Muscade.residual(eleobj,X,U,A, t,γ,dbg)' for elements of type '%s'",typeof(eleobj)))
+getlagrangian(        ::Type{<:Val}     ,::Type{<:Val}     ,eleobj::AbstractElement,args...) = 
+            muscadeerror(args[end],@sprintf("No method 'Muscade.lagrangian(eleobj,δX,X,U,A, t,γ,dbg)' or 'Muscade.residual(eleobj,X,U,A, t,γ,dbg)' for elements of type '%s'",typeof(eleobj)))
+
+# Go straight
+getresidual(          ::Type{Val{true}} ,::Type{<:Val}             ,eleobj::AbstractElement,args...) = defα(residual(          eleobj,args...))
+getresidual(          ::Type{Val{true}} ,::Type{<:Val}     ,out,key,eleobj::AbstractElement,args...) = defα(residual(  out,key,eleobj,args...))
+getlagrangian(        ::Type{<:Val}     ,::Type{Val{true}}         ,eleobj::AbstractElement,args...) = defα(lagrangian(        eleobj,args...))
+getlagrangian(        ::Type{<:Val}     ,::Type{Val{true}} ,out,key,eleobj::AbstractElement,args...) = defα(lagrangian(out,key,eleobj,args...))
+
+# Swap
+function getresidual(  ::Type{Val{false}},::Type{Val{true}} ,eleobj::AbstractElement, X,U,A, t,γ,dbg)  
+    P   = constants(∂0(X),∂0(U),A,t)
+    Nx  = length(∂0(X))
+    δX  = δ{P,Nx,𝕣}()   
+    L,α = defα(lagrangian(eleobj,δX,X,U,A, t,γ,dbg))
+    return ∂{P,Nx}(L),α
+end
+function getresidual(::Type{Val{false}},::Type{Val{true}} ,out,key,eleobj::AbstractElement,X,U,A, t,γ,dbg)  
+    P   = constants(∂0(X),∂0(U),A,t)
+    Nx  = length(∂0(X))
+    δX  = δ{P,Nx,𝕣}()   
+    L,α = defα(lagrangian(out,key,eleobj,δX,X,U,A, t,γ,dbg))
+    return ∂{P,Nx}(L),α
+end
+function getlagrangian(::Type{Val{true}} ,::Type{Val{false}},eleobj::AbstractElement,δX,X,U,A, t,γ,dbg) 
+    R,α = defα(residual(eleobj,X,U,A, t,γ,dbg))
+    return δX ∘₁ R , α
+end
+function getlagrangian(::Type{Val{true}} ,::Type{Val{false}},out,key,eleobj::AbstractElement,δX,X,U,A, t,γ,dbg) 
+    R,α = defα(residual(out,key,eleobj,X,U,A, t,γ,dbg))
+    return δX ∘₁ R , α
+end
+
+
 #### zero!
 function zero!(out::DenseArray)
     out .= 0

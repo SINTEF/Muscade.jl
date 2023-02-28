@@ -78,12 +78,12 @@ constants( a,args...) = max(1+precedence(a),constants(args...))
 struct δ{P,N,R}       dum::𝕫   end # need dum, because syntax δ{P,N,R}() collides with default constructor
 struct variate{P,N}            end
 struct directional{P,N}        end 
-δ{P,N  }(δa::AV{R}) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,1,R}}(∂ℝ{P,1}(zero(R),SV{1,R}(δa[i])) for i=1:N)
-δ{P,N,R}(         ) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,N,R}}(∂ℝ{P,N}(zero(R),           i  ) for i=1:N)
+δ{P,N,R}(         ) where{P,N,R<:ℝ}              = SV{N,∂ℝ{P,N,R}}(∂ℝ{P,N}(zero(R),i                                        ) for i=1:N)
+δ{P,N  }(δa::AV{R}) where{P,N,R<:ℝ}              = SV{N,∂ℝ{P,1,R}}(∂ℝ{P,1}(zero(R),SV{N,R}(i==j ? δa[i] : zero(R)) for i=1:N) for j=1:N)
+variate{P,N}(a::AV{R}          ) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,N,R}}(∂ℝ{P,N}(a[i]   ,i)                                         for i=1:N)
+variate{P,N}(a::AV{R},δa::AV{R}) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,N,R}}(∂ℝ{P,N}(a[i]   ,SV{N,R}(i==j ? δa[i] : zero(R)) for i=1:N) for j=1:N)
 
-variate{P,N}(a::AV{R}) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,N,R}}(∂ℝ{P,N}(a[i]   ,i) for i=1:N)
-variate{P  }(a::R    ) where{P,  R<:ℝ} =                 ∂ℝ{P,1}(a,SV{1,R}(one(R)))
-
+variate{P}(a::R) where{P,R<:ℝ} =  ∂ℝ{P,1}(a,SV{1,R}(one(R)))
 directional{P}(a::SV{N,R},δa::SV{N,R}) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,1,R}}(∂ℝ{P,1}(a[i],SV{1,R}(δa[i])) for i=1:N)
 
 # Analyse

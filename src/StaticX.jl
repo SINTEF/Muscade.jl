@@ -24,7 +24,7 @@ end
 function addin!(out::OUTstaticX,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxdir,<:SVector{Nx}},U,A, t,γ,dbg) where{E,Nxdir,Nx}
     if Nx==0; return end # don't waste time on Acost elements...   
     ΔX         = δ{1,Nx,𝕣}()                 # NB: precedence==1, input must not be Adiff 
-    Lλ,α       = scaledresidual(scale,eleobj, (∂0(X)+ΔX,),U,A, t,γ,dbg)
+    Lλ,α       = getresidual(implemented(eleobj)...,eleobj,(∂0(X)+ΔX,),U,A, t,γ,dbg)
     add_value!(out.Lλ ,asm[1],iele,Lλ)
     add_∂!{1}( out.Lλx,asm[2],iele,Lλ)
     out.α      = min(out.α,α)

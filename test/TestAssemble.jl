@@ -58,7 +58,7 @@ sea(t,x)        = SVector(1.,0.)
 sky(t,x)        = SVector(0.,1.)
 e1              = addelement!(model,Turbine   ,[n1,n2], seadrag=2., sea=sea, skydrag=3., sky=sky)
 e2              = addelement!(model,AnchorLine,[n1,n3], Δxₘtop=SVector(5.,0.,0), xₘbot=SVector(150.,0.), L=180., buoyancy=-1e3)
-setscale!(model;scale=(X=(tx1=1.,tx2=1.,rx3=2.),A=(Δseadrag=3.,Δskydrag=4.,ΔL=5)),Λscale=2)  # scale = (X=(tx=10,rx=1),A=(drag=3.))
+#setscale!(model;scale=(X=(tx1=1.,tx2=1.,rx3=2.),A=(Δseadrag=3.,Δskydrag=4.,ΔL=5)),Λscale=2)  # scale = (X=(tx=10,rx=1),A=(drag=3.))
 dis = Muscade.Disassembler(model)
 
 
@@ -69,9 +69,9 @@ dis = Muscade.Disassembler(model)
     @test  dis.dis[2].index[1].X == [1,2,3]
     @test  dis.dis[2].index[1].U == []
     @test  dis.dis[2].index[1].A == [3,4]
-    @test  dis.scaleX ≈  [1,1,2]
+    @test  dis.scaleX ≈  [1,1,1]
     @test  dis.scaleU ≈  𝕫[]
-    @test  dis.scaleA ≈  [3,4,5,1]
+    @test  dis.scaleA ≈  [1,1,1,1]
 end
 
 dofgr       = Muscade.allXdofs(model,dis)
@@ -91,7 +91,7 @@ iΛ,iX,iU,iA = Muscade.gradientpartition(nΛ,nX,nU,nA)  # indices into said grad
     @test dofgr.jU == 4:3
     @test dofgr.jA == 4:3
     @test dofgr.scaleΛ == Float64[]
-    @test dofgr.scaleX ≈  [1.0, 1.0, 2.0]
+    @test dofgr.scaleX ≈  [1,1,1]
     @test dofgr.scaleU == Float64[]
     @test dofgr.scaleA == Float64[]
 end
@@ -142,7 +142,7 @@ end
     @test dofgr.jU == 4:3
     @test dofgr.jA == 4:3
     @test dofgr.scaleΛ == Float64[]
-    @test dofgr.scaleX ≈  [1.0, 1.0, 2.0]
+    @test dofgr.scaleX ≈  [1,1,1]
     @test dofgr.scaleU == Float64[]
     @test dofgr.scaleA == Float64[]
 end
@@ -151,8 +151,8 @@ state = Muscade.State(model,dis)
 Muscade.assemble!(out,asm,dis,model,state, 0.,())
 
 @testset "assemble" begin
-    @test  out.Lλ ≈ [-304261.42399716884, -6.0, 0.0]
-    @test  out.Lλx ≈ sparse([1,2,3,2,3], [1,2,2,3,3], [20646.13919595113, 2098.3270620494404, 20983.270620494404, 20983.2706204944, 6.294981186148321e6], 3, 3)
+    @test  out.Lλ  ≈ [-152130.71199858442, -3.0, 0.0]
+    @test  out.Lλx ≈ sparse([1, 2, 3, 1, 2, 3, 1, 2, 3], [1, 1, 1, 2, 2, 2, 3, 3, 3], [10323.069597975566, 0.0, 0.0, 0.0, 1049.1635310247202, 5245.817655123601, 0.0, 5245.8176551236, 786872.6482685402], 3, 3)
 end
 
 end
