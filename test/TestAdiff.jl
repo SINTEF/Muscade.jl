@@ -20,6 +20,8 @@ t2 = promote_rule(typeof(dx1),typeof(x))
 (g,h)=promote(dx1,x)
 
 ## Extraction
+dscaled=δ{1,3,𝕣}([1.,2.,3.])
+vscaled=variate{1,3}([4.,4.,4.],[1.,2.,3.])
 Δ   = δ{1,2,𝕣}()
 C1  = variate{constants(Δ),2}([3.,4.])
 C   = variate{constants(C1),2}(C1)
@@ -53,6 +55,8 @@ nrm = norm(oX)
 ##
 @testset "Adiff" begin
     @testset "Adiff construct and promote" begin
+        @test dscaled[2] ≗ ∂ℝ{1, 3, Float64}(0.0, [0.0, 2.0, 0.0])
+        @test vscaled[2] ≗ ∂ℝ{1, 3, Float64}(4.0, [0.0, 2.0, 0.0])
         @test dx1        ≗ ∂𝕣12(3.0, [0.1, 0.2])
         @test x          ≗ ∂ℝ{2,2,∂𝕣12}(∂𝕣12(3.0, [0.1, 0.2]), [∂𝕣12(2.0, [0.3, 0.4]), ∂𝕣12(4.0, [0.5, 0.6])])
         @test a          ≗ ∂ℝ{2,2,∂𝕣12}(∂𝕣12(3.0, [0.1, 0.2]), [∂𝕣12(1.0, [0.0, 0.0]), ∂𝕣12(2.0, [0.0, 0.0])])

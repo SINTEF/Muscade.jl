@@ -23,6 +23,9 @@ module Runtest
         @testset "TestStaticXUA" begin
             include("TestStaticXUA.jl")
         end
+        @testset "TestScale" begin
+            include("TestScale.jl")
+        end
         @testset "TestConstraints" begin
             include("TestConstraints.jl")
         end

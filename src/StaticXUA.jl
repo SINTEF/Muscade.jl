@@ -33,7 +33,8 @@ function addin!(out::OUTstaticΛXU_A,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxdir
                                                                U::NTuple{Nudir,<:SVector{Nu}},A::SVector{Na}, t,γ,dbg) where{E,Nxdir,Nx,Nudir,Nu,Na} # TODO make Nx,Nu,Na types
     Ny              = 2Nx+Nu                           # Y=[Λ;X;U]   
     Nz              = 2Nx+Nu+Na                        # Z = [Y;A]=[Λ;X;U;A]       
-    ΔZ              = variate{2,Nz}(δ{1,Nz,𝕣}())                 
+    scaleZ          = cat(scale.Λ,scale.X,scale.U,scale.A,dims=1)
+    ΔZ              = variate{2,Nz}(δ{1,Nz,𝕣}(scaleZ),scaleZ)                 
     iλ,ix,iu,ia     = gradientpartition(Nx,Nx,Nu,Na) # index into element vectors ΔZ and Lz
     iy              = 1:Ny  
     ΔΛ,ΔX,ΔU,ΔA     = view(ΔZ,iλ),view(ΔZ,ix),view(ΔZ,iu),view(ΔZ,ia) # TODO Static?
@@ -73,7 +74,8 @@ function addin!(out::OUTstaticΛXU,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxdir,<
                                                              U::NTuple{Nudir,<:SVector{Nu}},A, t,γ,dbg) where{E,Nxdir,Nx,Nudir,Nu}
     Ny              = 2Nx+Nu                           # Y=[Λ;X;U]  TODO compile time? 
     if Ny==0; return end # don't waste time on Acost elements...    
-    ΔY              = variate{2,Ny}(δ{1,Ny,𝕣}())                 
+    scaleY          = cat(scale.Λ,scale.X,scale.U,dims=1) # TODO Vector, not SVector!
+    ΔY              = variate{2,Ny}(δ{1,Ny,𝕣}(scaleY),scaleY)                 
     iλ,ix,iu,_      = gradientpartition(Nx,Nx,Nu,0) # index into element vectors ΔY and Ly
     ΔΛ,ΔX,ΔU        = view(ΔY,iλ),view(ΔY,ix),view(ΔY,iu)
     L,α             = getlagrangian(implemented(eleobj)...,eleobj, Λ+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A, t,γ,dbg)

@@ -22,14 +22,24 @@ function zero!(out::OUTstaticX)
     out.α = ∞    
 end
 function addin!(out::OUTstaticX,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxdir,<:SVector{Nx}},U,A, t,γ,dbg) where{E,Nxdir,Nx}
-    if Nx==0; return end # don't waste time on Acost elements...   
-    ΔX         = δ{1,Nx,𝕣}()                 # NB: precedence==1, input must not be Adiff 
+    if Nx==0; return end # don't waste time on Acost elements...  
+    ΔX         = δ{1,Nx,𝕣}(scale.X)                 # NB: precedence==1, input must not be Adiff 
     Lλ,α       = getresidual(implemented(eleobj)...,eleobj,(∂0(X)+ΔX,),U,A, t,γ,dbg)
+    Lλ         = Lλ .* scale.X
     add_value!(out.Lλ ,asm[1],iele,Lλ)
     add_∂!{1}( out.Lλx,asm[2],iele,Lλ)
     out.α      = min(out.α,α)
 end
 
+
+# function scaledresidual(scale,eleobj::AbstractElement, Xs::NTuple{Nxder},Us::NTuple{Nuder},As, t,γ,dbg) where{Nxder,Nuder} 
+#     X     = NTuple{Nxder}(xs.*scale.X for xs∈Xs)  
+#     U     = NTuple{Nuder}(us.*scale.U for us∈Us)
+#     A     =       As.*scale.A
+#     R,α   = getresidual(implemented(eleobj)...,eleobj, X,U,A, t,γ,dbg) 
+#     hasnan(R) && muscadeerror(dbg,"NaN in a residual or its partial derivatives")
+#     return R.*scale.Λ ,α
+# end
 ###---------------------
 struct StaticX end
 getnder(::Type{StaticX}) = (nXder=1,nUder=1)
