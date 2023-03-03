@@ -1,4 +1,4 @@
-#module TestScale
+module TestScale
 
 using Test,StaticArrays,SparseArrays
 using Muscade
@@ -44,7 +44,4 @@ end
     @test  stateXUA1[step].X[1] ≈ stateXUA2[step].X[1]
     @test  stateXUA1[step].A    ≈ stateXUA2[step].A
 end
-
-
-
-#end
+end

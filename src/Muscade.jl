@@ -45,7 +45,8 @@ module Muscade
     export QuickFix
 
     include("Assemble.jl")
- 
+    export Assembly
+    
     include("Solve.jl")
     export solve
 

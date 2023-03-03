@@ -1,5 +1,5 @@
 
-mutable struct OUTstaticΛXU_A{Ty,Ta,Tyy,Tya,Taa}  
+mutable struct AssemblyStaticΛXU_A{Ty,Ta,Tyy,Tya,Taa}  <:Assembly
     Ly    :: Ty
     La    :: Ta
     Lyy   :: Tyy 
@@ -7,7 +7,7 @@ mutable struct OUTstaticΛXU_A{Ty,Ta,Tyy,Tya,Taa}
     Laa   :: Taa
     α     :: 𝕣
 end   
-function prepare(::Type{OUTstaticΛXU_A},model,dis) 
+function prepare(::Type{AssemblyStaticΛXU_A},model,dis) 
     Ydofgr             = allΛXUdofs(model,dis)
     Adofgr             = allAdofs(  model,dis)
     nY,nA              = getndof(Ydofgr),getndof(Adofgr)
@@ -18,10 +18,10 @@ function prepare(::Type{OUTstaticΛXU_A},model,dis)
     Lyy                = asmmat!(view(asm,3,:),view(asm,1,:),view(asm,1,:),nY,nY) 
     Lya                = asmfullmat!(view(asm,4,:),view(asm,1,:),view(asm,2,:),nY,nA) 
     Laa                = asmfullmat!(view(asm,5,:),view(asm,2,:),view(asm,2,:),nA,nA)  
-    out                = OUTstaticΛXU_A(Ly,La,Lyy,Lya,Laa,0.)
+    out                = AssemblyStaticΛXU_A(Ly,La,Lyy,Lya,Laa,0.)
     return out,asm,Adofgr,Ydofgr
 end
-function zero!(out::OUTstaticΛXU_A)
+function zero!(out::AssemblyStaticΛXU_A)
     zero!(out.Ly )
     zero!(out.La )
     zero!(out.Lyy)
@@ -29,7 +29,7 @@ function zero!(out::OUTstaticΛXU_A)
     zero!(out.Laa)
     out.α = ∞    
 end
-function addin!(out::OUTstaticΛXU_A,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxdir,<:SVector{Nx}},
+function addin!(out::AssemblyStaticΛXU_A,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxdir,<:SVector{Nx}},
                                                                U::NTuple{Nudir,<:SVector{Nu}},A::SVector{Na}, t,γ,dbg) where{E,Nxdir,Nx,Nudir,Nu,Na} # TODO make Nx,Nu,Na types
     Ny              = 2Nx+Nu                           # Y=[Λ;X;U]   
     Nz              = 2Nx+Nu+Na                        # Z = [Y;A]=[Λ;X;U;A]       
@@ -50,27 +50,27 @@ end
 
 #------------------------------------
 
-mutable struct OUTstaticΛXU{Ty,Tyy}  
+mutable struct AssemblyStaticΛXU{Ty,Tyy} <:Assembly 
     Ly    :: Ty
     Lyy   :: Tyy 
     α     :: 𝕣
 end   
-function prepare(::Type{OUTstaticΛXU},model,dis) 
+function prepare(::Type{AssemblyStaticΛXU},model,dis) 
     Ydofgr             = allΛXUdofs(model,dis)
     nY                 = getndof(Ydofgr)
     narray,neletyp     = 2,getneletyp(model)
     asm                = Matrix{𝕫2}(undef,narray,neletyp)  
     Ly                 = asmvec!(view(asm,1,:),Ydofgr,dis) 
     Lyy                = asmmat!(view(asm,2,:),view(asm,1,:),view(asm,1,:),nY,nY) 
-    out                = OUTstaticΛXU(Ly,Lyy,0.)
+    out                = AssemblyStaticΛXU(Ly,Lyy,0.)
     return out,asm,Ydofgr
 end
-function zero!(out::OUTstaticΛXU)
+function zero!(out::AssemblyStaticΛXU)
     zero!(out.Ly )
     zero!(out.Lyy)
     out.α = ∞    
 end
-function addin!(out::OUTstaticΛXU,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxdir,<:SVector{Nx}},
+function addin!(out::AssemblyStaticΛXU,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxdir,<:SVector{Nx}},
                                                              U::NTuple{Nudir,<:SVector{Nu}},A, t,γ,dbg) where{E,Nxdir,Nx,Nudir,Nu}
     Ny              = 2Nx+Nu                           # Y=[Λ;X;U]  TODO compile time? 
     if Ny==0; return end # don't waste time on Acost elements...    
@@ -93,8 +93,8 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{S
     maxAiter::ℤ=50,maxYiter::ℤ=0,maxΔy::ℝ=1e-5,maxLy::ℝ=∞,maxΔa::ℝ=1e-5,maxLa::ℝ=∞,γ0::𝕣=1.,γfac1::𝕣=.5,γfac2::𝕣=100.)
 
     model,dis          = initialstate[begin].model,initialstate[begin].dis
-    out1,asm1,Ydofgr   = prepare(OUTstaticΛXU  ,model,dis)
-    out2,asm2,Adofgr,_ = prepare(OUTstaticΛXU_A,model,dis)
+    out1,asm1,Ydofgr   = prepare(AssemblyStaticΛXU  ,model,dis)
+    out2,asm2,Adofgr,_ = prepare(AssemblyStaticΛXU_A,model,dis)
     state              = allocate(pstate,[State{1,1}(i) for i ∈ initialstate]) 
     cΔy²,cLy²,cΔa²,cLa²= maxΔy^2,maxLy^2,maxΔa^2,maxLa^2
     nA,nStep           = getndof(model,:A),length(state)

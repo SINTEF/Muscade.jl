@@ -1,27 +1,28 @@
 
 ###--------------------- ASMstaticX: for good old static FEM
 
-mutable struct OUTstaticX{Tλ,Tλx} 
+mutable struct AssemblyStaticX{Tλ,Tλx} <:Assembly
     Lλ    :: Tλ
     Lλx   :: Tλx 
     α     :: 𝕣
 end   
-function prepare(::Type{OUTstaticX},model,dis) 
+function prepare(::Type{AssemblyStaticX},model,dis) 
     dofgr              = allXdofs(model,dis)
     ndof               = getndof(dofgr)
     narray,neletyp     = 2,getneletyp(model)
     asm                = Matrix{𝕫2}(undef,narray,neletyp)  
     Lλ                 = asmvec!(view(asm,1,:),dofgr,dis) 
     Lλx                = asmmat!(view(asm,2,:),view(asm,1,:),view(asm,1,:),ndof,ndof) 
-    out                = OUTstaticX(Lλ,Lλx,∞)
+    out                = AssemblyStaticX(Lλ,Lλx,∞)
     return out,asm,dofgr
 end
-function zero!(out::OUTstaticX)
+function zero!(out::AssemblyStaticX)
     zero!(out.Lλ)
     zero!(out.Lλx)
     out.α = ∞    
 end
-function addin!(out::OUTstaticX,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxdir,<:SVector{Nx}},U,A, t,γ,dbg) where{E,Nxdir,Nx}
++(out1::AssemblyStaticX{Tλ,Tλx},out2::AssemblyStaticX{Tλ,Tλx}) where{Tλ,Tλx} = AssemblyStaticX{Tλ,Tλx}(out1.Lλ+out2.Lλ,out1.Lλx+out2.Lλx,min(out1.α,out2.α))
+function addin!(out::AssemblyStaticX,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxdir,<:SVector{Nx}},U,A, t,γ,dbg) where{E,Nxdir,Nx}
     if Nx==0; return end # don't waste time on Acost elements...  
     ΔX         = δ{1,Nx,𝕣}(scale.X)                 # NB: precedence==1, input must not be Adiff 
     Lλ,α       = getresidual(implemented(eleobj)...,eleobj,(∂0(X)+ΔX,),U,A, t,γ,dbg)
@@ -31,15 +32,6 @@ function addin!(out::OUTstaticX,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxdir,<:SV
     out.α      = min(out.α,α)
 end
 
-
-# function scaledresidual(scale,eleobj::AbstractElement, Xs::NTuple{Nxder},Us::NTuple{Nuder},As, t,γ,dbg) where{Nxder,Nuder} 
-#     X     = NTuple{Nxder}(xs.*scale.X for xs∈Xs)  
-#     U     = NTuple{Nuder}(us.*scale.U for us∈Us)
-#     A     =       As.*scale.A
-#     R,α   = getresidual(implemented(eleobj)...,eleobj, X,U,A, t,γ,dbg) 
-#     hasnan(R) && muscadeerror(dbg,"NaN in a residual or its partial derivatives")
-#     return R.*scale.Λ ,α
-# end
 ###---------------------
 struct StaticX end
 getnder(::Type{StaticX}) = (nXder=1,nUder=1)
@@ -49,7 +41,7 @@ function solve(::Type{StaticX},pstate,verbose,dbg;time::AbstractVector{𝕣},
                     saveiter::𝔹=false,γ0::𝕣=1.,γfac1::𝕣=.5,γfac2::𝕣=100.)
     # important: this code assumes that there is no χ in state.
     model,dis        = initialstate.model,initialstate.dis
-    out,asm,dofgr    = prepare(OUTstaticX,model,dis)
+    out,asm,dofgr    = prepare(AssemblyStaticX,model,dis)
     asmt,solt,citer  = 0.,0.,0
     cΔx²,cLλ²        = maxΔx^2,maxresidual^2
     state            = allocate(pstate,Vector{State{1,1}}(undef,saveiter ? maxiter : length(time))) # state is not a return argument so that data is not lost in case of exception

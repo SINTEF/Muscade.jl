@@ -298,9 +298,9 @@ end
 
 
 ######## Generic assembler
+abstract type Assembly end
 
-
-function assemble!(out,asm,dis,model,state,γ,dbg)
+function assemble!(out::Assembly,asm,dis,model,state,γ,dbg)
     zero!(out)
     for ieletyp = 1:lastindex(model.eleobj)
         eleobj  = model.eleobj[ieletyp]
