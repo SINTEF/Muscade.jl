@@ -118,7 +118,7 @@ Lλ          = Muscade.asmvec!(asmvec,dofgr,dis)
     @test asmvec[1] == [1; 2;;]
     @test asmvec[2] == [1; 2; 3;;]
 end
-out,asm,dofgr = Muscade.prepare(Muscade.OUTstaticX,model,dis)
+out,asm,dofgr = Muscade.prepare(Muscade.AssemblyStaticX,model,dis)
 Muscade.zero!(out)
 @testset "prepare" begin
     @test  out.Lλ ≈ [0,0,0]

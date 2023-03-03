@@ -21,7 +21,11 @@ function zero!(out::AssemblyStaticX)
     zero!(out.Lλx)
     out.α = ∞    
 end
-+(out1::AssemblyStaticX{Tλ,Tλx},out2::AssemblyStaticX{Tλ,Tλx}) where{Tλ,Tλx} = AssemblyStaticX{Tλ,Tλx}(out1.Lλ+out2.Lλ,out1.Lλx+out2.Lλx,min(out1.α,out2.α))
+function add!(out1::AssemblyStaticX{Tλ,Tλx},out2::AssemblyStaticX{Tλ,Tλx}) where{Tλ,Tλx} 
+    out1.Lλ  += out2.Lλ
+    out1.Lλx += out2.Lλx
+    out1.α    = min(out1.α,out2.α)
+end
 function addin!(out::AssemblyStaticX,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxdir,<:SVector{Nx}},U,A, t,γ,dbg) where{E,Nxdir,Nx}
     if Nx==0; return end # don't waste time on Acost elements...  
     ΔX         = δ{1,Nx,𝕣}(scale.X)                 # NB: precedence==1, input must not be Adiff 

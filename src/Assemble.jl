@@ -299,15 +299,31 @@ end
 
 ######## Generic assembler
 abstract type Assembly end
-
-function assemble!(out::Assembly,asm,dis,model,state,γ,dbg)
+using Base.Threads
+function assemble!(out::A,asm,dis,model,state,γ,dbg) where{A<:Assembly}
     zero!(out)
     for ieletyp = 1:lastindex(model.eleobj)
         eleobj  = model.eleobj[ieletyp]
-        assemblesequential!(out,view(asm,:,ieletyp),dis.dis[ieletyp], eleobj,state,γ,(dbg...,ieletyp=ieletyp))
+        assemble_!(out,view(asm,:,ieletyp),dis.dis[ieletyp], eleobj,state,γ,(dbg...,ieletyp=ieletyp))
     end
 end
-function assemblesequential!(out,asm,dis,eleobj,state::State{Nxder,Nuder},γ,dbg) where{Nxder,Nuder}
+
+# function assemble!(out::A,asm,dis,model,state,γ,dbg) where{A<:Assembly}
+#     zero!(out)
+#     n = nthreads()
+#     O = Vector{A}(undef,n)
+#     for i = 1:n
+#         O[i] = deepcopy(out)
+#     end
+#     for ieletyp = 1:lastindex(model.eleobj)
+#         eleobj  = model.eleobj[ieletyp]
+#         assemble_!(out,view(asm,:,ieletyp),dis.dis[ieletyp], eleobj,state,γ,(dbg...,ieletyp=ieletyp))
+#     end
+#     for i = 1:n
+#         add!(out,O[i])
+#     end
+# end
+function assemble_!(out::Assembly,asm,dis,eleobj,state::State{Nxder,Nuder},γ,dbg) where{Nxder,Nuder}
     scale     = dis.scale
     for iele  = 1:lastindex(eleobj)
         index = dis.index[iele]
@@ -318,6 +334,17 @@ function assemblesequential!(out,asm,dis,eleobj,state::State{Nxder,Nuder},γ,dbg
         addin!(out,asm,iele,scale,eleobj[iele],Λe,Xe,Ue,Ae, state.time,γ,(dbg...,iele=iele))
     end
 end
+# function assemble_!(out::Vector{A},asm,dis,eleobj,state::State{Nxder,Nuder},γ,dbg) where{Nxder,Nuder,A<:Assembly}
+#     scale     = dis.scale
+#     @threads for iele  = 1:lastindex(eleobj)
+#         index = dis.index[iele]
+#         Λe    = state.Λ[index.X]                 
+#         Xe    = NTuple{Nxder}(x[index.X] for x∈state.X)
+#         Ue    = NTuple{Nuder}(u[index.U] for u∈state.U)
+#         Ae    = state.A[index.A]
+#         addin!(out[threadid()],asm,iele,scale,eleobj[iele],Λe,Xe,Ue,Ae, state.time,γ,(dbg...,iele=iele))
+#     end
+# end
 
 
 #######
@@ -407,7 +434,7 @@ function zero!(out::AbstractSparseArray)
     out.nzval .= 0
 end
 
-#### extract value or derivatives from a SVector 'a' of adiffs, and add it directly into vector, full matrix pr sparse matrix 'out'.
+#### extract value or derivatives from a SVector 'a' of adiffs, and add it directly into vector, full matrix or sparse matrix 'out'.
 function add_value!(out::𝕣1,asm,iele,a::SVector{M,∂ℝ{P,N,𝕣}},ias) where{P,N,M}
     for (iasm,ia) ∈ enumerate(ias)
         iout = asm[iasm,iele]
