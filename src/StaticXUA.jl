@@ -29,6 +29,14 @@ function zero!(out::AssemblyStaticΛXU_A)
     zero!(out.Laa)
     out.α = ∞    
 end
+function add!(out1::AssemblyStaticΛXU_A,out2::AssemblyStaticΛXU_A) 
+    add!(out1.Ly,out2.Ly)
+    add!(out1.La,out2.La)
+    add!(out1.Lyy,out2.Lyy)
+    add!(out1.Lya,out2.Lya)
+    add!(out1.Laa,out2.Laa)
+    out1.α = min(out1.α,out2.α)
+end
 function addin!(out::AssemblyStaticΛXU_A,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxdir,<:SVector{Nx}},
                                                                U::NTuple{Nudir,<:SVector{Nu}},A::SVector{Na}, t,γ,dbg) where{E,Nxdir,Nx,Nudir,Nu,Na} # TODO make Nx,Nu,Na types
     Ny              = 2Nx+Nu                           # Y=[Λ;X;U]   
@@ -69,6 +77,11 @@ function zero!(out::AssemblyStaticΛXU)
     zero!(out.Ly )
     zero!(out.Lyy)
     out.α = ∞    
+end
+function add!(out1::AssemblyStaticΛXU,out2::AssemblyStaticΛXU) 
+    add!(out1.Ly,out2.Ly)
+    add!(out1.Lyy,out2.Lyy)
+    out1.α = min(out1.α,out2.α)
 end
 function addin!(out::AssemblyStaticΛXU,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxdir,<:SVector{Nx}},
                                                              U::NTuple{Nudir,<:SVector{Nu}},A, t,γ,dbg) where{E,Nxdir,Nx,Nudir,Nu}

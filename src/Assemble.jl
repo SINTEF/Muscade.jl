@@ -300,51 +300,79 @@ end
 ######## Generic assembler
 abstract type Assembly end
 using Base.Threads
-function assemble!(out::A,asm,dis,model,state,γ,dbg) where{A<:Assembly}
-    zero!(out)
-    for ieletyp = 1:lastindex(model.eleobj)
-        eleobj  = model.eleobj[ieletyp]
-        assemble_!(out,view(asm,:,ieletyp),dis.dis[ieletyp], eleobj,state,γ,(dbg...,ieletyp=ieletyp))
-    end
-end
+
+# sequential
 
 # function assemble!(out::A,asm,dis,model,state,γ,dbg) where{A<:Assembly}
 #     zero!(out)
-#     n = nthreads()
-#     O = Vector{A}(undef,n)
-#     for i = 1:n
-#         O[i] = deepcopy(out)
-#     end
 #     for ieletyp = 1:lastindex(model.eleobj)
 #         eleobj  = model.eleobj[ieletyp]
 #         assemble_!(out,view(asm,:,ieletyp),dis.dis[ieletyp], eleobj,state,γ,(dbg...,ieletyp=ieletyp))
 #     end
-#     for i = 1:n
-#         add!(out,O[i])
-#     end
 # end
-function assemble_!(out::Assembly,asm,dis,eleobj,state::State{Nxder,Nuder},γ,dbg) where{Nxder,Nuder}
-    scale     = dis.scale
-    for iele  = 1:lastindex(eleobj)
-        index = dis.index[iele]
-        Λe    = state.Λ[index.X]                 
-        Xe    = NTuple{Nxder}(x[index.X] for x∈state.X)
-        Ue    = NTuple{Nuder}(u[index.U] for u∈state.U)
-        Ae    = state.A[index.A]
-        addin!(out,asm,iele,scale,eleobj[iele],Λe,Xe,Ue,Ae, state.time,γ,(dbg...,iele=iele))
-    end
-end
-# function assemble_!(out::Vector{A},asm,dis,eleobj,state::State{Nxder,Nuder},γ,dbg) where{Nxder,Nuder,A<:Assembly}
+# function assemble_!(out::Assembly,asm,dis,eleobj,state::State{Nxder,Nuder},γ,dbg) where{Nxder,Nuder}
 #     scale     = dis.scale
-#     @threads for iele  = 1:lastindex(eleobj)
+#     for iele  = 1:lastindex(eleobj)
 #         index = dis.index[iele]
 #         Λe    = state.Λ[index.X]                 
 #         Xe    = NTuple{Nxder}(x[index.X] for x∈state.X)
 #         Ue    = NTuple{Nuder}(u[index.U] for u∈state.U)
 #         Ae    = state.A[index.A]
-#         addin!(out[threadid()],asm,iele,scale,eleobj[iele],Λe,Xe,Ue,Ae, state.time,γ,(dbg...,iele=iele))
+#         addin!(out,asm,iele,scale,eleobj[iele],Λe,Xe,Ue,Ae, state.time,γ,(dbg...,iele=iele))
 #     end
 # end
+
+function add!(a::Array,b::Array)
+    for i=1:length(a)
+        a[i] += b[i]
+    end
+#    a .+= b
+    return nothing
+end
+function add!(a::SparseMatrixCSC,b::SparseMatrixCSC) # assumes identical sparsity structure
+    for i=1:length(a.nzval)
+        a.nzval[i] += b.nzval[i]
+    end
+#    a.nzval .+= b.nzval
+    return nothing
+end
+
+function assemble!(out::A,asm,dis,model,state,γ,dbg) where{A<:Assembly}
+    zero!(out)
+    n = nthreads()
+    O = Vector{A}(undef,n)
+    for i = 1:n
+        O[i] = deepcopy(out)
+    end
+    for ieletyp = 1:lastindex(model.eleobj)
+        eleobj  = model.eleobj[ieletyp]
+        assemble_!(O,view(asm,:,ieletyp),dis.dis[ieletyp], eleobj,state,γ,(dbg...,ieletyp=ieletyp))
+    end
+    for i = 1:n
+        add!(out,O[i])
+    end
+end
+
+function assemble_!(out::Vector{A},asm,dis,eleobj,state::State{Nxder,Nuder},γ,dbg) where{Nxder,Nuder,A<:Assembly}
+    # if dbg.ieletyp==1
+    # @show dbg
+    # @show eltype(eleobj)
+    # @show typeof(out[1])
+    # @show size(out[1].Lλ)
+    # @show nnz(out[1].Lλx)
+    # end
+    scale     = dis.scale
+    for iele  = 1:lastindex(eleobj)
+#        @threads for iele  = 1:lastindex(eleobj)
+            index = dis.index[iele]
+        Λe    = state.Λ[index.X]                 
+        Xe    = NTuple{Nxder}(x[index.X] for x∈state.X)
+        Ue    = NTuple{Nuder}(u[index.U] for u∈state.U)
+        Ae    = state.A[index.A]
+#        addin!(out[threadid()],asm,iele,scale,eleobj[iele],Λe,Xe,Ue,Ae, state.time,γ,(dbg...,iele=iele))
+        addin!(out[1],asm,iele,scale,eleobj[iele],Λe,Xe,Ue,Ae, state.time,γ,(dbg...,iele=iele))
+    end
+end
 
 
 #######
@@ -458,6 +486,10 @@ function add_∂!{P}(out::Array,asm,iele,a::SVector{M,∂ℝ{P,N,R}},i1as,i2as) 
         iasm = i1asm+length(i1as)*(i2asm-1)
         iout = asm[iasm,iele]
         if iout≠0
+#            @show :add_∂!
+#            @show length(out),iout # aye, there's the rub
+#            @show length(a),i1a
+#            @show length(a[i1a].dx),i2a
             out[iout]+=a[i1a].dx[i2a]  
         end
     end

@@ -21,10 +21,10 @@ function zero!(out::AssemblyStaticX)
     zero!(out.Lλx)
     out.α = ∞    
 end
-function add!(out1::AssemblyStaticX{Tλ,Tλx},out2::AssemblyStaticX{Tλ,Tλx}) where{Tλ,Tλx} 
-    out1.Lλ  += out2.Lλ
-    out1.Lλx += out2.Lλx
-    out1.α    = min(out1.α,out2.α)
+function add!(out1::AssemblyStaticX,out2::AssemblyStaticX) 
+    add!(out1.Lλ,out2.Lλ)
+    add!(out1.Lλx,out2.Lλx)
+    out1.α = min(out1.α,out2.α)
 end
 function addin!(out::AssemblyStaticX,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxdir,<:SVector{Nx}},U,A, t,γ,dbg) where{E,Nxdir,Nx}
     if Nx==0; return end # don't waste time on Acost elements...  
@@ -62,7 +62,6 @@ function solve(::Type{StaticX},pstate,verbose,dbg;time::AbstractVector{𝕣},
             else
                 lu!(facLλx,out.Lλx) 
             end catch; muscadeerror(@sprintf("matrix factorization failed at step=%i, iiter=%i",step,iiter)) end
-#            @show cond(Array(out.Lλx))
             solt+=@elapsed Δx  = facLλx\out.Lλ
             Δx²,Lλ²  = sum(Δx.^2),sum(out.Lλ.^2)
             solt+=@elapsed decrement!(s,0,Δx,dofgr)
