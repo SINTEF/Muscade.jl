@@ -13,7 +13,7 @@ function prepare(::Type{AssemblyStaticX},model,dis)
     asm                = Matrix{𝕫2}(undef,narray,neletyp)  
     Lλ                 = asmvec!(view(asm,1,:),dofgr,dis) 
     Lλx                = asmmat!(view(asm,2,:),view(asm,1,:),view(asm,1,:),ndof,ndof) 
-    out                = AssemblyStaticX(Lλ,Lλx,∞)
+    out                = one_for_each_thread(AssemblyStaticX(Lλ,Lλx,∞))
     return out,asm,dofgr
 end
 function zero!(out::AssemblyStaticX)
@@ -58,14 +58,14 @@ function solve(::Type{StaticX},pstate,verbose,dbg;time::AbstractVector{𝕣},
             citer   += 1
             asmt+=@elapsed assemble!(out,asm,dis,model,s, γ,(dbg...,solver=:StaticX,step=step,iiter=iiter))
             solt+=@elapsed try if step==1 && iiter==1
-                facLλx = lu(out.Lλx) 
+                facLλx = lu(out[1].Lλx) 
             else
-                lu!(facLλx,out.Lλx) 
+                lu!(facLλx,out[1].Lλx) 
             end catch; muscadeerror(@sprintf("matrix factorization failed at step=%i, iiter=%i",step,iiter)) end
-            solt+=@elapsed Δx  = facLλx\out.Lλ
-            Δx²,Lλ²  = sum(Δx.^2),sum(out.Lλ.^2)
+            solt+=@elapsed Δx  = facLλx\out[1].Lλ
+            Δx²,Lλ²  = sum(Δx.^2),sum(out[1].Lλ.^2)
             solt+=@elapsed decrement!(s,0,Δx,dofgr)
-            γ       *= γfac1*exp(-(out.α/γfac2)^2)
+            γ       *= γfac1*exp(-(out[1].α/γfac2)^2)
             verbose && saveiter && @printf("        iteration %3d, γ= %7.1e\n",iiter,γ)
             saveiter && (state[iiter]=State(s.Λ,deepcopy(s.X),s.U,s.A,s.time,γ,model,dis))
             if Δx²≤cΔx² && Lλ²≤cLλ² 

@@ -184,7 +184,7 @@ state           = solve(StaticX;initialstate,time=[0.],verbose=false) # because 
 @testset "interior point" begin
     X = state[findlastassigned(state)].X[1][1:2]
     @test g1(X,0)   ≈ 0.0
-    @test g2(X,0)   ≈ -2.7755575615628914e-17
+    @test abs(g2(X,0))   < 1e-16
 end
 
 

@@ -303,74 +303,63 @@ using Base.Threads
 
 # sequential
 
-# function assemble!(out::A,asm,dis,model,state,γ,dbg) where{A<:Assembly}
-#     zero!(out)
-#     for ieletyp = 1:lastindex(model.eleobj)
-#         eleobj  = model.eleobj[ieletyp]
-#         assemble_!(out,view(asm,:,ieletyp),dis.dis[ieletyp], eleobj,state,γ,(dbg...,ieletyp=ieletyp))
-#     end
-# end
-# function assemble_!(out::Assembly,asm,dis,eleobj,state::State{Nxder,Nuder},γ,dbg) where{Nxder,Nuder}
-#     scale     = dis.scale
-#     for iele  = 1:lastindex(eleobj)
-#         index = dis.index[iele]
-#         Λe    = state.Λ[index.X]                 
-#         Xe    = NTuple{Nxder}(x[index.X] for x∈state.X)
-#         Ue    = NTuple{Nuder}(u[index.U] for u∈state.U)
-#         Ae    = state.A[index.A]
-#         addin!(out,asm,iele,scale,eleobj[iele],Λe,Xe,Ue,Ae, state.time,γ,(dbg...,iele=iele))
-#     end
-# end
-
-function add!(a::Array,b::Array)
-    for i=1:length(a)
-        a[i] += b[i]
-    end
-#    a .+= b
-    return nothing
-end
-function add!(a::SparseMatrixCSC,b::SparseMatrixCSC) # assumes identical sparsity structure
-    for i=1:length(a.nzval)
-        a.nzval[i] += b.nzval[i]
-    end
-#    a.nzval .+= b.nzval
-    return nothing
-end
-
-function assemble!(out::A,asm,dis,model,state,γ,dbg) where{A<:Assembly}
+function assemble!(out::Assembly,asm,dis,model,state,γ,dbg) 
     zero!(out)
-    n = nthreads()
-    O = Vector{A}(undef,n)
-    for i = 1:n
-        O[i] = deepcopy(out)
-    end
     for ieletyp = 1:lastindex(model.eleobj)
         eleobj  = model.eleobj[ieletyp]
-        assemble_!(O,view(asm,:,ieletyp),dis.dis[ieletyp], eleobj,state,γ,(dbg...,ieletyp=ieletyp))
-    end
-    for i = 1:n
-        add!(out,O[i])
+        assemble_!(out,view(asm,:,ieletyp),dis.dis[ieletyp], eleobj,state,γ,(dbg...,ieletyp=ieletyp))
     end
 end
-
-function assemble_!(out::Vector{A},asm,dis,eleobj,state::State{Nxder,Nuder},γ,dbg) where{Nxder,Nuder,A<:Assembly}
-    # if dbg.ieletyp==1
-    # @show dbg
-    # @show eltype(eleobj)
-    # @show typeof(out[1])
-    # @show size(out[1].Lλ)
-    # @show nnz(out[1].Lλx)
-    # end
+function assemble_!(out::Assembly,asm,dis,eleobj,state::State{Nxder,Nuder},γ,dbg) where{Nxder,Nuder}
     scale     = dis.scale
     for iele  = 1:lastindex(eleobj)
-#        @threads for iele  = 1:lastindex(eleobj)
-            index = dis.index[iele]
+        index = dis.index[iele]
         Λe    = state.Λ[index.X]                 
         Xe    = NTuple{Nxder}(x[index.X] for x∈state.X)
         Ue    = NTuple{Nuder}(u[index.U] for u∈state.U)
         Ae    = state.A[index.A]
-#        addin!(out[threadid()],asm,iele,scale,eleobj[iele],Λe,Xe,Ue,Ae, state.time,γ,(dbg...,iele=iele))
-        addin!(out[1],asm,iele,scale,eleobj[iele],Λe,Xe,Ue,Ae, state.time,γ,(dbg...,iele=iele))
+        addin!(out,asm,iele,scale,eleobj[iele],Λe,Xe,Ue,Ae, state.time,γ,(dbg...,iele=iele))
+    end
+end
+
+# multithreaded
+one_for_each_thread(x) = SVector{nthreads()}(deepcopy(x) for i=1:nthreads())
+firstelement(x::AbstractVector) = x[1]
+firstelement(x                ) = x
+
+function add!(a::Array,b::Array)
+    for i∈eachindex(a)
+        a[i] += b[i]
+    end
+end
+function add!(a::SparseMatrixCSC,b::SparseMatrixCSC) # assumes identical sparsity structure
+    for i∈eachindex(a.nzval)
+        a.nzval[i] += b.nzval[i]
+    end
+end
+
+function assemble!(out::AbstractVector{A},asm,dis,model,state,γ,dbg) where{A<:Assembly}
+    for i = 1:nthreads() 
+        zero!(out[i])
+    end
+    for ieletyp = 1:lastindex(model.eleobj)
+        eleobj  = model.eleobj[ieletyp]
+        assemble_!(out,view(asm,:,ieletyp),dis.dis[ieletyp], eleobj,state,γ,(dbg...,ieletyp=ieletyp))
+    end
+    for i = 2:nthreads() 
+        add!(out[1],out[i])
+    end
+end
+
+function assemble_!(out::AbstractVector{A},asm,dis,eleobj,state::State{Nxder,Nuder},γ,dbg) where{Nxder,Nuder,A<:Assembly}
+    scale     = dis.scale
+    @threads for iele  = 1:lastindex(eleobj)
+        index = dis.index[iele]
+        Λe    = state.Λ[index.X]                 
+        Xe    = NTuple{Nxder}(x[index.X] for x∈state.X)
+        Ue    = NTuple{Nuder}(u[index.U] for u∈state.U)
+        Ae    = state.A[index.A]
+        addin!(out[threadid()],asm,iele,scale,eleobj[iele],Λe,Xe,Ue,Ae, state.time,γ,(dbg...,iele=iele))
     end
 end
 
@@ -456,10 +445,14 @@ end
 
 #### zero!
 function zero!(out::DenseArray)
-    out .= 0
+    for i∈eachindex(out)
+        out[i] = 0
+    end
 end
 function zero!(out::AbstractSparseArray)
-    out.nzval .= 0
+    for i∈eachindex(out.nzval)
+        out.nzval[i] = 0
+    end
 end
 
 #### extract value or derivatives from a SVector 'a' of adiffs, and add it directly into vector, full matrix or sparse matrix 'out'.
