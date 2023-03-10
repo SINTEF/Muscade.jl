@@ -1,4 +1,19 @@
 # manipulation of data-structures representing Julia expressions (::Expr)
+
+# REPRISE
+# 1) refactor
+# espy_ now uses @capture
+# macros @espy_call etc... to become expr-valued functions
+# make these functions use @capture
+# use expression walking
+# clean up code: what is not used? deline, dequote, pretty
+# should espy use prettify, or only espy_dbg?
+# 2) new functionality
+# more general function syntax
+# more general loop syntax (Gauss quadrature...)
+# something else that Symbols to mark variables to save
+# compute only for saving
+
 using Printf,MacroTools
 
 ## Generate unique symbol
@@ -287,24 +302,16 @@ macro espy_call(out,key,f)                                                      
     end)
 end
 ## @espy
-function newinput(ex,newargs...)
-    if isexpr(:call,ex)                                                         # f(x)
-        exo = makecall(ex.args[1],newargs...,ex.args[2:end]...)                 # f(newargs...,x)
-    elseif isexpr(:where,ex)                                                    # f(x::R) where{R<:Number}
-        exo = makewhere(newinput(ex.args[1],newargs...),ex.args[2:end]...)      # f(newargs...,x) where{R<:Number}
-    else error("espy-newinput")
-    end
-end
 function espy_(ex::Expr,out,key,trace=false)
     return prettify(
-    if @capture(ex, function foo_(args__) body_ end)                                       # foo(a,b,c)...end
+    if @capture(ex,    function foo_(args__) body_ end    )                                       # foo(a,b,c)...end
         trace && println("function")
         quote 
             function $foo($out,$key,$(args...)) 
                 $(espy_(body,out,key,trace))
             end
         end                              # foo(out,key,a,b,c)...end
-    elseif @capture(ex, for var_=lo_:hi_ body_ end)
+    elseif @capture(ex,    for var_=lo_ : hi_ body_ end   )
         trace && println("for")
         loopname = Symbol(string(var)[2:end])                                   # gp
         subkey   = Symbol(key,"_",loopname)                                     # key_gp
@@ -314,35 +321,36 @@ function espy_(ex::Expr,out,key,trace=false)
                 $(espy_(body,out,subkey,trace))
             end
         end
-    elseif isexpr(:(=),ex)
+    elseif @capture(ex,  left_ = right_   )
         trace && println("assign")
-        right  = getright(ex)                                                   # rhs
-        left   = getleft(ex)                                                    # lhs
-        rec    = Vector{Expr}(undef,0)                                          # will contain the macros to insert
-        if iscall(right) 
-            foo             = getleft(right)                                    
-            if isquote(foo)                                                     # ... = foo, or ... = :foo?
-                right.args[1]   = foo.value                                     # right: foo(x,y,z)
-                right           = makeespymacro(:espy_call,out,key,right)       # ... = @espy_call out key foo(x,y,z)
-            end
+        if @capture(right,  :foo_(args__)   )                                   # if rhs is call with :foo
+            right = quote
+                Muscade.@espy_call $out $key $foo($(args...))
+            end 
         end
-        if isexpr(:tuple,left)                                                  # (a,:b) = ...
-            args = left.args
+        if @capture(left,   :name_  )                                                    #:a = ...
+            quote
+                $name = $right
+                $(makeespymacro(:espy_record,out,key,name))
+            end
+        elseif @capture(left,   (args__,)    )                                               # (a,:b) = ...
+            rec  = Vector{Expr}(undef,0)                                          # will contain the macros to insert
             left = ()                                                           # will contain (a,b)
-            for o ∈ args
-                if isquote(o)                                                   # ...,:b =
-                    left = (left...,o.value)                                    # (a,b)
-                    push!(rec    ,makeespymacro(:espy_record,out,key,o.value))  # @espy_record out key b
+            for arg ∈ args
+                if @capture(arg,  :name_  )                                     # ...,:b =
+                    left = (left...,name)                                    # (a,b)
+                    push!(rec    ,makeespymacro(:espy_record,out,key,name))  # @espy_record out key b
                 else                                                            #  a,... =
-                    left = (left...,o)                                          # (a,...)
+                    left = (left...,arg)                                          # (a,...)
                 end
             end
-            left = maketuple(left...)
-        elseif isquote(left)                                                    #:a = ...
-            left = left.value                                                   # a = ...
-            push!(rec    ,makeespymacro(:espy_record,out,key,left))             # @espy_record out key a
+            quote
+                $(maketuple(left...)) = $right
+                $(rec...)
+            end
+        else
+            ex
         end
-        makeblock(makeassign(left,right),rec...)
     else
         trace && println("recursion")
         Expr(ex.head,[espy_(a,out,key,trace) for a ∈ ex.args]...)
