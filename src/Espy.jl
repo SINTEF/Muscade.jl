@@ -1,5 +1,5 @@
 # manipulation of data-structures representing Julia expressions (::Expr)
-using Printf
+using Printf,MacroTools
 
 ## Generate unique symbol
 newsym(name) = Symbol(name,"_",string(gensym())[3:end])
@@ -30,7 +30,6 @@ isescsymbol(e)              = isexpr(e) && e.head == (:escape) && issymbol(getle
 issymbolish(e)              = issymbol(e)||isescsymbol(e)
 
 ## Analysis
-getargs(e)                  = (e.args...,)
 getright(e)                 = e.args[2]
 getleft(e)                  = e.args[1]
 getfor(e)                   = (var=e.args[1].args[1],from=e.args[1].args[2].args[2],to=e.args[1].args[2].args[3],body=e.args[2]) #(var,from,to,body)
@@ -135,11 +134,6 @@ See also: [`makekey`](@ref), [`forloop`](@ref)
 """
 const scalar = ()#Int64[]
 ## Request definition
-
-struct UnknownSymbolInOutputRequest <: Exception
-    symbol::Symbol
-    eltyp::DataType
-end
 
 # Julia parses a.(b::Tb,c.d).(e::Te,f::Tf) as (a.(b::Tb,c.d)).(e::Te,f::Tf)
 # transform to a.((b::Tb,c.d).(e::Te,f::Tf))
@@ -302,21 +296,24 @@ function newinput(ex,newargs...)
     end
 end
 function espy_(ex::Expr,out,key,trace=false)
-    if     isexpr(:function,ex)                                                 # foo(a,b,c)...end
+    return prettify(
+    if @capture(ex, function foo_(args__) body_ end)                                       # foo(a,b,c)...end
         trace && println("function")
-        header,body = getleft(ex),getright(ex)                                  # foo(a,b,c) , ...
-        header = newinput(header,out,key)                                       # foo(out,key,a,b,c)
-        body   = espy_(body,out,key,trace)                                      # recursion
-        exo    = makefunction(header,body.args...)                              # foo(out,key,a,b,c)...end
-    elseif isexpr(:for,ex)
+        quote 
+            function $foo($out,$key,$(args...)) 
+                $(espy_(body,out,key,trace))
+            end
+        end                              # foo(out,key,a,b,c)...end
+    elseif @capture(ex, for var_=lo_:hi_ body_ end)
         trace && println("for")
-        (var,lo,hi,body) = getfor(ex)                                           # igp,1,ngp, code-inside-the-block
         loopname = Symbol(string(var)[2:end])                                   # gp
         subkey   = Symbol(key,"_",loopname)                                     # key_gp
-        body     = espy_(body,out,subkey,trace)                                 # recursion
-        loopmac  = makeespymacro(:espy_loop,key,loopname)                       # @espy_loop key gp → key_gp = key.gp[igp]
-        body.args = [loopmac,body.args...]                                      # prepend macro to body
-        exo      = makefor(ex.args[1],body)                                     # rebuild the loop
+        quote
+            for $var=$lo:$hi
+                $(makeespymacro(:espy_loop,key,loopname))
+                $(espy_(body,out,subkey,trace))
+            end
+        end
     elseif isexpr(:(=),ex)
         trace && println("assign")
         right  = getright(ex)                                                   # rhs
@@ -345,13 +342,12 @@ function espy_(ex::Expr,out,key,trace=false)
             left = left.value                                                   # a = ...
             push!(rec    ,makeespymacro(:espy_record,out,key,left))             # @espy_record out key a
         end
-        exo = makeblock(makeassign(left,right),rec...)
+        makeblock(makeassign(left,right),rec...)
     else
         trace && println("recursion")
-        exo = Expr(ex.head,[espy_(a,out,key,trace) for a ∈ ex.args]...)
+        Expr(ex.head,[espy_(a,out,key,trace) for a ∈ ex.args]...)
     end
-
-    return exo
+    ) # return prettify
 end
 function espy_(ex,out,key,trace=false)
     trace && println("default")
