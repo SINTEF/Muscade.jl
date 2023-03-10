@@ -188,20 +188,23 @@ X               = state[1].X[1]
 See also: [`Hold`,`off`,`equal`,`inequal`](@ref)
 """
 abstract type Constraint <: AbstractElement end
-struct Xconstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,Tg,Tkind} <: Constraint
-    g        :: Tg    # g(x,t) 
+struct Xconstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,Tg,Tgargs,Tkind} <: Constraint
+    g        :: Tg    # g(x,t,gargs...) 
+    gargs    :: Tgargs
     mode     :: Tkind # mode(t)->symbol, or Symbol for Aconstraints
     gₛ        :: 𝕣
     λₛ        :: 𝕣  
 end
-struct Uconstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,Tg,Tkind} <: Constraint
-    g        :: Tg    # g(x,u,a,t)
+struct Uconstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,Tg,Tgargs,Tkind} <: Constraint
+    g        :: Tg    # g(x,u,a,t,gargs...)
+    gargs    :: Tgargs
     mode     :: Tkind # mode(t)->symbol, or Symbol for Aconstraints
     gₛ        :: 𝕣
     λₛ        :: 𝕣  
 end
-struct Aconstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,Tg,Tkind} <: Constraint
-    g        :: Tg    # g(a) 
+struct Aconstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,Tg,Tgargs,Tkind} <: Constraint
+    g        :: Tg    # g(a,gargs...) 
+    gargs    :: Tgargs
     mode     :: Tkind # mode(t)->symbol, or Symbol for Aconstraints
     gₛ        :: 𝕣
     λₛ        :: 𝕣  
@@ -211,11 +214,11 @@ function Constraint(nod::Vector{Node};xinod::NTuple{Nx,𝕫}=(),xfield::NTuple{N
                                       ainod::NTuple{Na,𝕫}=(),afield::NTuple{Na,Symbol}=(),
                                       λinod::𝕫, λclass::Symbol, λfield::Symbol,
                                       gₛ::𝕣=1.,λₛ::𝕣=1.,
-                                      g::Function ,mode::Function) where{Nx,Nu,Na} 
+                                      g::Function ,gargs=(),mode::Function) where{Nx,Nu,Na} 
     (λclass==:X && (Nu>0||Na>0)) && muscadeerror("Constraints with λclass=:X must have Nu==0 and Naa=0") 
-    return if λclass==:X; Xconstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,typeof(g),typeof(mode)}(g,mode,gₛ,λₛ)
-    elseif    λclass==:U; Uconstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,typeof(g),typeof(mode)}(g,mode,gₛ,λₛ)
-    elseif    λclass==:A; Aconstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,typeof(g),typeof(mode)}(g,mode,gₛ,λₛ)
+    return if λclass==:X; Xconstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,typeof(g),typeof(gargs),typeof(mode)}(g,gargs,mode,gₛ,λₛ)
+    elseif    λclass==:U; Uconstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,typeof(g),typeof(gargs),typeof(mode)}(g,gargs,mode,gₛ,λₛ)
+    elseif    λclass==:A; Aconstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,typeof(g),typeof(gargs),typeof(mode)}(g,gargs,mode,gₛ,λₛ)
     else muscadeerror("class must be :X, :U or :A")
     end
 end
@@ -242,7 +245,7 @@ const inequal_ = :inequal
     P,gₛ,λₛ     = constants(∂0(X)),o.gₛ,o.λₛ
     x,:λ       = ∂0(X)[SVector{Nx}(1:Nx)], ∂0(X)[Nx+1]
     x∂         = variate{P,Nx}(x) 
-    :g,g∂x     = value_∂{P,Nx}(o.g(x∂,t)) 
+    :g,g∂x     = value_∂{P,Nx}(o.g(x∂,t,o.gargs...)) 
     return if o.mode(t)==equal_;   SVector{Nx+1}((       -g∂x*λ)...,-g              ) ,∞
     elseif    o.mode(t)==inequal_; SVector{Nx+1}((       -g∂x*λ)...,-gₛ*S(λ/λₛ,g/gₛ,γ)) ,decided(λ/λₛ,g/gₛ,γ)
     elseif    o.mode(t)==off_;     SVector{Nx+1}(ntuple(i->0,Nx)...,-gₛ/λₛ*λ         ) ,∞
@@ -250,18 +253,18 @@ const inequal_ = :inequal
 end
 @espy function lagrangian(o::Uconstraint{Nx,Nu,Na}, δX,X,U,A, t,γ,dbg) where{Nx,Nu,Na}
     x,u,a,:λ = ∂0(X),∂0(U)[SVector{Nu}(1:Nu)],A,∂0(U)[Nu+1]
-    :g       = o.g(x,u,a,t)
-    return if o.mode(t)==equal_;   -g*λ                  ,∞
-    elseif    o.mode(t)==inequal_; -KKT(λ,g,γ,o.λₛ,o.gₛ)  ,decided(λ/o.λₛ,g/o.gₛ,γ)
-    elseif    o.mode(t)==off_;     -o.gₛ/(2o.λₛ)*λ^2      ,∞
+    :g       = o.g(x,u,a,t,o.gargs...)
+    return if  o.mode(t)==equal_;   -g*λ                  ,∞
+    elseif     o.mode(t)==inequal_; -KKT(λ,g,γ,o.λₛ,o.gₛ)  ,decided(λ/o.λₛ,g/o.gₛ,γ)
+    elseif     o.mode(t)==off_;     -o.gₛ/(2o.λₛ)*λ^2      ,∞
     end
 end
 @espy function lagrangian(o::Aconstraint{Nx,Nu,Na}, δX,X,U,A, t,γ,dbg) where{Nx,Nu,Na}
     x,u,a,:λ = ∂0(X),∂0(U),A[SVector{Na}(1:Na)],A[    Na+1] 
-    :g       = o.g(a)
-    L =    if o.mode(t)==equal_;   -g*λ                  ,∞
-    elseif    o.mode(t)==inequal_; -KKT(λ,g,γ,o.λₛ,o.gₛ)  ,decided(λ/o.λₛ,g/o.gₛ,γ)
-    elseif    o.mode(t)==off_;     -o.gₛ/(2o.λₛ)*λ^2      ,∞ 
+    :g       = o.g(a,o.gargs...)
+    return if  o.mode(t)==equal_;   -g*λ                  ,∞
+    elseif     o.mode(t)==inequal_; -KKT(λ,g,γ,o.λₛ,o.gₛ)  ,decided(λ/o.λₛ,g/o.gₛ,γ)
+    elseif     o.mode(t)==off_;     -o.gₛ/(2o.λₛ)*λ^2      ,∞ 
     end
 end
 

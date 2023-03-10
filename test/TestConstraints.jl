@@ -5,10 +5,10 @@ using Muscade
 
 Muscade.Xconstraint{    Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield                       }(g,mode,gₛ,λₛ) where
                        {Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield} =
-    Muscade.Xconstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,typeof(g),typeof(mode)}(g,mode,gₛ,λₛ)
+    Muscade.Xconstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,typeof(g),typeof(()),typeof(mode)}(g,(),mode,gₛ,λₛ)
 Muscade.Uconstraint{    Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield                       }(g,mode,gₛ,λₛ) where
                        {Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield} =
-    Muscade.Uconstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,typeof(g),typeof(mode)}(g,mode,gₛ,λₛ)
+    Muscade.Uconstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,typeof(g),typeof(()),typeof(mode)}(g,(),mode,gₛ,λₛ)
 
 t,γ,dbg    = 0.,1.,(status=:testing,)
 

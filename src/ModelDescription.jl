@@ -49,7 +49,7 @@ mutable struct Model
                         U::Dof1
                         A::Dof1
                     end           
-    eleobj      :: Vector{Any}             # model.ele[eleID]or  model.eleobj[ieletyp][iele]
+    eleobj      :: Vector{Vector{E} where{E<:AbstractElement}}             # model.ele[eleID]or  model.eleobj[ieletyp][iele]
     doftyp      :: Vector{DofTyp}          # model.doftyp[idoftyp]
     scaleΛ      :: 𝕣
     locked      :: 𝕓
