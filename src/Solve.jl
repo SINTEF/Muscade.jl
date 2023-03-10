@@ -7,13 +7,14 @@ function solve(solver;dbg=NamedTuple(),verbose::𝕓=true,silenterror::𝕓=fals
     nXdir,nUdir = getnder(solver)
     pstate = Base.RefValue{Vector{State{nXdir,nUdir}}}() # state is not a return argument of the solver, so that partial results are not lost on error
     try
-        solve(solver,pstate,verbose,(dbg...,solver=Symbol(solver));kwargs...) # 
+        t = @elapsed solve(solver,pstate,verbose,(dbg...,solver=Symbol(solver));kwargs...)  
+        verbose && @printf("    %s time: %s\n",Symbol(solver),showtime(t))
     catch exn
         silenterror || report(exn)
         silenterror || printstyled("\nAborting the analysis.",color=:red)
         silenterror || println(" Function 'solve' should still be returning results obtained so far.")
     end
-    verbose && printstyled("\nMuscade done.\n\n\n",bold=true,color=:cyan)
+    verbose && printstyled("Muscade done.\n\n\n",bold=true,color=:cyan)
     return pstate[]
 end
 

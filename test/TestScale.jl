@@ -27,7 +27,7 @@ e11             = addelement!(model1,DofCost ,class=:A, field=:ΞEI,[n4]      ,c
 
 model2          = deepcopy(model1)
 
-initialstate1    = initialize!(model1)
+initialstate1   = initialize!(model1)
 stateX1         = solve(StaticX;  initialstate=initialstate1,time=[.5,1.],verbose=false)
 stateXUA1       = solve(StaticXUA;initialstate=stateX1,maxYiter= 50,verbose=false)
 

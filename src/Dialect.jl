@@ -131,9 +131,9 @@ function showtime(t)
         @sprintf " %3d [ns]" round(Int,t*1e9)
     elseif t<1e-3
         @sprintf " %3d [μs]" round(Int,t*1e6)
-    elseif t<1
+    elseif t<9
         @sprintf " %3d [ms]" round(Int,t*1e3)
-    elseif t<3600
+    elseif t<9*3600
         @sprintf "%4d [s] " round(Int,t)
     else
         @sprintf "%4d [h] " round(Int,t/3600)

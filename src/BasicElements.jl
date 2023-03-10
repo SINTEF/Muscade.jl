@@ -296,7 +296,7 @@ See also: [`Constraint`](@ref), [`DofLoad`](@ref), [`DofCost`](@ref)
 struct Hold <: AbstractElement end  
 function Hold(nod::Vector{Node};field::Symbol,λfield::Symbol=Symbol(:λ,field)) 
     g(v,t)=v[1]
-    return Xconstraint{1, 0, 0, (1,),(field,),(),   (),    (),   (),    1,    λfield, typeof(g),typeof(equal)}(g,equal,1.,1.)
+    return Xconstraint{1, 0, 0, (1,),(field,),(),   (),    (),   (),    1,    λfield, typeof(g),typeof(()),typeof(equal)}(g,(),equal,1.,1.)
     #      Xconstraint{Nx,Nu,Na,xinod,xfield, uinod,ufield,ainod,afield,λinod,λfield}
 end
 

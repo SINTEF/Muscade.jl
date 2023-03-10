@@ -13,8 +13,8 @@ function prepare(::Type{AssemblyStaticX},model,dis)
     asm                = Matrix{𝕫2}(undef,narray,neletyp)  
     Lλ                 = asmvec!(view(asm,1,:),dofgr,dis) 
     Lλx                = asmmat!(view(asm,2,:),view(asm,1,:),view(asm,1,:),ndof,ndof) 
-#    out                = one_for_each_thread(AssemblyStaticX(Lλ,Lλx,∞))
-    out                = AssemblyStaticX(Lλ,Lλx,∞)
+#    out                = one_for_each_thread(AssemblyStaticX(Lλ,Lλx,∞)) # parallel
+    out                = AssemblyStaticX(Lλ,Lλx,∞) # sequential
     return out,asm,dofgr
 end
 function zero!(out::AssemblyStaticX)
@@ -47,7 +47,7 @@ function solve(::Type{StaticX},pstate,verbose,dbg;time::AbstractVector{𝕣},
     # important: this code assumes that there is no χ in state.
     model,dis        = initialstate.model,initialstate.dis
     out,asm,dofgr    = prepare(AssemblyStaticX,model,dis)
-    asmt,solt,citer  = 0.,0.,0
+    citer            = 0
     cΔx²,cLλ²        = maxΔx^2,maxresidual^2
     state            = allocate(pstate,Vector{State{1,1}}(undef,saveiter ? maxiter : length(time))) # state is not a return argument so that data is not lost in case of exception
     s                = State{1,1}(initialstate) 
@@ -57,15 +57,15 @@ function solve(::Type{StaticX},pstate,verbose,dbg;time::AbstractVector{𝕣},
         γ            = γ0
         for iiter    = 1:maxiter
             citer   += 1
-            asmt+=@elapsed assemble!(out,asm,dis,model,s, γ,(dbg...,solver=:StaticX,step=step,iiter=iiter))
-            solt+=@elapsed try if step==1 && iiter==1
+            assemble!(out,asm,dis,model,s, γ,(dbg...,solver=:StaticX,step=step,iiter=iiter))
+            try if step==1 && iiter==1
                 facLλx = lu(firstelement(out).Lλx) 
             else
                 lu!(facLλx,firstelement(out).Lλx) 
             end catch; muscadeerror(@sprintf("matrix factorization failed at step=%i, iiter=%i",step,iiter)) end
-            solt+=@elapsed Δx  = facLλx\firstelement(out).Lλ
+            Δx  = facLλx\firstelement(out).Lλ
             Δx²,Lλ²  = sum(Δx.^2),sum(firstelement(out).Lλ.^2)
-            solt+=@elapsed decrement!(s,0,Δx,dofgr)
+            decrement!(s,0,Δx,dofgr)
             γ       *= γfac1*exp(-(firstelement(out).α/γfac2)^2)
             verbose && saveiter && @printf("        iteration %3d, γ= %7.1e\n",iiter,γ)
             saveiter && (state[iiter]=State(s.Λ,deepcopy(s.X),s.U,s.A,s.time,γ,model,dis))
@@ -78,7 +78,5 @@ function solve(::Type{StaticX},pstate,verbose,dbg;time::AbstractVector{𝕣},
         end
     end
     verbose && @printf "\n    nel=%d, ndof=%d, nstep=%d, niter=%d, niter/nstep=%5.2f\n" getnele(model) getndof(dofgr) length(time) citer citer/length(time)
-    verbose && @printf "    Build  time = %s, (per iteration: %s, per iteration and element: %s)\n" showtime(asmt)  showtime(asmt/citer)  showtime(asmt/citer/getnele(model))
-    verbose && @printf "    Solve  time = %s, (per iteration: %s, per iteration and dof:     %s)\n" showtime(solt)  showtime(solt/citer)  showtime(solt/citer/getndof(dofgr))
     return
 end

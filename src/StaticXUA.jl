@@ -117,8 +117,7 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{S
     y∂a                = Vector{𝕣2}(undef,nStep)
     Δy²,Ly²            = Vector{𝕣 }(undef,nStep),Vector{𝕣}(undef,nStep)
     γ                  = γ0
-    asmAt,solAt,cAiter = 0.,0.,0
-    asmYt,solYt,cYiter = 0.,0.,0
+    cAiter,cYiter      = 0,0
     local facLyy
     local facLyys
     for iAiter          = 1:maxAiter
@@ -128,14 +127,14 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{S
         for step     ∈ eachindex(state)
             for iYiter = 1:maxYiter
                 cYiter+=1
-                asmYt+=@elapsed assemble!(out1,asm1,dis,model,state[step], γ,(dbg...,solver=:StaticXUA,step=step,iYiter=iYiter))
-                solYt+=@elapsed try if iAiter==1 && step==1 && iYiter==1
+                assemble!(out1,asm1,dis,model,state[step], γ,(dbg...,solver=:StaticXUA,step=step,iYiter=iYiter))
+                try if iAiter==1 && step==1 && iYiter==1
                     facLyys = lu(out1.Lyy) 
                 else
                     lu!(facLyys,out1.Lyy) 
                 end catch; muscadeerror(@sprintf("Incremental Y-solution failed at step=%i, iAiter=%i, iYiter",step,iAiter,iYiter)) end
-                solYt+=@elapsed Δy[ step]  = facLyys\out1.Ly
-                solYt+=@elapsed decrement!(state[step],0,Δy[ step],Ydofgr)
+                Δy[ step]  = facLyys\out1.Ly
+                decrement!(state[step],0,Δy[ step],Ydofgr)
                 Δy²s,Ly²s = sum(Δy[step].^2),sum(out2.Ly.^2)
                 if Δy²s≤cΔy² && Ly²s≤cLy² 
                     verbose && @printf "        step % i Y-converged in %3d Y-iterations:   |ΔY|=%7.1e  |∇L/∂Y|=%7.1e\n" step iYiter √(Δy²s) √(Ly²s)
@@ -143,24 +142,24 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{S
                 end
                 iYiter==maxYiter && muscadeerror(@sprintf("no Y-convergence after %3d Y-iterations. |ΔY|=%7.1e |Ly|=%7.1e\n",iYiter,√(Δy²s),√(Ly²s)))
             end
-            asmAt+=@elapsed assemble!(out2,asm2,dis,model,state[step], γ,(dbg...,solver=:StaticXUA,step=step,iAiter=iAiter))
-            solAt+=@elapsed try if iAiter==1 && step==1
+            assemble!(out2,asm2,dis,model,state[step], γ,(dbg...,solver=:StaticXUA,step=step,iAiter=iAiter))
+            try if iAiter==1 && step==1
                 facLyy = lu(out2.Lyy) 
             else
                 lu!(facLyy,out2.Lyy)
             end catch; muscadeerror(@sprintf("matrix factorization failed at step=%i, iAiter=%i",step,iAiter));end
-            solAt+=@elapsed Δy[ step]  = facLyy\out2.Ly  
-            solAt+=@elapsed y∂a[step]  = facLyy\out2.Lya 
-            solAt+=@elapsed La       .+= out2.La  - out2.Lya' * Δy[ step]  
-            solAt+=@elapsed Laa      .+= out2.Laa - out2.Lya' * y∂a[step]
+            Δy[ step]  = facLyy\out2.Ly  
+            y∂a[step]  = facLyy\out2.Lya 
+            La       .+= out2.La  - out2.Lya' * Δy[ step]  
+            Laa      .+= out2.Laa - out2.Lya' * y∂a[step]
             Δy²[step],Ly²[step] = sum(Δy[step].^2),sum(out2.Ly.^2)
         end    
-        solAt+=@elapsed Δa             = Laa\La 
+        Δa             = Laa\La 
         Δa²,La²        = sum(Δa.^2),sum(La.^2)
         for step       ∈ eachindex(state)
-            solAt+=@elapsed ΔY         = Δy[step] - y∂a[step] * Δa
-            solAt+=@elapsed decrement!(state[step],0,ΔY,Ydofgr)
-            solAt+=@elapsed decrement!(state[step],0,Δa,Adofgr)
+            ΔY         = Δy[step] - y∂a[step] * Δa
+            decrement!(state[step],0,ΔY,Ydofgr)
+            decrement!(state[step],0,Δa,Adofgr)
         end    
         γ             *= γfac1*exp(-(out2.α/γfac2)^2)
         if all(Δy².≤cΔy²) && all(Ly².≤cLy²) && Δa².≤cΔa² && La².≤cLa² 
@@ -172,11 +171,7 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{S
         iAiter==maxAiter && muscadeerror(@sprintf("no convergence after %3d A-iterations. |ΔY|=%7.1e |Ly|=%7.1e |ΔA|=%7.1e |La|=%7.1e\n",iAiter,√(maximum(Δy²)),√(maximum(Ly²)),√(Δa²),√(La²)))
     end
     verbose && @printf "\n    nel=%d, ndof=%d, nstep=%d, nAiter=%d\n" getnele(model) getndof(Adofgr) nStep cAiter
-    verbose && @printf "    A-Build  time = %s, (per iteration: %s, per iteration and element: %s)\n" showtime(asmAt)  showtime(asmAt/cAiter)  showtime(asmAt/cAiter/getnele(model))
-    verbose && @printf "    A-Solve  time = %s, (per iteration: %s, per iteration and dof:     %s)\n" showtime(solAt)  showtime(solAt/cAiter)  showtime(solAt/cAiter/getndof(Adofgr))
     verbose && @printf "\n    nYiter=%d, nYiter/(nstep*nAiter)=%5.2f\n" cYiter cYiter/nStep/cAiter
-    verbose && @printf "    Y-Build  time = %s, (per iteration: %s, per iteration and element: %s)\n" showtime(asmYt)  showtime(asmYt/cYiter)  showtime(asmAt/cYiter/getnele(model))
-    verbose && @printf "    Y-Solve  time = %s, (per iteration: %s, per iteration and dof:     %s)\n" showtime(solYt)  showtime(solYt/cYiter)  showtime(solAt/cYiter/getndof(Ydofgr))
     return
 end
 
