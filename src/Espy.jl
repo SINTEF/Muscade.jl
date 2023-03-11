@@ -1,18 +1,6 @@
 # manipulation of data-structures representing Julia expressions (::Expr)
 
 # REPRISE
-# 1) refactor
-# espy_ now uses @capture
-# macros @espy_call etc... to become expr-valued functions
-# make these functions use @capture
-# use expression walking
-# clean up code: what is not used? deline, dequote, pretty
-# should espy use prettify, or only espy_dbg?
-# 2) new functionality
-# more general function syntax
-# more general loop syntax (Gauss quadrature...)
-# something else that Symbols to mark variables to save
-# compute only for saving
 
 using Printf,MacroTools
 
@@ -66,69 +54,53 @@ makedeclare(e...)           = Expr(:(::),e[1],e[2])
 makedot(e...)               = Expr(:(.) ,e[1],e[2])
 makesub(e...)               = Expr(:(.) ,e[1],QuoteNode(e[2]))
 
-## deline: delete LineNumberNode
-deline(ex) = ex
-function deline(ex::Expr)
-    args = deline.(ex.args[.! isline.(ex.args)])
-    return Expr(ex.head,args...)
-end
 
-## Take out QuoteNodes
-function dequote(ex::Expr)
-    if isexpr(:(.),ex)
-        exo = makesub(dequote(getleft(ex)),dequote(getright(ex)))
-    else
-        exo = Expr(ex.head,[dequote(a) for a ∈ ex.args]...)
-    end
-    return exo
-end
-dequote(ex::QuoteNode) = ex.value
-dequote(ex)            = ex
 
-## For human readable code, use println(ex) or println(deline(ex))
-# To understand the tree structure of an Expression, use pretty(ex)
-function dent(i)
-    for _ = 1:i
-        @printf("   ")
-    end
-end
-pretty(e::Union{Expr,Symbol,LineNumberNode,Symbol,Nothing})   = pretty(e,0)
-function pretty(e::Expr,ind)
-    dent(ind)
-    @printf("%s\n",e.head)
-    for iarg = 1:length( e.args)
-        pretty(e.args[iarg],ind+1)
-    end
-end
-function pretty(e::Symbol,ind)
-    dent(ind)
-    @printf("%s\n",e)
-end
-function pretty(::Nothing,ind)
-    dent(ind)
-    @printf("Nothing()\n")
-end
-function pretty(e::Number,ind)
-    dent(ind)
-    @printf("%g\n",e)
-end
-function pretty(e::LineNumberNode,ind)
-    dent(ind)
-    @printf("LineNumberNode\n")
-end
-function pretty(x,ind)
-    dent(ind)
-    display(x)
-end
-function pretty(m::String)
-    @printf("%s\n",m)
-end
-macro pretty(ex)
-    pretty(ex)
-    return ex
-end
 
-## Definition by element of what can be requested
+# ## For human readable code, use println(ex) or println(deline(ex))
+# # To understand the tree structure of an Expression, use pretty(ex)
+# function dent(i)
+#     for _ = 1:i
+#         @printf("   ")
+#     end
+# end
+# pretty(e::Union{Expr,Symbol,LineNumberNode,Symbol,Nothing})   = pretty(e,0)
+# function pretty(e::Expr,ind)
+#     dent(ind)
+#     @printf("%s\n",e.head)
+#     for iarg = 1:length( e.args)
+#         pretty(e.args[iarg],ind+1)
+#     end
+# end
+# function pretty(e::Symbol,ind)
+#     dent(ind)
+#     @printf("%s\n",e)
+# end
+# function pretty(::Nothing,ind)
+#     dent(ind)
+#     @printf("Nothing()\n")
+# end
+# function pretty(e::Number,ind)
+#     dent(ind)
+#     @printf("%g\n",e)
+# end
+# function pretty(e::LineNumberNode,ind)
+#     dent(ind)
+#     @printf("LineNumberNode\n")
+# end
+# function pretty(x,ind)
+#     dent(ind)
+#     display(x)
+# end
+# function pretty(m::String)
+#     @printf("%s\n",m)
+# end
+# macro pretty(ex)
+#     pretty(ex)
+#     return ex
+# end
+
+####################### Definition by element of what can be requested
 """
 
     forloop
@@ -148,7 +120,7 @@ Component to build the `requestable` input to [`makekey`](@ref)
 See also: [`makekey`](@ref), [`forloop`](@ref)
 """
 const scalar = ()#Int64[]
-## Request definition
+######################## Request definition
 
 # Julia parses a.(b::Tb,c.d).(e::Te,f::Tf) as (a.(b::Tb,c.d)).(e::Te,f::Tf)
 # transform to a.((b::Tb,c.d).(e::Te,f::Tf))
@@ -265,7 +237,19 @@ macro request(ex)
     return QuoteNode(ex)
 end
 
-## Data extraction macros
+######################## Generate new function code
+## Clean code
+function clean_code(ex::Expr)
+    if isexpr(:(.),ex)
+        exo = makesub(clean_code(getleft(ex)),clean_code(getright(ex)))
+    else
+        exo = Expr(ex.head,[clean_code(a) for a ∈ ex.args]...)
+    end
+    return exo
+end
+clean_code(ex::QuoteNode) = ex.value
+clean_code(ex)            = ex
+
 #@espy_loop key gp igp → key_gp=key.gp[igp]
 macro espy_loop(key,loopname)                                                   # :key, :gp
     n       = Symbol("n"    ,loopname)                                          # :ngp
@@ -292,23 +276,22 @@ macro espy_record(out,key,var)
     end)
 end
 # @espy_call out key foo(args) → foo(out,key.foo,args...)
-macro espy_call(out,key,f)                                                      # out,key,foo(args)
-    if f.head ≠ :call muscadeerror("@espy_call internal error") end
-    foo     = f.args[1]                                                         # foo
-    key_sub = makesub(key,foo)                                                  # key.foo
-    fp      = makecall(foo,out,key_sub,f.args[2:end]...)                        # foo(out,key.foo,args)
-    return esc(quote
-        haskey($key,$(QuoteNode(foo))) ? $fp : $f                               # haskey(key,:foo) ? foo(out,key.foo,args) : foo(args)
-    end)
-end
+# macro espy_call(out,key,f)                                                      # out,key,foo(args)
+#     if f.head ≠ :call muscadeerror("@espy_call internal error") end
+#     foo     = f.args[1]                                                         # foo
+#     key_sub = makesub(key,foo)                                                  # key.foo
+#     fp      = makecall(foo,out,key_sub,f.args[2:end]...)                        # foo(out,key.foo,args)
+#     return esc(quote
+#         haskey($key,$(QuoteNode(foo))) ? $fp : $f                               # haskey(key,:foo) ? foo(out,key.foo,args) : foo(args)
+#     end)
+# end
 ## @espy
-function espy_(ex::Expr,out,key,trace=false)
-    return prettify(
-    if @capture(ex,    function foo_(args__) body_ end    )                                       # foo(a,b,c)...end
+function extractor_code(ex::Expr,out,key,trace=false)
+    return if @capture(ex,    function foo_(args__) body_ end    )                                       # foo(a,b,c)...end
         trace && println("function")
         quote 
             function $foo($out,$key,$(args...)) 
-                $(espy_(body,out,key,trace))
+                $(extractor_code(body,out,key,trace))
             end
         end                              # foo(out,key,a,b,c)...end
     elseif @capture(ex,    for var_=lo_ : hi_ body_ end   )
@@ -318,14 +301,14 @@ function espy_(ex::Expr,out,key,trace=false)
         quote
             for $var=$lo:$hi
                 $(makeespymacro(:espy_loop,key,loopname))
-                $(espy_(body,out,subkey,trace))
+                $(extractor_code(body,out,subkey,trace))
             end
         end
     elseif @capture(ex,  left_ = right_   )
         trace && println("assign")
         if @capture(right,  :foo_(args__)   )                                   # if rhs is call with :foo
             right = quote
-                Muscade.@espy_call $out $key $foo($(args...))
+                $foo($out,$key,$(args...))
             end 
         end
         if @capture(left,   :name_  )                                                    #:a = ...
@@ -353,11 +336,10 @@ function espy_(ex::Expr,out,key,trace=false)
         end
     else
         trace && println("recursion")
-        Expr(ex.head,[espy_(a,out,key,trace) for a ∈ ex.args]...)
+        Expr(ex.head,[extractor_code(a,out,key,trace) for a ∈ ex.args]...)
     end
-    ) # return prettify
 end
-function espy_(ex,out,key,trace=false)
+function extractor_code(ex,out,key,trace=false)
     trace && println("default")
     return ex
 end
@@ -450,9 +432,9 @@ of this output is accessed using `key`:
 See also: [`@espydbg`](@ref), [`@request`](@ref), [`makekey`](@ref)
 """
 macro espy(ex)
-    cleancode = dequote(ex)
-    espycode  = espy_(ex,newsym(:espy_key),newsym(:espy_out),false)
-    return makeblock(esc(espycode),esc(cleancode))
+    cleancode = clean_code(ex)
+    extractorcode  = extractor_code(ex,newsym(:espy_key),newsym(:espy_out),false)
+    return makeblock(esc(extractorcode),esc(cleancode))
 end
 """
     @espydbg function ...
@@ -463,12 +445,12 @@ Run [`@espy`](@ref) and to generate code and print the output code (for debug pu
 See also: [`@espy`](@ref), [`@request`](@ref), [`makekey`](@ref), [`forloop`](@ref), [`scalar`](@ref)"""
 macro espydbg(ex)
     println(">>>>>> espy clean code")
-    cleancode = dequote(ex)
-    println(deline(cleancode))
+    cleancode = clean_code(ex)
+    println(prettify(cleancode))
     println("###### espy extractor code")
-    espycode  = espy_(ex,newsym(:espy_key),newsym(:espy_out),false)
-    println(deline(espycode))
+    extractorcode  = extractor_code(ex,newsym(:espy_key),newsym(:espy_out),false)
+    println(prettify(extractorcode))
     println("<<<<<<")
-    return makeblock(esc(espycode),esc(cleancode))
+    return makeblock(esc(extractorcode),esc(cleancode))
 end
 
