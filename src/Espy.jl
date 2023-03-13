@@ -40,64 +40,10 @@ getfor(e)                   = (var=e.args[1].args[1],from=e.args[1].args[2].args
 ## Synthesis
 maketuple(e...)             = Expr(:tuple,          e...)
 makeref(e...)               = Expr(:ref,            e...)
-#makecall(e...)              = Expr(:call,           e...)
 makeblock(e...)             = Expr(:block,          e...)
-#makewhere(e...)             = Expr(:where,          e...)
-#makeassign(e...)            = Expr(:(=),            e...)
-#makefunction(f,e...)        = Expr(:function,f,makeblock(e...))
-#makefor(e...)               = Expr(:for,e...)
-#makemacro(m,e...)           = Expr(:macrocall,      Symbol("@",m),:LineNumberHere,e...)
-#makestructure(e...)         = Expr(:struct,false,   e...)
-#makemutable(e...)           = Expr(:struct,true ,   e...)
 makedeclare(e...)           = Expr(:(::),e[1],e[2])
 makedot(e...)               = Expr(:(.) ,e[1],e[2])
-makesub(e...)               = Expr(:(.) ,e[1],QuoteNode(e[2]))
 
-
-
-
-# ## For human readable code, use println(ex) or println(deline(ex))
-# # To understand the tree structure of an Expression, use pretty(ex)
-# function dent(i)
-#     for _ = 1:i
-#         @printf("   ")
-#     end
-# end
-# pretty(e::Union{Expr,Symbol,LineNumberNode,Symbol,Nothing})   = pretty(e,0)
-# function pretty(e::Expr,ind)
-#     dent(ind)
-#     @printf("%s\n",e.head)
-#     for iarg = 1:length( e.args)
-#         pretty(e.args[iarg],ind+1)
-#     end
-# end
-# function pretty(e::Symbol,ind)
-#     dent(ind)
-#     @printf("%s\n",e)
-# end
-# function pretty(::Nothing,ind)
-#     dent(ind)
-#     @printf("Nothing()\n")
-# end
-# function pretty(e::Number,ind)
-#     dent(ind)
-#     @printf("%g\n",e)
-# end
-# function pretty(e::LineNumberNode,ind)
-#     dent(ind)
-#     @printf("LineNumberNode\n")
-# end
-# function pretty(x,ind)
-#     dent(ind)
-#     display(x)
-# end
-# function pretty(m::String)
-#     @printf("%s\n",m)
-# end
-# macro pretty(ex)
-#     pretty(ex)
-#     return ex
-# end
 
 ####################### Definition by element of what can be requested
 """
@@ -239,19 +185,15 @@ end
 ######################## Generate new function code
 ## Clean code
 function code_clean_function(ex::Expr)
-    if isexpr(:(.),ex)
-        exo = makesub(code_clean_function(getleft(ex)),code_clean_function(getright(ex)))
+    if @capture(ex,  a_.b_) # Julia quirk - needs spesial treatment
+        :($(code_clean_function(a)).$(code_clean_function(b)))
     else
-        exo = Expr(ex.head,[code_clean_function(a) for a ∈ ex.args]...)
+        Expr(ex.head,[code_clean_function(a) for a ∈ ex.args]...)
     end
-    return exo
 end
-code_clean_function(ex::QuoteNode) = ex.value
+code_clean_function(ex::QuoteNode) = ex.value  # where the real job is done
 code_clean_function(ex)            = ex
 
-#@espy_loop key gp igp → key_gp=key.gp[igp]
-
-#@espy_record out key var tmp → out[key.var] = var
 function code_write_to_out(out,key,var)
     return quote
         if haskey($key,$(QuoteNode(var)))                                       # if haskey(key,:x)
@@ -278,8 +220,6 @@ function code_call_to_function(left,right,out,key,trace=false)
         end 
     end
 end
-
-## @espy
 function code_extractor_function(ex::Expr,out,key,trace=false)
     return if @capture(ex,    function foo_(args__) body_ end    )                                       # foo(a,b,c)...end
         trace && println("function")
@@ -321,7 +261,6 @@ function code_extractor_function(ex::Expr,out,key,trace=false)
                 end
             end
             quote
-             #   $(maketuple(left...)) = $right
                 $(code_call_to_function(maketuple(left...),right,out,key,trace))
                 $(postfix...)
             end
@@ -333,7 +272,7 @@ function code_extractor_function(ex::Expr,out,key,trace=false)
         Expr(ex.head,[code_extractor_function(a,out,key,trace) for a ∈ ex.args]...)
     end
 end
-function code_extractor_function(ex,out,key,trace=false) # TODO what is this for?
+function code_extractor_function(ex,out,key,trace=false) # to handle line-number nodes, Symbols... etc.
     trace && println("default")
     return ex
 end
@@ -430,6 +369,12 @@ macro espy(ex)
     extractorcode  = code_extractor_function(ex,newsym(:out),newsym(:key),false)
     return makeblock(esc(extractorcode),esc(cleancode))
 end
+# macro espy(ex)
+#     esc(quote
+#         $(code_clean_function(ex))
+#         $(code_extractor_function(ex,newsym(:out),newsym(:key),false))
+#     end)
+# end
 """
     @espydbg function ...
     end
@@ -447,4 +392,12 @@ macro espydbg(ex)
     println("######")
     return makeblock(esc(extractorcode),esc(cleancode))
 end
+# macro espydbg(ex)
+#     code = quote
+#         $(code_clean_function(ex))
+#         $(code_extractor_function(ex,newsym(:out),newsym(:key),false))
+#     end
+#     println(prettify(code))
+#     return code
+# end
 
