@@ -40,16 +40,15 @@ getfor(e)                   = (var=e.args[1].args[1],from=e.args[1].args[2].args
 ## Synthesis
 maketuple(e...)             = Expr(:tuple,          e...)
 makeref(e...)               = Expr(:ref,            e...)
-makecall(e...)              = Expr(:call,           e...)
+#makecall(e...)              = Expr(:call,           e...)
 makeblock(e...)             = Expr(:block,          e...)
-makewhere(e...)             = Expr(:where,          e...)
-makeassign(e...)            = Expr(:(=),            e...)
-makefunction(f,e...)        = Expr(:function,f,makeblock(e...))
-makefor(e...)               = Expr(:for,e...)
-makemacro(m,e...)           = Expr(:macrocall,      Symbol("@",m),:LineNumberHere,e...)
-makeespymacro(m,e...)       = Expr(:macrocall,      makesub(:Muscade,Symbol("@",m)),:LineNumberHere,e...)
-makestructure(e...)         = Expr(:struct,false,   e...)
-makemutable(e...)           = Expr(:struct,true ,   e...)
+#makewhere(e...)             = Expr(:where,          e...)
+#makeassign(e...)            = Expr(:(=),            e...)
+#makefunction(f,e...)        = Expr(:function,f,makeblock(e...))
+#makefor(e...)               = Expr(:for,e...)
+#makemacro(m,e...)           = Expr(:macrocall,      Symbol("@",m),:LineNumberHere,e...)
+#makestructure(e...)         = Expr(:struct,false,   e...)
+#makemutable(e...)           = Expr(:struct,true ,   e...)
 makedeclare(e...)           = Expr(:(::),e[1],e[2])
 makedot(e...)               = Expr(:(.) ,e[1],e[2])
 makesub(e...)               = Expr(:(.) ,e[1],QuoteNode(e[2]))
@@ -239,33 +238,22 @@ end
 
 ######################## Generate new function code
 ## Clean code
-function clean_code(ex::Expr)
+function code_clean_function(ex::Expr)
     if isexpr(:(.),ex)
-        exo = makesub(clean_code(getleft(ex)),clean_code(getright(ex)))
+        exo = makesub(code_clean_function(getleft(ex)),code_clean_function(getright(ex)))
     else
-        exo = Expr(ex.head,[clean_code(a) for a ∈ ex.args]...)
+        exo = Expr(ex.head,[code_clean_function(a) for a ∈ ex.args]...)
     end
     return exo
 end
-clean_code(ex::QuoteNode) = ex.value
-clean_code(ex)            = ex
+code_clean_function(ex::QuoteNode) = ex.value
+code_clean_function(ex)            = ex
 
 #@espy_loop key gp igp → key_gp=key.gp[igp]
-macro espy_loop(key,loopname)                                                   # :key, :gp
-    n       = Symbol("n"    ,loopname)                                          # :ngp
-    i       = Symbol("i"    ,loopname)                                          # :igp
-    key_sub = Symbol(key,"_",loopname)                                          # :key_gp
-    return esc(quote
-        if haskey($key,$(QuoteNode(loopname)))                                  # if haskey(key,:gp) QuoteNode to produce a Symbol in the code
-            $key_sub   = $key.$loopname[$i]                                     # key_gp=key.gp[igp]
-        else
-            $key_sub =  Nothing
-        end
-    end)
-end
+
 #@espy_record out key var tmp → out[key.var] = var
-macro espy_record(out,key,var)
-    return esc(quote
+function code_write_to_out(out,key,var)
+    return quote
         if haskey($key,$(QuoteNode(var)))                                       # if haskey(key,:x)
             if typeof($key.$var) == Int64
                 $out[$key.$var] = $var                                          # out[key.x] = x
@@ -273,73 +261,79 @@ macro espy_record(out,key,var)
                 $out[$key.$var] .= $var                                         # out[key.x] = x
             end
         end
-    end)
+    end
 end
-# @espy_call out key foo(args) → foo(out,key.foo,args...)
-# macro espy_call(out,key,f)                                                      # out,key,foo(args)
-#     if f.head ≠ :call muscadeerror("@espy_call internal error") end
-#     foo     = f.args[1]                                                         # foo
-#     key_sub = makesub(key,foo)                                                  # key.foo
-#     fp      = makecall(foo,out,key_sub,f.args[2:end]...)                        # foo(out,key.foo,args)
-#     return esc(quote
-#         haskey($key,$(QuoteNode(foo))) ? $fp : $f                               # haskey(key,:foo) ? foo(out,key.foo,args) : foo(args)
-#     end)
-# end
+function code_call_to_function(left,right,out,key,trace=false)
+    if @capture(right,  :foo_(args__)   )         # if rhs is call with :foo
+        quote
+            if haskey($key,$(QuoteNode(foo)))
+                $left = $foo($out,$key.$foo,$(args...))  
+            else
+                $left = $foo($(args...))
+            end    
+        end 
+    else
+        quote
+            $left = $right
+        end 
+    end
+end
+
 ## @espy
-function extractor_code(ex::Expr,out,key,trace=false)
+function code_extractor_function(ex::Expr,out,key,trace=false)
     return if @capture(ex,    function foo_(args__) body_ end    )                                       # foo(a,b,c)...end
         trace && println("function")
         quote 
             function $foo($out,$key,$(args...)) 
-                $(extractor_code(body,out,key,trace))
+                $(code_extractor_function(body,out,key,trace))
             end
         end                              # foo(out,key,a,b,c)...end
     elseif @capture(ex,    for var_=lo_ : hi_ body_ end   )
         trace && println("for")
         loopname = Symbol(string(var)[2:end])                                   # gp
-        subkey   = Symbol(key,"_",loopname)                                     # key_gp
+        subkey   = Symbol(key,"_",loopname)   
         quote
             for $var=$lo:$hi
-                $(makeespymacro(:espy_loop,key,loopname))
-                $(extractor_code(body,out,subkey,trace))
+                if haskey($key,$(QuoteNode(loopname)))                                  # if haskey(key,:gp) QuoteNode to produce a Symbol in the code
+                    $subkey   = $key.$loopname[$var]                                     # key_gp=key.gp[igp]
+                else
+                    $subkey =  Nothing
+                end
+                $(code_extractor_function(body,out,subkey,trace))
             end
         end
     elseif @capture(ex,  left_ = right_   )
         trace && println("assign")
-        if @capture(right,  :foo_(args__)   )                                   # if rhs is call with :foo
-            right = quote
-                $foo($out,$key,$(args...))
-            end 
-        end
         if @capture(left,   :name_  )                                                    #:a = ...
             quote
-                $name = $right
-                $(makeespymacro(:espy_record,out,key,name))
+                $(code_call_to_function(name,right,out,key,trace))
+                $(code_write_to_out(out,key,name))
             end
         elseif @capture(left,   (args__,)    )                                               # (a,:b) = ...
-            rec  = Vector{Expr}(undef,0)                                          # will contain the macros to insert
+            postfix  = Vector{Expr}(undef,0)                                          # will contain the macros to insert
             left = ()                                                           # will contain (a,b)
             for arg ∈ args
                 if @capture(arg,  :name_  )                                     # ...,:b =
                     left = (left...,name)                                    # (a,b)
-                    push!(rec    ,makeespymacro(:espy_record,out,key,name))  # @espy_record out key b
+                    push!(postfix    ,code_write_to_out(out,key,name))                 # @espy_record out key b
                 else                                                            #  a,... =
                     left = (left...,arg)                                          # (a,...)
                 end
             end
             quote
-                $(maketuple(left...)) = $right
-                $(rec...)
+             #   $(maketuple(left...)) = $right
+                $(code_call_to_function(maketuple(left...),right,out,key,trace))
+                $(postfix...)
             end
         else
-            ex
+            code_call_to_function(left,right,out,key,trace)
         end
     else
         trace && println("recursion")
-        Expr(ex.head,[extractor_code(a,out,key,trace) for a ∈ ex.args]...)
+        Expr(ex.head,[code_extractor_function(a,out,key,trace) for a ∈ ex.args]...)
     end
 end
-function extractor_code(ex,out,key,trace=false)
+function code_extractor_function(ex,out,key,trace=false) # TODO what is this for?
     trace && println("default")
     return ex
 end
@@ -432,8 +426,8 @@ of this output is accessed using `key`:
 See also: [`@espydbg`](@ref), [`@request`](@ref), [`makekey`](@ref)
 """
 macro espy(ex)
-    cleancode = clean_code(ex)
-    extractorcode  = extractor_code(ex,newsym(:espy_key),newsym(:espy_out),false)
+    cleancode = code_clean_function(ex)
+    extractorcode  = code_extractor_function(ex,newsym(:out),newsym(:key),false)
     return makeblock(esc(extractorcode),esc(cleancode))
 end
 """
@@ -444,13 +438,13 @@ Run [`@espy`](@ref) and to generate code and print the output code (for debug pu
 
 See also: [`@espy`](@ref), [`@request`](@ref), [`makekey`](@ref), [`forloop`](@ref), [`scalar`](@ref)"""
 macro espydbg(ex)
-    println(">>>>>> espy clean code")
-    cleancode = clean_code(ex)
+    println("###### espy clean code")
+    cleancode = code_clean_function(ex)
     println(prettify(cleancode))
     println("###### espy extractor code")
-    extractorcode  = extractor_code(ex,newsym(:espy_key),newsym(:espy_out),false)
+    extractorcode  = code_extractor_function(ex,newsym(:out),newsym(:key),false)
     println(prettify(extractorcode))
-    println("<<<<<<")
+    println("######")
     return makeblock(esc(extractorcode),esc(cleancode))
 end
 

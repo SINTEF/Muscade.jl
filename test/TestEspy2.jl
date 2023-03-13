@@ -30,7 +30,7 @@ struct Element
     mat :: Material 
 end
 const ngp = 1 # 1 Gauss quadrature point
-@espydbg function force(e::Element,ΔX)
+@espy function force(e::Element,ΔX)
     :w      = e.ρg*e.A*e.L₀
     :R      = [w/2,w/2]
     for igp = 1:ngp # loop over 1 point, but still a loop

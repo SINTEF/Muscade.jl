@@ -48,49 +48,6 @@ end
     return b,3.
 end
 
-## macro'ed code (returned by @espy)
-# function residual(out,key,x,y)
-#     ngp = 2
-#     r   = 0
-#     for igp = 1:ngp
-#         @espy_loop key gp                     # key_gp = key.gp[igp]
-#         z = x[igp]+y[igp]
-#         @espy_record out key_gp z             # out[key_gp.z] = z
-#         s = @espy_call out key_gp material(z) # s = material(out,key_gp.material,z)
-#         @espy_record out key_gp s             # out[key_gp.s] = s
-#         r += s
-#     end
-#     return r
-# end
-# function material(out,key,z)
-#     a = z+1
-#     @espy_record out key a                    # out[key.a] = a
-#     b = a*z
-#     @espy_record out key b                    # out[key.b] = b
-#     return b
-# end
-## final code (after @espy_call, @espy_loop and @espy_record are run)
-# function residual(out,key,x,y) #
-#     ngp = 2
-#     r = 0
-#     for igp = 1:ngp
-#         key_gp = key.gp[igp] #
-#         z = x[igp]+y[igp]
-#         out[key_gp.z] = z #
-#         s  = material(out,key_gp.material,z) #
-#         out[key_gp.s] = s #
-#         r += s
-#     end
-#     return r
-# end
-# function material(out,key,z) #
-#     a = z+1
-#     out[key.a] = a #
-#     b = a*z
-#     out[key.b] = b #
-#     return b
-# end
-
 ## Test result extraction
 req       = @request gp[].(s,z,material.(a,b))  # generates an expression, not a variable
 key,nkey  = makekey(req,requestable(el))
@@ -104,7 +61,6 @@ r         = residual(@view(out[:,iel,istep]),key,x,y)
     @test key == (gp=[(s=1, z=2, material=(a=3, b=4)), (s=5, z=6, material=(a=7, b=8))],)
     @test out[:,iel,istep] ≈ [3.75, 1.5, 2.5, 3.75, 7.04, 2.2, 3.2, 7.04]
 end
-
 out = Vector{Float64}(undef,5)
 out[[1,2]] .= [1,2]
 out[[3,4]] .= (3,4)
