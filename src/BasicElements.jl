@@ -46,18 +46,9 @@ doflist(::Type{<:UdofCost{Derivative,Field}}) where{Derivative,Field} = (inod =(
 doflist(::Type{<:AdofCost{Derivative,Field}}) where{Derivative,Field} = (inod =(1,), class=(:A,), field=(Field,))
 espyable(::Type{<:DofCost}) = (J=scalar,)
 
-@espy function lagrangian(o::XdofCost{Derivative}, δX,X,U,A, t,γ,dbg) where{Derivative}
-    :J = o.cost(∂n(X,Derivative)[1],t)
-    return J
-end
-@espy function lagrangian(o::UdofCost{Derivative}, δX,X,U,A, t,γ,dbg) where{Derivative}
-    :J = o.cost(∂n(U,Derivative)[1],t)
-    return J
-end
-@espy function lagrangian(o::AdofCost{Derivative}, δX,X,U,A, t,γ,dbg) where{Derivative}
-    :J = o.cost(A[1])
-    return J
-end
+@espy lagrangian(o::XdofCost{Derivative}, δX,X,U,A, t,γ,dbg) where{Derivative} = :J = o.cost(∂n(X,Derivative)[1],t)
+@espy lagrangian(o::UdofCost{Derivative}, δX,X,U,A, t,γ,dbg) where{Derivative} = :J = o.cost(∂n(U,Derivative)[1],t)
+@espy lagrangian(o::AdofCost{Derivative}, δX,X,U,A, t,γ,dbg) where{Derivative} = :J = o.cost(A[1])
 
 #-------------------------------------------------
 
@@ -338,9 +329,6 @@ struct QuickFix{Nx,inod,field,Tres} <: AbstractElement
 end
 QuickFix(nod::Vector{Node};inod::NTuple{Nx,𝕫},field::NTuple{Nx,Symbol},res::Function) where{Nx} = QuickFix{Nx,inod,field,typeof(res)}(res)
 doflist(::Type{<:QuickFix{Nx,inod,field}}) where{Nx,inod,field} = (inod =inod,class=ntuple(i->:X,Nx),field=(field)) 
-@espy function residual(o::QuickFix, X,U,A, t,γ,dbg) 
-    :R = o.res(∂0(X),∂1(X),∂2(X),t)
-    return R
-end
+@espy residual(o::QuickFix, X,U,A, t,γ,dbg) = :R = o.res(∂0(X),∂1(X),∂2(X),t)
 
 #-------------------------------------------------

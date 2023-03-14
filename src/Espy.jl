@@ -220,15 +220,16 @@ function code_call_to_function(left,right,out,key,trace=false)
         end 
     end
 end
-function code_extractor_function(ex::Expr,out,key,trace=false)
-    return if @capture(ex,    function foo_(args__) body_ end    )                                       # foo(a,b,c)...end
-        trace && println("function")
-        quote 
-            function $foo($out,$key,$(args...)) 
-                $(code_extractor_function(body,out,key,trace))
-            end
-        end                              # foo(out,key,a,b,c)...end
-    elseif @capture(ex,    for var_=lo_ : hi_ body_ end   )
+pretty(ex) = println(prettify(ex))
+function code_extractor_function(ex::Expr,out,key,trace=false)# ex must be a function declaration
+    trace && println("function")
+    dict=splitdef(ex)
+    dict[:args] = vcat([out,key],dict[:args])
+    dict[:body] = code_extractor_recursion(dict[:body],out,key,trace)
+    combinedef(dict)
+end        
+function code_extractor_recursion(ex::Expr,out,key,trace=false)
+    return if @capture(ex,    for var_=lo_ : hi_ body_ end   )
         trace && println("for")
         loopname = Symbol(string(var)[2:end])                                   # gp
         subkey   = Symbol(key,"_",loopname)   
@@ -239,7 +240,7 @@ function code_extractor_function(ex::Expr,out,key,trace=false)
                 else
                     $subkey =  Nothing
                 end
-                $(code_extractor_function(body,out,subkey,trace))
+                $(code_extractor_recursion(body,out,subkey,trace))
             end
         end
     elseif @capture(ex,  left_ = right_   )
@@ -248,6 +249,7 @@ function code_extractor_function(ex::Expr,out,key,trace=false)
             quote
                 $(code_call_to_function(name,right,out,key,trace))
                 $(code_write_to_out(out,key,name))
+                $name
             end
         elseif @capture(left,   (args__,)    )                                               # (a,:b) = ...
             postfix  = Vector{Expr}(undef,0)                                          # will contain the macros to insert
@@ -263,16 +265,17 @@ function code_extractor_function(ex::Expr,out,key,trace=false)
             quote
                 $(code_call_to_function(maketuple(left...),right,out,key,trace))
                 $(postfix...)
+                $(maketuple(left...))
             end
         else
             code_call_to_function(left,right,out,key,trace)
         end
     else
         trace && println("recursion")
-        Expr(ex.head,[code_extractor_function(a,out,key,trace) for a ∈ ex.args]...)
+        Expr(ex.head,[code_extractor_recursion(a,out,key,trace) for a ∈ ex.args]...)
     end
 end
-function code_extractor_function(ex,out,key,trace=false) # to handle line-number nodes, Symbols... etc.
+function code_extractor_recursion(ex,out,key,trace=false) # to handle line-number nodes, Symbols... etc.
     trace && println("default")
     return ex
 end
@@ -365,7 +368,7 @@ of this output is accessed using `key`:
 See also: [`@espydbg`](@ref), [`@request`](@ref), [`makekey`](@ref)
 """
 macro espy(ex)
-    cleancode = code_clean_function(ex)
+    cleancode      = code_clean_function(ex)
     extractorcode  = code_extractor_function(ex,newsym(:out),newsym(:key),false)
     return makeblock(esc(extractorcode),esc(cleancode))
 end
