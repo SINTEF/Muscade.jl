@@ -183,14 +183,24 @@ macro request(ex)
 end
 
 ######################## Generate new function code
-
-tagged(s::Symbol) = string(s)[1]=='☼'
-tagged(s)         = false
-tail(s::Symbol)   = Symbol(string(s)[4:end])
+#   |
+# ✓ |check √
+# ✔ |Check
+# ∎ |QED 
+# ⋆ |star *
+# ♢ |diamond
+# ☼ |sun easy to type, std width, not a Julia operator, not confusable
+# ☐ |Box
+#   |
+☼tag(s::Symbol) = string(s)[1]=='☼' # \sun  
+☼tag(s)         = false
+♢tag(s::Symbol) = string(s)[1]=='♢' # \diamond  
+♢tag(s)         = false
+tail(s::Symbol) = Symbol(string(s)[4:end])
 
 ## Clean code
 code_clean_function(ex::Expr  ) = Expr(ex.head,[code_clean_function(a) for a ∈ ex.args]...)
-code_clean_function(ex::Symbol) = tagged(ex) ? tail(ex) : ex
+code_clean_function(ex::Symbol) = ☼tag(ex) || ♢tag(ex) ? tail(ex) : ex
 code_clean_function(ex        ) = ex
 
 ## Extractor code
@@ -205,8 +215,8 @@ function code_write_to_out(out,key,var)
         end
     end
 end
-function code_right(left,right,out,key,trace=false) # work with the rhs of an assigment, return the whole assigment
-    if @capture(right,  foo_(args__)   ) &&  tagged(foo)           # if rhs is call with ... = ☼foo
+function code_assigment_rhs(left,right,out,key,trace=false) # work with the rhs of an assigment, return the whole assigment
+    if @capture(right,  foo_(args__)   ) &&  ☼tag(foo)           # if rhs is call with ... = ☼foo
         foo = tail(foo)
         quote
             if haskey($key,$(QuoteNode(foo)))
@@ -215,7 +225,7 @@ function code_right(left,right,out,key,trace=false) # work with the rhs of an as
                 $left = $foo($(args...))
             end    
         end 
-    elseif @capture(right, mod_.foo_(args__)  )   &&  tagged(foo)  # if rhs is call with ... = MyModule.☼foo
+    elseif @capture(right, mod_.foo_(args__)  )   &&  ☼tag(foo)  # if rhs is call with ... = MyModule.☼foo
         foo = tail(foo)
         quote
             if haskey($key,$(QuoteNode(foo)))
@@ -261,18 +271,30 @@ function code_extractor_recursion(ex::Expr,out,key,trace=false)
         end
     elseif @capture(ex,  left_ = right_   )
         trace && println("assign")
-        if tagged(left)                       # ☼a = ...
+        if ☼tag(left)                       # ☼a = ...
             name = tail(left)                                              
             quote
-                $(code_right(name,right,out,key,trace))
+                $(code_assigment_rhs(name,right,out,key,trace))
                 $(code_write_to_out(out,key,name))
                 $name
+            end
+        elseif ♢tag(left)                       # ♢a = ...
+            var = tail(left)                                              
+            quote
+                if haskey($key,$(QuoteNode(var)))                                       # if haskey(key,:x)
+                    $(code_assigment_rhs(var,right,out,key,trace))
+                    if typeof($key.$var) == Int64
+                        $out[$key.$var] = $var                                          # out[key.x] = x
+                    else
+                        $out[$key.$var] .= $var                                         # out[key.x] = x
+                    end
+                end
             end
         elseif @capture(left,   (args__,)    )                                               # (a,☼b) = ...
             postfix  = Vector{Expr}(undef,0)                                          # will contain the macros to insert
             left = ()                                                           # will contain (a,b)
             for arg ∈ args
-                if tagged(arg) 
+                if ☼tag(arg) 
                     name = tail(arg)                                         # ...,☼b =
                     left = (left...,name)                                    # (a,b)
                     push!(postfix    ,code_write_to_out(out,key,name))                 # @espy_record out key b
@@ -281,12 +303,12 @@ function code_extractor_recursion(ex::Expr,out,key,trace=false)
                 end
             end
             quote
-                $(code_right(maketuple(left...),right,out,key,trace))
+                $(code_assigment_rhs(maketuple(left...),right,out,key,trace))
                 $(postfix...)
                 $(maketuple(left...))
             end
         else
-            code_right(left,right,out,key,trace)
+            code_assigment_rhs(left,right,out,key,trace)
         end
     else
         trace && println("recursion")
