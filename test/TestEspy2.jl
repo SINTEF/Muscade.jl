@@ -17,7 +17,7 @@ struct Material
     E   :: Float64 # Young's modulus
 end
 @espy function material(m::Material,ε)
-    :σ = m.E*ε
+    ☼σ = m.E*ε
     return σ
 end
 requestable(m::Material) = (σ=scalar,)
@@ -31,12 +31,12 @@ struct Element
 end
 const ngp = 1 # 1 Gauss quadrature point
 @espy function force(e::Element,ΔX)
-    :w      = e.ρg*e.A*e.L₀
-    :R      = [w/2,w/2]
+    ☼w      = e.ρg*e.A*e.L₀
+    ☼R      = [w/2,w/2]
     for igp = 1:ngp # loop over 1 point, but still a loop
-        :ε  = (ΔX[2]-ΔX[1])/e.L₀
-        σ   = :material(e.mat,ε)  
-        :T  = e.A*σ
+        ☼ε  = (ΔX[2]-ΔX[1])/e.L₀
+        σ   = ☼material(e.mat,ε)  
+        ☼T  = e.A*σ
         R   = +[T,-T]
     end
     return R

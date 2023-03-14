@@ -46,9 +46,9 @@ doflist(::Type{<:UdofCost{Derivative,Field}}) where{Derivative,Field} = (inod =(
 doflist(::Type{<:AdofCost{Derivative,Field}}) where{Derivative,Field} = (inod =(1,), class=(:A,), field=(Field,))
 espyable(::Type{<:DofCost}) = (J=scalar,)
 
-@espy lagrangian(o::XdofCost{Derivative}, δX,X,U,A, t,γ,dbg) where{Derivative} = :J = o.cost(∂n(X,Derivative)[1],t)
-@espy lagrangian(o::UdofCost{Derivative}, δX,X,U,A, t,γ,dbg) where{Derivative} = :J = o.cost(∂n(U,Derivative)[1],t)
-@espy lagrangian(o::AdofCost{Derivative}, δX,X,U,A, t,γ,dbg) where{Derivative} = :J = o.cost(A[1])
+@espy lagrangian(o::XdofCost{Derivative}, δX,X,U,A, t,γ,dbg) where{Derivative} = ☼J = o.cost(∂n(X,Derivative)[1],t)
+@espy lagrangian(o::UdofCost{Derivative}, δX,X,U,A, t,γ,dbg) where{Derivative} = ☼J = o.cost(∂n(U,Derivative)[1],t)
+@espy lagrangian(o::AdofCost{Derivative}, δX,X,U,A, t,γ,dbg) where{Derivative} = ☼J = o.cost(A[1])
 
 #-------------------------------------------------
 
@@ -84,7 +84,7 @@ end
 DofLoad(nod::Vector{Node};field::Symbol,value::Tvalue) where{Tvalue<:Function} = DofLoad{Tvalue,field}(value)
 doflist(::Type{DofLoad{Tvalue,Field}}) where{Tvalue,Field}=(inod=(1,), class=(:X,), field=(Field,))
 @espy function residual(o::DofLoad, X,U,A, t,γ,dbg) 
-    :F = o.value(t)
+    ☼F = o.value(t)
     return SVector{1}(-F)
 end
 espyable(::Type{<:DofLoad}) = (F=scalar,)
@@ -234,25 +234,25 @@ const equal_   = :equal
 const inequal_ = :inequal 
 @espy function residual(o::Xconstraint{Nx}, X,U,A, t,γ,dbg) where{Nx}
     P,gₛ,λₛ     = constants(∂0(X)),o.gₛ,o.λₛ
-    x,:λ       = ∂0(X)[SVector{Nx}(1:Nx)], ∂0(X)[Nx+1]
+    x,☼λ       = ∂0(X)[SVector{Nx}(1:Nx)], ∂0(X)[Nx+1]
     x∂         = variate{P,Nx}(x) 
-    :g,g∂x     = value_∂{P,Nx}(o.g(x∂,t,o.gargs...)) 
+    ☼g,g∂x     = value_∂{P,Nx}(o.g(x∂,t,o.gargs...)) 
     return if o.mode(t)==equal_;   SVector{Nx+1}((       -g∂x*λ)...,-g              ) ,∞
     elseif    o.mode(t)==inequal_; SVector{Nx+1}((       -g∂x*λ)...,-gₛ*S(λ/λₛ,g/gₛ,γ)) ,decided(λ/λₛ,g/gₛ,γ)
     elseif    o.mode(t)==off_;     SVector{Nx+1}(ntuple(i->0,Nx)...,-gₛ/λₛ*λ         ) ,∞
     end
 end
 @espy function lagrangian(o::Uconstraint{Nx,Nu,Na}, δX,X,U,A, t,γ,dbg) where{Nx,Nu,Na}
-    x,u,a,:λ = ∂0(X),∂0(U)[SVector{Nu}(1:Nu)],A,∂0(U)[Nu+1]
-    :g       = o.g(x,u,a,t,o.gargs...)
+    x,u,a,☼λ = ∂0(X),∂0(U)[SVector{Nu}(1:Nu)],A,∂0(U)[Nu+1]
+    ☼g       = o.g(x,u,a,t,o.gargs...)
     return if  o.mode(t)==equal_;   -g*λ                  ,∞
     elseif     o.mode(t)==inequal_; -KKT(λ,g,γ,o.λₛ,o.gₛ)  ,decided(λ/o.λₛ,g/o.gₛ,γ)
     elseif     o.mode(t)==off_;     -o.gₛ/(2o.λₛ)*λ^2      ,∞
     end
 end
 @espy function lagrangian(o::Aconstraint{Nx,Nu,Na}, δX,X,U,A, t,γ,dbg) where{Nx,Nu,Na}
-    x,u,a,:λ = ∂0(X),∂0(U),A[SVector{Na}(1:Na)],A[    Na+1] 
-    :g       = o.g(a,o.gargs...)
+    x,u,a,☼λ = ∂0(X),∂0(U),A[SVector{Na}(1:Na)],A[    Na+1] 
+    ☼g       = o.g(a,o.gargs...)
     return if  o.mode(t)==equal_;   -g*λ                  ,∞
     elseif     o.mode(t)==inequal_; -KKT(λ,g,γ,o.λₛ,o.gₛ)  ,decided(λ/o.λₛ,g/o.gₛ,γ)
     elseif     o.mode(t)==off_;     -o.gₛ/(2o.λₛ)*λ^2      ,∞ 
@@ -329,6 +329,6 @@ struct QuickFix{Nx,inod,field,Tres} <: AbstractElement
 end
 QuickFix(nod::Vector{Node};inod::NTuple{Nx,𝕫},field::NTuple{Nx,Symbol},res::Function) where{Nx} = QuickFix{Nx,inod,field,typeof(res)}(res)
 doflist(::Type{<:QuickFix{Nx,inod,field}}) where{Nx,inod,field} = (inod =inod,class=ntuple(i->:X,Nx),field=(field)) 
-@espy residual(o::QuickFix, X,U,A, t,γ,dbg) = :R = o.res(∂0(X),∂1(X),∂2(X),t)
+@espy residual(o::QuickFix, X,U,A, t,γ,dbg) = ☼R = o.res(∂0(X),∂1(X),∂2(X),t)
 
 #-------------------------------------------------

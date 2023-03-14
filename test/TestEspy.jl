@@ -36,15 +36,15 @@ el = El()
     ngp=2
     r = 0
     for igp=1:ngp
-        :z = x[igp]+y[igp]
-        :s,dum  = :material(z)
+        ☼z = x[igp]+y[igp]
+        ☼s,dum  = ☼material(z)
         r += s
     end
     return r
 end
 @espy function material(z)
-    :a = z+1
-    :b = a*z
+    ☼a = z+1
+    ☼b = a*z
     return b,3.
 end
 

@@ -183,19 +183,17 @@ macro request(ex)
 end
 
 ######################## Generate new function code
-pretty(ex) = println(prettify(ex))
+
+tagged(s::Symbol) = string(s)[1]=='☼'
+tagged(s)         = false
+tail(s::Symbol)   = Symbol(string(s)[4:end])
 
 ## Clean code
-function code_clean_function(ex::Expr)
-    if @capture(ex,  a_.b_) # Julia quirk - needs spesial treatment
-        :($(code_clean_function(a)).$(code_clean_function(b)))
-    else
-        Expr(ex.head,[code_clean_function(a) for a ∈ ex.args]...)
-    end
-end
-code_clean_function(ex::QuoteNode) = ex.value  # where the real job is done
-code_clean_function(ex)            = ex
+code_clean_function(ex::Expr  ) = Expr(ex.head,[code_clean_function(a) for a ∈ ex.args]...)
+code_clean_function(ex::Symbol) = tagged(ex) ? tail(ex) : ex
+code_clean_function(ex        ) = ex
 
+## Extractor code
 function code_write_to_out(out,key,var)
     return quote
         if haskey($key,$(QuoteNode(var)))                                       # if haskey(key,:x)
@@ -207,8 +205,9 @@ function code_write_to_out(out,key,var)
         end
     end
 end
-function code_right(left,right,out,key,trace=false)
-    if @capture(right,  :foo_(args__)   )         # if rhs is call with :foo
+function code_right(left,right,out,key,trace=false) # work with the rhs of an assigment, return the whole assigment
+    if @capture(right,  foo_(args__)   ) &&  tagged(foo)           # if rhs is call with ... = ☼foo
+        foo = tail(foo)
         quote
             if haskey($key,$(QuoteNode(foo)))
                 $left = $foo($out,$key.$foo,$(args...))  
@@ -216,12 +215,21 @@ function code_right(left,right,out,key,trace=false)
                 $left = $foo($(args...))
             end    
         end 
-    elseif @capture(right, foo_(args__) do var_ body_ end)
+    elseif @capture(right, mod_.foo_(args__)  )   &&  tagged(foo)  # if rhs is call with ... = MyModule.☼foo
+        foo = tail(foo)
+        quote
+            if haskey($key,$(QuoteNode(foo)))
+                $left = $mod.$foo($out,$key.$foo,$(args...))  
+            else
+                $left = $mod.$foo($(args...))
+            end    
+        end 
+    elseif @capture(right, foo_(args__) do var_ body_ end)        # if rhs is call with ... = foo(...) do igp ... end
         trace && println("do")
         loopname = Symbol(string(var)[2:end])                                   # gp
         subkey   = Symbol(key,"_",loopname)   
         quote
-            $left = $foo($(args...)) do
+            $left = $foo($(args...)) do $var
                 if haskey($key,$(QuoteNode(loopname)))                                  # if haskey(key,:gp) QuoteNode to produce a Symbol in the code
                     $subkey   = $key.$loopname[$var]                                     # key_gp=key.gp[igp]
                 else
@@ -229,23 +237,17 @@ function code_right(left,right,out,key,trace=false)
                 end
                 $(code_extractor_recursion(body,out,subkey,trace))
             end
-        end    else
+        end    
+    else
         quote
             $left = $right
         end 
     end
 end
-function code_extractor_function(ex::Expr,out,key,trace=false)# ex must be a function declaration
-    trace && println("function")
-    dict=splitdef(ex)
-    dict[:args] = vcat([out,key],dict[:args])
-    dict[:body] = code_extractor_recursion(dict[:body],out,key,trace)
-    combinedef(dict)
-end        
 function code_extractor_recursion(ex::Expr,out,key,trace=false)
     return if @capture(ex,    for var_=lo_ : hi_ body_ end   )
         trace && println("for")
-        loopname = Symbol(string(var)[2:end])                                   # gp
+        loopname = Symbol(string(var)[2:end])                                   # i✂gp
         subkey   = Symbol(key,"_",loopname)   
         quote
             for $var=$lo:$hi
@@ -259,17 +261,19 @@ function code_extractor_recursion(ex::Expr,out,key,trace=false)
         end
     elseif @capture(ex,  left_ = right_   )
         trace && println("assign")
-        if @capture(left,   :name_  )                                                    #:a = ...
+        if tagged(left)                       # ☼a = ...
+            name = tail(left)                                              
             quote
                 $(code_right(name,right,out,key,trace))
                 $(code_write_to_out(out,key,name))
                 $name
             end
-        elseif @capture(left,   (args__,)    )                                               # (a,:b) = ...
+        elseif @capture(left,   (args__,)    )                                               # (a,☼b) = ...
             postfix  = Vector{Expr}(undef,0)                                          # will contain the macros to insert
             left = ()                                                           # will contain (a,b)
             for arg ∈ args
-                if @capture(arg,  :name_  )                                     # ...,:b =
+                if tagged(arg) 
+                    name = tail(arg)                                         # ...,☼b =
                     left = (left...,name)                                    # (a,b)
                     push!(postfix    ,code_write_to_out(out,key,name))                 # @espy_record out key b
                 else                                                            #  a,... =
@@ -293,6 +297,14 @@ function code_extractor_recursion(ex,out,key,trace=false) # to handle line-numbe
     trace && println("default")
     return ex
 end
+function code_extractor_function(ex::Expr,out,key,trace=false) # ex must be a function declaration
+    trace && println("function")
+    dict=splitdef(ex)
+    dict[:args] = vcat([out,key],dict[:args])
+    dict[:body] = code_extractor_recursion(dict[:body],out,key,trace)
+    combinedef(dict)
+end        
+
 """
 
     @espy function residual(x,y)
@@ -399,10 +411,10 @@ macro espydbg(ex)
     bold = true
     printstyled("@espydbg: ";bold,color=:cyan)
     printstyled("Clean code\n";bold,color=:green)
-    pretty(code_clean_function(ex))
+    println(prettify(code_clean_function(ex)))
     printstyled("\n@espydbg: ";bold,color=:cyan)
-    printstyled("Extractor code\n";bold,color=:red)
-    pretty(code_extractor_function(ex,:out,:key,false))
+    printstyled("Extractor code\n";bold,color=:magenta)
+    println(prettify(code_extractor_function(ex,:out,:key,false)))
     println("\n")
     esc(quote
         $(code_clean_function(ex))

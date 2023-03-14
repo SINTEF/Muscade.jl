@@ -21,7 +21,7 @@ struct Turbine{Tsea,Tsky} <: AbstractElement
 end
 Turbine(nod::Vector{Node};seadrag,sea,skydrag,sky) = Turbine(SVector(coord(nod)[1][1],coord(nod)[1][2]),coord(nod)[1][3],seadrag,sea,skydrag,sky)  
 @espy function Muscade.residual(o::Turbine, X,U,A, t,γ,dbg)
-    :x = ∂0(X)+o.xₘ  
+    ☼x = ∂0(X)+o.xₘ  
     R  = -o.sea(t,x)*o.seadrag*(1+A[1]) - o.sky(t,x)*o.skydrag*(1+A[2])
     return R 
 end
@@ -53,15 +53,15 @@ p = SVector(   2.82040487827,  -24.86027164695,   153.69500343165, -729.52107422
 @espy function Muscade.lagrangian(o::AnchorLine, δX,X,U,A, t,γ,dbg)
     xₘtop,Δxₘtop,xₘbot,L,buoyancy = o.xₘtop,o.Δxₘtop,o.xₘbot,o.L*(1+A[1]),o.buoyancy*(1+A[2])      # a for anchor, t for TDP, f for fairlead
     x        = ∂0(X)  
-    :Xtop    = SVector(x[1],x[2],0.) + xₘtop
+    ☼Xtop    = SVector(x[1],x[2],0.) + xₘtop
     α        =  x[3]                            # azimut from COG to fairlead
     c,s      = cos(α),sin(α)
-    :ΔXtop   = SMatrix{3,3}(c,s,0,-s,c,0,0,0,1)*Δxₘtop       # arm of the fairlead
-    :ΔXchain = Xtop[1:2]+ΔXtop[1:2]-xₘbot        # vector from anchor to fairlead
-    :xaf     = norm(ΔXchain)                     # horizontal distance from anchor to fairlead
-    :cr      = exp10(horner(p,(L-xaf)/Xtop[3]))*Xtop[3] # curvature radius at TDP
-    :Fh      = -cr*buoyancy                      # horizontal force
-    :ltf     = √(Xtop[3]^2+2Xtop[3]*cr)          # horizontal distance from fairlead to TDP
+    ☼ΔXtop   = SMatrix{3,3}(c,s,0,-s,c,0,0,0,1)*Δxₘtop       # arm of the fairlead
+    ☼ΔXchain = Xtop[1:2]+ΔXtop[1:2]-xₘbot        # vector from anchor to fairlead
+    ☼xaf     = norm(ΔXchain)                     # horizontal distance from anchor to fairlead
+    ☼cr      = exp10(horner(p,(L-xaf)/Xtop[3]))*Xtop[3] # curvature radius at TDP
+    ☼Fh      = -cr*buoyancy                      # horizontal force
+    ☼ltf     = √(Xtop[3]^2+2Xtop[3]*cr)          # horizontal distance from fairlead to TDP
     Fd       = ΔXchain/xaf.*Fh
     m3       = ΔXtop[1]*Fd[2]-ΔXtop[2]*Fd[1]
     δW       = δX[1:2] ∘₁ Fd
@@ -111,11 +111,11 @@ Spring{D}(nod::Vector{Node};EI) where{D}= Spring{D}(coord(nod)[1],coord(nod)[2],
 @espy function Muscade.residual(o::Spring{D}, X,U,A, t,γ,dbg) where{D}
     x₁       = ∂0(X)[SVector{D}(i   for i∈1:D)]+o.x₁
     x₂       = ∂0(X)[SVector{D}(i+D for i∈1:D)]+o.x₂
-    :L₀      = o.L *exp10(A[1]) 
-    :EI      = o.EI*exp10(A[2]) 
+    ☼L₀      = o.L *exp10(A[1]) 
+    ☼EI      = o.EI*exp10(A[2]) 
     Δx       = x₁-x₂
-    :L       = norm(Δx)
-    :T       = EI*(L-L₀)
+    ☼L       = norm(Δx)
+    ☼T       = EI*(L-L₀)
     F₁       = Δx/L*T # external force on node 1
     R        = vcat(F₁,-F₁)
     return R
