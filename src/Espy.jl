@@ -207,7 +207,7 @@ function code_write_to_out(out,key,var)
         end
     end
 end
-function code_call_to_function(left,right,out,key,trace=false)
+function code_right(left,right,out,key,trace=false)
     if @capture(right,  :foo_(args__)   )         # if rhs is call with :foo
         quote
             if haskey($key,$(QuoteNode(foo)))
@@ -216,7 +216,20 @@ function code_call_to_function(left,right,out,key,trace=false)
                 $left = $foo($(args...))
             end    
         end 
-    else
+    elseif @capture(right, foo_(args__) do var_ body_ end)
+        trace && println("do")
+        loopname = Symbol(string(var)[2:end])                                   # gp
+        subkey   = Symbol(key,"_",loopname)   
+        quote
+            $left = $foo($(args...)) do
+                if haskey($key,$(QuoteNode(loopname)))                                  # if haskey(key,:gp) QuoteNode to produce a Symbol in the code
+                    $subkey   = $key.$loopname[$var]                                     # key_gp=key.gp[igp]
+                else
+                    $subkey =  Nothing
+                end
+                $(code_extractor_recursion(body,out,subkey,trace))
+            end
+        end    else
         quote
             $left = $right
         end 
@@ -248,7 +261,7 @@ function code_extractor_recursion(ex::Expr,out,key,trace=false)
         trace && println("assign")
         if @capture(left,   :name_  )                                                    #:a = ...
             quote
-                $(code_call_to_function(name,right,out,key,trace))
+                $(code_right(name,right,out,key,trace))
                 $(code_write_to_out(out,key,name))
                 $name
             end
@@ -264,12 +277,12 @@ function code_extractor_recursion(ex::Expr,out,key,trace=false)
                 end
             end
             quote
-                $(code_call_to_function(maketuple(left...),right,out,key,trace))
+                $(code_right(maketuple(left...),right,out,key,trace))
                 $(postfix...)
                 $(maketuple(left...))
             end
         else
-            code_call_to_function(left,right,out,key,trace)
+            code_right(left,right,out,key,trace)
         end
     else
         trace && println("recursion")
