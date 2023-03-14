@@ -24,31 +24,15 @@ EleID(1, 1)
 ```    
 See also: [`Hold`](@ref), [`DofLoad`](@ref)
 """
-abstract type DofCost <: AbstractElement end
-struct XdofCost{Derivative,Field,Tcost} <: DofCost
+struct DofCost{Class,Derivative,Field,Tcost} <: AbstractElement
     cost :: Tcost # Function 
 end
-struct UdofCost{Derivative,Field,Tcost} <: DofCost
-    cost :: Tcost # Function 
-end
-struct AdofCost{Derivative,Field,Tcost} <: DofCost
-    cost :: Tcost # Function 
-end
-function DofCost(nod::Vector{Node};class::Symbol,field::Symbol,cost::Tcost,derivative=0::𝕫) where{Tcost<:Function}
-    return if class==:X; XdofCost{derivative,field,Tcost}(cost)
-    elseif    class==:U; UdofCost{derivative,field,Tcost}(cost)
-    elseif    class==:A; AdofCost{derivative,field,Tcost}(cost)
-    else muscadeerror("class must be :X, :U or :A")
-    end
-end
-doflist(::Type{<:XdofCost{Derivative,Field}}) where{Derivative,Field} = (inod =(1,), class=(:X,), field=(Field,))
-doflist(::Type{<:UdofCost{Derivative,Field}}) where{Derivative,Field} = (inod =(1,), class=(:U,), field=(Field,))
-doflist(::Type{<:AdofCost{Derivative,Field}}) where{Derivative,Field} = (inod =(1,), class=(:A,), field=(Field,))
+DofCost(nod::Vector{Node};class::Symbol,field::Symbol,cost::Tcost,derivative=0::𝕫) where{Tcost<:Function} = DofCost{class,derivative,field,Tcost}(cost)
+doflist(::Type{<:DofCost{Class,Derivative,Field}}) where{Class,Derivative,Field} = (inod =(1,), class=(Class,), field=(Field,))
 espyable(::Type{<:DofCost}) = (J=scalar,)
-
-@espy lagrangian(o::XdofCost{Derivative}, δX,X,U,A, t,γ,dbg) where{Derivative} = ☼J = o.cost(∂n(X,Derivative)[1],t)
-@espy lagrangian(o::UdofCost{Derivative}, δX,X,U,A, t,γ,dbg) where{Derivative} = ☼J = o.cost(∂n(U,Derivative)[1],t)
-@espy lagrangian(o::AdofCost{Derivative}, δX,X,U,A, t,γ,dbg) where{Derivative} = ☼J = o.cost(A[1])
+@espy lagrangian(o::DofCost{:X,Derivative}, δX,X,U,A, t,γ,dbg) where{Derivative} = ☼J = o.cost(∂n(X,Derivative)[1],t)
+@espy lagrangian(o::DofCost{:U,Derivative}, δX,X,U,A, t,γ,dbg) where{Derivative} = ☼J = o.cost(∂n(U,Derivative)[1],t)
+@espy lagrangian(o::DofCost{:A,Derivative}, δX,X,U,A, t,γ,dbg) where{Derivative} = ☼J = o.cost(A[1])
 
 #-------------------------------------------------
 
