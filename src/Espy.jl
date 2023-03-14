@@ -183,6 +183,8 @@ macro request(ex)
 end
 
 ######################## Generate new function code
+pretty(ex) = println(prettify(ex))
+
 ## Clean code
 function code_clean_function(ex::Expr)
     if @capture(ex,  a_.b_) # Julia quirk - needs spesial treatment
@@ -220,7 +222,6 @@ function code_call_to_function(left,right,out,key,trace=false)
         end 
     end
 end
-pretty(ex) = println(prettify(ex))
 function code_extractor_function(ex::Expr,out,key,trace=false)# ex must be a function declaration
     trace && println("function")
     dict=splitdef(ex)
@@ -368,16 +369,11 @@ of this output is accessed using `key`:
 See also: [`@espydbg`](@ref), [`@request`](@ref), [`makekey`](@ref)
 """
 macro espy(ex)
-    cleancode      = code_clean_function(ex)
-    extractorcode  = code_extractor_function(ex,newsym(:out),newsym(:key),false)
-    return makeblock(esc(extractorcode),esc(cleancode))
+    esc(quote
+        $(code_clean_function(ex))
+        $(code_extractor_function(ex,newsym(:out),newsym(:key),false))
+    end)
 end
-# macro espy(ex)
-#     esc(quote
-#         $(code_clean_function(ex))
-#         $(code_extractor_function(ex,newsym(:out),newsym(:key),false))
-#     end)
-# end
 """
     @espydbg function ...
     end
@@ -385,22 +381,19 @@ end
 Run [`@espy`](@ref) and to generate code and print the output code (for debug purposes).
 
 See also: [`@espy`](@ref), [`@request`](@ref), [`makekey`](@ref), [`forloop`](@ref), [`scalar`](@ref)"""
+
 macro espydbg(ex)
-    println("###### espy clean code")
-    cleancode = code_clean_function(ex)
-    println(prettify(cleancode))
-    println("###### espy extractor code")
-    extractorcode  = code_extractor_function(ex,newsym(:out),newsym(:key),false)
-    println(prettify(extractorcode))
-    println("######")
-    return makeblock(esc(extractorcode),esc(cleancode))
+    bold = true
+    printstyled("@espydbg: ";bold,color=:cyan)
+    printstyled("Clean code\n";bold,color=:green)
+    pretty(code_clean_function(ex))
+    printstyled("\n@espydbg: ";bold,color=:cyan)
+    printstyled("Extractor code\n";bold,color=:red)
+    pretty(code_extractor_function(ex,:out,:key,false))
+    println("\n")
+    esc(quote
+        $(code_clean_function(ex))
+        $(code_extractor_function(ex,newsym(:out),newsym(:key),false))
+    end)
 end
-# macro espydbg(ex)
-#     code = quote
-#         $(code_clean_function(ex))
-#         $(code_extractor_function(ex,newsym(:out),newsym(:key),false))
-#     end
-#     println(prettify(code))
-#     return code
-# end
 
