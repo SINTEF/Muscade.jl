@@ -3,12 +3,12 @@ module TestConstraints
 using Test,StaticArrays
 using Muscade
 
-Muscade.Xconstraint{    Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield                       }(g,mode,gₛ,λₛ) where
-                       {Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield} =
-    Muscade.Xconstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,typeof(g),typeof(()),typeof(mode)}(g,(),mode,gₛ,λₛ)
-Muscade.Uconstraint{    Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield                       }(g,mode,gₛ,λₛ) where
-                       {Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield} =
-    Muscade.Uconstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,typeof(g),typeof(()),typeof(mode)}(g,(),mode,gₛ,λₛ)
+Muscade.Constraint{:X,    Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield                       }(g,mode,gₛ,λₛ) where
+                         {Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield} =
+    Muscade.Constraint{:X,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,typeof(g),typeof(()),typeof(mode)}(g,(),mode,gₛ,λₛ)
+Muscade.Constraint{:U,    Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield                       }(g,mode,gₛ,λₛ) where
+                         {Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield} =
+    Muscade.Constraint{:U,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,typeof(g),typeof(()),typeof(mode)}(g,(),mode,gₛ,λₛ)
 
 t,γ,dbg    = 0.,1.,(status=:testing,)
 
@@ -19,8 +19,8 @@ Xctc       = Muscade.variate{1,3}(SVector{3}(4,-3,10.)) # contact
 Xgap       = Muscade.variate{1,3}(SVector{3}(4,3,10.))  # gap
 U          = SVector{0,𝕣}()
 A          = SVector{0,𝕣}()
-C          = Muscade.Xconstraint{2 ,0 ,0 ,(1,1),(:t1,:t2),()   ,()    ,()   ,()    ,1    ,:λ    }
-#                    Xconstraint{Nx,Nu,Na,xinod,xfield   ,uinod,ufield,ainod,afield,λinod,λfield}(g,mode,gₛ,λₛ)
+C          = Muscade.Constraint{:X,    2 ,0 ,0 ,(1,1),(:t1,:t2),()   ,()    ,()   ,()    ,1    ,:λ    }
+#                    Constraint{λclass,Nx,Nu,Na,xinod,xfield   ,uinod,ufield,ainod,afield,λinod,λfield}(g,mode,gₛ,λₛ)
 
 @testset "X equal contact" begin
     c     = C(g,equal,1,1)
@@ -96,8 +96,8 @@ Ugap       = Muscade.variate{2,3}(Muscade.variate{1,3}(SVector{3}(4, 3,10.))) # 
 Λ          = SVector{0,𝕣}()
 X          = SVector{0,𝕣}()
 A          = SVector{0,𝕣}()
-C          = Muscade.Uconstraint{0 ,2 ,0 ,()   ,()       ,(1,1),(:t1,:t2),()   ,()    ,1    ,:λ    }
-#                    Uconstraint{Nx,Nu,Na,xinod,xfield   ,uinod,ufield   ,ainod,afield,λinod,λfield}(g,mode,gₛ,λₛ)
+C          = Muscade.Constraint{:U,    0 ,2 ,0 ,()   ,()       ,(1,1),(:t1,:t2),()   ,()    ,1    ,:λ    }
+#                    Constraint{λclass,Nx,Nu,Na,xinod,xfield   ,uinod,ufield   ,ainod,afield,λinod,λfield}(g,mode,gₛ,λₛ)
 
 @testset "U equal contact" begin
     c     = C(g,equal,1,1)

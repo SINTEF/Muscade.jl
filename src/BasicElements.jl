@@ -162,23 +162,8 @@ X               = state[1].X[1]
 
 See also: [`Hold`,`off`,`equal`,`inequal`](@ref)
 """
-abstract type Constraint <: AbstractElement end
-struct Xconstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,Tg,Tgargs,Tkind} <: Constraint
-    g        :: Tg    # g(x,t,gargs...) 
-    gargs    :: Tgargs
-    mode     :: Tkind # mode(t)->symbol, or Symbol for Aconstraints
-    gₛ        :: 𝕣
-    λₛ        :: 𝕣  
-end
-struct Uconstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,Tg,Tgargs,Tkind} <: Constraint
-    g        :: Tg    # g(x,u,a,t,gargs...)
-    gargs    :: Tgargs
-    mode     :: Tkind # mode(t)->symbol, or Symbol for Aconstraints
-    gₛ        :: 𝕣
-    λₛ        :: 𝕣  
-end
-struct Aconstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,Tg,Tgargs,Tkind} <: Constraint
-    g        :: Tg    # g(a,gargs...) 
+struct Constraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,Tg,Tgargs,Tkind} <: AbstractElement
+    g        :: Tg    # Class==:X g(x,t,gargs...) ,Class==:U  g(x,u,a,t,gargs...), Class==:A g(a,gargs...) 
     gargs    :: Tgargs
     mode     :: Tkind # mode(t)->symbol, or Symbol for Aconstraints
     gₛ        :: 𝕣
@@ -191,29 +176,16 @@ function Constraint(nod::Vector{Node};xinod::NTuple{Nx,𝕫}=(),xfield::NTuple{N
                                       gₛ::𝕣=1.,λₛ::𝕣=1.,
                                       g::Function ,gargs=(),mode::Function) where{Nx,Nu,Na} 
     (λclass==:X && (Nu>0||Na>0)) && muscadeerror("Constraints with λclass=:X must have Nu==0 and Naa=0") 
-    return if λclass==:X; Xconstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,typeof(g),typeof(gargs),typeof(mode)}(g,gargs,mode,gₛ,λₛ)
-    elseif    λclass==:U; Uconstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,typeof(g),typeof(gargs),typeof(mode)}(g,gargs,mode,gₛ,λₛ)
-    elseif    λclass==:A; Aconstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,typeof(g),typeof(gargs),typeof(mode)}(g,gargs,mode,gₛ,λₛ)
-    else muscadeerror("class must be :X, :U or :A")
-    end
+    return Constraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,
+                       typeof(g),typeof(gargs),typeof(mode)}(g,gargs,mode,gₛ,λₛ)
 end
-doflist(::Type{<:Xconstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield}}) where
-                            {Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield} = 
+doflist(::Type{<:Constraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield}}) where
+                            {λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield} = 
    (inod =(xinod...           ,uinod...           ,ainod...           ,λinod ), 
-    class=(ntuple(i->:X,Nx)...,ntuple(i->:U,Nu)...,ntuple(i->:A,Na)...,:X    ), 
+    class=(ntuple(i->:X,Nx)...,ntuple(i->:U,Nu)...,ntuple(i->:A,Na)...,λclass    ), 
     field=(xfield...          ,ufield...          ,afield...          ,λfield)) 
-doflist(::Type{<:Uconstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield}}) where
-                            {Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield} = 
-   (inod =(xinod...           ,uinod...           ,ainod...           ,λinod         ), 
-    class=(ntuple(i->:X,Nx)...,ntuple(i->:U,Nu)...,ntuple(i->:A,Na)...,:U), 
-    field=(xfield...          ,ufield...          ,afield...          ,λfield        )) 
-doflist(::Type{<:Aconstraint{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield}}) where
-                            {Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield} = 
-   (inod =(xinod...           ,uinod...           ,ainod...           ,λinod         ), 
-    class=(ntuple(i->:X,Nx)...,ntuple(i->:U,Nu)...,ntuple(i->:A,Na)...,:A), 
-    field=(xfield...          ,ufield...          ,afield...          ,λfield        )) 
 espyable(::Type{<:Constraint})  = (λ=scalar,g=scalar)
-@espy function residual(o::Xconstraint{Nx}, X,U,A, t,γ,dbg) where{Nx}
+@espy function residual(o::Constraint{:X,Nx}, X,U,A, t,γ,dbg) where{Nx}
     P,gₛ,λₛ     = constants(∂0(X)),o.gₛ,o.λₛ
     x,☼λ       = ∂0(X)[SVector{Nx}(1:Nx)], ∂0(X)[Nx+1]
     x∂         = variate{P,Nx}(x) 
@@ -223,7 +195,7 @@ espyable(::Type{<:Constraint})  = (λ=scalar,g=scalar)
     elseif    o.mode(t)==:off;     SVector{Nx+1}(ntuple(i->0,Nx)...,-gₛ/λₛ*λ         ) ,∞
     end
 end
-@espy function lagrangian(o::Uconstraint{Nx,Nu,Na}, δX,X,U,A, t,γ,dbg) where{Nx,Nu,Na}
+@espy function lagrangian(o::Constraint{:U,Nx,Nu,Na}, δX,X,U,A, t,γ,dbg) where{Nx,Nu,Na}
     x,u,a,☼λ = ∂0(X),∂0(U)[SVector{Nu}(1:Nu)],A,∂0(U)[Nu+1]
     ☼g       = o.g(x,u,a,t,o.gargs...)
     return if  o.mode(t)==:equal;   -g*λ                  ,∞
@@ -231,7 +203,7 @@ end
     elseif     o.mode(t)==:off;     -o.gₛ/(2o.λₛ)*λ^2      ,∞
     end
 end
-@espy function lagrangian(o::Aconstraint{Nx,Nu,Na}, δX,X,U,A, t,γ,dbg) where{Nx,Nu,Na}
+@espy function lagrangian(o::Constraint{:A,Nx,Nu,Na}, δX,X,U,A, t,γ,dbg) where{Nx,Nu,Na}
     x,u,a,☼λ = ∂0(X),∂0(U),A[SVector{Na}(1:Na)],A[    Na+1] 
     ☼g       = o.g(a,o.gargs...)
     return if  o.mode(t)==:equal;   -g*λ                  ,∞
@@ -268,8 +240,8 @@ See also: [`Constraint`](@ref), [`DofLoad`](@ref), [`DofCost`](@ref)
 struct Hold <: AbstractElement end  
 function Hold(nod::Vector{Node};field::Symbol,λfield::Symbol=Symbol(:λ,field)) 
     g(v,t)=v[1]
-    return Xconstraint{1, 0, 0, (1,),(field,),(),   (),    (),   (),    1,    λfield, typeof(g),typeof(()),typeof(equal)}(g,(),equal,1.,1.)
-    #      Xconstraint{Nx,Nu,Na,xinod,xfield, uinod,ufield,ainod,afield,λinod,λfield}
+    return Constraint{:X     ,1, 0, 0, (1,),(field,),(),   (),    (),   (),    1,    λfield, typeof(g),typeof(()),typeof(equal)}(g,(),equal,1.,1.)
+    #      Xconstraint{λclass,Nx,Nu,Na,xinod,xfield, uinod,ufield,ainod,afield,λinod,λfield}
 end
 
 #-------------------------------------------------

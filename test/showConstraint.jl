@@ -16,7 +16,8 @@ e3              = addelement!(model,DofLoad   ,[n1],field=:t1,value=gravity2)
 e4              = addelement!(model,DofLoad   ,[n1],field=:t2,value=gravity)
 e5              = addelement!(model,QuickFix  ,[n1],inod=(1,1),field=(:t1,:t2),res=(x,u,a,t)->0.1x)
 
-state           = solve(staticX;model,time=[0.],verbose=false,γ0=.5,γfac=.25,saveiter=true,maxiter=1000) # because there is zero physical stiffness in this model, setting γ0=0 gives singularity if one or more constraint is inactive
+initialstate    = initialize!(model)
+state           = solve(StaticX;initialstate,time=[0.],verbose=false,γ0=.5,γfac1=.5,γfac2=10.,saveiter=true,maxiter=1000) # because there is zero physical stiffness in this model, setting γ0=0 gives singularity if one or more constraint is inactive
 last            = findlastassigned(state)
 println("Converged in ",last, " iterations.")
 X               = state[last].X[1][1:2] 
@@ -46,6 +47,7 @@ lines!(  axe,a2,c ,color = :blue,  linewidth = 1)
 # e1              = addelement!(model,Constraint,[n1],xinod=(1,),xfield=(:t1,),λinod=1, λclass=:X, λfield=:λ1,g=g,mode=inequal)
 # e2              = addelement!(model,QuickFix  ,[n1],inod=(1,),field=(:t1,),res=(x,u,a,t)->f(x))
 
+# TODO update call syntax
 # state           = solve(staticX;model,time=[0.],verbose=false,γ0=γ0,γfac=1.,saveiter=true,maxiter=1000) # because there is zero physical stiffness in this model, setting γ0=0 gives singularity if one or more constraint is inactive
 # last            = findlastassigned(state)
 # println("Converged in ",last, " iterations.")
@@ -77,6 +79,7 @@ lines!(  axe,a2,c ,color = :blue,  linewidth = 1)
 # e1              = addelement!(model,Constraint,[n1],xinod=(1,),xfield=(:t1,),λinod=1, λclass=:X, λfield=:λ1,g=g,mode=inequal)
 # e2              = addelement!(model,QuickFix  ,[n1],inod=(1,),field=(:t1,),res=(x,u,a,t)->f(x))
 
+# TODO update call syntax
 # state           = solve(staticX;model,time=[0.],verbose=false,γ0=γ0,γfac=γfac,saveiter=true,maxiter=1000) # because there is zero physical stiffness in this model, setting γ0=0 gives singularity if one or more constraint is inactive
 # last            = findlastassigned(state)
 # println("Converged in ",last, " iterations.")
