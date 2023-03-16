@@ -1,25 +1,3 @@
-
-struct Cost{Class,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,Tg,Tcostargs} <: AbstractElement
-    cost     :: Tg    # Class==:instant cost(X,U,A,t,gargs...), Class==:A cost(A,gargs...) X and U are tuples (derivates of dofs...) 
-    costargs :: Tcostargs
-end
-function Cost(nod::Vector{Node};xinod::NTuple{Nx,𝕫}=(),xfield::NTuple{Nx,Symbol}=(),
-                                uinod::NTuple{Nu,𝕫}=(),ufield::NTuple{Nu,Symbol}=(),
-                                ainod::NTuple{Na,𝕫}=(),afield::NTuple{Na,Symbol}=(),
-                                class::Symbol=:I,cost::Function ,costargs=()) where{Nx,Nu,Na} # :I for "instantaneous" or "integrand" cost.
-    (class==:A && (Nx>0||Nu>0)) && muscadeerror("Cost with Class==:A must have zero X-dofs and zero U-dofs") 
-    return Cost{class,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,typeof(cost),typeof(costargs)}(cost,costargs)
-end
-doflist(::Type{<:Cost{Class,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield}}) where
-                     {Class,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield} = 
-   (inod =(xinod...           ,uinod...           ,ainod...           ), 
-    class=(ntuple(i->:X,Nx)...,ntuple(i->:U,Nu)...,ntuple(i->:A,Na)...), 
-    field=(xfield...          ,ufield...          ,afield...          ) )
-espyable(::Type{<:Cost}) = (cost=scalar,)    
-@espy lagrangian(o::Cost{:I,Nx,Nu,Na}, δX,X,U,A, t,γ,dbg) where{Nx,Nu,Na} = ☼cost = o.cost(X,U,A,t,o.costargs...)
-@espy lagrangian(o::Cost{:A,Nx,Nu,Na}, δX,X,U,A, t,γ,dbg) where{Nx,Nu,Na} = ☼cost = o.cost(    A  ,o.costargs...)
-
-#-------------------------------------------------
 """
 `DofCost{Derivative,Class,Field,Tcost} <: AbstractElement`
 
@@ -28,17 +6,17 @@ An element with a single node, for adding a cost to a given dof.
 # Named arguments to the constructor
 - `class::Symbol`, either `:X`, `:U` or `:A`.
 - `field::Symbol`.
-- `cost::Function`, where `cost(x::ℝ,t::ℝ[,costargs...]) → ℝ`.
+- `cost::Function`, where `cost(x::ℝ,t::ℝ) → ℝ`.
 
 # Requestable internal variables
-- `cost`, the value of the cost.
+- `J`, the value of the cost.
 
 # Examples
 ```jldoctest; output = false
 using Muscade
 model = Model(:TestModel)
 node  = addnode!(model,𝕣[0,0])
-e     = addelement!(model,DofCost,[node];class=:X,field=:tx,costargs=(3.,),cost=(x,t,three)->(x/three)^2)
+e     = addelement!(model,DofCost,[node];class=:X,field=:tx,cost=(x,t)->x^2)
 
 # output
 
@@ -46,24 +24,15 @@ EleID(1, 1)
 ```    
 See also: [`Hold`](@ref), [`DofLoad`](@ref)
 """
-struct DofCost <: AbstractElement end
-function DofCost(nod::Vector{Node};class::Symbol,field::Symbol,cost::Function,derivative=0::𝕫,costargs=()) 
-    if     class==:X; Cost(nod;xinod=(1,),xfield=(field,),class=:I,cost=(X,U,A,t,args...)->cost(∂n(X,derivative)[1],t,args...),costargs)
-    elseif class==:U; Cost(nod;uinod=(1,),ufield=(field,),class=:I,cost=(X,U,A,t,args...)->cost(∂n(U,derivative)[1],t,args...),costargs)
-    elseif class==:A; Cost(nod;ainod=(1,),afield=(field,),class=:A,cost=(    A,  args...)->cost(A[1]                 ,args...),costargs)
-    else              muscadeerror("'class' must be :X,:U or :A")
-    end
-end    
-
-# struct DofCost{Class,Derivative,Field,Tcost} <: AbstractElement
-#     cost :: Tcost # Function 
-# end
-# DofCost(nod::Vector{Node};class::Symbol,field::Symbol,cost::Tcost,derivative=0::𝕫) where{Tcost<:Function} = DofCost{class,derivative,field,Tcost}(cost)
-# doflist(::Type{<:DofCost{Class,Derivative,Field}}) where{Class,Derivative,Field} = (inod =(1,), class=(Class,), field=(Field,))
-# espyable(::Type{<:DofCost}) = (J=scalar,)
-# @espy lagrangian(o::DofCost{:X,Derivative}, δX,X,U,A, t,γ,dbg) where{Derivative} = ☼J = o.cost(∂n(X,Derivative)[1],t)
-# @espy lagrangian(o::DofCost{:U,Derivative}, δX,X,U,A, t,γ,dbg) where{Derivative} = ☼J = o.cost(∂n(U,Derivative)[1],t)
-# @espy lagrangian(o::DofCost{:A,Derivative}, δX,X,U,A, t,γ,dbg) where{Derivative} = ☼J = o.cost(A[1])
+struct DofCost{Class,Derivative,Field,Tcost} <: AbstractElement
+    cost :: Tcost # Function 
+end
+DofCost(nod::Vector{Node};class::Symbol,field::Symbol,cost::Tcost,derivative=0::𝕫) where{Tcost<:Function} = DofCost{class,derivative,field,Tcost}(cost)
+doflist(::Type{<:DofCost{Class,Derivative,Field}}) where{Class,Derivative,Field} = (inod =(1,), class=(Class,), field=(Field,))
+espyable(::Type{<:DofCost}) = (J=scalar,)
+@espy lagrangian(o::DofCost{:X,Derivative}, δX,X,U,A, t,γ,dbg) where{Derivative} = ☼J = o.cost(∂n(X,Derivative)[1],t)
+@espy lagrangian(o::DofCost{:U,Derivative}, δX,X,U,A, t,γ,dbg) where{Derivative} = ☼J = o.cost(∂n(U,Derivative)[1],t)
+@espy lagrangian(o::DofCost{:A,Derivative}, δX,X,U,A, t,γ,dbg) where{Derivative} = ☼J = o.cost(A[1])
 
 #-------------------------------------------------
 
@@ -150,7 +119,7 @@ See also: [`Constraint`](@ref), [`off`](@ref), [`equal`](@ref)
 inequal(t) = :inequal
 # length of comment                                           stop here|
 """
-`Constraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,Tg,Tmode} <: AbstractElement`
+`Constraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,Tg,Tkind} <: AbstractElement`
 
 An element to apply physical/optimisation equality/inequality constraints on dofs. 
 
@@ -193,10 +162,10 @@ X               = state[1].X[1]
 
 See also: [`Hold`,`off`,`equal`,`inequal`](@ref)
 """
-struct Constraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,Tg,Tgargs,Tmode} <: AbstractElement
+struct Constraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,Tg,Tgargs,Tkind} <: AbstractElement
     g        :: Tg    # Class==:X g(x,t,gargs...) ,Class==:U  g(x,u,a,t,gargs...), Class==:A g(a,gargs...) 
     gargs    :: Tgargs
-    mode     :: Tmode # mode(t)->symbol, or Symbol for Aconstraints
+    mode     :: Tkind # mode(t)->symbol, or Symbol for Aconstraints
     gₛ        :: 𝕣
     λₛ        :: 𝕣  
 end
@@ -206,8 +175,7 @@ function Constraint(nod::Vector{Node};xinod::NTuple{Nx,𝕫}=(),xfield::NTuple{N
                                       λinod::𝕫, λclass::Symbol, λfield::Symbol,
                                       gₛ::𝕣=1.,λₛ::𝕣=1.,
                                       g::Function ,gargs=(),mode::Function) where{Nx,Nu,Na} 
-    (λclass==:X && (Nu>0||Na>0)) && muscadeerror("Constraints with λclass=:X must have zero U-dofs and zero A-dofs") 
-    (λclass==:A && (Nu>0||Na>0)) && muscadeerror("Constraints with λclass=:A must have zero X-dofs and zero U-dofs") 
+    (λclass==:X && (Nu>0||Na>0)) && muscadeerror("Constraints with λclass=:X must have Nu==0 and Naa=0") 
     return Constraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,
                        typeof(g),typeof(gargs),typeof(mode)}(g,gargs,mode,gₛ,λₛ)
 end
@@ -236,7 +204,7 @@ end
     end
 end
 @espy function lagrangian(o::Constraint{:A,Nx,Nu,Na}, δX,X,U,A, t,γ,dbg) where{Nx,Nu,Na}
-    a,☼λ     = A[SVector{Na}(1:Na)],A[    Na+1] 
+    x,u,a,☼λ = ∂0(X),∂0(U),A[SVector{Na}(1:Na)],A[    Na+1] 
     ☼g       = o.g(a,o.gargs...)
     return if  o.mode(t)==:equal;   -g*λ                  ,∞
     elseif     o.mode(t)==:inequal; -KKT(λ,g,γ,o.λₛ,o.gₛ)  ,decided(λ/o.λₛ,g/o.gₛ,γ)
