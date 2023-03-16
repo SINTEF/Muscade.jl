@@ -20,10 +20,10 @@ e6              = addelement!(model,Hold  ,[n3], field=:tx1)
 e7              = addelement!(model,Hold  ,[n3], field=:tx2)
 @once f2(x,t)   = 1x^2
 @once f3(a)     = 0.1a^2
-e8              = addelement!(model,DofCost ,class=:X, field=:tx1,[n1]      ,cost=f2)
-e9              = addelement!(model,DofCost ,class=:X, field=:tx2,[n1]      ,cost=f2)
-e10             = addelement!(model,DofCost ,class=:A, field=:ΞL₀,[n4]      ,cost=f3)
-e11             = addelement!(model,DofCost ,class=:A, field=:ΞEI,[n4]      ,cost=f3)
+e8              = addelement!(model,SingleDofCost ,class=:X, field=:tx1,[n1]      ,cost=f2)
+e9              = addelement!(model,SingleDofCost ,class=:X, field=:tx2,[n1]      ,cost=f2)
+e10             = addelement!(model,SingleDofCost ,class=:A, field=:ΞL₀,[n4]      ,cost=f3)
+e11             = addelement!(model,SingleDofCost ,class=:A, field=:ΞEI,[n4]      ,cost=f3)
 initialstate    = initialize!(model)
 @testset "StaticX" begin
     stateX           = solve(StaticX;initialstate,time=[0.,1.],verbose=false)

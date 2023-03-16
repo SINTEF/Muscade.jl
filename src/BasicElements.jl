@@ -1,24 +1,31 @@
 
-struct Cost{Class,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,Tg,Tcostargs} <: AbstractElement
-    cost     :: Tg    # Class==:instant cost(X,U,A,t,gargs...), Class==:A cost(A,gargs...) X and U are tuples (derivates of dofs...) 
+struct DofCost{Class,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,Tcost,Tcostargs} <: AbstractElement
+    cost     :: Tcost    # Class==:instant cost(X,U,A,t,gargs...), Class==:A cost(A,gargs...) X and U are tuples (derivates of dofs...) 
     costargs :: Tcostargs
 end
-function Cost(nod::Vector{Node};xinod::NTuple{Nx,𝕫}=(),xfield::NTuple{Nx,Symbol}=(),
+function DofCost(nod::Vector{Node};xinod::NTuple{Nx,𝕫}=(),xfield::NTuple{Nx,Symbol}=(),
                                 uinod::NTuple{Nu,𝕫}=(),ufield::NTuple{Nu,Symbol}=(),
                                 ainod::NTuple{Na,𝕫}=(),afield::NTuple{Na,Symbol}=(),
                                 class::Symbol=:I,cost::Function ,costargs=()) where{Nx,Nu,Na} # :I for "instantaneous" or "integrand" cost.
     (class==:A && (Nx>0||Nu>0)) && muscadeerror("Cost with Class==:A must have zero X-dofs and zero U-dofs") 
-    return Cost{class,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,typeof(cost),typeof(costargs)}(cost,costargs)
+    return DofCost{class,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,typeof(cost),typeof(costargs)}(cost,costargs)
 end
-doflist(::Type{<:Cost{Class,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield}}) where
+doflist(::Type{<:DofCost{Class,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield}}) where
                      {Class,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield} = 
    (inod =(xinod...           ,uinod...           ,ainod...           ), 
     class=(ntuple(i->:X,Nx)...,ntuple(i->:U,Nu)...,ntuple(i->:A,Na)...), 
     field=(xfield...          ,ufield...          ,afield...          ) )
-espyable(::Type{<:Cost}) = (cost=scalar,)    
-@espy lagrangian(o::Cost{:I,Nx,Nu,Na}, δX,X,U,A, t,γ,dbg) where{Nx,Nu,Na} = ☼cost = o.cost(X,U,A,t,o.costargs...)
-@espy lagrangian(o::Cost{:A,Nx,Nu,Na}, δX,X,U,A, t,γ,dbg) where{Nx,Nu,Na} = ☼cost = o.cost(    A  ,o.costargs...)
+espyable(::Type{<:DofCost}) = (cost=scalar,)    
+@espy lagrangian(o::DofCost{:I,Nx,Nu,Na}, δX,X,U,A, t,γ,dbg) where{Nx,Nu,Na} = ☼cost = o.cost(X,U,A,t,o.costargs...)
+@espy lagrangian(o::DofCost{:A,Nx,Nu,Na}, δX,X,U,A, t,γ,dbg) where{Nx,Nu,Na} = ☼cost = o.cost(    A  ,o.costargs...)
 
+
+# struct ElementCost{}
+#     el       :: Tel
+#     req      :: Treq 
+#     cost     :: Tcost    # Class==:instant cost(X,U,A,t,gargs...), Class==:A cost(A,gargs...) X and U are tuples (derivates of dofs...) 
+#     costargs :: Tcostargs
+# end
 #-------------------------------------------------
 """
 `DofCost{Derivative,Class,Field,Tcost} <: AbstractElement`
@@ -46,24 +53,14 @@ EleID(1, 1)
 ```    
 See also: [`Hold`](@ref), [`DofLoad`](@ref)
 """
-struct DofCost <: AbstractElement end
-function DofCost(nod::Vector{Node};class::Symbol,field::Symbol,cost::Function,derivative=0::𝕫,costargs=()) 
-    if     class==:X; Cost(nod;xinod=(1,),xfield=(field,),class=:I,cost=(X,U,A,t,args...)->cost(∂n(X,derivative)[1],t,args...),costargs)
-    elseif class==:U; Cost(nod;uinod=(1,),ufield=(field,),class=:I,cost=(X,U,A,t,args...)->cost(∂n(U,derivative)[1],t,args...),costargs)
-    elseif class==:A; Cost(nod;ainod=(1,),afield=(field,),class=:A,cost=(    A,  args...)->cost(A[1]                 ,args...),costargs)
+struct SingleDofCost <: AbstractElement end
+function SingleDofCost(nod::Vector{Node};class::Symbol,field::Symbol,cost::Function,derivative=0::𝕫,costargs=()) 
+    if     class==:X; DofCost(nod;xinod=(1,),xfield=(field,),class=:I,cost=(X,U,A,t,args...)->cost(∂n(X,derivative)[1],t,args...),costargs)
+    elseif class==:U; DofCost(nod;uinod=(1,),ufield=(field,),class=:I,cost=(X,U,A,t,args...)->cost(∂n(U,derivative)[1],t,args...),costargs)
+    elseif class==:A; DofCost(nod;ainod=(1,),afield=(field,),class=:A,cost=(    A,  args...)->cost(A[1]                 ,args...),costargs)
     else              muscadeerror("'class' must be :X,:U or :A")
     end
 end    
-
-# struct DofCost{Class,Derivative,Field,Tcost} <: AbstractElement
-#     cost :: Tcost # Function 
-# end
-# DofCost(nod::Vector{Node};class::Symbol,field::Symbol,cost::Tcost,derivative=0::𝕫) where{Tcost<:Function} = DofCost{class,derivative,field,Tcost}(cost)
-# doflist(::Type{<:DofCost{Class,Derivative,Field}}) where{Class,Derivative,Field} = (inod =(1,), class=(Class,), field=(Field,))
-# espyable(::Type{<:DofCost}) = (J=scalar,)
-# @espy lagrangian(o::DofCost{:X,Derivative}, δX,X,U,A, t,γ,dbg) where{Derivative} = ☼J = o.cost(∂n(X,Derivative)[1],t)
-# @espy lagrangian(o::DofCost{:U,Derivative}, δX,X,U,A, t,γ,dbg) where{Derivative} = ☼J = o.cost(∂n(U,Derivative)[1],t)
-# @espy lagrangian(o::DofCost{:A,Derivative}, δX,X,U,A, t,γ,dbg) where{Derivative} = ☼J = o.cost(A[1])
 
 #-------------------------------------------------
 
@@ -287,7 +284,7 @@ Elements thus created have several limitations:
 - no initialisation.
 - physical elements with only X-dofs.
 - only `R` can be espied.
-The element is intended for testing.  Muscade-based application should not include this in their API. 
+The element is intended for testing.  Muscade-based applications should not include this in their API. 
 
 # Named arguments to the constructor
 - `inod::NTuple{Nx,𝕫}`. The element-node numbers of the X-dofs.
