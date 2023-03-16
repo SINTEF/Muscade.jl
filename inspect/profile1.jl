@@ -1,7 +1,7 @@
 using Profile,ProfileView,BenchmarkTools
 using Muscade
 
-include("SomeElements.jl")
+include("../test/SomeElements.jl")
 
 model           = Model(:TestModel)
 n1              = addnode!(model,𝕣[ 0, 0])  # moving node
@@ -28,9 +28,9 @@ state           = solve(StaticXUA;initialstate=stateX,maxYiter= 50,verbose=false
 #@btime state    = solve(StaticXUA;initialstate=stateX,maxYiter= 0,verbose=false) 
 
 Profile.clear()
-Profile.@profile for i=1:25000#1000#25000
-    local stateX          = solve(StaticX;  initialstate,time=[.5,1.],verbose=false)
-#    local state  = solve(StaticXUA;initialstate=stateX,maxYiter= 50,verbose=false);
+Profile.@profile for i=1:1000#25000
+#    local stateX          = solve(StaticX;  initialstate,time=[.5,1.],verbose=false)
+    local state  = solve(StaticXUA;initialstate=stateX,maxYiter= 50,verbose=false);
 end
 ProfileView.view(fontsize=30);
 
