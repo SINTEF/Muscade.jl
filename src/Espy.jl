@@ -12,10 +12,6 @@ issymbol(e::Symbol)         = true
 issymbol(e)                 = false
 isquote(e::QuoteNode)       = true
 isquote(e)                  = false
-isnumber(e::Number)         = true
-isnumber(e)                 = false
-isline(e::LineNumberNode)   = true
-isline(e)                   = false
 isexpr(e::Expr)             = true
 isexpr(e,f...)              = false
 isexpr(s,e::Expr)           = e.head == s
@@ -25,17 +21,10 @@ isref(e)                    = isexpr(e) && e.head == :ref    # a[b]
 isdot(e)                    = isexpr(e) && e.head == :(.)    # a.b
 issub(e)                    = isexpr(e) && e.head == :(.)  && isquote(getright(e))  # a.b
 isdeclare(e)                = isexpr(e) && e.head == :(::)   # a::b
-isassign(e)                 = isexpr(e) && e.head == :(=)
-iscall(e)                   = isexpr(e) && e.head == :call
-isfunc(e)                   = isexpr(e) && e.head == :function
-isfor(e)                    = isexpr(e) && e.head == :for
-isescsymbol(e)              = isexpr(e) && e.head == (:escape) && issymbol(getleft(e))
-issymbolish(e)              = issymbol(e)||isescsymbol(e)
 
 ## Analysis
 getright(e)                 = e.args[2]
 getleft(e)                  = e.args[1]
-getfor(e)                   = (var=e.args[1].args[1],from=e.args[1].args[2].args[2],to=e.args[1].args[2].args[3],body=e.args[2]) #(var,from,to,body)
 
 ## Synthesis
 maketuple(e...)             = Expr(:tuple,          e...)
@@ -69,6 +58,7 @@ const scalar = ()#Int64[]
 
 # Julia parses a.(b::Tb,c.d).(e::Te,f::Tf) as (a.(b::Tb,c.d)).(e::Te,f::Tf)
 # transform to a.((b::Tb,c.d).(e::Te,f::Tf))
+# MacroTools.@capture does not work here 
 function leftparse(e)
     if     issub(e)     && issub(getleft(e))    leftparse(makedot(getleft(getleft(e)),makedot(    getright(getleft(e)),getright(e))))
     elseif isref(e)     && issub(getleft(e))    leftparse(makedot(getleft(getleft(e)),makeref(    getright(getleft(e))            )))
@@ -84,8 +74,8 @@ end
 # NamedTuple, with leaves that are Int64 or AbstractArray of Int64 - containing indices into the output array
 namedtuple(sym,val)         = (;zip(sym,val)...)
 namedtuple(sym::Symbol,val) = (;zip((sym,),(val,))...)
-isloopreq(ele) = isdot(ele) && isref(getleft(ele))
-iscallreq(ele) = isdot(ele) && ~isref(getleft(ele))
+isloopreq(ex) = isdot(ex) && isref(getleft(ex))
+iscallreq(ex) = isdot(ex) && ~isref(getleft(ex))
 function makekey_tuple(cnt,ex,reqabl) # ex=(a,gp[].(...),foo.(...))   reqabl=(a=[...],gp=forloop(ngp,(...)),foo=(...))
     if ex==() || ex==(;) return NamedTuple(),0 end
     if  isquote(ex) ex = maketuple(ex.value) end # allow user to type a.b for (a.(b,),)
@@ -93,17 +83,17 @@ function makekey_tuple(cnt,ex,reqabl) # ex=(a,gp[].(...),foo.(...))   reqabl=(a=
     len   = length(ex.args)
     elkey = Vector{Any   }(undef,len) # "Any" is OK here, will be used to build a tuple
     sym   = Vector{Symbol}(undef,len)
-    for (i,ele) = enumerate(ex.args)
-        if issymbol(ele)    # :ele
-            sym[i]       = ele
-            elkey[i],cnt = makekey_symbol(cnt,reqabl[ele])
-        elseif isloopreq(ele) # sym[].(body)
-            sym[i]       = getleft(getleft(ele))
-            body         = getright(ele)
+    for (i,arg) = enumerate(ex.args)
+        if issymbol(arg)    # :arg
+            sym[i]       = arg
+            elkey[i],cnt = makekey_symbol(cnt,reqabl[arg])
+        elseif isloopreq(arg) # sym[].(body)
+            sym[i]       = getleft(getleft(arg))
+            body         = getright(arg)
             elkey[i],cnt = makekey_loop(cnt,body,reqabl[sym[i]])
-        elseif iscallreq(ele) # sym.(body)
-            sym[i]       = getleft(ele)
-            body         = getright(ele)
+        elseif iscallreq(arg) # sym.(body)
+            sym[i]       = getleft(arg)
+            body         = getright(arg)
             elkey[i],cnt = makekey_tuple(cnt,body,reqabl[sym[i]])
         else
             error("Illegal request expression")
