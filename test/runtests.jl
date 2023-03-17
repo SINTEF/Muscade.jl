@@ -29,6 +29,9 @@ module Runtest
         @testset "TestConstraints" begin
             include("TestConstraints.jl")
         end
+        @testset "ElementCost" begin
+            include("TestElementCost.jl")
+        end
         @testset "TestUnit" begin
             include("TestUnit.jl")
         end

@@ -377,8 +377,8 @@ end
 end
 
 # if residual or lagrange outputs just one vector or number, this element does not implementinequality constraints, so append α=0.
-@inline defα(x::Union{Number,AbstractVector})               = x,∞
-@inline defα(x::Tuple)                                      = x
+@inline defaultα(x::Union{Number,AbstractVector})               = x,∞
+@inline defaultα(x::Tuple)                                      = x
 
 # Nothing implemented: error
 getresidual(          ::Type{<:Val}     ,::Type{<:Val}     ,out,key,eleobj::AbstractElement,X,U,A, t,γ,dbg) = 
@@ -392,23 +392,23 @@ getlagrangian(        ::Type{<:Val}     ,::Type{<:Val}             ,eleobj::Abst
 
 # want residual, residual implemented
 function getresidual(          ::Type{Val{true}} ,::Type{<:Val}        ,eleobj::AbstractElement,X,U,A, t,γ,dbg)
-    R,α = defα(residual(        eleobj,X,U,A, t,γ,dbg))
+    R,α = defaultα(residual(        eleobj,X,U,A, t,γ,dbg))
     hasnan(R) && muscadeerror(dbg,"NaN in a residual or its partial derivatives")
     return R,α
 end
 function getresidual(          ::Type{Val{true}} ,::Type{<:Val},out,key,eleobj::AbstractElement,X,U,A, t,γ,dbg)
-    R,α = defα(residual(out,key,eleobj,out,key,X,U,A, t,γ,dbg))
+    R,α = defaultα(residual(out,key,eleobj,out,key,X,U,A, t,γ,dbg))
     hasnan(R) && muscadeerror(dbg,"NaN in a residual or its partial derivatives")
     return R,α
 end
 # want lagrangian, lagrangian implemented
 function getlagrangian(        ::Type{<:Val}     ,::Type{Val{true}}        ,eleobj::AbstractElement,Λ,X,U,A, t,γ,dbg) 
-    L,α = defα(lagrangian(        eleobj,Λ,X,U,A, t,γ,dbg))
+    L,α = defaultα(lagrangian(        eleobj,Λ,X,U,A, t,γ,dbg))
     hasnan(L) && muscadeerror(dbg,"NaN in a lagrangian or its partial derivatives")
     return L,α
 end
 function getlagrangian(        ::Type{<:Val}     ,::Type{Val{true}},out,key,eleobj::AbstractElement,Λ,X,U,A, t,γ,dbg) 
-    L,α = defα(lagrangian(out,key,eleobj,Λ,X,U,A, t,γ,dbg))
+    L,α = defaultα(lagrangian(out,key,eleobj,Λ,X,U,A, t,γ,dbg))
     hasnan(L) && muscadeerror(dbg,"NaN in a lagrangian or its partial derivatives")
     return L,α
 end
@@ -418,7 +418,7 @@ function getresidual(  ::Type{Val{false}},::Type{Val{true}} ,eleobj::AbstractEle
     P   = constants(∂0(X),∂0(U),A,t)
     Nx  = length(∂0(X))
     δX  = δ{P,Nx,𝕣}()   
-    L,α = defα(lagrangian(eleobj,δX,X,U,A, t,γ,dbg))
+    L,α = defaultα(lagrangian(eleobj,δX,X,U,A, t,γ,dbg))
     hasnan(L) && muscadeerror(dbg,"NaN in a lagrangian or its partial derivatives")
     return ∂{P,Nx}(L),α
 end
@@ -426,18 +426,18 @@ function getresidual(::Type{Val{false}},::Type{Val{true}} ,out,key,eleobj::Abstr
     P   = constants(∂0(X),∂0(U),A,t)
     Nx  = length(∂0(X))
     δX  = δ{P,Nx,𝕣}()   
-    L,α = defα(lagrangian(out,key,eleobj,δX,X,U,A, t,γ,dbg))
+    L,α = defaultα(lagrangian(out,key,eleobj,δX,X,U,A, t,γ,dbg))
     hasnan(L) && muscadeerror(dbg,"NaN in a lagrangian or its partial derivatives")
     return ∂{P,Nx}(L),α
 end
 # want lagrangian, residual implemented
 function getlagrangian(::Type{Val{true}} ,::Type{Val{false}},eleobj::AbstractElement,δX,X,U,A, t,γ,dbg) 
-    R,α = defα(residual(eleobj,X,U,A, t,γ,dbg))
+    R,α = defaultα(residual(eleobj,X,U,A, t,γ,dbg))
     hasnan(R) && muscadeerror(dbg,"NaN in a residual or its partial derivatives")
     return δX ∘₁ R , α
 end
 function getlagrangian(::Type{Val{true}} ,::Type{Val{false}},out,key,eleobj::AbstractElement,δX,X,U,A, t,γ,dbg) 
-    R,α = defα(residual(out,key,eleobj,X,U,A, t,γ,dbg))
+    R,α = defaultα(residual(out,key,eleobj,X,U,A, t,γ,dbg))
     hasnan(R) && muscadeerror(dbg,"NaN in a residual or its partial derivatives")
     return δX ∘₁ R , α
 end
@@ -479,10 +479,6 @@ function add_∂!{P}(out::Array,asm,iele,a::SVector{M,∂ℝ{P,N,R}},i1as,i2as) 
         iasm = i1asm+length(i1as)*(i2asm-1)
         iout = asm[iasm,iele]
         if iout≠0
-#            @show :add_∂!
-#            @show length(out),iout # aye, there's the rub
-#            @show length(a),i1a
-#            @show length(a[i1a].dx),i2a
             out[iout]+=a[i1a].dx[i2a]  
         end
     end

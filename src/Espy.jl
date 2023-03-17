@@ -1,7 +1,3 @@
-# manipulation of data-structures representing Julia expressions (::Expr)
-
-# REPRISE
-
 using Printf,MacroTools
 
 ## Generate unique symbol

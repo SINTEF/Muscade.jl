@@ -1,6 +1,6 @@
 
 struct DofCost{Class,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,Tcost,Tcostargs} <: AbstractElement
-    cost     :: Tcost    # Class==:instant cost(X,U,A,t,gargs...), Class==:A cost(A,gargs...) X and U are tuples (derivates of dofs...) 
+    cost     :: Tcost    # Class==:instant cost(X,U,A,t,costargs...), Class==:A cost(A,costargs...) X and U are tuples (derivates of dofs...) 
     costargs :: Tcostargs
 end
 function DofCost(nod::Vector{Node};xinod::NTuple{Nx,𝕫}=(),xfield::NTuple{Nx,Symbol}=(),
@@ -19,13 +19,36 @@ espyable(::Type{<:DofCost}) = (cost=scalar,)
 @espy lagrangian(o::DofCost{:I,Nx,Nu,Na}, δX,X,U,A, t,γ,dbg) where{Nx,Nu,Na} = ☼cost = o.cost(X,U,A,t,o.costargs...)
 @espy lagrangian(o::DofCost{:A,Nx,Nu,Na}, δX,X,U,A, t,γ,dbg) where{Nx,Nu,Na} = ☼cost = o.cost(    A  ,o.costargs...)
 
+using Base.Threads:nthreads,threadid
+buffer_size  = 2^20
+buffer_type  = UInt8
+const buffer = [Vector{buffer_type}(undef,buffer_size) for i=1:nthreads()]
+outputtype(δX,X,U,A,t) = promote_type(eltype.((δX,∂0(X),∂0(U),A))...,typeof(t))
 
-# struct ElementCost{}
-#     el       :: Tel
-#     req      :: Treq 
-#     cost     :: Tcost    # Class==:instant cost(X,U,A,t,gargs...), Class==:A cost(A,gargs...) X and U are tuples (derivates of dofs...) 
-#     costargs :: Tcostargs
-# end
+struct ElementCost{Teleobj,Tkey,Tcost,Tcostargs}
+    eleobj   :: Teleobj
+    key      :: Tkey
+    nkey     :: 𝕫
+    cost     :: Tcost     
+    costargs :: Tcostargs
+end
+function ElementCost(nod::Vector{Node};requested,cost,costargs=(;),ElementType,elementkwargs...)
+    eleobj   = ElementType(nod;elementkwargs...)
+    key,nkey = makekey(requested,espyable(typeof(eleobj)))
+    return ElementCost(eleobj,key,nkey,cost,costargs)
+end
+doflist( ::Type{<:ElementCost{Teleobj}}) where{Teleobj} = doflist(Teleobj)
+espyable(::Type{<:ElementCost{Teleobj}}) where{Teleobj} = (cost=scalar,lagrangian=espyable(Teleobj))
+@espy function lagrangian(o::ElementCost, δX,X,U,A, t,γ,dbg)
+    Tout = outputtype(δX,X,U,A,t)
+    nbit = o.nkey*sizeof(Tout)
+    nbit≤buffer_size || muscadeerror("Buffer overflow, increase 'buffer_size' in BasicElements.jl")
+    out   = reinterpret(outputtype(δX,X,U,A,t),view(buffer[threadid()],1:nbit))
+    L     = ☼lagrangian(out,o.key,o.eleobj, δX,X,U,A, t,γ,(dbg...,via=ElementCost))
+    ☼cost = o.cost(out,o.key,X,U,A,t,o.costargs...) 
+    return L+cost
+end    
+
 #-------------------------------------------------
 """
 `DofCost{Derivative,Class,Field,Tcost} <: AbstractElement`
