@@ -239,7 +239,7 @@ doflist(::Type{<:Constraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afi
 espyable(::Type{<:Constraint})  = (λ=scalar,g=scalar)
 @espy function residual(o::Constraint{:X,Nx}, X,U,A, t,γ,dbg) where{Nx}
     P,gₛ,λₛ     = constants(∂0(X)),o.gₛ,o.λₛ
-    x,☼λ       = ∂0(X)[SVector{Nx}(1:Nx)], ∂0(X)[Nx+1]
+    x,☼λ       = ∂0(X)[SVector{Nx}(1:Nx)], ∂0(X)[Nx+1]   
     x∂         = variate{P,Nx}(x) 
     ☼g,g∂x     = value_∂{P,Nx}(o.g(x∂,t,o.gargs...)) 
     return if o.mode(t)==:equal;   SVector{Nx+1}((       -g∂x*λ)...,-g              ) ,∞

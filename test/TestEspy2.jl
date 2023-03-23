@@ -7,6 +7,7 @@ clean(ex)   = prettify(Muscade.code_clean_function(ex))
 extract(ex) = prettify(Muscade.code_extractor_function(ex,:out,:key,false))
 pretty(ex)  = println(prettify(ex))
 ####
+
 ex1 = @expression function residual(x::R,y) where{R<:Real}
     ngp=2
     r = 0
