@@ -1,3 +1,13 @@
+#REPRISE
+# for loop may not contain ☼ or ♢.  However, the way they are handled now, a line-node is put in a weird place,
+# preventing compilation. Cf. ShowEspy.jl
+
+# for #= c:\Users\philippem\.julia\dev\Muscade\src\Espy.jl:158 =#, i = 1:2    <<<<<<<<<<<<<<<<<<<<<<
+# ...
+# end
+
+
+
 using Printf,MacroTools
 
 # TODO
@@ -6,15 +16,23 @@ using Printf,MacroTools
 # rewrite all extractor code (Ouput.jl, BasicElements.jl, all tests)    
 
 ######################## Helper functions
-newsym(name)     = Symbol(name,"_",string(gensym())[3:end])
 ☼tag(s::Symbol)  = string(s)[1]=='☼' # \sun  
 ☼tag(s)          = false
 ♢tag(s::Symbol)  = string(s)[1]=='♢' # \diamond  
 ♢tag(s)          = false
 ☼tail(s::Symbol) = Symbol(string(s)[4:end])
 tail(s::Symbol)  = Symbol(string(s)[2:end])
-☼untag(s::Symbol)= ☼tag(s) ? ☼tail(s) : s
 code_tuple(e...) = Expr(:tuple,e...)
+
+digits = Set("0123456789")
+function newsym(name) 
+    s = string(name)
+    if s[end]∈digits && s[end-1]∈digits && s[end-2]∈digits && s[end-3]=='_'
+        s = s[1:end-4]
+    end
+    return Symbol(s,"_",string(gensym())[3:end])
+end
+
 
 ######################## Request definition
 
@@ -49,26 +67,42 @@ macro request(ex)
     else;                               error("Not a valid request")
     end
 end
-request_(ex::Symbol) = :($ex=nothing)
-request_(ex        ) = @capture(ex,name_(args__)) ? :( $name=$(code_tuple(request_.(args)...))) : error("Not a valid request")
+request_(ex::Symbol) = quote $ex=nothing end
+request_(ex        ) = @capture(ex,name_(args__)) ? quote $name=$(code_tuple(request_.(args)...)) end : error("Not a valid request")
 
 
 ######################## Generate new function code
 # ✓check,✔Check,∎QED,⋆star,♢diamond,☼sun,☐Box
+spaces = "|  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  "
+function printtrace(trace::𝕫,s::String)
+    if trace < 0;return end
+    println(spaces[1:3trace],s)
+end
 
 ## Clean code
-code_clean_function(ex::Expr  ) = Expr(ex.head,[code_clean_function(a) for a ∈ ex.args]...)
+function code_clean_function(ex::Expr  ) 
+    if @capture(ex,@named(res__,))
+        Expr(:tuple,(:($s=$s) for s∈res)...)
+    else
+        Expr(ex.head,[code_clean_function(a) for a ∈ ex.args]...)
+    end
+end
 code_clean_function(ex::Symbol) = ☼tag(ex) || ♢tag(ex) ? ☼tail(ex) : ex
 code_clean_function(ex        ) = ex
 
 ## Extractor code
 # should such a function itself generate the new "out" variable?
-function code_write_to_out(out,req,var) 
+function code_write_to_out(out,req,var,trace) 
+    printtrace(trace,"code_write_to_out")
     newout = newsym(out)
-    code   = :($newout = haskey($req,$(QuoteNode(var))) ? ($out..., $var=$var) : $out) 
+    code   = quote
+        $newout = haskey($req,$(QuoteNode(var))) ? ($out..., $var=$var) : $out 
+    end 
+    printtrace(trace,"done")
     return code,newout
 end
-function code_call(left,foo,args,out) # left = foo(args)
+function code_call(left,foo,args,req,out,trace=-999999) # left = foo(args)
+    printtrace(trace,"code_call")
     out_new = newsym(out)
     out_foo = newsym(out)
     code   = quote
@@ -76,74 +110,98 @@ function code_call(left,foo,args,out) # left = foo(args)
             $left,$out_foo = $foo($req.$foo,$(args...))  
             $out_new       = ($out...,$foo=$out_foo) 
         else
-            $left         = $foo($(args...))
+            $left          = $foo($(args...))
             $out_new       = $out
         end 
         $left   
     end 
+    printtrace(trace,"done")
     return code,out_new
 end
-function code_doloop(left,foo,igp,ngp,body,out) # foo(args) do var body end
+function code_ntupledoloop(left,igp,ngp,body,req,out,trace=-999999) # foo(args) do var body end
+    printtrace(trace,"code_ntupledoloop")
     gp              = tail(igp)   
     req_gp          = Symbol(req,"_",gp)   
     out_gp          = Symbol(out,"_",gp)
     out_new         = newsym(out)
     gpsym           = QuoteNode(gp)
-    @capture(body[end],(res__,)) || muscadeerror("body of do-loop must end with a Tuple containing the output of the iteration")
     out_gp_new      = out_gp
     for i=1:length(body)-1
-        body[i],out_gp_new = code_recursion(body[i],out_gp,req_gp,trace)
+        body[i],out_gp_new = code_recursion(body[i],out_gp_new,req_gp,trace+1)
     end
-    code            = quote
-        $req_gp = haskey($req,$gpsym) ? $req.$gp : nothing
-        $out_gp = (;)
-        $left   = $foo($(args...)) do $var
-            $(body...)
-            ($(res...),out=$out_gp_new)
-        end
-        $out_new = haskey($req,$gpsym) ? ($out..., $gp=NTuple{$ngp}($left[$igp].out for $igp=1:$ngp)) : $out
-    end    
+    if     @capture(body[end],@named(res__,)) 
+        tup = Expr(:tuple,(:($s=$s) for s∈res)...)  #@named(a,b) → (a=a,b=b)
+        push!(tup.args,:(out=$out_gp_new))           #            → (a=a,b=b,out=out_gp_new)
+        code            = quote
+            $req_gp = haskey($req,$gpsym) ? $req.$gp : nothing
+            $left   = ntuple($ngp) do $igp
+                $out_gp = (;)
+                $(body[1:end-1]...)
+                $tup
+            end
+            $out_new = haskey($req,$gpsym) ? ($out..., $gp=NTuple{$ngp}($left[$igp].out for $igp=1:$ngp)) : $out
+        end    
+    else   muscadeerror("body of ntuple-do-loop must end with a NamedTuple containing the outputs of the iteration (;a=a) or (a=a,b=b)")
+    end
+    printtrace(trace,"done")
     return code,out_new
 end
 
-function code_assigment_rhs(left,right,out,req,trace=false) # work with the rhs of an assigment, return the whole assigment
+function code_assigment_rhs(left,right,out,req,trace=-999999) # work with the rhs of an assigment, return the whole assigment
+    printtrace(trace,"code_assigment_rhs")
+    trace += 1
     if @capture(right,  foo_(args__)   ) &&  ☼tag(foo)           
-        trace && println("left = ☼foo(args)")
-        code,out_new = code_call(left,☼tail(foo),args,out)
+        printtrace(trace,"left = ☼foo(args)")
+        code,out_new = code_call(left,☼tail(foo),args,req,out,trace+1)
+        printtrace(trace,"done")
     elseif @capture(right, mod_.foo_(args__)  )   &&  ☼tag(foo)  
-        trace && println("left = mod.☼foo(args)")
-        code,out_new = code_call(left,:($mod.$(☼tail(foo))),args,out)
-    elseif @capture(right, ntuple(len_) do igp_ body__ end)      
-        trace && println("left = ntuple(ngp) do igp body end")
-        code,out_new = code_doloop(left,foo,igp,ngp,body,out)
+        printtrace(trace,"left = mod.☼foo(args)")
+        code,out_new = code_call(left,quote $mod.$(☼tail(foo)) end,args,req,out,trace+1)
+        printtrace(trace,"done")
+    elseif @capture(right, ntuple(ngp_) do igp_ body__ end)      
+        printtrace(trace,"left = ntuple(ngp) do igp body end")
+        code,out_new = code_ntupledoloop(left,igp,ngp,body,req,out,trace+1)
+        printtrace(trace,"done")
     else
-        trace && println("left = right")
-        code = :($left = $right)
+        printtrace(trace,"left = right")
+        code = quote 
+            $left = $right
+        end
         out_new = out
+        printtrace(trace,"done")
     end
+    trace -= 1
+    # @show out_new
+    printtrace(trace,"done")
     return code,out_new
 end
-function code_recursion(ex::Expr,out,req,trace=false)
-    return if @capture(ex,  left_ = right_   )
-        trace && println("assign")
+function code_recursion(ex::Expr,out,req,trace=-999999)
+    printtrace(trace,"code_recursion")
+    trace += 1
+    if @capture(ex,  left_ = right_   )
+        printtrace(trace,"assign")
+        trace += 1
         if ☼tag(left)                       # ☼a = ...
-            trace && println("☼a = ...")
+            printtrace(trace,"☼a = ...")
             left              = ☼tail(left)   
-            assigment,out_new = code_assigment_rhs(left,right,out,req,trace) 
-            write,out_new     = code_write_to_out(out_new,req,left)                                          
+            assigment,out_new = code_assigment_rhs(left,right,out,req,trace+1) 
+            write,out_new     = code_write_to_out(out_new,req,left,trace+1)                                          
             code              = quote
                 $assigment
                 $write
                 $left
             end
+            # @show out
+            # @show out_new
+            printtrace(trace,"done")
         elseif @capture(left,   (args__,)    )                                               # (a,☼b) = ...
-            trace && println("(a,☼b) = ...")
+            printtrace(trace,"(a,☼b) = ...")
             write  = Vector{Expr}(undef,0)                                          # will contain the macros to insert
-            left   = ☼untag(left)
-            assignement,out_new = code_assigment_rhs(left,right,out,req,trace)
+            left   = code_clean_function(left)
+            assignement,out_new = code_assigment_rhs(left,right,out,req,trace+1)
             for arg ∈ args
                 if ☼tag(arg) 
-                    w,out_new = code_write_to_out(out_new,req,arg)
+                    w,out_new = code_write_to_out(out_new,req,arg,trace+1)
                     push!(write,w)                                        # @espy_record out req b
                 end
             end
@@ -152,46 +210,85 @@ function code_recursion(ex::Expr,out,req,trace=false)
                 $(write...)
                 $left
             end
+            printtrace(trace,"done")
         elseif ♢tag(left)                       # ♢a = ...
-            trace && println("♢a = ...")
+            printtrace(trace,"♢a = ...")
             left               = ☼tail(left) 
             varsym            = QuoteNode(left)   
-            assigment,out_tmp = code_assigment_rhs(left,right,out,req,trace) 
+            assigment,out_tmp = code_assigment_rhs(left,right,out,req,trace+1) 
             out_new           = newsym(out_tmp)                                         
             code              = quote
                 if haskey($req,$varsym)                                       # if haskey(req,:x)
                     $assigment
-                    $out_new  = ($(out...),$left = $left)
+                    $out_new  = ($out...,$left = $left)
+                else
+                    $out_new  = $out
                 end
             end
+            # @show out
+            # @show out_new
+            printtrace(trace,"done")
         else
-            trace && println("a = ...")
-            code,out_new = code_assigment_rhs(left,right,out,req,trace)
+            printtrace(trace,"a = ...")
+            code,out_new = code_assigment_rhs(left,right,out,req,trace+1)
+            printtrace(trace,"done")
         end
-    else
-        trace && println("recursion")
-        code = Expr(ex.head,[code_recursion(a,out,req,trace) for a ∈ ex.args]...)
+        trace -= 1
+        # @show out_new
+        printtrace(trace,"done assign")
+    elseif @capture(ex, return (args__,)) 
+        code = quote
+            return $(args...),$out    
+        end
         out_new = out
+    else
+        printtrace(trace,"Expr recursion")
+        args = ()
+        for a ∈ ex.args
+            codea,out = code_recursion(a,out,req,trace+1)
+            args = (args...,codea)
+        end
+        code = Expr(ex.head,args...)
+        out_new = out
+        printtrace(trace,"done Expr recursion")
     end
+    trace -= 1
+    # @show out_new
+    printtrace(trace,"done code_recursion")
     return code,out_new
 end
-function code_recursion(ex,out,req,trace=false) # to handle line-number nodes, Symbols... etc.
-    trace && println("default")
+function code_recursion(ex,out,req,trace=-999999) # to handle line-number nodes, Symbols... etc.
+    printtrace(trace,"code_recursion (default)")
+    printtrace(trace,"done")
     return ex,out
 end
-function code_espying_function(ex::Expr,out,req,trace=false) # ex must be a function declaration
-    trace && println("function")
-    dict            = splitdef(ex)
-    dict[:args]     = vcat([out,req],dict[:args])
-    a,b = code_recursion(dict[:body],out,req,trace)
-    dict[:body],out = code_recursion(dict[:body],out,req,trace)
-    return combinedef(dict),out
+function code_espying_function(ex::Expr,out,req,trace=-999999) # ex must be a function declaration
+    printtrace(trace,"code_espying_function")
+    if @capture(ex, foo_(args__) = (body__,)) # oneliner functions can not have ☼ or ♢
+        return quote
+            $foo($(args...),req) = $(body...),nothing
+        end
+    elseif @capture(ex, foo_(args__) where T_= (body__,))
+        return quote
+            $foo($(args...),req) where $T = $(body...),nothing
+        end
+    else
+        dict            = splitdef(ex)
+        dict[:body]     = quote
+            $out = (;)
+            $(dict[:body]) 
+        end
+        push!(dict[:args],req)
+        dict[:body],out = code_recursion(dict[:body],out,req,trace+1)
+        printtrace(trace,"done")
+        return combinedef(dict)
+    end
 end        
 
 macro espy(ex)
     esc(quote
         $(code_clean_function(ex))
-        $(code_espying_function(ex,newsym(:out),newsym(:req),false))
+        $(code_espying_function(ex,newsym(:out),newsym(:req)))
     end)
 end
 
@@ -207,14 +304,19 @@ macro espydbg(ex)
     bold = true
     printstyled("@espydbg: ";bold,color=:cyan)
     printstyled("Clean code\n";bold,color=:green)
-    println(prettify(code_clean_function(ex)))
+    clean = code_clean_function(ex)
+    println(prettify(clean))
     printstyled("\n@espydbg: ";bold,color=:cyan)
-    printstyled("Extractor code\n";bold,color=:magenta)
-    println(prettify(code_espying_function(ex,:out,:req,true)))
-    println("\n")
-    esc(quote
-        $(code_clean_function(ex))
-        $(code_espying_function(ex,newsym(:out),newsym(:req),false))
+    printstyled("Espying code\n";bold,color=:yellow)
+#    espying = code_espying_function(ex,:out,:req,0)
+    espying = code_espying_function(ex,:out,:req)
+#    println(prettify(espying)) 
+    println(espying) 
+printstyled("\n@espydbg: ";bold,color=:cyan)
+printstyled("Done\n\n";bold,color=:cyan)
+esc(quote
+        $clean
+        $espying
     end)
 end
 
