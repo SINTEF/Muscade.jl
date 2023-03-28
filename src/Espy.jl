@@ -1,11 +1,3 @@
-#REPRISE
-# for loop may not contain ☼ or ♢.  However, the way they are handled now, a line-node is put in a weird place,
-# preventing compilation. Cf. ShowEspy.jl
-
-# for #= c:\Users\philippem\.julia\dev\Muscade\src\Espy.jl:158 =#, i = 1:2    <<<<<<<<<<<<<<<<<<<<<<
-# ...
-# end
-
 
 
 using Printf,MacroTools
@@ -25,12 +17,14 @@ tail(s::Symbol)  = Symbol(string(s)[2:end])
 code_tuple(e...) = Expr(:tuple,e...)
 
 digits = Set("0123456789")
+cntr = 0
 function newsym(name) 
     s = string(name)
     if s[end]∈digits && s[end-1]∈digits && s[end-2]∈digits && s[end-3]=='_'
         s = s[1:end-4]
     end
-    return Symbol(s,"_",string(gensym())[3:end])
+    global cntr+=1
+    return Symbol(s,"_",@sprintf("%03i",cntr))
 end
 
 
@@ -101,19 +95,19 @@ function code_write_to_out(out,req,var,trace)
     printtrace(trace,"done")
     return code,newout
 end
-function code_call(left,foo,args,req,out,trace=-999999) # left = foo(args)
+function code_call(left,foo,args,req,out,trace=-999999) # left,... = foo(args)
     printtrace(trace,"code_call")
     out_new = newsym(out)
     out_foo = newsym(out)
+    @show left
     code   = quote
         if haskey($req,$(QuoteNode(foo)))
-            $left,$out_foo = $foo($req.$foo,$(args...))  
-            $out_new       = ($out...,$foo=$out_foo) 
+            $(left...),$out_foo = $foo($(args...),$req.$foo,)  
+            $out_new            = ($out...,$foo=$out_foo) 
         else
-            $left          = $foo($(args...))
-            $out_new       = $out
+            $(left...),        = $foo($(args...))
+            $out_new            = $out
         end 
-        $left   
     end 
     printtrace(trace,"done")
     return code,out_new
@@ -134,12 +128,12 @@ function code_ntupledoloop(left,igp,ngp,body,req,out,trace=-999999) # foo(args) 
         push!(tup.args,:(out=$out_gp_new))           #            → (a=a,b=b,out=out_gp_new)
         code            = quote
             $req_gp = haskey($req,$gpsym) ? $req.$gp : nothing
-            $left   = ntuple($ngp) do $igp
+            $(left[1])   = ntuple($ngp) do $igp
                 $out_gp = (;)
                 $(body[1:end-1]...)
                 $tup
             end
-            $out_new = haskey($req,$gpsym) ? ($out..., $gp=NTuple{$ngp}($left[$igp].out for $igp=1:$ngp)) : $out
+            $out_new = haskey($req,$gpsym) ? ($out..., $gp=NTuple{$ngp}($(left[1])[$igp].out for $igp=1:$ngp)) : $out
         end    
     else   muscadeerror("body of ntuple-do-loop must end with a NamedTuple containing the outputs of the iteration (;a=a) or (a=a,b=b)")
     end
@@ -165,7 +159,7 @@ function code_assigment_rhs(left,right,out,req,trace=-999999) # work with the rh
     else
         printtrace(trace,"left = right")
         code = quote 
-            $left = $right
+            $(left...) = $right
         end
         out_new = out
         printtrace(trace,"done")
@@ -178,13 +172,17 @@ end
 function code_recursion(ex::Expr,out,req,trace=-999999)
     printtrace(trace,"code_recursion")
     trace += 1
-    if @capture(ex,  left_ = right_   )
+    if @capture(ex, for i_=it_ body_ end) || # syntaxes which contain an assigment must not recurse the assigment because
+       @capture(ex, [a_ for i_=it_])
+        out_new = out                     # 1) anotation is forbidden in this context
+        code = ex                         # 2) processing an equality introduces a LineNumber, at an illegal place within the syntax
+    elseif @capture(ex,  left_ = right_   )
         printtrace(trace,"assign")
         trace += 1
         if ☼tag(left)                       # ☼a = ...
             printtrace(trace,"☼a = ...")
             left              = ☼tail(left)   
-            assigment,out_new = code_assigment_rhs(left,right,out,req,trace+1) 
+            assigment,out_new = code_assigment_rhs([left],right,out,req,trace+1) 
             write,out_new     = code_write_to_out(out_new,req,left,trace+1)                                          
             code              = quote
                 $assigment
@@ -198,7 +196,8 @@ function code_recursion(ex::Expr,out,req,trace=-999999)
             printtrace(trace,"(a,☼b) = ...")
             write  = Vector{Expr}(undef,0)                                          # will contain the macros to insert
             left   = code_clean_function(left)
-            assignement,out_new = code_assigment_rhs(left,right,out,req,trace+1)
+            @capture(left,   (args__,)    )
+            assignement,out_new = code_assigment_rhs(args,right,out,req,trace+1)
             for arg ∈ args
                 if ☼tag(arg) 
                     w,out_new = code_write_to_out(out_new,req,arg,trace+1)
@@ -215,7 +214,7 @@ function code_recursion(ex::Expr,out,req,trace=-999999)
             printtrace(trace,"♢a = ...")
             left               = ☼tail(left) 
             varsym            = QuoteNode(left)   
-            assigment,out_tmp = code_assigment_rhs(left,right,out,req,trace+1) 
+            assigment,out_tmp = code_assigment_rhs([left],right,out,req,trace+1) 
             out_new           = newsym(out_tmp)                                         
             code              = quote
                 if haskey($req,$varsym)                                       # if haskey(req,:x)
@@ -230,7 +229,7 @@ function code_recursion(ex::Expr,out,req,trace=-999999)
             printtrace(trace,"done")
         else
             printtrace(trace,"a = ...")
-            code,out_new = code_assigment_rhs(left,right,out,req,trace+1)
+            code,out_new = code_assigment_rhs([left],right,out,req,trace+1)
             printtrace(trace,"done")
         end
         trace -= 1
@@ -286,6 +285,7 @@ function code_espying_function(ex::Expr,out,req,trace=-999999) # ex must be a fu
 end        
 
 macro espy(ex)
+    cntr = 0
     esc(quote
         $(code_clean_function(ex))
         $(code_espying_function(ex,newsym(:out),newsym(:req)))
@@ -301,6 +301,7 @@ Generate the same code as [`@espy`](@ref) and print it (for debug purposes).
 See also: [`@espy`](@ref), [`@request`](@ref)
 """
 macro espydbg(ex)
+    cntr = 0
     bold = true
     printstyled("@espydbg: ";bold,color=:cyan)
     printstyled("Clean code\n";bold,color=:green)
@@ -308,15 +309,13 @@ macro espydbg(ex)
     println(prettify(clean))
     printstyled("\n@espydbg: ";bold,color=:cyan)
     printstyled("Espying code\n";bold,color=:yellow)
-#    espying = code_espying_function(ex,:out,:req,0)
     espying = code_espying_function(ex,:out,:req)
-#    println(prettify(espying)) 
-    println(espying) 
-printstyled("\n@espydbg: ";bold,color=:cyan)
-printstyled("Done\n\n";bold,color=:cyan)
-esc(quote
-        $clean
-        $espying
-    end)
+    println(prettify(espying)) 
+    printstyled("\n@espydbg: ";bold,color=:cyan)
+    printstyled("Done\n\n";bold,color=:cyan)
+    esc(quote
+            $clean
+            $espying
+        end)
 end
 

@@ -1,169 +1,227 @@
-module TestEspy
-using Muscade,Test#,StaticArrays
+#module TestEspy
+using Test,StaticArrays,MacroTools
+include("../src/Dialect.jl")
+include("../src/Espy.jl")
+include("../src/Exceptions.jl")
 
-## Test request
-
-struct Element  end
-requestable(el::Element)= (X=(3,2),  gp=forloop(2, (F=(2,2), material=(ε=(2,2),Σ=(2,2)))) )
-el = Element()
-r8 = @request X,gp[].(F,material.(Σ,ε))
-
-ra    = requestable(el)
-
-@testset "requestable" begin
-    @test ra.X == (3,2)
-    @test ra.gp.body == (F = (2, 2), material = (ε = (2, 2), Σ = (2, 2)))
-end
-
-@testset "Makekey" begin
-    @test Muscade.makekey_symbol(2,(2,3)) == ([3 5 7; 4 6 8], 8)
-    @test Muscade.makekey_tuple(2,:((a,b)),(a=(2,3),b=(2,2))) == ((a=[3 5 7; 4 6 8], b=[9 11; 10 12]), 12)
-    @test Muscade.makekey_tuple(2,:((a,b)),(a=(2,3),b=scalar)) == ((a=[3 5 7; 4 6 8], b=9), 9)
-    @test Muscade.makekey_loop(2,:((a,b)),forloop(3,(a=(2,3),b=(2,2)))) == ([(a=[3 5 7; 4 6 8], b=[9 11; 10 12]), (a=[13 15 17; 14 16 18], b=[19 21; 20 22]), (a=[23 25 27; 24 26 28], b=[29 31; 30 32])], 32)
-    @test Muscade.makekey_tuple(2,:((a[].(b,)),),(a=forloop(2,(b=(2,3),)),)) == (( a=[(b=[3 5 7; 4 6 8],), (b=[9 11 13; 10 12 14],)] ,), 14)
-    @test Muscade.makekey_tuple(2,:(a[].b),(a=forloop(2,(b=(2,3),)),)) == ((a=[(b=[3 5 7; 4 6 8],), (b=[9 11 13; 10 12 14],)],), 14)
-    @test makekey(r8,ra) == ((X = [1 4; 2 5; 3 6], gp = [(F = [7 9; 8 10], material = (Σ = [11 13; 12 14], ε = [15 17; 16 18])), (F = [19 21; 20 22], material = (Σ = [23 25; 24 26], ε = [27 29; 28 30]))]), 30)
-end
-
-## annotated code (written by user)
-
-struct El  end
-requestable(el::El)= (gp=forloop(2, (z=scalar,s=scalar, material=(a=scalar,b=scalar))),)
-el = El()
+macro expression(ex) return QuoteNode(ex) end
+pretty(ex)  = println(prettify(ex))
+####
 
 
-@espy function residual(x,y)
+
+exresidual = @macroexpand @espy function residual(x::Vector{R},y) where{R<:Real}
     ngp=2
-    r = 0
-    for igp=1:ngp
+    accum = ntuple(ngp) do igp
         ☼z = x[igp]+y[igp]
-        ☼s,dum  = ☼material(z)
-        r += s
+        ☼s,☼t  = ☼material(z)
+        @named(s) 
     end
-    return r
+    r = sum(i->accum[i].s,ngp)
+    return r,nothing,nothing
 end
-@espy function material(z)
+exmaterial = @macroexpand @espy function material(z)
     ☼a = z+1
     ☼b = a*z
     return b,3.
 end
 
-## Test result extraction
-req       = @request gp[].(s,z,material.(a,b))  # generates an expression, not a variable
-key,nkey  = makekey(req,requestable(el))
-nstep,nel = 2,3
-out       = Array{Float64,3}(undef,nkey,nel,nstep)
-istep,iel = 1,2
-x,y       = [1.,2.],[.5,.2]
-r         = residual(@view(out[:,iel,istep]),key,x,y)
+exlagrangian = @macroexpand @espy lagrangian(o::Vector{R}, δX,X,U,A, t,γ,dbg) where{R} = o.cost(∂n(X,R)[1],t),nothing,nothing
 
-@testset "Espy" begin
-    @test key == (gp=[(s=1, z=2, material=(a=3, b=4)), (s=5, z=6, material=(a=7, b=8))],)
-    @test out[:,iel,istep] ≈ [3.75, 1.5, 2.5, 3.75, 7.04, 2.2, 3.2, 7.04]
-end
-out = Vector{Float64}(undef,5)
-out[[1,2]] .= [1,2]
-out[[3,4]] .= (3,4)
-# out[[5,6]] .= @SVector [5,6] works, but requires StaticArrays in the test environment
-out[[5]]   .= 5
-@testset "Assign to out" begin
-    @test out == [1.,2.,3.,4.,5.]
-end
-
-
-
-#=
-Code for a material model and a finite element
-The following code is part of a model for the elongation
-of a rod hanging from an attachement, under its own weight.
-Parts of the element code that are not relevant to EspyInsideFubction 
-are left out.
-
-The function "force" takes in nodal displacements, and returns nodal forces,
-this being what the finite element solution requires.  But we are interested
-in reporting intermediate results from inisde this function (and the 
-function "material" that it calls).
-=#
-struct Material
-    E   :: Float64 # Young's modulus
-end
-@espy function material(m::Material,ε)
-    ☼σ = m.E*ε
-    return σ
-end
-requestable(m::Material) = (σ=scalar,)
-
-
-struct Rod  
-    L₀  :: Float64  # underformed length
-    A   :: Float64  # cross section area
-    ρg  :: Float64  # density times gravity
-    mat :: Material 
-end
-const ngp = 1 # 1 Gauss quadrature point
-@espy function force(e::Rod,ΔX)
-    ☼w      = e.ρg*e.A*e.L₀
-    ☼R      = [w/2,w/2]
-    for igp = 1:ngp # loop over 1 point, but still a loop
-        ☼ε  = (ΔX[2]-ΔX[1])/e.L₀
-        σ   = ☼material(e.mat,ε)  
-        ☼T  = e.A*σ
-        R   = +[T,-T]
+exbar = @macroexpand @espy function bar(x,y,z)
+    ngp = 4
+    vec = SVector{2}
+    ☼p = 3
+    for i ∈ 1:2
+        j = i^2
+        k = i+j
     end
-    return R
-end
-requestable(e::Rod) = (w=scalar, R=(2,), gp=forloop(ngp, (ε=scalar, T=scalar, material=requestable(e.mat)) ) )
-
-
-#=
-Now we take these elements into use to solve ten elements hanging in a 
-straight vertical line. 
-(We skip the actual solution process, which is not relevant to this demo: 
-the value of ΔX is hard-coded).
-=#
-nel  = 10
-topo = [[i,i+1] for i = 1:nel]
-m    = Material(2.1e11)
-e    = Rod(1.,1e-4,8000*9.81,m)
-ΔX   = [1/2*e.ρg/m.E*((iel*e.L₀)^2-(nel*e.L₀)^2) for iel = 0:nel]  # say we found a solution,
-
-#=
-The analysis has been completed, and ΔX has been stored: with it we
-can compute any intermediate result.
-
-The user defines which results are wanted.
-=# 
-
-request   = @request w,gp[].(ε,material.(σ))
-
-#= 
-The finite element software provides a function
-which includes the following code, and returns
-`key` and `out`
-=#    
-key,nkey  = makekey(request,requestable(e))
-
-out = Matrix{Float64}(undef,nkey,nel)
-for (iel,t) ∈ enumerate(topo)
-    _ = force(@view(out[:,iel]),key, e,ΔX[t])
+    t = ntuple(ngp) do igp
+        a = vec(igp,igp^2)
+        b = vec(1.,1.)
+        ☼c = b*b'
+        ♢square = c^2
+        χ = randn()
+        r = vcat(a,reshape(c,4))
+        @named(χ,r)
+    end
+    χ = ntuple(i->t[i].χ,ngp)
+    r = sum(   i->t[i].r,ngp)
+    return r,χ,nothing
 end
 
-#=
-The user can now access the intermediate results
-=#
-iel = 4
-igp = 1
-σ = out[key.gp[igp].material.σ,iel]
-ε = out[key.gp[igp].ε         ,iel]
+############# @espy outputs
 
-#
-@testset "Results" begin
-    @test request == :((w, (gp[]).(ε, material.(σ))))
-    @test σ ≈ 274680.
-    @test ε ≈ 1.308e-6
-    @test key == (w = 1, gp = [(ε = 2, material = (σ = 3,))])
-    @test out ≈ [7.848     7.848       7.848       7.848     7.848       7.848       7.848       7.848       7.848       7.848;
-                1.86857e-7 5.60571e-7  9.34286e-7  1.308e-6  1.68171e-6  2.05543e-6  2.42914e-6  2.80286e-6  3.17657e-6  3.55029e-6;
-                39240.0    117720.0    196200.0    274680.0  353160.0    431640.0    510120.0    588600.0    667080.0    745560.0]
-end    
+exresidual_ = quote
+    function residual(x::Vector{R}, y) where R <: Real
+        ngp = 2
+        accum = ntuple(ngp) do igp
+                z = x[igp] + y[igp]
+                (s, t) = material(z)
+                (s = s,)
+            end
+        r = sum((i->(accum[i]).s), ngp)
+        return (r, nothing, nothing)
+    end
+    function residual(x::Vector{R}, y, req_002; ) where R <: Real
+        out_001 = (;)
+        ngp = 2
+        req_002_gp = if haskey(req_002, :gp)
+                req_002.gp
+            else
+                nothing
+            end
+        accum = ntuple(ngp) do igp
+                out_001_gp = (;)
+                z = x[igp] + y[igp]
+                out_001_gp_004 = if haskey(req_002_gp, :z)
+                        (out_001_gp..., z = z)
+                    else
+                        out_001_gp
+                    end
+                z
+                if haskey(req_002_gp, :material)
+                    (s, t, out_001_gp_006) = material(z, req_002_gp.material)
+                    out_001_gp_005 = (out_001_gp_004..., material = out_001_gp_006)
+                else
+                    (s, t) = material(z)
+                    out_001_gp_005 = out_001_gp_004
+                end
+                (s, t)
+                (s = s, out = out_001_gp_005)
+            end
+        out_003 = if haskey(req_002, :gp)
+                (out_001..., gp = NTuple{ngp}(((accum[igp]).out for igp = 1:ngp)))
+            else
+                out_001
+            end
+        r = sum((i->(accum[i]).s), ngp)
+        return (r, nothing, nothing, out_003)
+    end
 end
+exmaterial_ = quote
+    function material(z)
+        a = z + 1
+        b = a * z
+        return (b, 3.0)
+    end
+    function material(z, req_008; )
+        out_007 = (;)
+        a = z + 1
+        out_009 = if haskey(req_008, :a)
+                (out_007..., a = a)
+            else
+                out_007
+            end
+        a
+        b = a * z
+        out_010 = if haskey(req_008, :b)
+                (out_009..., b = b)
+            else
+                out_009
+            end
+        b
+        return (b, 3.0, out_010)
+    end
+end
+
+exlagrangian_ = quote
+    (lagrangian(o::Vector{R}, δX, X, U, A, t, γ, dbg) where R) = (o.cost((∂n(X, R))[1], t), nothing, nothing)
+    (lagrangian(o::Vector{R}, δX, X, U, A, t, γ, dbg, req) where R) = (o.cost((∂n(X, R))[1], t), nothing, nothing, nothing)
+end
+
+exbar_ = quote
+    function bar(x, y, z)
+        ngp = 4
+        vec = SVector{2}
+        p = 3
+        for i = 1:2
+            j = i ^ 2
+            k = i + j
+        end
+        t = ntuple(ngp) do igp
+                a = vec(igp, igp ^ 2)
+                b = vec(1.0, 1.0)
+                c = b * b'
+                square = c ^ 2
+                χ = randn()
+                r = vcat(a, reshape(c, 4))
+                (χ = χ, r = r)
+            end
+        χ = ntuple((i->(t[i]).χ), ngp)
+        r = sum((i->(t[i]).r), ngp)
+        return (r, χ, nothing)
+    end
+    function bar(x, y, z, req_014; )
+        out_013 = (;)
+        ngp = 4
+        vec = SVector{2}
+        p = 3
+        out_015 = if haskey(req_014, :p)
+                (out_013..., p = p)
+            else
+                out_013
+            end
+        p
+        for i = 1:2
+            j = i ^ 2
+            k = i + j
+        end
+        req_014_gp = if haskey(req_014, :gp)
+                req_014.gp
+            else
+                nothing
+            end
+        t = ntuple(ngp) do igp
+                out_015_gp = (;)
+                a = vec(igp, igp ^ 2)
+                b = vec(1.0, 1.0)
+                c = b * b'
+                out_015_gp_017 = if haskey(req_014_gp, :c)
+                        (out_015_gp..., c = c)
+                    else
+                        out_015_gp
+                    end
+                c
+                if haskey(req_014_gp, :square)
+                    square = c ^ 2
+                    out_015_gp_018 = (out_015_gp_017..., square = square)
+                else
+                    out_015_gp_018 = out_015_gp_017
+                end
+                χ = randn()
+                r = vcat(a, reshape(c, 4))
+                (χ = χ, r = r, out = out_015_gp_018)
+            end
+        out_016 = if haskey(req_014, :gp)
+                (out_015..., gp = NTuple{ngp}(((t[igp]).out for igp = 1:ngp)))
+            else
+                out_015
+            end
+        χ = ntuple((i->(t[i]).χ), ngp)
+        r = sum((i->(t[i]).r), ngp)
+        return (r, χ, nothing, out_016)
+    end
+end
+
+@testset "Transformed codes" begin
+    @test prettify(exresidual)   == prettify(exresidual_)
+    @test prettify(exmaterial)   == prettify(exmaterial_)
+    @test prettify(exlagrangian) == prettify(exlagrangian_)
+    @test prettify(exbar)        == prettify(exbar_)
+end
+
+eval(exresidual)
+eval(exmaterial)
+eval(exlagrangian)
+eval(exbar)
+
+req         = @request gp(z,s,t,material(a,b))
+r,χ,SFB,out = residual([1.,2.],[3.,4.],req)
+
+@testset "Get output" begin
+    @test out == (gp = ((z = 4.0, material = (a = 5.0, b = 20.0)), (z = 6.0, material = (a = 7.0, b = 42.0))),)
+end
+
+
+#end # Module
