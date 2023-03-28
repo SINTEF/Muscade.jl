@@ -16,15 +16,16 @@ using Printf,MacroTools
 tail(s::Symbol)  = Symbol(string(s)[2:end])
 code_tuple(e...) = Expr(:tuple,e...)
 
-digits = Set("0123456789")
-cntr = 0
+const digits = Set("0123456789")
 function newsym(name) 
     s = string(name)
     if s[end]∈digits && s[end-1]∈digits && s[end-2]∈digits && s[end-3]=='_'
+        i = parse(Int64,s[end-2:end])
         s = s[1:end-4]
+        return Symbol(s,"_",@sprintf("%03i",i+1))
+    else
+        return Symbol(s,"_001")
     end
-    global cntr+=1
-    return Symbol(s,"_",@sprintf("%03i",cntr))
 end
 
 
@@ -77,11 +78,13 @@ end
 function code_clean_function(ex::Expr  ) 
     if @capture(ex,@named(res__,))
         Expr(:tuple,(:($s=$s) for s∈res)...)
+    elseif @capture(ex,left_=right_) && ♢tag(left)
+        :(nothing) 
     else
         Expr(ex.head,[code_clean_function(a) for a ∈ ex.args]...)
     end
 end
-code_clean_function(ex::Symbol) = ☼tag(ex) || ♢tag(ex) ? ☼tail(ex) : ex
+code_clean_function(ex::Symbol) = ☼tag(ex) ? ☼tail(ex) : ex
 code_clean_function(ex        ) = ex
 
 ## Extractor code
