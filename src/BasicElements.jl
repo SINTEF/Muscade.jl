@@ -1,4 +1,6 @@
 
+const noχ =nothing
+const noFB=nothing
 struct DofCost{Class,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,Tcost,Tcostargs} <: AbstractElement
     cost     :: Tcost    # Class==:instant cost(X,U,A,t,costargs...), Class==:A cost(A,costargs...) X and U are tuples (derivates of dofs...) 
     costargs :: Tcostargs
@@ -16,37 +18,30 @@ doflist(::Type{<:DofCost{Class,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield}}
     class=(ntuple(i->:X,Nx)...,ntuple(i->:U,Nu)...,ntuple(i->:A,Na)...), 
     field=(xfield...          ,ufield...          ,afield...          ) )
 espyable(::Type{<:DofCost}) = (cost=scalar,)    
-@espy lagrangian(o::DofCost{:I,Nx,Nu,Na}, δX,X,U,A, t,γ,dbg) where{Nx,Nu,Na} = ☼cost = o.cost(X,U,A,t,o.costargs...)
-@espy lagrangian(o::DofCost{:A,Nx,Nu,Na}, δX,X,U,A, t,γ,dbg) where{Nx,Nu,Na} = ☼cost = o.cost(    A  ,o.costargs...)
+@espy function lagrangian(o::DofCost{:I,Nx,Nu,Na},δX,X,U,A,t,χ,χcv,SP,dbg) where{Nx,Nu,Na} 
+    ☼cost = o.cost(X,U,A,t,o.costargs...)
+    return cost,noχ,noFB
+end
+@espy function lagrangian(o::DofCost{:A,Nx,Nu,Na},δX,X,U,A,t,χ,χcv,SP,dbg) where{Nx,Nu,Na} 
+    ☼cost = o.cost(    A  ,o.costargs...)
+    return cost,noχ,noFB
+end
 
-using Base.Threads:nthreads,threadid
-buffer_size  = 2^20
-buffer_type  = UInt8
-const buffer = [Vector{buffer_type}(undef,buffer_size) for i=1:nthreads()]
-outputtype(δX,X,U,A,t) = promote_type(eltype.((δX,∂0(X),∂0(U),A))...,typeof(t))
-
-struct ElementCost{Teleobj,Tkey,Tcost,Tcostargs}
+struct ElementCost{Teleobj,Treq,Tcost,Tcostargs}
     eleobj   :: Teleobj
-    key      :: Tkey
-    nkey     :: 𝕫
+    req      :: Treq
     cost     :: Tcost     
     costargs :: Tcostargs
 end
-function ElementCost(nod::Vector{Node};requested,cost,costargs=(;),ElementType,elementkwargs...)
+function ElementCost(nod::Vector{Node};req,cost,costargs=(;),ElementType,elementkwargs...)
     eleobj   = ElementType(nod;elementkwargs...)
-    key,nkey = makekey(requested,espyable(typeof(eleobj)))
-    return ElementCost(eleobj,key,nkey,cost,costargs)
+    return ElementCost(eleobj,req,cost,costargs)
 end
 doflist( ::Type{<:ElementCost{Teleobj}}) where{Teleobj} = doflist(Teleobj)
-espyable(::Type{<:ElementCost{Teleobj}}) where{Teleobj} = (cost=scalar,lagrangian=espyable(Teleobj))
-@espy function lagrangian(o::ElementCost, δX,X,U,A, t,γ,dbg)
-    Tout = outputtype(δX,X,U,A,t)
-    nbit = o.nkey*sizeof(Tout)
-    nbit≤buffer_size || muscadeerror("Buffer overflow, increase 'buffer_size' in BasicElements.jl")
-    out   = reinterpret(outputtype(δX,X,U,A,t),view(buffer[threadid()],1:nbit))
-    L     = ☼lagrangian(out,o.key,o.eleobj, δX,X,U,A, t,γ,(dbg...,via=ElementCost))
-    ☼cost = o.cost(out,o.key,X,U,A,t,o.costargs...) 
-    return L+cost
+@espy function lagrangian(o::ElementCost, δX,X,U,A,t,χ,χcv,SP,dbg)
+    L,χ,FB,eleres  = ☼lagrangian(o.eleobj, δX,X,U,A, t,χ,χcv,SP,(dbg...,via=ElementCost),o.req)
+    ☼cost          = o.cost(eleres,X,U,A,t,o.costargs...) 
+    return L+cost,χ,FB
 end    
 
 #-------------------------------------------------
@@ -118,9 +113,9 @@ struct DofLoad{Tvalue,Field} <: AbstractElement
 end
 DofLoad(nod::Vector{Node};field::Symbol,value::Tvalue) where{Tvalue<:Function} = DofLoad{Tvalue,field}(value)
 doflist(::Type{DofLoad{Tvalue,Field}}) where{Tvalue,Field}=(inod=(1,), class=(:X,), field=(Field,))
-@espy function residual(o::DofLoad, X,U,A, t,γ,dbg) 
+@espy function residual(o::DofLoad, X,U,A,t,χ,χcv,SP,dbg) 
     ☼F = o.value(t)
-    return SVector{1}(-F)
+    return SVector{1}(-F),noχ,noFB
 end
 espyable(::Type{<:DofLoad}) = (F=scalar,)
 
@@ -237,30 +232,33 @@ doflist(::Type{<:Constraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afi
     class=(ntuple(i->:X,Nx)...,ntuple(i->:U,Nu)...,ntuple(i->:A,Na)...,λclass    ), 
     field=(xfield...          ,ufield...          ,afield...          ,λfield)) 
 espyable(::Type{<:Constraint})  = (λ=scalar,g=scalar)
-@espy function residual(o::Constraint{:X,Nx}, X,U,A, t,γ,dbg) where{Nx}
+@espy function residual(o::Constraint{:X,Nx}, X,U,A,t,χ,χcv,SP,dbg) where{Nx}
+    γ          = default{:γ}(SP,0.)
     P,gₛ,λₛ     = constants(∂0(X)),o.gₛ,o.λₛ
     x,☼λ       = ∂0(X)[SVector{Nx}(1:Nx)], ∂0(X)[Nx+1]   
     x∂         = variate{P,Nx}(x) 
     ☼g,g∂x     = value_∂{P,Nx}(o.g(x∂,t,o.gargs...)) 
-    return if o.mode(t)==:equal;   SVector{Nx+1}((       -g∂x*λ)...,-g              ) ,∞
-    elseif    o.mode(t)==:inequal; SVector{Nx+1}((       -g∂x*λ)...,-gₛ*S(λ/λₛ,g/gₛ,γ)) ,decided(λ/λₛ,g/gₛ,γ)
-    elseif    o.mode(t)==:off;     SVector{Nx+1}(ntuple(i->0,Nx)...,-gₛ/λₛ*λ         ) ,∞
+    return if  o.mode(t)==:equal;   SVector{Nx+1}((       -g∂x*λ)...,-g              ) ,noχ,(α=∞                  ,)
+    elseif     o.mode(t)==:inequal; SVector{Nx+1}((       -g∂x*λ)...,-gₛ*S(λ/λₛ,g/gₛ,γ)) ,noχ,(α=decided(λ/λₛ,g/gₛ,γ),)
+    elseif     o.mode(t)==:off;     SVector{Nx+1}(ntuple(i->0,Nx)...,-gₛ/λₛ*λ         ) ,noχ,(α=∞                  ,)
     end
 end
-@espy function lagrangian(o::Constraint{:U,Nx,Nu,Na}, δX,X,U,A, t,γ,dbg) where{Nx,Nu,Na}
-    x,u,a,☼λ = ∂0(X),∂0(U)[SVector{Nu}(1:Nu)],A,∂0(U)[Nu+1]
-    ☼g       = o.g(x,u,a,t,o.gargs...)
-    return if  o.mode(t)==:equal;   -g*λ                  ,∞
-    elseif     o.mode(t)==:inequal; -KKT(λ,g,γ,o.λₛ,o.gₛ)  ,decided(λ/o.λₛ,g/o.gₛ,γ)
-    elseif     o.mode(t)==:off;     -o.gₛ/(2o.λₛ)*λ^2      ,∞
+@espy function lagrangian(o::Constraint{:U,Nx,Nu,Na}, δX,X,U,A,t,χ,χcv,SP,dbg) where{Nx,Nu,Na}
+    γ          = default{:γ}(SP,0.)
+    x,u,a,☼λ   = ∂0(X),∂0(U)[SVector{Nu}(1:Nu)],A,∂0(U)[Nu+1]
+    ☼g         = o.g(x,u,a,t,o.gargs...)
+    return if  o.mode(t)==:equal;   -g*λ                  ,noχ,(α=∞                      ,)
+    elseif     o.mode(t)==:inequal; -KKT(λ,g,γ,o.λₛ,o.gₛ)  ,noχ,(α=decided(λ/o.λₛ,g/o.gₛ,γ),)
+    elseif     o.mode(t)==:off;     -o.gₛ/(2o.λₛ)*λ^2      ,noχ,(α=∞                      ,)  
     end
 end
-@espy function lagrangian(o::Constraint{:A,Nx,Nu,Na}, δX,X,U,A, t,γ,dbg) where{Nx,Nu,Na}
-    a,☼λ     = A[SVector{Na}(1:Na)],A[    Na+1] 
-    ☼g       = o.g(a,o.gargs...)
-    return if  o.mode(t)==:equal;   -g*λ                  ,∞
-    elseif     o.mode(t)==:inequal; -KKT(λ,g,γ,o.λₛ,o.gₛ)  ,decided(λ/o.λₛ,g/o.gₛ,γ)
-    elseif     o.mode(t)==:off;     -o.gₛ/(2o.λₛ)*λ^2      ,∞ 
+@espy function lagrangian(o::Constraint{:A,Nx,Nu,Na}, δX,X,U,A,t,χ,χcv,SP,dbg) where{Nx,Nu,Na}
+    γ          = default{:γ}(SP,0.)
+    a,☼λ       = A[SVector{Na}(1:Na)],A[    Na+1] 
+    ☼g         = o.g(a,o.gargs...)
+    return if  o.mode(t)==:equal;   -g*λ                  ,noχ,(α=∞                      ,) 
+    elseif     o.mode(t)==:inequal; -KKT(λ,g,γ,o.λₛ,o.gₛ)  ,noχ,(α=decided(λ/o.λₛ,g/o.gₛ,γ),)
+    elseif     o.mode(t)==:off;     -o.gₛ/(2o.λₛ)*λ^2      ,noχ,(α=∞                      ,)   
     end
 end
 
@@ -334,6 +332,9 @@ struct QuickFix{Nx,inod,field,Tres} <: AbstractElement
 end
 QuickFix(nod::Vector{Node};inod::NTuple{Nx,𝕫},field::NTuple{Nx,Symbol},res::Function) where{Nx} = QuickFix{Nx,inod,field,typeof(res)}(res)
 doflist(::Type{<:QuickFix{Nx,inod,field}}) where{Nx,inod,field} = (inod =inod,class=ntuple(i->:X,Nx),field=(field)) 
-@espy residual(o::QuickFix, X,U,A, t,γ,dbg) = ☼R = o.res(∂0(X),∂1(X),∂2(X),t)
+@espy function residual(o::QuickFix, X,U,A, t,χ,χcv,SP,dbg) 
+    ☼R = o.res(∂0(X),∂1(X),∂2(X),t)
+    return R,noχ,noFB
+end
 
 #-------------------------------------------------

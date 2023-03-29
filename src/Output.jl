@@ -1,14 +1,14 @@
 ## Nodal results
 function getdof(state::State;kwargs...)  
-    out,dofID = getdof([state];kwargs...)
-    return reshape(out,size(out)[1:2]),dofID
+    dofres,dofID = getdof([state];kwargs...)
+    return reshape(dofres,size(dofres)[1:2]),dofID 
 end
 function getdof(state::Vector{S};class::Symbol=:X,field::Symbol,nodID::Vector{NodID}=NodID[],iders::ℤ1=[0])where {S<:State}
     class ∈ [:Λ,:X,:U,:A] || muscadeerror(sprintf("Unknown dof class %s",class))
     c     = class==:Λ      ? :X                                   : class
     dofID = nodID==NodID[] ? getdofID(state[begin].model,c,field) : getdofID(state[begin].model,c,field,nodID)
     iders = class∈[:Λ,:A]  ? [0]                                  : iders
-    out   = Array{𝕣,3}(undef,length(dofID),length(iders),length(state)) # out[inod,ider+1]
+    dofres   = Array{𝕣,3}(undef,length(dofID),length(iders),length(state)) # dofres[inod,ider+1]
     for istate ∈ eachindex(state)
         for ider∈iders
             s = if class==:Λ; state[istate].Λ 
@@ -17,69 +17,53 @@ function getdof(state::Vector{S};class::Symbol=:X,field::Symbol,nodID::Vector{No
             elseif class==:A; state[istate].A    
             end
             for (idof,d) ∈ enumerate(dofID)
-                out[idof,ider+1,istate] = s[d.idof] 
+                dofres[idof,ider+1,istate] = s[d.idof] 
             end
         end 
     end
-    return out,dofID
+    return dofres,dofID
 end
 
 # Elemental results
-# function extractkernel!(out,key,eleobj::Vector{E},eleID,dis::EletypDisassembler,state::State,dbg) where{E}# typestable kernel
-#     for (iele,ei) ∈ enumerate(eleID)
-#         index = dis.index[ei.iele]
-#         Λ     = state.Λ[index.X]                 
-#         X     = Tuple(x[index.X] for x∈state.X)
-#         U     = Tuple(u[index.U] for u∈state.U)
-#         A     = state.A[index.A]
-#         _     = getlagrangian(implemented(eleobj[ei.iele])...,view(out,:,iele),key,eleobj[ei.iele],Λ,X,U,A,state.time,state.γ,(dbg...,iele=ei.iele))
-#     end
-# end
-function extractkernel!(nkey,key,iele::AbstractVector{𝕫},eleobj::Vector{E},dis::EletypDisassembler,state::Vector{S},dbg) where{E,S<:State}# typestable kernel
-    nstep,nele          = length(state),length(iele)
-    out                 = Array{𝕣,3}(undef,nkey,nele,nstep)
-    for (istep,s) ∈ enumerate(state)
-        for i ∈ iele
-            index = dis.index[i]
-            Λ     = s.Λ[index.X]                 
-            X     = Tuple(x[index.X] for x∈s.X)
-            U     = Tuple(u[index.U] for u∈s.U)
-            A     = s.A[index.A]
-            _     = getlagrangian(implemented(eleobj[i])...,view(out,:,i,istep),key,eleobj[i],Λ,X,U,A,s.time,s.γ,(dbg...,istep=istep,iele=i))
-        end
-    end
-    return out
+
+function extractkernel!(iele::AbstractVector{𝕫},eleobj::Vector{E},dis::EletypDisassembler,state::Vector{S},dbg,req) where{E,S<:State}# typestable kernel
+    return [begin
+        index = dis.index[i]
+        Λ     = s.Λ[index.X]                 
+        X     = Tuple(x[index.X] for x∈s.X)
+        U     = Tuple(u[index.U] for u∈s.U)
+        A     = s.A[index.A]
+        L,χn,FB,e = getlagrangian(implemented(eleobj[i])...,eleobj[i],Λ,X,U,A,s.time,nothing,nothing,s.SP,(dbg...,istep=istep,iele=i),req)
+        e
+    end for i∈iele, (istep,s)∈enumerate(state)]
 end
 function getresult(state::Vector{S},req,eleID::Vector{EleID})where {S<:State}
     # Single element type, some elements within the types, multisteps
-    # out[ikey,iele,istep]
+    # eleres[iele,istep].gp[3].σ
     ieletyp             = eleID[begin].ieletyp
     all(e.ieletyp== ieletyp for e∈eleID) || muscadeerror("All elements must be of the same element type")
     eleobj              = state[begin].model.eleobj[ieletyp]
     dis                 = state[begin].dis.dis[ieletyp]
-    key,nkey            = makekey(req,espyable(eltype(eleobj)))
     iele                = [e.iele for e∈eleID]
-    return extractkernel!(nkey,key,iele,eleobj,dis,state,(func=:getresult,ieletyp=ieletyp)), key
+    return extractkernel!(iele,eleobj,dis,state,(func=:getresult,ieletyp=ieletyp),req)
 end
 
 function getresult(state::Vector{S},req,::Type{E}) where{S<:State,E<:AbstractElement}
     # Single element type, all elements within the types, multisteps
-    # out[ikey,iele,istep]
+    # eleres[iele,istep].gp[3].σ
     ieletyp = findfirst(E.==eletyp(state[begin].model))
     isnothing(ieletyp) && muscadeerror("This type of element is not in the model. See 'eletyp(model)'")
     eleobj              = state[begin].model.eleobj[ieletyp]
     dis                 = state[begin].dis.dis[ieletyp]
-    key,nkey            = makekey(req,espyable(E))
     iele                = eachindex(eleobj)
-    return extractkernel!(nkey,key,iele,eleobj,dis,state,(func=:getresult,eletyp=E)), key
+    return extractkernel!(iele,eleobj,dis,state,(func=:getresult,eletyp=E),req)
 end    
-function getresult(state::State,req,args...)  
-    # Single element type, some or all elements within the types, single step
-    # out[ikey,iele]
-    out,key = getresult([state],req,args...)
-    return reshape(out,size(out)[1:2]),key
-end
+# Single element type, some or all elements within the types, single step
+# eleres[iele].gp[3].σ
+getresult(state::State,req,args...) = flat(getresult([state],req,args...)) 
 
+
+############## describe state to the user
 function describeX(state::State)
     model = state.model
     nX    = getndof(model,:X)

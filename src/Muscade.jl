@@ -6,7 +6,7 @@ module Muscade
     export ℝ1,ℤ1,𝕣1,𝕫1,𝔹1,𝕓1
     export ℝ2,ℤ2,𝕣2,𝕫2,𝔹2,𝕓2
     export ℝ11,ℤ11,𝕣11,𝕫11,𝔹11,𝕓11
-    export toggle,@once
+    export toggle,@once,default
 
     include("Adiff.jl")
     export  ∂ℝ #\partial \bbR
@@ -28,7 +28,7 @@ module Muscade
 
     include("ElementAPI.jl")
     export AbstractElement
-    export lagrangian,residual,espyable,draw,request2draw
+    export lagrangian,residual,espyable
     export ∂0,∂1,∂2
     export doflist
 
@@ -59,7 +59,8 @@ module Muscade
     export getdof,getresult,findlastassigned
 
     include("SelfDraw.jl")
-    export draw
+    export draw,request2draw
+
     
     module Unit
         include("Unit.jl")

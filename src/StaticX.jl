@@ -27,14 +27,14 @@ function add!(out1::AssemblyStaticX,out2::AssemblyStaticX)
     add!(out1.Lλx,out2.Lλx)
     out1.α = min(out1.α,out2.α)
 end
-function addin!(out::AssemblyStaticX,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxdir,<:SVector{Nx}},U,A, t,γ,dbg) where{E,Nxdir,Nx}
+function addin!(out::AssemblyStaticX,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxdir,<:SVector{Nx}},U,A,t,SP,dbg) where{E,Nxdir,Nx}
     if Nx==0; return end # don't waste time on Acost elements...  
     ΔX         = δ{1,Nx,𝕣}(scale.X)                 # NB: precedence==1, input must not be Adiff 
-    Lλ,α       = getresidual(implemented(eleobj)...,eleobj,(∂0(X)+ΔX,),U,A, t,γ,dbg)
+    Lλ,χ,FB    = getresidual(implemented(eleobj)...,eleobj,(∂0(X)+ΔX,),U,A,t,nothing,nothing,SP,dbg)
     Lλ         = Lλ .* scale.X
     add_value!(out.Lλ ,asm[1],iele,Lλ)
     add_∂!{1}( out.Lλx,asm[2],iele,Lλ)
-    out.α      = min(out.α,α)
+    out.α      = min(out.α,default{:α}(FB,∞))
 end
 
 ###---------------------
@@ -57,7 +57,7 @@ function solve(::Type{StaticX},pstate,verbose,dbg;time::AbstractVector{𝕣},
         γ            = γ0
         for iiter    = 1:maxiter
             citer   += 1
-            assemble!(out,asm,dis,model,s, γ,(dbg...,solver=:StaticX,step=step,iiter=iiter))
+            assemble!(out,asm,dis,model,s, (γ=γ;),(dbg...,solver=:StaticX,step=step,iiter=iiter))
             try if step==1 && iiter==1
                 facLλx = lu(firstelement(out).Lλx) 
             else
@@ -68,10 +68,10 @@ function solve(::Type{StaticX},pstate,verbose,dbg;time::AbstractVector{𝕣},
             decrement!(s,0,Δx,dofgr)
             γ       *= γfac1*exp(-(firstelement(out).α/γfac2)^2)
             verbose && saveiter && @printf("        iteration %3d, γ= %7.1e\n",iiter,γ)
-            saveiter && (state[iiter]=State(s.Λ,deepcopy(s.X),s.U,s.A,s.time,γ,model,dis))
+            saveiter && (state[iiter]=State(s.Λ,deepcopy(s.X),s.U,s.A,s.time,(γ=γ;),model,dis))
             if Δx²≤cΔx² && Lλ²≤cLλ² 
                 verbose && @printf "    step %3d converged in %3d iterations. |Δx|=%7.1e |Lλ|=%7.1e\n" step iiter √(Δx²) √(Lλ²)
-                ~saveiter && (state[step]=State(s.Λ,deepcopy(s.X),s.U,s.A,s.time,γ,model,dis))
+                ~saveiter && (state[step]=State(s.Λ,deepcopy(s.X),s.U,s.A,s.time,(γ=γ;),model,dis))
                 break#out of the iiter loop
             end
             iiter==maxiter && muscadeerror(@sprintf("no convergence in step %3d after %3d iterations |Δx|=%g / %g, |Lλ|=%g / %g",step,iiter,√(Δx²),maxΔx,√(Lλ²)^2,maxresidual))

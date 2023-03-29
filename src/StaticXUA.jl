@@ -38,7 +38,7 @@ function add!(out1::AssemblyStaticΛXU_A,out2::AssemblyStaticΛXU_A)
     out1.α = min(out1.α,out2.α)
 end
 function addin!(out::AssemblyStaticΛXU_A,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxdir,<:SVector{Nx}},
-                                                               U::NTuple{Nudir,<:SVector{Nu}},A::SVector{Na}, t,γ,dbg) where{E,Nxdir,Nx,Nudir,Nu,Na} # TODO make Nx,Nu,Na types
+                                                               U::NTuple{Nudir,<:SVector{Nu}},A::SVector{Na}, t,SP,dbg) where{E,Nxdir,Nx,Nudir,Nu,Na} # TODO make Nx,Nu,Na types
     Ny              = 2Nx+Nu                           # Y=[Λ;X;U]   
     Nz              = 2Nx+Nu+Na                        # Z = [Y;A]=[Λ;X;U;A]       
     scaleZ          = cat(scale.Λ,scale.X,scale.U,scale.A,dims=1)
@@ -46,14 +46,14 @@ function addin!(out::AssemblyStaticΛXU_A,asm,iele,scale,eleobj::E,Λ,X::NTuple{
     iλ,ix,iu,ia     = gradientpartition(Nx,Nx,Nu,Na) # index into element vectors ΔZ and Lz
     iy              = 1:Ny  
     ΔΛ,ΔX,ΔU,ΔA     = view(ΔZ,iλ),view(ΔZ,ix),view(ΔZ,iu),view(ΔZ,ia) # TODO Static?
-    L,α             = getlagrangian(implemented(eleobj)...,eleobj, Λ+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A+ΔA, t,γ,dbg)
+    L,χn,FB         = getlagrangian(implemented(eleobj)...,eleobj, Λ+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A+ΔA,t,nothing,nothing,SP,dbg)
     ∇L              = ∂{2,Nz}(L)
     add_value!(out.Ly ,asm[1],iele,∇L,iy   )
     add_value!(out.La ,asm[2],iele,∇L,ia   )
     add_∂!{1}( out.Lyy,asm[3],iele,∇L,iy,iy)
     add_∂!{1}( out.Lya,asm[4],iele,∇L,iy,ia)
     add_∂!{1}( out.Laa,asm[5],iele,∇L,ia,ia)
-    out.α           = min(out.α,α)
+    out.α           = min(out.α,default{:α}(FB,∞))
 end
 
 #------------------------------------
@@ -84,18 +84,18 @@ function add!(out1::AssemblyStaticΛXU,out2::AssemblyStaticΛXU)
     out1.α = min(out1.α,out2.α)
 end
 function addin!(out::AssemblyStaticΛXU,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxdir,<:SVector{Nx}},
-                                                             U::NTuple{Nudir,<:SVector{Nu}},A, t,γ,dbg) where{E,Nxdir,Nx,Nudir,Nu}
+                                                             U::NTuple{Nudir,<:SVector{Nu}},A, t,SP,dbg) where{E,Nxdir,Nx,Nudir,Nu}
     Ny              = 2Nx+Nu                           # Y=[Λ;X;U]  TODO compile time? 
     if Ny==0; return end # don't waste time on Acost elements...    
     scaleY          = cat(scale.Λ,scale.X,scale.U,dims=1) # TODO Vector, not SVector!
     ΔY              = variate{2,Ny}(δ{1,Ny,𝕣}(scaleY),scaleY)                 
     iλ,ix,iu,_      = gradientpartition(Nx,Nx,Nu,0) # index into element vectors ΔY and Ly
     ΔΛ,ΔX,ΔU        = view(ΔY,iλ),view(ΔY,ix),view(ΔY,iu)
-    L,α             = getlagrangian(implemented(eleobj)...,eleobj, Λ+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A, t,γ,dbg)
+    L,χn,FB         = getlagrangian(implemented(eleobj)...,eleobj, Λ+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A, t,nothing,nothing,SP,dbg)
     ∇L              = ∂{2,Ny}(L)
     add_value!(out.Ly ,asm[1],iele,∇L)
     add_∂!{1}( out.Lyy,asm[2],iele,∇L)
-    out.α          = min(out.α,α)
+    out.α           = min(out.α,default{:α}(FB,∞))
 end
 
 #------------------------------------
@@ -127,7 +127,7 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{S
         for step     ∈ eachindex(state)
             for iYiter = 1:maxYiter
                 cYiter+=1
-                assemble!(out1,asm1,dis,model,state[step], γ,(dbg...,solver=:StaticXUA,step=step,iYiter=iYiter))
+                assemble!(out1,asm1,dis,model,state[step], (γ=γ;),(dbg...,solver=:StaticXUA,step=step,iYiter=iYiter))
                 try if iAiter==1 && step==1 && iYiter==1
                     facLyys = lu(out1.Lyy) 
                 else
@@ -142,7 +142,7 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{S
                 end
                 iYiter==maxYiter && muscadeerror(@sprintf("no Y-convergence after %3d Y-iterations. |ΔY|=%7.1e |Ly|=%7.1e\n",iYiter,√(Δy²s),√(Ly²s)))
             end
-            assemble!(out2,asm2,dis,model,state[step], γ,(dbg...,solver=:StaticXUA,step=step,iAiter=iAiter))
+            assemble!(out2,asm2,dis,model,state[step], (γ=γ;),(dbg...,solver=:StaticXUA,step=step,iAiter=iAiter))
             try if iAiter==1 && step==1
                 facLyy = lu(out2.Lyy) 
             else

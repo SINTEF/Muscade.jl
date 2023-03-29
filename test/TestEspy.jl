@@ -211,6 +211,13 @@ end
     @test prettify(exbar)        == prettify(exbar_)
 end
 
+r1 = @request (a,b,c)
+r2 = @request (a,b,c(x,y))
+@testset "Request" begin
+    @test r1 == (a = nothing, b = nothing, c = nothing)
+    @test r2 == (a = nothing, b = nothing, c = (x = nothing, y = nothing))
+end
+
 eval(exresidual)
 eval(exmaterial)
 eval(exlagrangian)

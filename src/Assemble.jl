@@ -89,18 +89,18 @@ end
 
 ######## state and initstate
 # at each step, contains the complete, unscaled state of the system
-struct State{Nxder,Nuder}
+struct State{Nxder,Nuder,TSP}
     Λ     :: 𝕣1
     X     :: NTuple{Nxder,𝕣1}
     U     :: NTuple{Nuder,𝕣1}
     A     :: 𝕣1
     time  :: 𝕣
-    γ     :: 𝕣
+    SP    :: TSP
     model :: Model
     dis   :: Disassembler
 end
 # a constructor that provides an initial state
-State(model::Model,dis;time=-∞) = State(zeros(getndof(model,:X)),(zeros(getndof(model,:X)),),(zeros(getndof(model,:U)),),zeros(getndof(model,:A)),time,0.,model,dis)
+State(model::Model,dis;time=-∞) = State(zeros(getndof(model,:X)),(zeros(getndof(model,:X)),),(zeros(getndof(model,:U)),),zeros(getndof(model,:A)),time,nothing,model,dis)
 function State{nXder,nUder}(s::State) where{nXder,nUder}
     X = ntuple(i->copy(∂n(s.X,i)),nXder)
     U = ntuple(i->copy(∂n(s.U,i)),nUder)
@@ -303,14 +303,14 @@ using Base.Threads
 
 # sequential
 
-function assemble!(out::Assembly,asm,dis,model,state,γ,dbg) 
+function assemble!(out::Assembly,asm,dis,model,state,SP,dbg) 
     zero!(out)
     for ieletyp = 1:lastindex(model.eleobj)
         eleobj  = model.eleobj[ieletyp]
-        assemble_!(out,view(asm,:,ieletyp),dis.dis[ieletyp], eleobj,state,γ,(dbg...,ieletyp=ieletyp))
+        assemble_!(out,view(asm,:,ieletyp),dis.dis[ieletyp], eleobj,state,SP,(dbg...,ieletyp=ieletyp))
     end
 end
-function assemble_!(out::Assembly,asm,dis,eleobj,state::State{Nxder,Nuder},γ,dbg) where{Nxder,Nuder}
+function assemble_!(out::Assembly,asm,dis,eleobj,state::State{Nxder,Nuder},SP,dbg) where{Nxder,Nuder}
     scale     = dis.scale
     for iele  = 1:lastindex(eleobj)
         index = dis.index[iele]
@@ -318,7 +318,7 @@ function assemble_!(out::Assembly,asm,dis,eleobj,state::State{Nxder,Nuder},γ,db
         Xe    = NTuple{Nxder}(x[index.X] for x∈state.X)
         Ue    = NTuple{Nuder}(u[index.U] for u∈state.U)
         Ae    = state.A[index.A]
-        addin!(out,asm,iele,scale,eleobj[iele],Λe,Xe,Ue,Ae, state.time,γ,(dbg...,iele=iele))
+        addin!(out,asm,iele,scale,eleobj[iele],Λe,Xe,Ue,Ae, state.time,SP,(dbg...,iele=iele))
     end
 end
 
@@ -338,20 +338,20 @@ function add!(a::SparseMatrixCSC,b::SparseMatrixCSC) # assumes identical sparsit
     end
 end
 
-function assemble!(out::AbstractVector{A},asm,dis,model,state,γ,dbg) where{A<:Assembly}
+function assemble!(out::AbstractVector{A},asm,dis,model,state,SP,dbg) where{A<:Assembly}
     for i = 1:nthreads() 
         zero!(out[i])
     end
     for ieletyp = 1:lastindex(model.eleobj)
         eleobj  = model.eleobj[ieletyp]
-        assemble_!(out,view(asm,:,ieletyp),dis.dis[ieletyp], eleobj,state,γ,(dbg...,ieletyp=ieletyp))
+        assemble_!(out,view(asm,:,ieletyp),dis.dis[ieletyp], eleobj,state,SP,(dbg...,ieletyp=ieletyp))
     end
     for i = 2:nthreads() 
         add!(out[1],out[i])
     end
 end
 
-function assemble_!(out::AbstractVector{A},asm,dis,eleobj,state::State{Nxder,Nuder},γ,dbg) where{Nxder,Nuder,A<:Assembly}
+function assemble_!(out::AbstractVector{A},asm,dis,eleobj,state::State{Nxder,Nuder},SP,dbg) where{Nxder,Nuder,A<:Assembly}
     scale     = dis.scale
     @threads for iele  = 1:lastindex(eleobj)
         index = dis.index[iele]
@@ -359,7 +359,7 @@ function assemble_!(out::AbstractVector{A},asm,dis,eleobj,state::State{Nxder,Nud
         Xe    = NTuple{Nxder}(x[index.X] for x∈state.X)
         Ue    = NTuple{Nuder}(u[index.U] for u∈state.U)
         Ae    = state.A[index.A]
-        addin!(out[threadid()],asm,iele,scale,eleobj[iele],Λe,Xe,Ue,Ae, state.time,γ,(dbg...,iele=iele))
+        addin!(out[threadid()],asm,iele,scale,eleobj[iele],Λe,Xe,Ue,Ae, state.time,SP,(dbg...,iele=iele))
     end
 end
 
@@ -369,77 +369,42 @@ end
 # assemble! calls MySolver/addin!, which calls getresidual or getlagrangian
 
 ####### Lagrangian from residual and residual from Lagrangian
-
+const True,False  = Val{true},Val{false}
 @generated function implemented(eleobj) 
-    r = hasmethod(residual  ,(eleobj,   NTuple,NTuple,𝕣1,𝕣,𝕣,NamedTuple))
-    l = hasmethod(lagrangian,(eleobj,𝕣1,NTuple,NTuple,𝕣1,𝕣,𝕣,NamedTuple))
+#                                    δX,X,     U,     A, t,χ,  χcv,     SP,       dbg    
+    r = hasmethod(residual  ,(eleobj,   NTuple,NTuple,𝕣1,𝕣,Any,Function,NamedTuple,NamedTuple))
+    l = hasmethod(lagrangian,(eleobj,𝕣1,NTuple,NTuple,𝕣1,𝕣,Any,Function,NamedTuple,NamedTuple))
     return :(Val{$r},Val{$l})
 end
 
-# if residual or lagrange outputs just one vector or number, this element does not implementinequality constraints, so append α=0.
-@inline defaultα(x::Union{Number,AbstractVector})               = x,∞
-@inline defaultα(x::Tuple)                                      = x
-
-# Nothing implemented: error
-getresidual(          ::Type{<:Val}     ,::Type{<:Val}     ,out,key,eleobj::AbstractElement,X,U,A, t,γ,dbg) = 
-            muscadeerror(dbg,@sprintf("No method 'Muscade.lagrangian(out,key,eleobj,δX,X,U,A, t,γ,dbg)' or 'Muscade.residual(out,key,eleobj,X,U,A, t,γ,dbg)' for elements of type '%s'",typeof(eleobj)))
-getresidual(          ::Type{<:Val}     ,::Type{<:Val}             ,eleobj::AbstractElement,X,U,A, t,γ,dbg) = 
-            muscadeerror(dbg,@sprintf("No method 'Muscade.lagrangian(eleobj,δX,X,U,A, t,γ,dbg)' or 'Muscade.residual(eleobj,X,U,A, t,γ,dbg)' for elements of type '%s'",typeof(eleobj)))
-getlagrangian(        ::Type{<:Val}     ,::Type{<:Val}     ,out,key,eleobj::AbstractElement,X,U,A, t,γ,dbg) = 
-            muscadeerror(dbg,@sprintf("No method 'Muscade.lagrangian(out,key,eleobj,δX,X,U,A, t,γ,dbg)' or 'Muscade.residual(out,key,eleobj,X,U,A, t,γ,dbg)' for elements of type '%s'",typeof(eleobj)))
-getlagrangian(        ::Type{<:Val}     ,::Type{<:Val}             ,eleobj::AbstractElement,X,U,A, t,γ,dbg) = 
-            muscadeerror(dbg,@sprintf("No method 'Muscade.lagrangian(eleobj,δX,X,U,A, t,γ,dbg)' or 'Muscade.residual(eleobj,X,U,A, t,γ,dbg)' for elements of type '%s'",typeof(eleobj)))
-
-# want residual, residual implemented
-function getresidual(          ::Type{Val{true}} ,::Type{<:Val}        ,eleobj::AbstractElement,X,U,A, t,γ,dbg)
-    R,α = defaultα(residual(        eleobj,X,U,A, t,γ,dbg))
-    hasnan(R) && muscadeerror(dbg,"NaN in a residual or its partial derivatives")
-    return R,α
+function checkresidual(args...)
+    res... = residual(args...)
+    hasnan(res[1]) && muscadeerror(dbg,"NaN in a residual or its partial derivatives")
+    return res...
 end
-function getresidual(          ::Type{Val{true}} ,::Type{<:Val},out,key,eleobj::AbstractElement,X,U,A, t,γ,dbg)
-    R,α = defaultα(residual(out,key,eleobj,out,key,X,U,A, t,γ,dbg))
-    hasnan(R) && muscadeerror(dbg,"NaN in a residual or its partial derivatives")
-    return R,α
-end
-# want lagrangian, lagrangian implemented
-function getlagrangian(        ::Type{<:Val}     ,::Type{Val{true}}        ,eleobj::AbstractElement,Λ,X,U,A, t,γ,dbg) 
-    L,α = defaultα(lagrangian(        eleobj,Λ,X,U,A, t,γ,dbg))
-    hasnan(L) && muscadeerror(dbg,"NaN in a lagrangian or its partial derivatives")
-    return L,α
-end
-function getlagrangian(        ::Type{<:Val}     ,::Type{Val{true}},out,key,eleobj::AbstractElement,Λ,X,U,A, t,γ,dbg) 
-    L,α = defaultα(lagrangian(out,key,eleobj,Λ,X,U,A, t,γ,dbg))
-    hasnan(L) && muscadeerror(dbg,"NaN in a lagrangian or its partial derivatives")
-    return L,α
+function checklagrangian(args...)
+    res... = lagrangian(args...)
+    hasnan(res[1]) && muscadeerror(dbg,"NaN in a lagrangian or its partial derivatives")
+    return res...
 end
 
+#               has residual  has lagrangian
+getresidual(  ::Type{False},::Type{False},args...) = muscadeerror(dbg,@sprintf("Element %s must have method 'Muscade.lagrangian' or/and 'Muscade.residual'",typeof(eleobj)))
+getlagrangian(::Type{False},::Type{False},args...) = muscadeerror(dbg,@sprintf("Element %s must have method 'Muscade.lagrangian' or/and 'Muscade.residual'",typeof(eleobj)))
+getresidual(  ::Type{True },::Type{<:Val},args...) = checkresidual(  args...)
+getlagrangian(::Type{<:Val},::Type{True },args...) = checklagrangian(args...)    
 # want residual, lagrangian implemented
-function getresidual(  ::Type{Val{false}},::Type{Val{true}} ,eleobj::AbstractElement, X,U,A, t,γ,dbg)  
+function getresidual(::Type{False},::Type{True} ,eleobj::AbstractElement,X,U,A,t,χ,χcv,SP,dbg,req...)  
     P   = constants(∂0(X),∂0(U),A,t)
     Nx  = length(∂0(X))
-    δX  = δ{P,Nx,𝕣}()   
-    L,α = defaultα(lagrangian(eleobj,δX,X,U,A, t,γ,dbg))
-    hasnan(L) && muscadeerror(dbg,"NaN in a lagrangian or its partial derivatives")
-    return ∂{P,Nx}(L),α
-end
-function getresidual(::Type{Val{false}},::Type{Val{true}} ,out,key,eleobj::AbstractElement,X,U,A, t,γ,dbg)  
-    P   = constants(∂0(X),∂0(U),A,t)
-    Nx  = length(∂0(X))
-    δX  = δ{P,Nx,𝕣}()   
-    L,α = defaultα(lagrangian(out,key,eleobj,δX,X,U,A, t,γ,dbg))
-    hasnan(L) && muscadeerror(dbg,"NaN in a lagrangian or its partial derivatives")
-    return ∂{P,Nx}(L),α
+    Λ   = δ{P,Nx,𝕣}()   
+    L,χn,FB,eleres... = checklagrangian(eleobj,Λ,X,U,A,t,χ,χcv,SP,dbg,req...)    
+    return ∂{P,Nx}(L),χn,FB,eleres...
 end
 # want lagrangian, residual implemented
-function getlagrangian(::Type{Val{true}} ,::Type{Val{false}},eleobj::AbstractElement,δX,X,U,A, t,γ,dbg) 
-    R,α = defaultα(residual(eleobj,X,U,A, t,γ,dbg))
-    hasnan(R) && muscadeerror(dbg,"NaN in a residual or its partial derivatives")
-    return δX ∘₁ R , α
-end
-function getlagrangian(::Type{Val{true}} ,::Type{Val{false}},out,key,eleobj::AbstractElement,δX,X,U,A, t,γ,dbg) 
-    R,α = defaultα(residual(out,key,eleobj,X,U,A, t,γ,dbg))
-    hasnan(R) && muscadeerror(dbg,"NaN in a residual or its partial derivatives")
-    return δX ∘₁ R , α
+function getlagrangian(::Type{True} ,::Type{False},eleobj::AbstractElement,Λ,X,U,A,t,χ,χcv,SP,dbg,req...) 
+    R,χn,FB,eleres... = chekcresidual(  eleobj,  X,U,A,t,χ,χcv,SP,dbg,req...)
+    return Λ ∘₁ R ,χn,FB,eleres...
 end
 
 

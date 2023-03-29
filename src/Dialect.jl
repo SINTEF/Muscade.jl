@@ -61,19 +61,19 @@ getval(::Val{v}) where{v} = v
 ## Array handling
 flat(a)                                = reshape(a,length(a))
 # Take slice i from the d'th dimension of array a
-@generated function Base.selectdim(a,::Val{d},i) where{d}
-    precols = ()
-    pstcols = ()
-    for i = 1:d-1
-        precols = (precols...,:)
-    end
-    for i = 1:ndims(a)-d
-        pstcols = (pstcols...,:)
-    end
-    return quote
-        return view(a,$(precols...),i,$(pstcols...))
-    end
-end
+# @generated function Base.selectdim(a,::Val{d},i) where{d}
+#     precols = ()
+#     pstcols = ()
+#     for i = 1:d-1
+#         precols = (precols...,:)
+#     end
+#     for i = 1:ndims(a)-d
+#         pstcols = (pstcols...,:)
+#     end
+#     return quote
+#         return view(a,$(precols...),i,$(pstcols...))
+#     end
+# end
 # flatten a vector of vectors of identical size, but lead a matrix as-is
 consolidate(a) = a
 consolidate(a::AbstractVector{E}) where{E<:AbstractVector{T}} where{T} = reduce(hcat,a)
@@ -92,39 +92,39 @@ function uniques(v::AbstractVector{T}) where{T}
 end
 
 ## Rear: indexing into the last index of an array
-@generated function rearview(a,i)
-    colons = ()
-    for i = 1:ndims(a)-1
-        colons = (colons...,:)
-    end
-    return quote
-        return view(a,$(colons...),i)
-    end
-end
-@generated function rearget(a,i)
-    colons = ()
-    for i = 1:ndims(a)-1
-        colons = (colons...,:)
-    end
-    return quote
-        return a[$(colons...),i]
-    end
-end
-rearalloc(siz::NTuple{N, Any},el::E) where{E,N} = Array{E,N}(undef,siz)
-@generated function rearalloc(siz::NTuple{Nsiz, Any},el::AbstractArray{E,Nel}) where{Nsiz,Nel,E}
-    N = Nel+Nsiz
-    return quote
-        return Array{E,$N}(undef,(size(el)...,siz...))
-    end
-end
-function rearset!(a::Array{E,Na},i::ℤ,b::Array{E,Nb}) where{E,Na,Nb}
-    rearview(a,i)[:] = b
-    return nothing
-end
-function rearset!(a::Vector{E},i::ℤ,b::E) where{E}
-    rearview(a,i)[]  = b
-    return nothing
-end
+# @generated function rearview(a,i)
+#     colons = ()
+#     for i = 1:ndims(a)-1
+#         colons = (colons...,:)
+#     end
+#     return quote
+#         return view(a,$(colons...),i)
+#     end
+# end
+# @generated function rearget(a,i)
+#     colons = ()
+#     for i = 1:ndims(a)-1
+#         colons = (colons...,:)
+#     end
+#     return quote
+#         return a[$(colons...),i]
+#     end
+# end
+# rearalloc(siz::NTuple{N, Any},el::E) where{E,N} = Array{E,N}(undef,siz)
+# @generated function rearalloc(siz::NTuple{Nsiz, Any},el::AbstractArray{E,Nel}) where{Nsiz,Nel,E}
+#     N = Nel+Nsiz
+#     return quote
+#         return Array{E,$N}(undef,(size(el)...,siz...))
+#     end
+# end
+# function rearset!(a::Array{E,Na},i::ℤ,b::Array{E,Nb}) where{E,Na,Nb}
+#     rearview(a,i)[:] = b
+#     return nothing
+# end
+# function rearset!(a::Vector{E},i::ℤ,b::E) where{E}
+#     rearview(a,i)[]  = b
+#     return nothing
+# end
 
 function showtime(t)
     return if t<1e-6
@@ -170,4 +170,8 @@ macro once(ex)
     end
 end
 
+# get a field from a NamedTuple - or a default otherwise (which by default is nothing)
+struct default{S} end
+default{S}(t::T,d=nothing) where{S,T<:NamedTuple} = hasfield(T,S) ? getfield(t,S) : d
+default{S}(t::T,d=nothing) where{S,T            } =                                 d
 
