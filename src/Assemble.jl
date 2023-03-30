@@ -89,13 +89,13 @@ end
 
 ######## state and initstate
 # at each step, contains the complete, unscaled state of the system
-mutable struct State{Nxder,Nuder}
+mutable struct State{Nxder,Nuder,TSP}
     Λ     :: 𝕣1
     X     :: NTuple{Nxder,𝕣1}
     U     :: NTuple{Nuder,𝕣1}
     A     :: 𝕣1
     time  :: 𝕣
-    SP    :: Any # solver parameter
+    SP    :: TSP # solver parameter
     model :: Model
     dis   :: Disassembler
 end
@@ -376,13 +376,13 @@ const True,False  = Val{true},Val{false}
     return :(Val{$r},Val{$l})
 end
 
-function checkresidual(args...)
-    res = residual(args...)
+function checkresidual(eleobj::AbstractElement,args...)
+    res = residual(eleobj,args...)
     hasnan(res[1]) && muscadeerror(dbg,"NaN in a residual or its partial derivatives")
     return res
 end
-function checklagrangian(args...)
-    res = lagrangian(args...)
+function checklagrangian(eleobj::AbstractElement,args...)
+    res = lagrangian(eleobj,args...)
     hasnan(res[1]) && muscadeerror(dbg,"NaN in a lagrangian or its partial derivatives")
     return res
 end
@@ -390,8 +390,8 @@ end
 #               has residual  has lagrangian
 getresidual(  ::Type{False},::Type{False},args...) = muscadeerror(dbg,@sprintf("Element %s must have method 'Muscade.lagrangian' or/and 'Muscade.residual'",typeof(eleobj)))
 getlagrangian(::Type{False},::Type{False},args...) = muscadeerror(dbg,@sprintf("Element %s must have method 'Muscade.lagrangian' or/and 'Muscade.residual'",typeof(eleobj)))
-getresidual(  ::Type{True },::Type{<:Val},args...) = checkresidual(  args...)
-getlagrangian(::Type{<:Val},::Type{True },args...) = checklagrangian(args...)    
+getresidual(  ::Type{True },::Type{<:Val},eleobj::AbstractElement,args...) = checkresidual(  eleobj,args...)
+getlagrangian(::Type{<:Val},::Type{True },eleobj::AbstractElement,args...) = checklagrangian(eleobj,args...)    
 # want residual, lagrangian implemented
 function getresidual(::Type{False},::Type{True} ,eleobj::AbstractElement,X,U,A,t,χ,χcv,SP,dbg,req...)  
     P   = constants(∂0(X),∂0(U),A,t)

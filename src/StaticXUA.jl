@@ -101,14 +101,15 @@ end
 #------------------------------------
 
 struct StaticXUA end
-getTstate(::Type{StaticXUA}) = State{1,1} #  nXder,nUder
-function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{State{1,1}},
+getTstate(::Type{StaticXUA}) = State{1,1,typeof((γ=0.,))} #  nXder,nUder
+function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<:State},
     maxAiter::ℤ=50,maxYiter::ℤ=0,maxΔy::ℝ=1e-5,maxLy::ℝ=∞,maxΔa::ℝ=1e-5,maxLa::ℝ=∞,γ0::𝕣=1.,γfac1::𝕣=.5,γfac2::𝕣=100.)
 
     model,dis          = initialstate[begin].model,initialstate[begin].dis
     out1,asm1,Ydofgr   = prepare(AssemblyStaticΛXU  ,model,dis)
     out2,asm2,Adofgr,_ = prepare(AssemblyStaticΛXU_A,model,dis)
-    state              = allocate(pstate,[(getTstate(StaticXUA))(i) for i ∈ initialstate]) 
+    Tstate             = getTstate(StaticX)
+    state              = allocate(pstate,[Tstate(i.Λ,deepcopy(i.X),deepcopy(i.U),deepcopy(i.A),i.time,(γ=γ0,),i.model,i.dis) for i ∈ initialstate]) 
     cΔy²,cLy²,cΔa²,cLa²= maxΔy^2,maxLy^2,maxΔa^2,maxLa^2
     nA,nStep           = getndof(model,:A),length(state)
     La                 = Vector{𝕣 }(undef,nA   )
@@ -116,9 +117,6 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{S
     Δy                 = Vector{𝕣1}(undef,nStep)
     y∂a                = Vector{𝕣2}(undef,nStep)
     Δy²,Ly²            = Vector{𝕣 }(undef,nStep),Vector{𝕣}(undef,nStep)
-    for s ∈ state
-        s.SP = (γ=γ0,)
-    end
     cAiter,cYiter      = 0,0
     local facLyy, facLyys
     for iAiter          = 1:maxAiter
