@@ -89,25 +89,23 @@ end
 
 ######## state and initstate
 # at each step, contains the complete, unscaled state of the system
-struct State{Nxder,Nuder,TSP}
+mutable struct State{Nxder,Nuder}
     Λ     :: 𝕣1
     X     :: NTuple{Nxder,𝕣1}
     U     :: NTuple{Nuder,𝕣1}
     A     :: 𝕣1
     time  :: 𝕣
-    SP    :: TSP # solver parameter
+    SP    :: Any # solver parameter
     model :: Model
     dis   :: Disassembler
 end
 # a constructor that provides an initial state
 State(model::Model,dis;time=-∞) = State(zeros(getndof(model,:X)),(zeros(getndof(model,:X)),),(zeros(getndof(model,:U)),),zeros(getndof(model,:A)),time,nothing,model,dis)
-function State{nXder,nUder,TSP}(s::State) where{nXder,nUder,TSP}
+function State{nXder,nUder}(s::State) where{nXder,nUder}
     X = ntuple(i->copy(∂n(s.X,i)),nXder)
     U = ntuple(i->copy(∂n(s.U,i)),nUder)
-    State{nXder,nUder,TSP}(copy(s.Λ),X,U,copy(s.A),s.time,s.SP,s.model,s.dis)
+    State{nXder,nUder}(copy(s.Λ),X,U,copy(s.A),s.time,s.SP,s.model,s.dis)
 end 
-settime(s::State,time) = State(s.Λ,s.X,s.U,s.A,  time,s.SP,s.model,s.dis)  
-setSP(  s::State,SP  ) = State(s.Λ,s.X,s.U,s.A,s.time,  SP,s.model,s.dis)  
 
 #### DofGroup
 
@@ -308,10 +306,10 @@ function assemble!(out::Assembly,asm,dis,model,state,dbg)
     zero!(out)
     for ieletyp = 1:lastindex(model.eleobj)
         eleobj  = model.eleobj[ieletyp]
-        assemble_!(out,view(asm,:,ieletyp),dis.dis[ieletyp], eleobj,state,(dbg...,ieletyp=ieletyp))
+        assemble_!(out,view(asm,:,ieletyp),dis.dis[ieletyp],eleobj,state,state.SP,(dbg...,ieletyp=ieletyp))
     end
 end
-function assemble_!(out::Assembly,asm,dis,eleobj,state::State{Nxder,Nuder},dbg) where{Nxder,Nuder}
+function assemble_!(out::Assembly,asm,dis,eleobj,state::State{Nxder,Nuder},SP,dbg) where{Nxder,Nuder}
     scale     = dis.scale
     for iele  = 1:lastindex(eleobj)
         index = dis.index[iele]
@@ -319,7 +317,7 @@ function assemble_!(out::Assembly,asm,dis,eleobj,state::State{Nxder,Nuder},dbg) 
         Xe    = NTuple{Nxder}(x[index.X] for x∈state.X)
         Ue    = NTuple{Nuder}(u[index.U] for u∈state.U)
         Ae    = state.A[index.A]
-        addin!(out,asm,iele,scale,eleobj[iele],Λe,Xe,Ue,Ae, state.time,state.SP,(dbg...,iele=iele))
+        addin!(out,asm,iele,scale,eleobj[iele],Λe,Xe,Ue,Ae, state.time,SP,(dbg...,iele=iele))
     end
 end
 
@@ -339,13 +337,13 @@ function add!(a::SparseMatrixCSC,b::SparseMatrixCSC) # assumes identical sparsit
     end
 end
 
-function assemble!(out::AbstractVector{A},asm,dis,model,state,SP,dbg) where{A<:Assembly}
+function assemble!(out::AbstractVector{A},asm,dis,model,state,dbg) where{A<:Assembly}
     for i = 1:nthreads() 
         zero!(out[i])
     end
     for ieletyp = 1:lastindex(model.eleobj)
         eleobj  = model.eleobj[ieletyp]
-        assemble_!(out,view(asm,:,ieletyp),dis.dis[ieletyp], eleobj,state,SP,(dbg...,ieletyp=ieletyp))
+        assemble_!(out,view(asm,:,ieletyp),dis.dis[ieletyp], eleobj,state,state.SP,(dbg...,ieletyp=ieletyp))
     end
     for i = 2:nthreads() 
         add!(out[1],out[i])

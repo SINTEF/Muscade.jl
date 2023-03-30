@@ -40,7 +40,7 @@ end
 ###---------------------
 struct StaticX end
 #                                  nXder,nUder
-getTstate(::Type{StaticX}) = State{1,1,typeof((γ=0.,))}
+getTstate(::Type{StaticX}) = State{1,1}
 function solve(::Type{StaticX},pstate,verbose,dbg;time::AbstractVector{𝕣},
                     initialstate::State,
                     maxiter::ℤ=50,maxΔx::ℝ=1e-5,maxresidual::ℝ=∞,
@@ -50,12 +50,13 @@ function solve(::Type{StaticX},pstate,verbose,dbg;time::AbstractVector{𝕣},
     out,asm,dofgr    = prepare(AssemblyStaticX,model,dis)
     citer            = 0
     cΔx²,cLλ²        = maxΔx^2,maxresidual^2
-    s                = setSP(initialstate,(γ=γ0,))
+    #s                = setSP(initialstate,(γ=γ0,))
+    s                = deepcopy(initialstate)
     state            = allocate(pstate,Vector{getTstate(StaticX)}(undef,saveiter ? maxiter : length(time))) # state is not a return argument of this function.  Hence it is not lost in case of exception
     local facLλx 
     for (step,t)     ∈ enumerate(time)
-        s            = settime(s,t)
-        s            = setSP(s,(γ=γ0,))
+        s.time       = t
+        s.SP         = (γ=γ0,)
         for iiter    = 1:maxiter
             citer   += 1
             assemble!(out,asm,dis,model,s,(dbg...,solver=:StaticX,step=step,iiter=iiter))
@@ -76,7 +77,7 @@ function solve(::Type{StaticX},pstate,verbose,dbg;time::AbstractVector{𝕣},
             end
             iiter==maxiter && muscadeerror(@sprintf("no convergence in step %3d after %3d iterations |Δx|=%g / %g, |Lλ|=%g / %g",step,iiter,√(Δx²),maxΔx,√(Lλ²)^2,maxresidual))
             Δγ       = γfac1*exp(-(firstelement(out).α/γfac2)^2)
-            s        = setSP(s,(γ=s.SP.γ*Δγ,))
+            s.SP     = (γ=s.SP.γ*Δγ,)
         end
     end
     verbose && @printf "\n    nel=%d, ndof=%d, nstep=%d, niter=%d, niter/nstep=%5.2f\n" getnele(model) getndof(dofgr) length(time) citer citer/length(time)
