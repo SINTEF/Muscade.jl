@@ -49,7 +49,7 @@ p = SVector(   2.82040487827,  -24.86027164695,   153.69500343165, -729.52107422
                 687.83550335374)
 
 
-@espy function Muscade.lagrangian(o::AnchorLine, δX,X,U,A, t,χ,χcv,SP,dbg)
+@espydbg function Muscade.lagrangian(o::AnchorLine, δX,X,U,A,t,χ,χcv,SP,dbg)
     xₘtop,Δxₘtop,xₘbot,L,buoyancy = o.xₘtop,o.Δxₘtop,o.xₘbot,o.L*(1+A[1]),o.buoyancy*(1+A[2])      # a for anchor, t for TDP, f for fairlead
     x        = ∂0(X)  
     ☼Xtop    = SVector(x[1],x[2],0.) + xₘtop

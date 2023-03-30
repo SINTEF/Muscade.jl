@@ -39,7 +39,8 @@ end
 
 ###---------------------
 struct StaticX end
-getnder(::Type{StaticX}) = (nXder=1,nUder=1)
+#                                  nXder,nUder
+getTstate(::Type{StaticX}) = State{1,1,typeof((γ=0.,))}
 function solve(::Type{StaticX},pstate,verbose,dbg;time::AbstractVector{𝕣},
                     initialstate::State,
                     maxiter::ℤ=50,maxΔx::ℝ=1e-5,maxresidual::ℝ=∞,
@@ -49,32 +50,33 @@ function solve(::Type{StaticX},pstate,verbose,dbg;time::AbstractVector{𝕣},
     out,asm,dofgr    = prepare(AssemblyStaticX,model,dis)
     citer            = 0
     cΔx²,cLλ²        = maxΔx^2,maxresidual^2
-    state            = allocate(pstate,Vector{State{1,1}}(undef,saveiter ? maxiter : length(time))) # state is not a return argument so that data is not lost in case of exception
-    s                = State{1,1}(initialstate) 
+    s                = setSP(initialstate,(γ=γ0,))
+    state            = allocate(pstate,Vector{getTstate(StaticX)}(undef,saveiter ? maxiter : length(time))) # state is not a return argument of this function.  Hence it is not lost in case of exception
     local facLλx 
     for (step,t)     ∈ enumerate(time)
         s            = settime(s,t)
-        γ            = γ0
+        s            = setSP(s,(γ=γ0,))
         for iiter    = 1:maxiter
             citer   += 1
-            assemble!(out,asm,dis,model,s, (γ=γ;),(dbg...,solver=:StaticX,step=step,iiter=iiter))
+            assemble!(out,asm,dis,model,s,(dbg...,solver=:StaticX,step=step,iiter=iiter))
             try if step==1 && iiter==1
                 facLλx = lu(firstelement(out).Lλx) 
             else
                 lu!(facLλx,firstelement(out).Lλx) 
             end catch; muscadeerror(@sprintf("matrix factorization failed at step=%i, iiter=%i",step,iiter)) end
-            Δx  = facLλx\firstelement(out).Lλ
+            Δx       = facLλx\firstelement(out).Lλ
             Δx²,Lλ²  = sum(Δx.^2),sum(firstelement(out).Lλ.^2)
             decrement!(s,0,Δx,dofgr)
-            γ       *= γfac1*exp(-(firstelement(out).α/γfac2)^2)
             verbose && saveiter && @printf("        iteration %3d, γ= %7.1e\n",iiter,γ)
-            saveiter && (state[iiter]=State(s.Λ,deepcopy(s.X),s.U,s.A,s.time,(γ=γ;),model,dis))
+            saveiter && (state[iiter]=State(s.Λ,deepcopy(s.X),s.U,s.A,s.time,s.SP,model,dis))
             if Δx²≤cΔx² && Lλ²≤cLλ² 
                 verbose && @printf "    step %3d converged in %3d iterations. |Δx|=%7.1e |Lλ|=%7.1e\n" step iiter √(Δx²) √(Lλ²)
-                ~saveiter && (state[step]=State(s.Λ,deepcopy(s.X),s.U,s.A,s.time,(γ=γ;),model,dis))
+                ~saveiter && (state[step]=State(s.Λ,deepcopy(s.X),s.U,s.A,s.time,s.SP,model,dis))
                 break#out of the iiter loop
             end
             iiter==maxiter && muscadeerror(@sprintf("no convergence in step %3d after %3d iterations |Δx|=%g / %g, |Lλ|=%g / %g",step,iiter,√(Δx²),maxΔx,√(Lλ²)^2,maxresidual))
+            Δγ       = γfac1*exp(-(firstelement(out).α/γfac2)^2)
+            s        = setSP(s,(γ=s.SP.γ*Δγ,))
         end
     end
     verbose && @printf "\n    nel=%d, ndof=%d, nstep=%d, niter=%d, niter/nstep=%5.2f\n" getnele(model) getndof(dofgr) length(time) citer citer/length(time)

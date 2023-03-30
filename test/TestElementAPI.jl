@@ -13,7 +13,7 @@ X        = @SVector [1.,2.]
 U        = @SVector []
 A        = @SVector [0.,0.]  # [Δseadrag,Δskydrag]
 
-R =residual(turbine, [X],[U],A, 0.,0.,())
+R,χ,FB =residual(turbine, [X],[U],A, 0.,nothing,identity,nothing,(dbg=true,))
 @testset "Turbine" begin
     @test R             ≈ [-2, -3]
 end
@@ -39,9 +39,9 @@ anchorline      = AnchorLine(SVector(0.,0.,100.), SVector(0,2.,0), SVector(94.,0
 X        = @SVector [0.,0.,0.]
 U        = @SVector []
 A        = @SVector [0.,0.]  # [Δseadrag,Δskydrag]
-L1       = lagrangian(anchorline, δX,[X],[U],A, 0.,0.,())
+L1,χ,FB  = lagrangian(anchorline, δX,[X],[U],A, 0.,nothing,identity,nothing,(dbg=true,))
 X        = [0,-1,45/180*π]
-L2       = lagrangian(anchorline, δX,[X],[U],A, 0.,0.,())
+L2,χ,FB  = lagrangian(anchorline, δX,[X],[U],A, 0.,nothing,identity,nothing,(dbg=true,))
 
 @testset "Lagrangian" begin
    @test L1 ≈ 12.517061123678818

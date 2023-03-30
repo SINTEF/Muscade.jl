@@ -1,6 +1,3 @@
-
-const noχ =nothing
-const noFB=nothing
 struct DofCost{Class,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,Tcost,Tcostargs} <: AbstractElement
     cost     :: Tcost    # Class==:instant cost(X,U,A,t,costargs...), Class==:A cost(A,costargs...) X and U are tuples (derivates of dofs...) 
     costargs :: Tcostargs
@@ -17,11 +14,14 @@ doflist(::Type{<:DofCost{Class,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield}}
    (inod =(xinod...           ,uinod...           ,ainod...           ), 
     class=(ntuple(i->:X,Nx)...,ntuple(i->:U,Nu)...,ntuple(i->:A,Na)...), 
     field=(xfield...          ,ufield...          ,afield...          ) )
-espyable(::Type{<:DofCost}) = (cost=scalar,)    
+
+
 @espy function lagrangian(o::DofCost{:I,Nx,Nu,Na},δX,X,U,A,t,χ,χcv,SP,dbg) where{Nx,Nu,Na} 
     ☼cost = o.cost(X,U,A,t,o.costargs...)
     return cost,noχ,noFB
 end
+
+
 @espy function lagrangian(o::DofCost{:A,Nx,Nu,Na},δX,X,U,A,t,χ,χcv,SP,dbg) where{Nx,Nu,Na} 
     ☼cost = o.cost(    A  ,o.costargs...)
     return cost,noχ,noFB
@@ -39,7 +39,8 @@ function ElementCost(nod::Vector{Node};req,cost,costargs=(;),ElementType,element
 end
 doflist( ::Type{<:ElementCost{Teleobj}}) where{Teleobj} = doflist(Teleobj)
 @espy function lagrangian(o::ElementCost, δX,X,U,A,t,χ,χcv,SP,dbg)
-    L,χ,FB,eleres  = ☼lagrangian(o.eleobj, δX,X,U,A, t,χ,χcv,SP,(dbg...,via=ElementCost),o.req)
+    @show typeof(o.eleobj)
+    L,χ,FB,eleres  = ☼lagrangian(o.eleobj,δX,X,U,A,t,χ,χcv,SP,(dbg...,via=ElementCost),o.req)
     ☼cost          = o.cost(eleres,X,U,A,t,o.costargs...) 
     return L+cost,χ,FB
 end    
@@ -117,7 +118,6 @@ doflist(::Type{DofLoad{Tvalue,Field}}) where{Tvalue,Field}=(inod=(1,), class=(:X
     ☼F = o.value(t)
     return SVector{1}(-F),noχ,noFB
 end
-espyable(::Type{<:DofLoad}) = (F=scalar,)
 
 #-------------------------------------------------
 
@@ -231,7 +231,6 @@ doflist(::Type{<:Constraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afi
    (inod =(xinod...           ,uinod...           ,ainod...           ,λinod ), 
     class=(ntuple(i->:X,Nx)...,ntuple(i->:U,Nu)...,ntuple(i->:A,Na)...,λclass    ), 
     field=(xfield...          ,ufield...          ,afield...          ,λfield)) 
-espyable(::Type{<:Constraint})  = (λ=scalar,g=scalar)
 @espy function residual(o::Constraint{:X,Nx}, X,U,A,t,χ,χcv,SP,dbg) where{Nx}
     γ          = default{:γ}(SP,0.)
     P,gₛ,λₛ     = constants(∂0(X)),o.gₛ,o.λₛ

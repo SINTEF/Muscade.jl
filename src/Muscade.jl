@@ -31,6 +31,7 @@ module Muscade
     export lagrangian,residual,espyable
     export ∂0,∂1,∂2
     export doflist
+    export noχ,noFB
 
     include("ModelDescription.jl")
     export Model,addnode!,addelement!,setscale!,initialize!,unlock

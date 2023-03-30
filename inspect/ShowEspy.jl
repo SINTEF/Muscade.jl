@@ -5,7 +5,11 @@ include("../src/Exceptions.jl")
 #using Muscade
 
 @espydbg function residual(x::Vector{R},y) where{R<:Real}
-    ngp=2
+    ngp = 2
+    α,β = 1,2
+    va = 1,2,3
+    tu = (a=1.,b=2)
+    e,f = foo()
     accum = ntuple(ngp) do igp
         ☼z = x[igp]+y[igp]
         ☼s,☼t  = ☼material(z)

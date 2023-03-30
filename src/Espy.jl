@@ -102,7 +102,6 @@ function code_call(left,foo,args,req,out,trace=-999999) # left,... = foo(args)
     printtrace(trace,"code_call")
     out_new = newsym(out)
     out_foo = newsym(out)
-    @show left
     code   = quote
         if haskey($req,$(QuoteNode(foo)))
             $(left...),$out_foo = $foo($(args...),$req.$foo,)  
@@ -159,6 +158,15 @@ function code_assigment_rhs(left,right,out,req,trace=-999999) # work with the rh
         printtrace(trace,"left = ntuple(ngp) do igp body end")
         code,out_new = code_ntupledoloop(left,igp,ngp,body,req,out,trace+1)
         printtrace(trace,"done")
+    # elseif  @capture(right, (args__,))
+    #     printtrace(trace,"left = (a,b,c)")
+    #     @show right
+    #     @show args 
+    #     @show left
+    #     code = quote 
+    #         $(left...), = $right
+    #     end
+    #     out_new = out
     else
         printtrace(trace,"left = right")
         code = quote 
@@ -215,7 +223,7 @@ function code_recursion(ex::Expr,out,req,trace=-999999)
             printtrace(trace,"done")
         elseif ♢tag(left)                       # ♢a = ...
             printtrace(trace,"♢a = ...")
-            left               = ☼tail(left) 
+            left              = ☼tail(left) 
             varsym            = QuoteNode(left)   
             assigment,out_tmp = code_assigment_rhs([left],right,out,req,trace+1) 
             out_new           = newsym(out_tmp)                                         

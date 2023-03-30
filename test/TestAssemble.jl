@@ -148,7 +148,7 @@ end
 end
 
 state = Muscade.State(model,dis)
-Muscade.assemble!(out,asm,dis,model,state, 0.,())
+Muscade.assemble!(out,asm,dis,model,state,(someunittest=true,))
 
 @testset "assemble" begin
     @test  Muscade.firstelement(out).Lλ  ≈ [-152130.71199858442, -3.0, 0.0]

@@ -4,8 +4,8 @@ function solve(solver;dbg=NamedTuple(),verbose::𝕓=true,silenterror::𝕓=fals
     verbose && printstyled("\n\n\nMuscade:",bold=true,color=:cyan)
     verbose && printstyled(@sprintf(" %s solver\n\n",Symbol(solver)),color=:cyan)
 
-    nXdir,nUdir = getnder(solver)
-    pstate = Base.RefValue{Vector{State{nXdir,nUdir}}}() # state is not a return argument of the solver, so that partial results are not lost on error
+    Tstate = getTstate(solver)
+    pstate = Base.RefValue{Vector{Tstate}}() # state is not a return argument of the solver, so that partial results are not lost on error
     try
         t = @elapsed solve(solver,pstate,verbose,(dbg...,solver=Symbol(solver));kwargs...)  
         verbose && @printf("    %s time: %s\n",Symbol(solver),showtime(t))
