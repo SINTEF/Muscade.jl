@@ -39,8 +39,7 @@ end
 
 ###---------------------
 struct StaticX end
-#                                  nXder,nUder
-getTstate(::Type{StaticX}) = State{1,1}
+getTstate(::Type{StaticX}) = State{1,1} #  nXder,nUder
 function solve(::Type{StaticX},pstate,verbose,dbg;time::AbstractVector{𝕣},
                     initialstate::State,
                     maxiter::ℤ=50,maxΔx::ℝ=1e-5,maxresidual::ℝ=∞,
@@ -50,7 +49,6 @@ function solve(::Type{StaticX},pstate,verbose,dbg;time::AbstractVector{𝕣},
     out,asm,dofgr    = prepare(AssemblyStaticX,model,dis)
     citer            = 0
     cΔx²,cLλ²        = maxΔx^2,maxresidual^2
-    #s                = setSP(initialstate,(γ=γ0,))
     s                = deepcopy(initialstate)
     state            = allocate(pstate,Vector{getTstate(StaticX)}(undef,saveiter ? maxiter : length(time))) # state is not a return argument of this function.  Hence it is not lost in case of exception
     local facLλx 

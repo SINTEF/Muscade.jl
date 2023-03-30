@@ -101,14 +101,14 @@ end
 #------------------------------------
 
 struct StaticXUA end
-getnder(::Type{StaticXUA}) = (nXder=1,nUder=1)
+getTstate(::Type{StaticXUA}) = State{1,1} #  nXder,nUder
 function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{State{1,1}},
     maxAiter::ℤ=50,maxYiter::ℤ=0,maxΔy::ℝ=1e-5,maxLy::ℝ=∞,maxΔa::ℝ=1e-5,maxLa::ℝ=∞,γ0::𝕣=1.,γfac1::𝕣=.5,γfac2::𝕣=100.)
 
     model,dis          = initialstate[begin].model,initialstate[begin].dis
     out1,asm1,Ydofgr   = prepare(AssemblyStaticΛXU  ,model,dis)
     out2,asm2,Adofgr,_ = prepare(AssemblyStaticΛXU_A,model,dis)
-    state              = allocate(pstate,[State{1,1}(i) for i ∈ initialstate]) 
+    state              = allocate(pstate,[(getTstate(StaticXUA))(i) for i ∈ initialstate]) 
     cΔy²,cLy²,cΔa²,cLa²= maxΔy^2,maxLy^2,maxΔa^2,maxLa^2
     nA,nStep           = getndof(model,:A),length(state)
     La                 = Vector{𝕣 }(undef,nA   )
@@ -116,10 +116,11 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{S
     Δy                 = Vector{𝕣1}(undef,nStep)
     y∂a                = Vector{𝕣2}(undef,nStep)
     Δy²,Ly²            = Vector{𝕣 }(undef,nStep),Vector{𝕣}(undef,nStep)
-    γ                  = γ0
+    for s ∈ state
+        s.SP = (γ=γ0,)
+    end
     cAiter,cYiter      = 0,0
-    local facLyy
-    local facLyys
+    local facLyy, facLyys
     for iAiter          = 1:maxAiter
         verbose && @printf "    A-iteration %3d\n" iAiter
         La            .= 0
@@ -127,7 +128,7 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{S
         for step     ∈ eachindex(state)
             for iYiter = 1:maxYiter
                 cYiter+=1
-                assemble!(out1,asm1,dis,model,state[step], (γ=γ;),(dbg...,solver=:StaticXUA,step=step,iYiter=iYiter))
+                assemble!(out1,asm1,dis,model,state[step],(dbg...,solver=:StaticXUA,step=step,iYiter=iYiter))
                 try if iAiter==1 && step==1 && iYiter==1
                     facLyys = lu(out1.Lyy) 
                 else
@@ -142,7 +143,7 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{S
                 end
                 iYiter==maxYiter && muscadeerror(@sprintf("no Y-convergence after %3d Y-iterations. |ΔY|=%7.1e |Ly|=%7.1e\n",iYiter,√(Δy²s),√(Ly²s)))
             end
-            assemble!(out2,asm2,dis,model,state[step], (γ=γ;),(dbg...,solver=:StaticXUA,step=step,iAiter=iAiter))
+            assemble!(out2,asm2,dis,model,state[step],(dbg...,solver=:StaticXUA,step=step,iAiter=iAiter))
             try if iAiter==1 && step==1
                 facLyy = lu(out2.Lyy) 
             else
@@ -156,12 +157,13 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{S
         end    
         Δa             = Laa\La 
         Δa²,La²        = sum(Δa.^2),sum(La.^2)
-        for step       ∈ eachindex(state)
+        for (step,s)   ∈ enumerate(state)
             ΔY         = Δy[step] - y∂a[step] * Δa
-            decrement!(state[step],0,ΔY,Ydofgr)
-            decrement!(state[step],0,Δa,Adofgr)
+            decrement!(s,0,ΔY,Ydofgr)
+            decrement!(s,0,Δa,Adofgr)
+            s.SP = (γ= s.SP.γ* γfac1*exp(-(out2.α/γfac2)^2),)
         end    
-        γ             *= γfac1*exp(-(out2.α/γfac2)^2)
+        
         if all(Δy².≤cΔy²) && all(Ly².≤cLy²) && Δa².≤cΔa² && La².≤cLa² 
             cAiter    = iAiter
             verbose && @printf "\n    StaticXUA converged in %3d A-iterations.\n" iAiter
