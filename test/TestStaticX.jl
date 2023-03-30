@@ -77,25 +77,25 @@ out5,dofid5 = getdof(state   ,field=:tx1,nodID=[n1])
     @test  dofid5 == DofID[DofID(:X, 1)]
 end
 req     = @request cr,ltf
-out,key = getresult(state,req,e2)
-cr      = out[key.cr ,:,1] # out[ikey,iele,istep]
-ltf     = out[key.ltf,:,1]
+eleres = getresult(state,req,e2) # eleres[iele,istep].cr
+cr      = [e.cr for e∈eleres[:,1]] 
+ltf     = [e.ltf for e∈eleres[:,1]]
 @testset "getdof2" begin
     @test  cr  ≈ [118.69592125130082, 23.961941539907585, 235.51441727552435]
     @test  ltf ≈ [183.68229160771097, 121.62396272109176, 238.96209627282917]
 end
 
-out,key = getresult(state[1],req,e2)
-cr      = out[key.cr ,:] # out[ikey,iele]
-ltf     = out[key.ltf,:]
+eleres = getresult(state[1],req,e2) # eleres[iele].cr
+cr      = [e.cr for e∈eleres] 
+ltf     = [e.ltf for e∈eleres]
 @testset "getdof3" begin
     @test  cr  ≈ [118.69592125130082, 23.961941539907585, 235.51441727552435]
     @test  ltf ≈ [183.68229160771097, 121.62396272109176, 238.96209627282917]
 end
 
-out,key = getresult(state[1],req,AnchorLine)
-cr      = out[key.cr ,:] # out[ikey,iele]
-ltf     = out[key.ltf,:]
+eleres = getresult(state[1],req,AnchorLine) # eleres[iele].cr
+cr      = [e.cr for e∈eleres] 
+ltf     = [e.ltf for e∈eleres]
 @testset "getdof4" begin
     @test  cr  ≈ [118.69592125130082, 23.961941539907585, 235.51441727552435]
     @test  ltf ≈ [183.68229160771097, 121.62396272109176, 238.96209627282917]

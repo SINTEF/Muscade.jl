@@ -1,4 +1,4 @@
-#module TestEspy
+module TestEspy
 using Test,StaticArrays,MacroTools
 include("../src/Dialect.jl")
 include("../src/Espy.jl")
@@ -87,7 +87,6 @@ exresidual_ = quote
                     (s, t) = material(z)
                     out_001_gp_002 = out_001_gp_001
                 end
-                (s, t)
                 (s = s, out = out_001_gp_002)
             end
         out_002 = if haskey(req_001, :gp)
@@ -99,6 +98,7 @@ exresidual_ = quote
         return (r, nothing, nothing, out_002)
     end
 end
+
 exmaterial_ = quote
     function material(z)
         a = z + 1
@@ -230,5 +230,4 @@ r,χ,SFB,out = residual([1.,2.],[3.,4.],req)
     @test out == (gp = ((z = 4.0, material = (a = 5.0, b = 20.0)), (z = 6.0, material = (a = 7.0, b = 42.0))),)
 end
 
-
-#end # Module
+end # Module

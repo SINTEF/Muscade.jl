@@ -8,7 +8,7 @@ model           = Model(:TestModel)
 n1              = addnode!(model,𝕣[0,0,+100]) # turbine
 n3              = addnode!(model,𝕣[])  # Anod for anchor
 
-@once cost(out,key,X,U,A,t) = out[key.Fh]^2
+@once cost(eleres,X,U,A,t) = eleres.Fh^2
 el = ElementCost(model.nod;req=@request(Fh),cost,ElementType=AnchorLine, 
                  Δxₘtop=[5.,0,0], xₘbot=[250.,0], L=290., buoyancy=-5e3)
 d  = doflist(typeof(el))
