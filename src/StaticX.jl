@@ -27,7 +27,7 @@ function add!(out1::AssemblyStaticX,out2::AssemblyStaticX)
     add!(out1.Lλx,out2.Lλx)
     out1.α = min(out1.α,out2.α)
 end
-function addin!(out::AssemblyStaticX,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxdir,<:SVector{Nx}},U,A,t,SP,dbg) where{E,Nxdir,Nx}
+function addin!(out::AssemblyStaticX,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A,t,SP,dbg) where{E,Nxder,Nx}
     if Nx==0; return end # don't waste time on Acost elements...  
     ΔX         = δ{1,Nx,𝕣}(scale.X)                 # NB: precedence==1, input must not be Adiff 
     Lλ,χ,FB    = getresidual(implemented(eleobj)...,eleobj,(∂0(X)+ΔX,),U,A,t,nothing,nothing,SP,dbg)

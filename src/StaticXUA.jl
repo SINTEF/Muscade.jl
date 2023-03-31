@@ -37,11 +37,13 @@ function add!(out1::AssemblyStaticΛXU_A,out2::AssemblyStaticΛXU_A)
     add!(out1.Laa,out2.Laa)
     out1.α = min(out1.α,out2.α)
 end
-function addin!(out::AssemblyStaticΛXU_A,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxdir,<:SVector{Nx}},
-                                                               U::NTuple{Nudir,<:SVector{Nu}},A::SVector{Na}, t,SP,dbg) where{E,Nxdir,Nx,Nudir,Nu,Na} # TODO make Nx,Nu,Na types
+function addin!(out::AssemblyStaticΛXU_A,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxder,<:SVector{Nx}},
+                                         U::NTuple{Nuder,<:SVector{Nu}},A::SVector{Na},t,SP,dbg) where{E,Nxder,Nx,Nuder,Nu,Na} # TODO make Nx,Nu,Na types
     Ny              = 2Nx+Nu                           # Y=[Λ;X;U]   
     Nz              = 2Nx+Nu+Na                        # Z = [Y;A]=[Λ;X;U;A]       
-    scaleZ          = cat(scale.Λ,scale.X,scale.U,scale.A,dims=1)
+    scaleZ          = cat(scale.Λ,scale.X,scale.U,scale.A,dims=1)  # NOT SVector
+    # δz              = δ{1,Nz,𝕣}(scaleZ)                 
+    # ΔZ              = variate{2,Nz}(δz)#,scaleZ)                 
     ΔZ              = variate{2,Nz}(δ{1,Nz,𝕣}(scaleZ),scaleZ)                 
     iλ,ix,iu,ia     = gradientpartition(Nx,Nx,Nu,Na) # index into element vectors ΔZ and Lz
     iy              = 1:Ny  
