@@ -39,7 +39,6 @@ function ElementCost(nod::Vector{Node};req,cost,costargs=(;),ElementType,element
 end
 doflist( ::Type{<:ElementCost{Teleobj}}) where{Teleobj} = doflist(Teleobj)
 @espy function lagrangian(o::ElementCost, δX,X,U,A,t,χ,χcv,SP,dbg)
-    @show typeof(o.eleobj)
     L,χ,FB,eleres  = ☼lagrangian(o.eleobj,δX,X,U,A,t,χ,χcv,SP,(dbg...,via=ElementCost),o.req)
     ☼cost          = o.cost(eleres,X,U,A,t,o.costargs...) 
     return L+cost,χ,FB
