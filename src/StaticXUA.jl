@@ -41,9 +41,7 @@ function addin!(out::AssemblyStaticΛXU_A,asm,iele,scale,eleobj::E,Λ,X::NTuple{
                                          U::NTuple{Nuder,<:SVector{Nu}},A::SVector{Na},t,SP,dbg) where{E,Nxder,Nx,Nuder,Nu,Na} # TODO make Nx,Nu,Na types
     Ny              = 2Nx+Nu                           # Y=[Λ;X;U]   
     Nz              = 2Nx+Nu+Na                        # Z = [Y;A]=[Λ;X;U;A]       
-    scaleZ          = cat(scale.Λ,scale.X,scale.U,scale.A,dims=1)  # NOT SVector
-    # δz              = δ{1,Nz,𝕣}(scaleZ)                 
-    # ΔZ              = variate{2,Nz}(δz)#,scaleZ)                 
+    scaleZ          = SVector(scale.Λ...,scale.X...,scale.U...,scale.A...)
     ΔZ              = variate{2,Nz}(δ{1,Nz,𝕣}(scaleZ),scaleZ)                 
     iλ,ix,iu,ia     = gradientpartition(Nx,Nx,Nu,Na) # index into element vectors ΔZ and Lz
     iy              = 1:Ny  
@@ -87,9 +85,9 @@ function add!(out1::AssemblyStaticΛXU,out2::AssemblyStaticΛXU)
 end
 function addin!(out::AssemblyStaticΛXU,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxdir,<:SVector{Nx}},
                                                              U::NTuple{Nudir,<:SVector{Nu}},A, t,SP,dbg) where{E,Nxdir,Nx,Nudir,Nu}
-    Ny              = 2Nx+Nu                           # Y=[Λ;X;U]  TODO compile time? 
+    Ny              = 2Nx+Nu                           # Y=[Λ;X;U]   
     if Ny==0; return end # don't waste time on Acost elements...    
-    scaleY          = cat(scale.Λ,scale.X,scale.U,dims=1) # TODO Vector, not SVector!
+    scaleY          = SVector(scale.Λ...,scale.X...,scale.U...)
     ΔY              = variate{2,Ny}(δ{1,Ny,𝕣}(scaleY),scaleY)                 
     iλ,ix,iu,_      = gradientpartition(Nx,Nx,Nu,0) # index into element vectors ΔY and Ly
     ΔΛ,ΔX,ΔU        = view(ΔY,iλ),view(ΔY,ix),view(ΔY,iu)

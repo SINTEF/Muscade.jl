@@ -18,10 +18,10 @@ function Pipe(nod::Vector{Node};EI,w)
     return Pipe(K,W,SVector(x1,x2))
 end
 Muscade.doflist(::Type{Pipe}) =(inod=(1,1,2,2), class=(:X,:X,:X,:X), field=(:z,:r,:z,:r))
-@espy function Muscade.residual(o::Pipe, X,U,A, t,γ,dbg) 
-    return o.K*∂0(X)+o.W
+@espy function Muscade.residual(o::Pipe, X,U,A, t,χ,χcv,SP,dbg) 
+    return o.K*∂0(X)+o.W,nothing,nothing
 end
-function Muscade.draw(axe,key,out, o::Pipe, δX,X,U,A, t,γ,dbg;kwargs...)
+function Muscade.draw(axe,key,out, o::Pipe, δX,X,U,A, t,χ,χcv,SP,dbg;kwargs...)
     z    = ∂0(X)[SVector(1,3)]  
     lines!(axe,collect(o.x),collect(z) ;kwargs...)
 end

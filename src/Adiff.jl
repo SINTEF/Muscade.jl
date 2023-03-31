@@ -4,8 +4,6 @@ using   Printf
 
 
 ## Type and construction
-const AA = AbstractArray
-const AV = AbstractVector
 const SV = SVector  
 const SA = SArray 
 const SM = SMatrix
@@ -19,17 +17,18 @@ struct ∂ℝ{P,N,R} <:ℝ where{R<:ℝ}  # P for precedence, N number of partia
 end
 
 # Constructors 
-∂ℝ{P,N}(x::R ,dx::AV{R  }) where{P,N,R<:ℝ      } = ∂ℝ{P,N,R}(x,SV{N,R}(dx))
-∂ℝ{P,N}(x::R             ) where{P,N,R<:ℝ      } = ∂ℝ{P,N,R}(x,SV{N,R}(zero(R)                 for j=1:N))
-∂ℝ{P,N}(x::R,i::ℤ        ) where{P,N,R<:ℝ      } = ∂ℝ{P,N,R}(x,SV{N,R}(i==j ? one(R) : zero(R) for j=1:N))
-function ∂ℝ{P,N}(x::Rx,dx::AV{Rdx}) where{P,N,Rx<:ℝ,Rdx<:ℝ}
+∂ℝ{P,N  }(x::R ,dx::SV{N,R}) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(x   ,SV{N,R}(dx))
+∂ℝ{P,N  }(x::R             ) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(x   ,SV{N,R}(zero(R)                 for j=1:N))
+∂ℝ{P,N  }(x::R,i::ℤ        ) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(x   ,SV{N,R}(i==j ? one(R) : zero(R) for j=1:N))
+∂ℝ{P,N,R}(x::𝕣             ) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(R(x),SV{N,R}(zero(R)                 for j=1:N))
+function ∂ℝ{P,N}(x::Rx,dx::SV{N,Rdx}) where{P,N,Rx<:ℝ,Rdx<:ℝ}
     R = promote_type(Rx,Rdx)
     return ∂ℝ{P,N}(convert(R,x),convert.(R,dx))
 end
 
 # zeros, ones
-Base.zero(T::Type{∂ℝ{P,N,R}}) where{P,N,R<:ℝ}    = ∂ℝ{P,N,R}(zero(R), SV{N,R}(zero(R) for j=1:N))
-Base.one( T::Type{∂ℝ{P,N,R}}) where{P,N,R<:ℝ}    = ∂ℝ{P,N,R}(one( R), SV{N,R}(zero(R) for j=1:N))
+Base.zero(::Type{∂ℝ{P,N,R}}) where{P,N,R<:ℝ}     = ∂ℝ{P,N,R}(zero(R), SV{N,R}(zero(R) for j=1:N))
+Base.one( ::Type{∂ℝ{P,N,R}}) where{P,N,R<:ℝ}     = ∂ℝ{P,N,R}(one( R), SV{N,R}(zero(R) for j=1:N))
 Base.isnan(   a::∂ℝ)                             = isnan(   VALUE(a))
 Base.isone(   a::∂ℝ)                             = isone(   VALUE(a))
 Base.iszero(  a::∂ℝ)                             = iszero(  VALUE(a))
@@ -67,8 +66,8 @@ precedence( ::Type{<:∂ℝ{P,N,R}}) where{P,N,R<:ℝ}          = P
 npartial(   ::Type{<:∂ℝ{P,N,R}}) where{P,N,R<:ℝ}          = N
 precedence( ::Type{<:ℝ})                                  = 0
 npartial(   ::Type{<:ℝ})                                  = 0
-precedence(a::AA)     = precedence(eltype(a))
-npartial(  a::AA)     = npartial(eltype(a))
+precedence(a::SA)     = precedence(eltype(a))
+npartial(  a::SA)     = npartial(eltype(a))
 precedence(a::ℝ)      = precedence(typeof(a))
 npartial(  a::ℝ)      = npartial(typeof(a))
 constants( a)         = 1+precedence(a) 
@@ -78,12 +77,10 @@ constants( a,args...) = max(1+precedence(a),constants(args...))
 struct δ{P,N,R}                end # need dum, because syntax δ{P,N,R}() collides with default constructor
 struct variate{P,N}            end
 struct directional{P,N}        end 
-δ{P,N,R}(         ) where{P,N,R<:ℝ}              = SV{N,∂ℝ{P,N,R}}(∂ℝ{P,N  }(zero(R),i                                          ) for i=1:N)
-δ{P,N,R}(δa::AV{𝕣}) where{P,N,R<:ℝ}              = SV{N,∂ℝ{P,N,R}}(∂ℝ{P,N,R}(zero(R),SV{N,R}(i==j ? δa[i]  : zero(R) for i=1:N)) for j=1:N)
-variate{P,N}(a::AV{R}          ) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,N,R}}(∂ℝ{P,N  }(a[i]   ,i)                                           for i=1:N)
-variate{P,N}(a::AV{R},δa::AV{𝕣}) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,N,R}}(∂ℝ{P,N,R}(a[j]   ,SV{N,R}(i==j ? δa[i]  : zero(R) for i=1:N)) for j=1:N)
-#∂ℝ{P,N}(x::R,i::ℤ        ) where{P,N,R<:ℝ      } =                ∂ℝ{P,N,R}(x      ,SV{N,R}(i==j ? one(R) : zero(R) for j=1:N))
-
+δ{P,N,R}(                          ) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,N,R}}(∂ℝ{P,N  }(zero(R),i                                         ) for i=1:N)
+δ{P,N,R}(               δa::SV{N,𝕣}) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,N,R}}(∂ℝ{P,N,R}(zero(R),SV{N,R}(i==j ? δa[i]  : zero(R) for i=1:N)) for j=1:N)
+variate{P,N}(a::SV{N,R}            ) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,N,R}}(∂ℝ{P,N  }(a[i]   ,i                                         ) for i=1:N)
+variate{P,N}(a::SV{N,R},δa::SV{N,𝕣}) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,N,R}}(∂ℝ{P,N,R}(a[j]   ,SV{N,R}(i==j ? R(δa[i])  : zero(R) for i=1:N)) for j=1:N)
 
 variate{P}(a::R) where{P,R<:ℝ} =  ∂ℝ{P,1}(a,SV{1,R}(one(R)))
 directional{P}(a::SV{N,R},δa::SV{N,R}) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,1,R}}(∂ℝ{P,1}(a[i],SV{1,R}(δa[i])) for i=1:N)
@@ -91,7 +88,7 @@ directional{P}(a::SV{N,R},δa::SV{N,R}) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,1,R}}(
 # Analyse
 VALUE(a::ℝ )                           =        a
 VALUE(a::∂ℝ)                           = VALUE( a.x)
-VALUE(a::AA)                           = VALUE.(a)
+VALUE(a::SA)                           = VALUE.(a)
 
 struct ∂{P,N}                  end 
 struct value{P,N}              end
@@ -99,7 +96,7 @@ struct value_∂{P,N}            end
 
 value{P}(a::∂ℝ{P,N,R}) where{P,N,R   } = a.x
 value{P}(a::R        ) where{P  ,R<:ℝ} = a
-value{P}(a::AA{R}    ) where{P  ,R   } = value{P}.(a)
+value{P}(a::SA       ) where{P       } = value{P}.(a)
 
 # ∂{P}(a) is handled as ∂{P,1}(a) and returns a scalar 
 ∂{P,N}(a::     ∂ℝ{P,N,R} ) where{  P,N,R   } = a.dx
@@ -224,13 +221,13 @@ end
 
 ## Comparison for debug purposes
 ≗(a::ℝ,b::ℝ)                 = (typeof(a)==typeof(b)) && ((a-b) < 1e-10*max(1,a+b))
-≗(a::AA,b::AA)               = (size(a)==size(b)) && all(a .≗ b)
+≗(a::SA,b::SA)               = (size(a)==size(b)) && all(a .≗ b)
 ≗(a::∂ℝ,b::∂ℝ)               = (typeof(a)==typeof(b)) && (a.x ≗ b.x) && (a.dx ≗ b.dx)
 
 ## Find NaN in derivatives
 hasnan(a::∂ℝ   )             = hasnan(a.x) || hasnan(a.dx)
 hasnan(a::ℝ   )              = isnan(a)
-function hasnan(a::AV{R}) where{R<:ℝ} 
+function hasnan(a::SV{N,R}) where{N,R<:ℝ} 
     for el∈a
         if hasnan(el)
             return true

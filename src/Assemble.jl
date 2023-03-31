@@ -376,22 +376,22 @@ const True,False  = Val{true},Val{false}
     return :(Val{$r},Val{$l})
 end
 
-function checkresidual(eleobj::AbstractElement,args...)
-    res = residual(eleobj,args...)
+function checkresidual(eleobj::AbstractElement,X,U,A,t,χ,χcv,SP,dbg,req...)
+    res = residual(eleobj,X,U,A,t,χ,χcv,SP,dbg,req...)
     hasnan(res[1]) && muscadeerror(dbg,"NaN in a residual or its partial derivatives")
     return res
 end
-function checklagrangian(eleobj::AbstractElement,args...)
-    res = lagrangian(eleobj,args...)
+function checklagrangian(eleobj::AbstractElement,X,U,A,t,χ,χcv,SP,dbg,req...)
+    res = lagrangian(eleobj,X,U,A,t,χ,χcv,SP,dbg,req...)
     hasnan(res[1]) && muscadeerror(dbg,"NaN in a lagrangian or its partial derivatives")
     return res
 end
 
 #               has residual  has lagrangian
-getresidual(  ::Type{False},::Type{False},args...) = muscadeerror(dbg,@sprintf("Element %s must have method 'Muscade.lagrangian' or/and 'Muscade.residual'",typeof(eleobj)))
-getlagrangian(::Type{False},::Type{False},args...) = muscadeerror(dbg,@sprintf("Element %s must have method 'Muscade.lagrangian' or/and 'Muscade.residual'",typeof(eleobj)))
-getresidual(  ::Type{True },::Type{<:Val},eleobj::AbstractElement,args...) = checkresidual(  eleobj,args...)
-getlagrangian(::Type{<:Val},::Type{True },eleobj::AbstractElement,args...) = checklagrangian(eleobj,args...)    
+getresidual(  ::Type{False},::Type{False},eleobj::AbstractElement,X,U,A,t,χ,χcv,SP,dbg,req...) = muscadeerror(dbg,@sprintf("Element %s must have method 'Muscade.lagrangian' or/and 'Muscade.residual' with correct interface",typeof(eleobj)))
+getlagrangian(::Type{False},::Type{False},eleobj::AbstractElement,X,U,A,t,χ,χcv,SP,dbg,req...) = muscadeerror(dbg,@sprintf("Element %s must have method 'Muscade.lagrangian' or/and 'Muscade.residual' with correct interface",typeof(eleobj)))
+@noinline getresidual(  ::Type{True },::Type{<:Val},eleobj::AbstractElement,X,U,A,t,χ,χcv,SP,dbg,req...) = checkresidual(  eleobj,X,U,A,t,χ,χcv,SP,dbg,req...)
+@noinline getlagrangian(::Type{<:Val},::Type{True },eleobj::AbstractElement,X,U,A,t,χ,χcv,SP,dbg,req...) = checklagrangian(eleobj,X,U,A,t,χ,χcv,SP,dbg,req...)    
 # want residual, lagrangian implemented
 function getresidual(::Type{False},::Type{True} ,eleobj::AbstractElement,X,U,A,t,χ,χcv,SP,dbg,req...)  
     P   = constants(∂0(X),∂0(U),A,t)

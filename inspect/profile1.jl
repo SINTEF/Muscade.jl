@@ -29,7 +29,7 @@ state           = solve(StaticXUA;initialstate=stateX,maxYiter= 50,verbose=false
 #@btime state    = solve(StaticXUA;initialstate=stateX,maxYiter= 0,verbose=false) 
 
 Profile.clear()
-Profile.@profile for i=1:1000#1000#25000
+Profile.@profile for i=1:1000#25000
 #    local stateX          = solve(StaticX;  initialstate,time=[.5,1.],verbose=false)
     local state  = solve(StaticXUA;initialstate=stateX,maxYiter= 50,verbose=false);
 end
