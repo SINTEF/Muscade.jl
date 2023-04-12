@@ -26,17 +26,18 @@ module Muscade
     include("Exceptions.jl")
     export muscadeerror
 
+
+    include("ModelDescription.jl")
+    export Model,addnode!,addelement!,setscale!,initialize!
+    export Node,DofID,NodID,EleID
+    export describe,getndof
+
     include("ElementAPI.jl")
     export AbstractElement
     export lagrangian,residual,espyable
-    export ∂0,∂1,∂2
+    export coord,∂0,∂1,∂2
     export doflist
     export noχ,noFB
-
-    include("ModelDescription.jl")
-    export Model,addnode!,addelement!,setscale!,initialize!,unlock
-    export coord,Node,DofID,NodID,EleID
-    export getndof,getnele,getdofID,describe,eletyp
 
     include("BasicElements.jl")
     export off,equal,inequal

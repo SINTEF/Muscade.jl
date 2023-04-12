@@ -1,4 +1,4 @@
-abstract type AbstractElement  end
+
 
 const noχ =nothing
 const noFB=nothing
@@ -10,15 +10,20 @@ const noFB=nothing
 ∂1(y)   = ∂n(y,1)
 ∂2(y)   = ∂n(y,2)
 
+"""
+`c = coord(node)`
+
+Used by element constructors to obtain the coordinates of a vector of Nodes handed by
+Muscade to the constructor.
+
+See also: [`addnode!`](@ref), [`addelement!`](@ref), [`describe`](@ref), [`solve`](@ref)  
+"""
+coord(nod::AbstractVector{Node}) = [n.coord for n∈nod]
+
+
 doflist(     ::Type{E}) where{E<:AbstractElement}  = muscadeerror(@sprintf("method 'Muscade.doflist' must be provided for elements of type '%s'\n",E))
 ### Not part of element API, not exported by Muscade
 
-getnnod(E::DataType)              = maximum(doflist(E).inod) 
-getdoflist(E::DataType)           = doflist(E).inod, doflist(E).class, doflist(E).field
-getidof(E::DataType,class)        = findall(doflist(E).class.==class)  
-getndof(E::DataType)              = length(doflist(E).inod)
-getndof(E::DataType,class)        = length(getidof(E,class))  
-getndof(E::DataType,class::Tuple) = ntuple(i->getndof(E,class[i]),length(class))
 
 
 

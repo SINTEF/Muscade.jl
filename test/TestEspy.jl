@@ -212,7 +212,7 @@ end
 end
 
 r1 = @request (a,b,c)
-r2 = @request (a,b,c(x,y))
+r2 = @request (a,b,c(x,y))  
 @testset "Request" begin
     @test r1 == (a = nothing, b = nothing, c = nothing)
     @test r2 == (a = nothing, b = nothing, c = (x = nothing, y = nothing))
@@ -229,5 +229,6 @@ r,χ,SFB,out = residual([1.,2.],[3.,4.],req)
 @testset "Get output" begin
     @test out == (gp = ((z = 4.0, material = (a = 5.0, b = 20.0)), (z = 6.0, material = (a = 7.0, b = 42.0))),)
 end
+
 
 end # Module

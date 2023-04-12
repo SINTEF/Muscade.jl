@@ -2,6 +2,7 @@ using StaticArrays,Printf
 
 # model datastructure - private, structure may change, use accessor functions
 
+abstract type AbstractElement  end
 abstract type ID end 
 struct DofID <: ID
     class       :: Symbol      # either :X,:U or :A
@@ -22,7 +23,7 @@ struct Dof
 end
 Dof1 = Vector{Dof}
 struct Node 
-    ID          :: NodID              # global node number, unique ID
+    ID          :: NodID             # global node number, unique ID
     coord       :: 𝕣1                # all nodes in a model have coordinates in same space
     dofID       :: Vector{DofID}     # list of dofs on this node
     eleID       :: Vector{EleID}     # list of elements connected to the node
@@ -68,6 +69,21 @@ Base.getindex(nod::AbstractArray,nodID::NodID)   = nod[nodID.inod   ]
 Base.getindex(dof::NamedTuple{(:X,:U,:A), Tuple{Dof1, Dof1, Dof1}},dofID::DofID)   = dof[dofID.class  ][dofID.idof]
 Base.getindex(ele::AbstractArray,eleID::EleID)   = ele[eleID.ieletyp][eleID.iele]
 Base.getindex(A  ::AbstractArray,id::AbstractArray{ID})   = [A[i] for i ∈ id]
+getidof(E::DataType,class)        = findall(doflist(E).class.==class)  
+"""
+`getndof(model)`,`getndof(model,class)`,`getndof(model,(class1,class2,[,...]))`
+
+where `class` can be any of `:X`, `:U`, `:A`: get the number of dofs in the
+specified classes (or in the whole model).
+
+`model` can be replaced with a concrete element type.  The number of dofs is
+then per element.
+
+See also: [`describe`](@ref), [`getnele`](@ref) 
+"""
+getndof(E::DataType)              = length(doflist(E).inod)
+getndof(E::DataType,class)        = length(getidof(E,class))  
+getndof(E::DataType,class::Tuple) = ntuple(i->getndof(E,class[i]),length(class))
 getndof(model::Model,class::Symbol) = length(model.dof[class])
 getndof(model::Model,class::Tuple) = ntuple(i->getndof(model,class[i]),length(class))
 getndof(model::Model)             = sum(length(d) for d∈model.dof)
@@ -75,6 +91,8 @@ getnele(model::Model,ieletyp)     = length(model.ele[ieletyp])
 getnele(model::Model)             = sum(length(e) for e∈model.ele)
 newdofID(model::Model,class)      = DofID(class  ,getndof(model,class)+1)
 neweleID(model::Model,ieletyp)    = EleID(ieletyp,getndof(model,class)+1)
+getnnod(E::DataType)              = maximum(doflist(E).inod) 
+getdoflist(E::DataType)           = doflist(E).inod, doflist(E).class, doflist(E).field
 function getdoftyp(model::Model,class::Symbol,field::Symbol)
     idoftyp = findfirst(doftyp.class==class && doftyp.field==field for doftyp∈model.doftyp)
     isnothing(idoftyp) && muscadeerror(@sprintf("The model has no dof of class %s and field %s.",class,field))    
@@ -87,10 +105,32 @@ function getdofID(model::Model,class::Symbol,field::Symbol,nodID::AbstractVector
     return dofID[i]
 end
 
+
 # Model construction - API
 
+"""
+`model = Model([ID=:my_model])`
+
+Construct a blank `model`, which will be mutated to create a finite element [optimization] problem.
+
+See also: [`addnode!`](@ref), [`addelement!`](@ref), [`describe`](@ref), [`solve`](@ref)  
+"""
 Model(ID=:muscade_model::Symbol) = Model(ID, Vector{Node}(),Vector{Vector{Element}}(),(X=Dof1(),U=Dof1(),A=Dof1()),Vector{Any}(),Vector{DofTyp}(),1.,false)
 
+"""
+`nodid = addnode!(model,coord)`
+
+If `coord` is an `AbstractVector` of `Real`: add a single node to the model.  
+Muscade does not prescribe what coordinate system to use.  Muscade will handle 
+to each element the `coord` of the nodes of the element, and the element 
+constructor must be able to make sense of it. `nodid` is a node identifier, that
+is used as input to `addelement!`.
+
+If `coord` is an `AbstractMatrix`, its rows are treated as vectors of coordinates.
+`nodid` is then a vector of node identifiers.
+
+See also: [`addelement!`](@ref), [`coord`](@ref) , [`describe`](@ref) 
+"""
 function addnode!(model::Model,coord::ℝ2) 
     assert_unlocked(model)
     Δnnod = size(coord,1)
@@ -100,8 +140,25 @@ function addnode!(model::Model,coord::ℝ2)
 end
 addnode!(model::Model,coord::ℝ1)  = addnode!(model,reshape(coord,(1,length(coord))))[1]
 
-coord(nod::AbstractVector{Node}) = [n.coord for n∈nod]
 
+"""
+`eleid = addelement!(model,ElType,nodid;kwargs...)`
+
+Add one or several elements to `model`, connecting them to the nodes specified 
+by `nodid`.
+
+If `nodid` is an `AbstractVector`: add a single element to the model. `eleid`
+is then a single element identifier.
+
+If `nodid` is an `AbstractMatrix`: add multiple elements to the model. Each 
+column of `nodid` identifies the node of a single element. `eleid` is then 
+a vector of element identifiers.
+
+For each element, `addelement!` will call `eleobj = ElType(nodes;kwargs)` where
+`nodes` is a vector of nodes of the element.
+
+See also: [`addnode!`](@ref), [`describe`](@ref), [`coord`](@ref)
+"""
 function addelement!(model::Model,::Type{T},nodID::Matrix{NodID};kwargs...) where{T<:AbstractElement}
     assert_unlocked(model)
     # new element type? make space in model.eletyp and model.eleobj for that
@@ -177,6 +234,25 @@ function addelement!(model::Model,::Type{T},nodID::Matrix{NodID};kwargs...) wher
 end
 addelement!(model::Model,::Type{E},nodID::Vector{NodID};kwargs...) where{E<:AbstractElement} = addelement!(model,E,reshape(nodID,(1,length(nodID)));kwargs...)[1] 
 
+"""
+`setscale!(model;scale=nothing,Λscale=nothing)`
+
+Provides an order of magnitude for each type of dof in the model.  
+This is usued to improve the conditioning of the incremental problems and
+for convergence criteria. `scale` is a `NamedTuple` with fieldnames within 
+`X`, `U` and `A`.  Each field is itself a `NamedTuple` with fieldnames being
+dof fields, and value being the expected order of magnitude.
+
+For example `scale = (X=(tx=10,rx=1),A=(drag=3.))` should be read as: X-dofs
+of field `:tx` are in tens of meters, `:rx` are in radians, and A-dofs of 
+field `drag` are of the order of 3. All other degrees of freedom are expected 
+to be roughly of the order of 1.
+
+`Λscale` is a scalar. The scale of a Λ-dof will be deemed to be the scale of the 
+corresponding X-dof, times `Λscale`.
+
+See also: [`addnode!`](@ref), [`describe`](@ref), [`coord`](@ref)
+"""
 function setscale!(model::Model;scale=nothing,Λscale=nothing)  # scale = (X=(tx=10,rx=1),A=(drag=3.))
     assert_unlocked(model)
     if ~isnothing(scale)
@@ -210,6 +286,12 @@ eletyp(model::Model) = eltype.(model.eleobj)
 
 ### getting printout of the model
 using Printf
+"""
+`describe(model,eleid)`,`describe(model,dofid)`,`describe(model,nodid)`
+`describe(model,:dof)`,`describe(model,:eletyp)`
+
+Print out  information about the model.
+"""
 function describe(model::Model,eleID::EleID)
     try 
         dof = model.ele[eleID] 
@@ -308,6 +390,4 @@ function describe(model::Model,s::Symbol)
         end
     end
 end
-
-
  

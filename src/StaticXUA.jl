@@ -118,7 +118,7 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
     y∂a                = Vector{𝕣2}(undef,nStep)
     Δy²,Ly²            = Vector{𝕣 }(undef,nStep),Vector{𝕣}(undef,nStep)
     cAiter,cYiter      = 0,0
-    local facLyy, facLyys
+    local facLyy, facLyys, Δa
     for iAiter          = 1:maxAiter
         verbose && @printf "    A-iteration %3d\n" iAiter
         La            .= 0
@@ -146,14 +146,16 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
                 facLyy = lu(out2.Lyy) 
             else
                 lu!(facLyy,out2.Lyy)
-            end catch; muscadeerror(@sprintf("matrix factorization failed at step=%i, iAiter=%i",step,iAiter));end
+            end catch; muscadeerror(@sprintf("Lyy matrix factorization failed at step=%i, iAiter=%i",step,iAiter));end
             Δy[ step]  = facLyy\out2.Ly  
             y∂a[step]  = facLyy\out2.Lya 
             La       .+= out2.La  - out2.Lya' * Δy[ step]  
             Laa      .+= out2.Laa - out2.Lya' * y∂a[step]
             Δy²[step],Ly²[step] = sum(Δy[step].^2),sum(out2.Ly.^2)
-        end    
-        Δa             = Laa\La 
+        end   
+        try 
+            Δa         = Laa\La 
+        catch; muscadeerror(@sprintf("Laa\\La solution failed at iAiter=%i",iAiter));end
         Δa²,La²        = sum(Δa.^2),sum(La.^2)
         for (step,s)   ∈ enumerate(state)
             ΔY         = Δy[step] - y∂a[step] * Δa
