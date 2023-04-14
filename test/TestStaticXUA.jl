@@ -2,7 +2,6 @@
 
 using Test
 using Muscade
-
 include("SomeElements.jl")
 
 model           = Model(:TestModel)

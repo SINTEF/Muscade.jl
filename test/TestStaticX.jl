@@ -2,9 +2,9 @@ module TestStaticX
 
 using Test,StaticArrays,SparseArrays
 using Muscade
+using Muscade: DofID,EleID,NodID
 
 include("SomeElements.jl")
-
 
 model           = Model(:TestModel)
 n1              = addnode!(model,𝕣[0,0,+100]) # turbine

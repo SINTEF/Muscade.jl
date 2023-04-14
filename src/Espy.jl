@@ -1,11 +1,4 @@
-
-
 using Printf,MacroTools
-
-# TODO
-# rewrite the @espy macro, test
-# rewrite function codes (should not be necessary as they do not yet contain do loops)
-# rewrite all extractor code (Ouput.jl, BasicElements.jl, all tests)    
 
 ######################## Helper functions
 ☼tag(s::Symbol)  = string(s)[1]=='☼' # \sun  
@@ -33,25 +26,23 @@ end
 
 """
 
-    req = @request expr
+    `req = @request expr`
 
 Create a request of internal results wanted from a function. Considering the function
 presented as example for [`@espy`](@ref), examples of possible syntax include
 
-    req       = @request gp(s,z,material(a,b))
-    req       = @request gp(s)
-    req       = @request gp(material(a))
+```julia-repl
+req       = @request gp(s,z,material(a,b))
+req       = @request gp(s)
+req       = @request gp(material(a))
+```
 
 The first expression can be read as follows: "In the function, there is a `do` loop over variable `igp`, and within this
 loop a call to a function `material`.  Results `s` and `z` are wanted from within the loop, and results `a` and `b`
 from within `material`.
 
 The corresponding datastructure containing the results for each element is a nesting of `NTuples` and `NamedTuples`, 
-and can be accessed as 
-
-    out.gp[igp].material.a 
-
-and so forth.        
+and can be accessed as `out.gp[igp].material.a` and so forth.        
 
 See also: [`@espy`](@ref), [`@espydbg`](@ref)
 """
@@ -290,6 +281,30 @@ function code_espying_function(ex::Expr,out,req,trace=-999999) # ex must be a fu
     end
 end        
 
+"""
+    @espy function ... end
+
+From an anotated function code, generate
+    - "clean" code, in which the anotations have been deleted, and with 
+      the call syntax `argout... = foo(argin...)`
+    - "espying" code, with added input and ouput arguments
+      `argout...,res = foo(argin...,req)` where `req` has been
+      generated using `@request` and `res` is a nested structure
+      of `NamedTuple`s and `NTuple`s containing the requested data.
+
+The macro is not general: it is designed for `residual` and `lagrangian`,
+which for performance have to be programmed in "immutable" style: they must
+never mutate variables (this implies in particular, no adding into
+an array in a loop over Gauss points). So @espy only supports the specific
+programming constructs needed in this style.
+
+The following is an example of anotated code:
+
+```
+```
+
+See also: [`@espy`](@ref), [`@request`](@ref)
+"""
 macro espy(ex)
     cntr = 0
     esc(quote

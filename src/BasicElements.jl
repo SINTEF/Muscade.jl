@@ -69,9 +69,6 @@ An element to apply costs on another element's element-results.
 # Requestable internal variables
 - `cost`, the value of the cost.
 
-# Examples
-TODO
-
 See also: [`SingleDofCost`](@ref), [`DofCost`](@ref), [`@request`](@ref) 
 """
 struct ElementCost{Teleobj,Treq,Tcost,Tcostargs}
@@ -122,9 +119,10 @@ See also: [`DofCost`](@ref), [`ElementCost`](@ref)
 """
 struct SingleDofCost <: AbstractElement end
 function SingleDofCost(nod::Vector{Node};class::Symbol,field::Symbol,cost::Function,derivative=0::𝕫,costargs=()) 
-    if     class==:X; DofCost(nod;xinod=(1,),xfield=(field,),class=:I,cost=(X,U,A,t,args...)->cost(∂n(X,derivative)[1],t,args...),costargs)
-    elseif class==:U; DofCost(nod;uinod=(1,),ufield=(field,),class=:I,cost=(X,U,A,t,args...)->cost(∂n(U,derivative)[1],t,args...),costargs)
-    elseif class==:A; DofCost(nod;ainod=(1,),afield=(field,),class=:A,cost=(    A,  args...)->cost(A[1]                 ,args...),costargs)
+    ∂=∂n(derivative)
+    if     class==:X; DofCost(nod;xinod=(1,),xfield=(field,),class=:I,cost=(X,U,A,t,args...)->cost(∂(X)[1],t,args...),costargs)
+    elseif class==:U; DofCost(nod;uinod=(1,),ufield=(field,),class=:I,cost=(X,U,A,t,args...)->cost(∂(U)[1],t,args...),costargs)
+    elseif class==:A; DofCost(nod;ainod=(1,),afield=(field,),class=:A,cost=(    A,  args...)->cost(A[1]     ,args...),costargs)
     else              muscadeerror("'class' must be :X,:U or :A")
     end
 end    
@@ -177,6 +175,7 @@ S(λ,g,γ) = (g+λ-hypot(g-λ,2γ))/2 # Modified interior point method's take on
 KKT(λ::𝕣        ,g::𝕣         ,γ::𝕣,λₛ,gₛ)                 = 0 # A pseudo-potential with strange derivatives
 KKT(λ::∂ℝ{P,N,R},g::∂ℝ{P,N,R},γ::𝕣,λₛ,gₛ) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(0, λ.x*g.dx + gₛ*S(λ.x/λₛ,g.x/gₛ,γ)*λ.dx)
 KKT(λ:: ℝ       ,g::∂ℝ{P,N,R},γ::𝕣,λₛ,gₛ) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(0, λ.x*g.dx                           )
+KKT(λ:: 𝕣       ,g::∂ℝ{P,N,R},γ::𝕣,λₛ,gₛ) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(0, λ  *g.dx                           )
 KKT(λ::∂ℝ{P,N,R},g:: ℝ       ,γ::𝕣,λₛ,gₛ) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(0,            gₛ*S(λ.x/λₛ,g.x/gₛ,γ)*λ.dx)
 function KKT(λ::∂ℝ{Pλ,Nλ,Rλ},g::∂ℝ{Pg,Ng,Rg},γ::𝕣,λₛ,gₛ) where{Pλ,Pg,Nλ,Ng,Rλ<:ℝ,Rg<:ℝ}
     if Pλ==Pg
@@ -196,30 +195,39 @@ end
 """
 `off(t) → :off`
 
-See also: [`Constraint`](@ref), [`equal`](@ref), [`inequal`](@ref)
+See also: [`DofConstraint`](@ref), [`equal`](@ref), [`positive`](@ref)
 """
 off(t)     = :off
 """
 `equal(t) → :equal`
 
-See also: [`Constraint`](@ref), [`off`](@ref), [`inequal`](@ref)
+See also: [`DofConstraint`](@ref), [`off`](@ref), [`positive`](@ref)
 """
 equal(t)   = :equal
 """
-`inequal(t) → :inequal`
+`positive(t) → :positive`
 
-See also: [`Constraint`](@ref), [`off`](@ref), [`equal`](@ref)
+See also: [`DofConstraint`](@ref), [`off`](@ref), [`equal`](@ref)
 """
-inequal(t) = :inequal
+positive(t) = :positive
 # length of comment                                           stop here|
 """
-`Constraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,Tg,Tmode} <: AbstractElement`
+`DofConstraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,Tg,Tmode} <: AbstractElement`
 
 An element to apply physical/optimisation equality/inequality constraints on dofs. 
 
 The constraints are holonomic, i.e. they apply to the values, not the time derivatives, of the involved dofs. 
 This element is very general but not very user-friendly to construct, factory functions are provided for better useability. 
 The sign convention is that the gap `g≥0` and the Lagrange multiplier `λ≥0`.
+
+This element can generate three classes of constraints, depending on the input argument `λclass`.
+- `λclass=:X` Physical constraint.  In mechanics, the Lagrange multiplier dof is a 
+   generalized force, dual of the gap. The gap function must be of the form `gap(x,t,gargs...)`.
+- `λclass=:U` Time varying optimisation constraint. For example: find `A`-parameters so that
+   at all times, the response does not exceed a given criteria. The gap function must be of the form   
+   `gap(x,u,a,t,gargs...)`.
+- `λclass=:A` Time invariant optimisation constraint. For example: find `A`-parameters such that
+   `A[1]+A[2]=gargs.somevalue`. The gap function must be of the form `gap(a,gargs...)`.
 
 # Named arguments to the constructor
 - `xinod::NTuple{Nx,𝕫}=()`       For each X-dof to be constrained, its element-node number.
@@ -228,22 +236,25 @@ The sign convention is that the gap `g≥0` and the Lagrange multiplier `λ≥0`
 - `ufield::NTuple{Nu,Symbol}=()` For each U-dof to be constrained, its field.
 - `ainod::NTuple{Na,𝕫}=()`       For each A-dof to be constrained, its element-node number.
 - `afield::NTuple{Na,Symbol}=()` For each A-dof to be constrained, its field.
-- `λinod::𝕫` The element-node number of the Lagrange multiplier.
-- `λclass::Symbol` The class of the Lagrange multiplier. `:X` for physical constraints, `:U` for optimisation constraints. `:A` is experimental.
-- `λfield::Symbol` The field of the Lagrange multiplier.
-- `gₛ::𝕣=1.` A scale for the gap.
-- `λₛ::𝕣=1.` A scale for the Lagrange multiplier.
-- `g::Function` For physical constraints: `g(X::ℝ1,t::ℝ,gargs) -> ℝ`, for physical constraints and `g(X::ℝ1,U::ℝ1,A::ℝ1,t::ℝ) -> ℝ`, for optimisation constraints.
-- `gargs::NTuple`
-- `mode::Function`, where `mode(t::ℝ) -> Symbol`, with value `:equal`, `:inequal` or `:off` at any time. An `:off` constraint will set the Lagrange multiplier to zero.
+- `λinod::𝕫`                     The element-node number of the Lagrange multiplier.
+- `λclass::Symbol`               The class (`:X`,`:U` or `:A`) of the Lagrange multiplier. 
+                                 See the explanation above for classes of constraints
+- `λfield::Symbol`               The field of the Lagrange multiplier.
+- `gₛ::𝕣=1.`                      A scale for the gap.
+- `λₛ::𝕣=1.`                      A scale for the Lagrange multiplier.
+- `gap::Function`                The gap function.
+- `gargs::NTuple`                Additional inputs to the gap function.
+- `mode::Function`               where `mode(t::ℝ) -> Symbol`, with value `:equal`, 
+                                 `:positive` or `:off` at any time. An `:off` constraint 
+                                 will set the Lagrange multiplier to zero.
 
 # Examples
 ```jldoctest
 using Muscade
 model           = Model(:TestModel)
 n1              = addnode!(model,𝕣[0]) 
-e1              = addelement!(model,Constraint,[n1],xinod=(1,),xfield=(:t1,),
-                              λinod=1, λclass=:X, λfield=:λ1,g=(x,t)->x[1]+.1,mode=inequal)
+e1              = addelement!(model,DofConstraint,[n1],xinod=(1,),xfield=(:t1,),
+                              λinod=1, λclass=:X, λfield=:λ1,gap=(x,t)->x[1]+.1,mode=positive)
 e2              = addelement!(model,QuickFix  ,[n1],inod=(1,),field=(:t1,),res=(x,u,a,t)->0.4x.+.08+.5x.^2)
 state           = solve(staticX;model,time=[0.],verbose=false) 
 X               = state[1].X[1]
@@ -255,58 +266,58 @@ X               = state[1].X[1]
   0.045000397353771225
 ```    
 
-See also: [`Hold`,`off`,`equal`,`inequal`](@ref)
+See also: [`Hold`,`off`,`equal`,`positive`](@ref)
 """
-struct Constraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,Tg,Tgargs,Tmode} <: AbstractElement
-    g        :: Tg    # Class==:X g(x,t,gargs...) ,Class==:U  g(x,u,a,t,gargs...), Class==:A g(a,gargs...) 
+struct DofConstraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,Tg,Tgargs,Tmode} <: AbstractElement
+    gap      :: Tg    # Class==:X gap(x,t,gargs...) ,Class==:U  gap(x,u,a,t,gargs...), Class==:A gap(a,gargs...) 
     gargs    :: Tgargs
     mode     :: Tmode # mode(t)->symbol, or Symbol for Aconstraints
     gₛ        :: 𝕣
     λₛ        :: 𝕣  
 end
-function Constraint(nod::Vector{Node};xinod::NTuple{Nx,𝕫}=(),xfield::NTuple{Nx,Symbol}=(),
+function DofConstraint(nod::Vector{Node};xinod::NTuple{Nx,𝕫}=(),xfield::NTuple{Nx,Symbol}=(),
                                       uinod::NTuple{Nu,𝕫}=(),ufield::NTuple{Nu,Symbol}=(),
                                       ainod::NTuple{Na,𝕫}=(),afield::NTuple{Na,Symbol}=(),
                                       λinod::𝕫, λclass::Symbol, λfield::Symbol,
                                       gₛ::𝕣=1.,λₛ::𝕣=1.,
-                                      g::Function ,gargs=(),mode::Function) where{Nx,Nu,Na} 
+                                      gap::Function ,gargs=(),mode::Function) where{Nx,Nu,Na} 
     (λclass==:X && (Nu>0||Na>0)) && muscadeerror("Constraints with λclass=:X must have zero U-dofs and zero A-dofs") 
-    (λclass==:A && (Nu>0||Na>0)) && muscadeerror("Constraints with λclass=:A must have zero X-dofs and zero U-dofs") 
-    return Constraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,
-                       typeof(g),typeof(gargs),typeof(mode)}(g,gargs,mode,gₛ,λₛ)
+    (λclass==:A && (Nx>0||Nu>0)) && muscadeerror("Constraints with λclass=:A must have zero X-dofs and zero U-dofs") 
+    return DofConstraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,
+                       typeof(gap),typeof(gargs),typeof(mode)}(gap,gargs,mode,gₛ,λₛ)
 end
-doflist(::Type{<:Constraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield}}) where
+doflist(::Type{<:DofConstraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield}}) where
                             {λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield} = 
    (inod =(xinod...           ,uinod...           ,ainod...           ,λinod ), 
     class=(ntuple(i->:X,Nx)...,ntuple(i->:U,Nu)...,ntuple(i->:A,Na)...,λclass    ), 
     field=(xfield...          ,ufield...          ,afield...          ,λfield)) 
-@espy function residual(o::Constraint{:X,Nx}, X,U,A,t,χ,χcv,SP,dbg) where{Nx}
+@espy function residual(o::DofConstraint{:X,Nx}, X,U,A,t,χ,χcv,SP,dbg) where{Nx}
     γ          = default{:γ}(SP,0.)
     P,gₛ,λₛ     = constants(∂0(X)),o.gₛ,o.λₛ
     x,☼λ       = ∂0(X)[SVector{Nx}(1:Nx)], ∂0(X)[Nx+1]   
     x∂         = variate{P,Nx}(x) 
-    ☼g,g∂x     = value_∂{P,Nx}(o.g(x∂,t,o.gargs...)) 
-    return if  o.mode(t)==:equal;   SVector{Nx+1}((       -g∂x*λ)...,-g              ) ,noχ,(α=∞                  ,)
-    elseif     o.mode(t)==:inequal; SVector{Nx+1}((       -g∂x*λ)...,-gₛ*S(λ/λₛ,g/gₛ,γ)) ,noχ,(α=decided(λ/λₛ,g/gₛ,γ),)
-    elseif     o.mode(t)==:off;     SVector{Nx+1}(ntuple(i->0,Nx)...,-gₛ/λₛ*λ         ) ,noχ,(α=∞                  ,)
+    ☼gap,g∂x   = value_∂{P,Nx}(o.gap(x∂,t,o.gargs...)) 
+    return if  o.mode(t)==:equal;    SVector{Nx+1}((       -g∂x*λ)...,-gap              ) ,noχ,(α=∞                  ,)
+    elseif     o.mode(t)==:positive; SVector{Nx+1}((       -g∂x*λ)...,-gₛ*S(λ/λₛ,gap/gₛ,γ)) ,noχ,(α=decided(λ/λₛ,gap/gₛ,γ),)
+    elseif     o.mode(t)==:off;      SVector{Nx+1}(ntuple(i->0,Nx)...,-gₛ/λₛ*λ           ) ,noχ,(α=∞                  ,)
     end
 end
-@espy function lagrangian(o::Constraint{:U,Nx,Nu,Na}, δX,X,U,A,t,χ,χcv,SP,dbg) where{Nx,Nu,Na}
+@espy function lagrangian(o::DofConstraint{:U,Nx,Nu,Na}, δX,X,U,A,t,χ,χcv,SP,dbg) where{Nx,Nu,Na}
     γ          = default{:γ}(SP,0.)
     x,u,a,☼λ   = ∂0(X),∂0(U)[SVector{Nu}(1:Nu)],A,∂0(U)[Nu+1]
-    ☼g         = o.g(x,u,a,t,o.gargs...)
-    return if  o.mode(t)==:equal;   -g*λ                  ,noχ,(α=∞                      ,)
-    elseif     o.mode(t)==:inequal; -KKT(λ,g,γ,o.λₛ,o.gₛ)  ,noχ,(α=decided(λ/o.λₛ,g/o.gₛ,γ),)
-    elseif     o.mode(t)==:off;     -o.gₛ/(2o.λₛ)*λ^2      ,noχ,(α=∞                      ,)  
+    ☼gap       = o.gap(x,u,a,t,o.gargs...)
+    return if  o.mode(t)==:equal;    -gap*λ                  ,noχ,(α=∞                      ,)
+    elseif     o.mode(t)==:positive; -KKT(λ,gap,γ,o.λₛ,o.gₛ)  ,noχ,(α=decided(λ/o.λₛ,gap/o.gₛ,γ),)
+    elseif     o.mode(t)==:off;      -o.gₛ/(2o.λₛ)*λ^2        ,noχ,(α=∞                      ,)  
     end
 end
-@espy function lagrangian(o::Constraint{:A,Nx,Nu,Na}, δX,X,U,A,t,χ,χcv,SP,dbg) where{Nx,Nu,Na}
+@espy function lagrangian(o::DofConstraint{:A,Nx,Nu,Na}, δX,X,U,A,t,χ,χcv,SP,dbg) where{Nx,Nu,Na}
     γ          = default{:γ}(SP,0.)
     a,☼λ       = A[SVector{Na}(1:Na)],A[    Na+1] 
-    ☼g         = o.g(a,o.gargs...)
-    return if  o.mode(t)==:equal;   -g*λ                  ,noχ,(α=∞                      ,) 
-    elseif     o.mode(t)==:inequal; -KKT(λ,g,γ,o.λₛ,o.gₛ)  ,noχ,(α=decided(λ/o.λₛ,g/o.gₛ,γ),)
-    elseif     o.mode(t)==:off;     -o.gₛ/(2o.λₛ)*λ^2      ,noχ,(α=∞                      ,)   
+    ☼gap       = o.gap(a,o.gargs...)
+    return if  o.mode(t)==:equal;    -gap*λ                  ,noχ,(α=∞                      ,) 
+    elseif     o.mode(t)==:positive; -KKT(λ,gap,γ,o.λₛ,o.gₛ)  ,noχ,(α=decided(λ/o.λₛ,gap/o.gₛ,γ),)
+    elseif     o.mode(t)==:off;      -o.gₛ/(2o.λₛ)*λ^2        ,noχ,(α=∞                      ,)   
     end
 end
 
@@ -333,12 +344,12 @@ e     = addelement!(model,Hold,[node];field=:tx)
 EleID(1, 1)
 ```    
 
-See also: [`Constraint`](@ref), [`DofLoad`](@ref), [`DofCost`](@ref) 
+See also: [`DofConstraint`](@ref), [`DofLoad`](@ref), [`DofCost`](@ref) 
 """
 struct Hold <: AbstractElement end  
 function Hold(nod::Vector{Node};field::Symbol,λfield::Symbol=Symbol(:λ,field)) 
-    g(v,t)=v[1]
-    return Constraint{:X     ,1, 0, 0, (1,),(field,),(),   (),    (),   (),    1,    λfield, typeof(g),typeof(()),typeof(equal)}(g,(),equal,1.,1.)
+    gap(v,t)=v[1]
+    return DofConstraint{:X     ,1, 0, 0, (1,),(field,),(),   (),    (),   (),    1,    λfield, typeof(gap),typeof(()),typeof(equal)}(gap,(),equal,1.,1.)
     #      Xconstraint{λclass,Nx,Nu,Na,xinod,xfield, uinod,ufield,ainod,afield,λinod,λfield}
 end
 

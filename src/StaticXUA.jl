@@ -98,8 +98,51 @@ function addin!(out::AssemblyStaticΛXU,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nx
     out.α           = min(out.α,default{:α}(FB,∞))
 end
 
-#------------------------------------
+"""
+`StaticXUA`
 
+A non-linear static solver for optimisation FEM.
+The current algorithm does not handle element memory. 
+
+An analysis is carried out by a call with the following syntax:
+
+`
+initialstate    = initialize!(model)
+stateX          = solve(StaticX  ;initialstate=initialstate,time=[0.,1.])
+stateXUA        = solve(StaticXUA;initialstate=stateX)
+`
+
+# Named arguments
+- `dbg=(;)`           a named tuple to trace the call tree (for debugging)
+- `verbose=true`      set to false to suppress printed output (for testing)
+- `silenterror=false` set to true to suppress print out of error (for testing) 
+- `initialstate`      a vector of `state`s, one for each load case in the optimization problem, 
+                      obtained from one or several previous `StaticX` analyses
+- `maxAiter=50`       maximum number of "outer" Newton-Raphson iterations over `A` 
+- `maxΔa=1e-5`        "outer" convergence criteria: a norm on the scaled `A` increment 
+- `maxLa=∞`           "outer" convergence criteria: a norm on the scaled `La` residual
+- `maxYiter=0`        maximum number of "inner" Newton-Raphson iterations over `X` 
+                      and `U` for every value of `A`.  Experience so far is that these inner
+                      iterations do not increase performance, so the default is "no inner 
+                      iterations".   
+- `maxΔy=1e-5`        "inner" convergence criteria: a norm on the scaled `Y=[XU]` increment 
+- `maxLy=∞`           "inner" convergence criteria: a norm on the scaled `Ly=[Lx,Lu]` residual
+- `saveiter=false`    set to true so that the output `state` is a vector describing 
+                      the states of the model at the last iteration (for debugging 
+                      non-convergence) 
+- `γ0=1.`             an initial value of the barrier coefficient for the handling of contact
+                      using an interior point method
+- `γfac1=0.5`         at each iteration, the barrier parameter γ is multiplied 
+- `γfac2=100.`        by γfac1*exp(-min(αᵢ)/γfac2)^2), where αᵢ is computed by the i-th
+                      interior point savvy element as αᵢ=abs(λ-g)/γ                                               
+
+                      maxAiter::ℤ=50,maxYiter::ℤ=0,maxΔy::ℝ=1e-5,maxLy::ℝ=∞,maxΔa::ℝ=1e-5,maxLa::ℝ=∞,γ0::𝕣=1.,γfac1::𝕣=.5,γfac2::𝕣=100.
+
+# Output
+A vector of length equal to that of `initialstate` containing the state of the optimized model at each of these steps                       
+
+See also: [`solve`](@ref), [`StaticX`](@ref) 
+"""
 struct StaticXUA end
 getTstate(::Type{StaticXUA}) = State{1,1,typeof((γ=0.,))} #  nXder,nUder
 function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<:State},

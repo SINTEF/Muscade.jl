@@ -2,6 +2,7 @@ module TestModelDescription
 
 using Test
 using Muscade
+using Muscade: DofID,EleID,NodID
 
 include("SomeElements.jl")
 
@@ -100,7 +101,7 @@ end
     @test model.nod[n1].coord ≈ [0.0, 0.0, -10.0]
     getndof(model,:X) == 3
     getndof(model,(:X,:A)) == (3,2)
-    getnele(model) == 2
-    getnele(model,1) == 1
+    Muscade.getnele(model) == 2
+    Muscade.getnele(model,1) == 1
 end
 end # module

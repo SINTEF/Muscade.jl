@@ -13,7 +13,7 @@ function prepare(::Type{AssemblyStaticX},model,dis)
     asm                = Matrix{𝕫2}(undef,narray,neletyp)  
     Lλ                 = asmvec!(view(asm,1,:),dofgr,dis) 
     Lλx                = asmmat!(view(asm,2,:),view(asm,1,:),view(asm,1,:),ndof,ndof) 
-#    out                = one_for_each_thread(AssemblyStaticX(Lλ,Lλx,∞)) # parallel
+#    out                = one_for_each_thread(AssemblyStaticX(Lλ,Lλx,∞)) # KEEP - parallel
     out                = AssemblyStaticX(Lλ,Lλx,∞) # sequential
     return out,asm,dofgr
 end
@@ -37,7 +37,43 @@ function addin!(out::AssemblyStaticX,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxder
     out.α      = min(out.α,default{:α}(FB,∞))
 end
 
-###---------------------
+"""
+`StaticX`
+
+A non-linear static solver for forward (not inverse, optimisation) FEM.
+The current implementation does not handle element memory. 
+
+An analysis is carried out by a call with the following syntax:
+
+`
+initialstate    = initialize!(model)
+state           = solve(StaticX;initialstate=initialstate,time=[0.,1.])
+`
+
+# Named arguments
+- `dbg=(;)`           a named tuple to trace the call tree (for debugging)
+- `verbose=true`      set to false to suppress printed output (for testing)
+- `silenterror=false` set to true to suppress print out of error (for testing) 
+- `initialstate`      a single `state` - obtained from a call to `initialize!`, or 
+                      from a previous analysis
+- `time`              an `AbstractVector` vector of the times at which to compute the 
+- `maxiter=50`        maximum number of Newton-Raphson iteration at any given step 
+- `maxΔx=1e-5`        convergence criteria: a norm on the scaled `X` increment 
+- `maxincrement=∞`    convergence criteria: a norm on the scaled residual
+- `saveiter=false`    set to true so that the output `state` is a vector describing 
+                      the states of the model at the last iteration (for debugging 
+                      non-convergence) 
+- `γ0=1.`             an initial value of the barrier coefficient for the handling of contact
+                      using an interior point method
+- `γfac1=0.5`         at each iteration, the barrier parameter γ is multiplied 
+- `γfac2=100.`        by γfac1*exp(-min(αᵢ)/γfac2)^2), where αᵢ is computed by the i-th
+                      interior point savvy element as αᵢ=abs(λ-g)/γ                                               
+
+# Output
+A vector of length equal to that of `time` containing the state of the model at each of these steps                       
+
+See also: [`solve`](@ref), [`StaticXUA`](@ref) 
+"""
 struct StaticX end
 getTstate(::Type{StaticX}) = State{1,1,typeof((γ=0.,))} #  nXder,nUder,TSP
 function solve(::Type{StaticX},pstate,verbose,dbg;

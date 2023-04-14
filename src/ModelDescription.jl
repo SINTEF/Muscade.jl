@@ -22,6 +22,16 @@ struct Dof
     eleID       :: Vector{EleID}
 end
 Dof1 = Vector{Dof}
+"""
+`Node`
+
+The eltype of vectors handed by Muscade as first argument to element constructors.
+
+Example:
+`function SingleDofCost(nod::Vector{Node};class::Symbol, ... )`
+
+See also: [`coord`](@ref) 
+"""
 struct Node 
     ID          :: NodID             # global node number, unique ID
     coord       :: 𝕣1                # all nodes in a model have coordinates in same space

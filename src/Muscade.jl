@@ -29,7 +29,7 @@ module Muscade
 
     include("ModelDescription.jl")
     export Model,addnode!,addelement!,setscale!,initialize!
-    export Node,DofID,NodID,EleID
+    export Node
     export describe,getndof
 
     include("ElementAPI.jl")
@@ -40,9 +40,9 @@ module Muscade
     export noχ,noFB
 
     include("BasicElements.jl")
-    export off,equal,inequal
+    export off,equal,positive
     export DofCost,SingleDofCost,ElementCost
-    export Constraint,Hold
+    export DofConstraint,Hold
     export QuickFix,DofLoad
 
     include("Assemble.jl")

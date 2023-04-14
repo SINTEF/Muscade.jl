@@ -378,20 +378,22 @@ end
 
 function checkresidual(eleobj::AbstractElement,X,U,A,t,χ,χcv,SP,dbg,req...)
     res = residual(eleobj,X,U,A,t,χ,χcv,SP,dbg,req...)
-    hasnan(res[1]) && muscadeerror(dbg,"NaN in a residual or its partial derivatives")
+    hasnan(res[1]) && muscadeerror((dbg...,X=X,U=U,A=A,t=t,χ=χ,χcv=χcv,SP=SP,res=res),
+                                "NaN in a residual or its partial derivatives")
     return res
 end
-function checklagrangian(eleobj::AbstractElement,X,U,A,t,χ,χcv,SP,dbg,req...)
-    res = lagrangian(eleobj,X,U,A,t,χ,χcv,SP,dbg,req...)
-    hasnan(res[1]) && muscadeerror(dbg,"NaN in a lagrangian or its partial derivatives")
+function checklagrangian(eleobj::AbstractElement,Λ,X,U,A,t,χ,χcv,SP,dbg,req...)
+    res = lagrangian(eleobj,Λ,X,U,A,t,χ,χcv,SP,dbg,req...)
+    hasnan(res[1]) && muscadeerror((dbg...,Λ=Λ,X=X,U=U,A=A,t=t,χ=χ,χcv=χcv,SP=SP,res=res),
+                                "NaN in a lagrangian or its partial derivatives")
     return res
 end
 
 #               has residual  has lagrangian
-getresidual(  ::Type{False},::Type{False},eleobj::AbstractElement,X,U,A,t,χ,χcv,SP,dbg,req...) = muscadeerror(dbg,@sprintf("Element %s must have method 'Muscade.lagrangian' or/and 'Muscade.residual' with correct interface",typeof(eleobj)))
-getlagrangian(::Type{False},::Type{False},eleobj::AbstractElement,X,U,A,t,χ,χcv,SP,dbg,req...) = muscadeerror(dbg,@sprintf("Element %s must have method 'Muscade.lagrangian' or/and 'Muscade.residual' with correct interface",typeof(eleobj)))
-getresidual(  ::Type{True },::Type{<:Val},eleobj::AbstractElement,X,U,A,t,χ,χcv,SP,dbg,req...) = checkresidual(  eleobj,X,U,A,t,χ,χcv,SP,dbg,req...)
-getlagrangian(::Type{<:Val},::Type{True },eleobj::AbstractElement,X,U,A,t,χ,χcv,SP,dbg,req...) = checklagrangian(eleobj,X,U,A,t,χ,χcv,SP,dbg,req...)    
+getresidual(  ::Type{False},::Type{False},eleobj::AbstractElement,  X,U,A,t,χ,χcv,SP,dbg,req...) = muscadeerror(dbg,@sprintf("Element %s must have method 'Muscade.lagrangian' or/and 'Muscade.residual' with correct interface",typeof(eleobj)))
+getlagrangian(::Type{False},::Type{False},eleobj::AbstractElement,Λ,X,U,A,t,χ,χcv,SP,dbg,req...) = muscadeerror(dbg,@sprintf("Element %s must have method 'Muscade.lagrangian' or/and 'Muscade.residual' with correct interface",typeof(eleobj)))
+getresidual(  ::Type{True },::Type{<:Val},eleobj::AbstractElement,  X,U,A,t,χ,χcv,SP,dbg,req...) = checkresidual(  eleobj,  X,U,A,t,χ,χcv,SP,dbg,req...)
+getlagrangian(::Type{<:Val},::Type{True },eleobj::AbstractElement,Λ,X,U,A,t,χ,χcv,SP,dbg,req...) = checklagrangian(eleobj,Λ,X,U,A,t,χ,χcv,SP,dbg,req...)    
 # want residual, lagrangian implemented
 function getresidual(::Type{False},::Type{True} ,eleobj::AbstractElement,X,U,A,t,χ,χcv,SP,dbg,req...)  
     P   = constants(∂0(X),∂0(U),A,t)
