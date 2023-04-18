@@ -378,13 +378,13 @@ end
 
 function checkresidual(eleobj::AbstractElement,X,U,A,t,χ,χcv,SP,dbg,req...)
     res = residual(eleobj,X,U,A,t,χ,χcv,SP,dbg,req...)
-    hasnan(res[1]) && muscadeerror((dbg...,X=X,U=U,A=A,t=t,χ=χ,χcv=χcv,SP=SP,res=res),
+    hasnan(res[1]) && muscadeerror((dbg...,t=t,SP=SP),
                                 "NaN in a residual or its partial derivatives")
     return res
 end
 function checklagrangian(eleobj::AbstractElement,Λ,X,U,A,t,χ,χcv,SP,dbg,req...)
     res = lagrangian(eleobj,Λ,X,U,A,t,χ,χcv,SP,dbg,req...)
-    hasnan(res[1]) && muscadeerror((dbg...,Λ=Λ,X=X,U=U,A=A,t=t,χ=χ,χcv=χcv,SP=SP,res=res),
+    hasnan(res[1]) && muscadeerror((dbg...,t=t,SP=SP),
                                 "NaN in a lagrangian or its partial derivatives")
     return res
 end

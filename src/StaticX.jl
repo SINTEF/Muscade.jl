@@ -72,7 +72,7 @@ state           = solve(StaticX;initialstate=initialstate,time=[0.,1.])
 # Output
 A vector of length equal to that of `time` containing the state of the model at each of these steps                       
 
-See also: [`solve`](@ref), [`StaticXUA`](@ref) 
+See also: [`solve`](@ref), [`StaticXUA`](@ref), [`initialize!`](@ref)
 """
 struct StaticX end
 getTstate(::Type{StaticX}) = State{1,1,typeof((γ=0.,))} #  nXder,nUder,TSP

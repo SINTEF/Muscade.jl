@@ -1,9 +1,35 @@
-    # Usage:
-    # using Unit
-    # using Unit: m, kg, pound, foot
-    # rho = 3←pound/foot^3  # convert to SI
-    # printf("Density [pound/foot^3] %f",rho→pound/foot^3)
+"""
 
+Muscade provides `unit` to transform quantities to and from basic SI units.
+This allows to develop Muscade-based applications with a coherent unit system.
+
+```
+using Muscade
+using Muscade: m, kg, pound, foot
+rho          = 3←pound/foot^3                        # convert to SI
+vieuxquintal = 1000*pound                            # define new unit
+printf("Density [pound/foot^3] %f",rho→pound/foot^3) # convert from SI
+```
+Whole arrays can be converted in the same way.
+
+In the above, `rho` would be of type `Float64`.  This contrasts with
+`Unitful.jl` which would make ``rho` be of a type containing data about 
+dimensionality thus providing check against operations like `length+surface`.
+The drawback is that this would in many cases cause arrays to appear 
+that contain heterogenous data.  In Julia, such arrays with abstract element
+have severely lower performance.
+
+The typical usage is
+- Application developers assume inputs with consistent units.
+- Application developers require any constants (acceleration of gravity, 
+  gas constant...) as user input.
+- Users convert all their input values as they define it `rho = 3 ← pound/foot^3`
+- Users convert Muscade outputs before printing them out  
+  `printf("stress [MPa] %f",stress → MPa)`
+
+Inspect the file `espy.jl` for an overview of the available units.  
+
+"""
     struct unit
         phydim :: Vector{Float64}
         ct     :: Float64
@@ -22,8 +48,6 @@
     Base.inv(a::unit)                  = unit(-a.phydim         ,1.  /a.ct)
     ←(a::Number,b::unit)               =                        a   *b.ct
     ←(a       ,b::unit)                =                        a  .*b.ct
-    convert(a::Number,b::unit,c::unit) = b.phydim==c.phydim ?   a   *b.ct/c.ct   : error("Conversion between units with different physical dimensions.")
-    convert(a        ,b::unit,c::unit) = b.phydim==c.phydim ?   a  .*(b.ct/c.ct) : error("Conversion between units with different physical dimensions.")
     →(a::Number,b::unit)               =                        a   /b.ct
     →(a        ,b::unit)               =                        a  ./b.ct
     function string(a::unit)
@@ -75,7 +99,7 @@
     const yotta    = unit(1e24)
 
     # Engineering
-    const Å        = angstrom = 1e-10metre
+    const Å        = Angstrom = 1e-10metre
     const μm       = micrometre = micro*metre
     const mm       = milli*metre
     const cm       = centi*metre

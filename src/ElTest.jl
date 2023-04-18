@@ -1,7 +1,14 @@
 using  Printf
-using  Muscade 
 
-####### For testing: get all the gradients. 
+
+"""
+    L,Lλ,Lx,Lu,La,χn = gradient(eleobj,Λ,X,U,A,t,χ,χcv,SP,dbg)
+
+Compute the Lagrangian, its gradients, and the memory of an element.
+For element debugging and testing. 
+
+See also: [`residual`](@ref),[`lagrangian`](@ref)
+"""     
 function gradient(eleobj,Λ,X,U,A,t,χ,χcv,SP,dbg) 
     P            = constants(Λ,∂0(X),∂0(U),A,t)
     nX,nU,nA     = length(Λ),length(∂0(U)),length(A)
@@ -12,7 +19,14 @@ function gradient(eleobj,Λ,X,U,A,t,χ,χcv,SP,dbg)
     Ly           = ∂{P,N}(L)
     return (L=value{P}(L), Lλ=Ly[iΛ], Lx=Ly[iX], Lu=Ly[iU], La=Ly[iA],χn=χn)
 end
+"""
+    test_static_element(eleobj,δX,X,U,A,t=0,χ=nothing,χcv=identity,SP=nothing,verbose=true,dbg=(;))
 
+Compute the Lagrangian, its gradients, and the memory of an element.
+For element debugging and testing. 
+
+See also: [`residual`](@ref),[`lagrangian`](@ref),[`gradient`](@ref)
+"""     
 function test_static_element(ele::eletyp; δX,X,U,A, t::Float64=0.,χ=nothing,χcv::Function=identity,SP=nothing,verbose::Bool=true,dbg = NamedTuple()) where{eletyp<:AbstractElement}
     inod,class,field = Muscade.getdoflist(eletyp)
     iXdof            = Muscade.getidof(eletyp,:X)

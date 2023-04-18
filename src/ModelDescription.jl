@@ -278,6 +278,15 @@ function setscale!(model::Model;scale=nothing,Λscale=nothing)  # scale = (X=(tx
 end
 
 assert_unlocked(model::Model) = model.locked && muscadeerror(@sprintf("model %s is initialized and can no longer be edited",model.ID))
+"""
+    initialstate = initialize!(model)
+
+Finalize a model (invoquing `addnode!` and `addelement!` after `initialize!` will result in an error) 
+and return an initial `State` (with all dofs set to zero, as starting point for an analysis.)
+
+See also: [`addnode!`](@ref), [`addelement!`](@ref), [`solve`](@ref)
+"""
+
 function initialize!(model::Model)
     assert_unlocked(model)
     model.locked = true
@@ -297,10 +306,13 @@ eletyp(model::Model) = eltype.(model.eleobj)
 ### getting printout of the model
 using Printf
 """
-`describe(model,eleid)`,`describe(model,dofid)`,`describe(model,nodid)`
-`describe(model,:dof)`,`describe(model,:eletyp)`
+    describe(model,spec)
 
-Print out  information about the model.
+Print out information about `model`.
+`spec` can be an `EleID`, a `DofID`, a `NodID` to describe an element, a dof or a node.
+`spec` can be `:dof` to obtain a list of dofs or `:eletyp` for a list of element types.
+
+See also: [`addelement!`](@ref), [`addnode!`](@ref)
 """
 function describe(model::Model,eleID::EleID)
     try 

@@ -14,7 +14,7 @@ case of error.
 This will call the method `solve` provided by the solver with
 `solve(Solver,pstate,verbose,(dbg...,solver=Symbol(Solver));kwargs...)`
 
-See also: [`StaticX`](@ref), [`StaticXUA`](@ref) 
+See also: [`StaticX`](@ref), [`StaticXUA`](@ref), [`initialize!`](@ref) 
 """
 function solve(Solver;dbg=NamedTuple(),verbose::𝕓=true,silenterror::𝕓=false,kwargs...) 
     verbose && printstyled("\n\n\nMuscade:",bold=true,color=:cyan)

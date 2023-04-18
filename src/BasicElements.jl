@@ -1,5 +1,5 @@
 """
-`DofCost{Class,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,Tcost,Tcostargs} <: AbstractElement`
+    DofCost{Class,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,Tcost,Tcostargs} <: AbstractElement
 
 An element to apply costs on combinations of dofs.  
 
@@ -52,7 +52,7 @@ end
 end
 
 """
-`ElementCost{Teleobj,Treq,Tcost,Tcostargs} <: AbstractElement`
+    ElementCost{Teleobj,Treq,Tcost,Tcostargs} <: AbstractElement
 
 An element to apply costs on another element's element-results.  
 
@@ -90,7 +90,7 @@ end
 
 #-------------------------------------------------
 """
-`SingleDofCost{Derivative,Class,Field,Tcost} <: AbstractElement`
+    SingleDofCost{Derivative,Class,Field,Tcost} <: AbstractElement
 
 An element with a single node, for adding a cost to a given dof.  
 
@@ -105,15 +105,12 @@ An element with a single node, for adding a cost to a given dof.
 - `cost`, the value of the cost.
 
 # Examples
-```jldoctest; output = false
+```
 using Muscade
 model = Model(:TestModel)
 node  = addnode!(model,𝕣[0,0])
 e     = addelement!(model,SingleDofCost,[node];class=:X,field=:tx,costargs=(3.,),cost=(x,t,three)->(x/three)^2)
 
-# output
-
-EleID(1, 1)
 ```    
 See also: [`DofCost`](@ref), [`ElementCost`](@ref)
 """
@@ -130,7 +127,7 @@ end
 #-------------------------------------------------
 
 """
-`DofLoad{Tvalue,Field} <: AbstractElement`
+    DofLoad{Tvalue,Field} <: AbstractElement
 
 An element to apply a loading term to a single X-dof.  
 
@@ -142,15 +139,11 @@ An element to apply a loading term to a single X-dof.
 - `F`, the value of the load.
 
 # Examples
-```jldoctest; output = false
+```
 using Muscade
 model = Model(:TestModel)
 node  = addnode!(model,𝕣[0,0])
 e     = addelement!(model,DofLoad,[node];field=:tx,value=t->3t-1)
-
-# output
-
-EleID(1, 1)
 ```    
 
 See also: [`Hold`](@ref), [`DofCost`](@ref)  
@@ -193,26 +186,26 @@ end
 #-------------------------------------------------
 
 """
-`off(t) → :off`
+    off(t) → :off
 
 See also: [`DofConstraint`](@ref), [`equal`](@ref), [`positive`](@ref)
 """
 off(t)     = :off
 """
-`equal(t) → :equal`
+    equal(t) → :equal
 
 See also: [`DofConstraint`](@ref), [`off`](@ref), [`positive`](@ref)
 """
 equal(t)   = :equal
 """
-`positive(t) → :positive`
+    positive(t) → :positive
 
 See also: [`DofConstraint`](@ref), [`off`](@ref), [`equal`](@ref)
 """
 positive(t) = :positive
 # length of comment                                           stop here|
 """
-`DofConstraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,Tg,Tmode} <: AbstractElement`
+    DofConstraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,Tg,Tmode} <: AbstractElement
 
 An element to apply physical/optimisation equality/inequality constraints on dofs. 
 
@@ -333,15 +326,11 @@ An element to set a single X-dof to zero.
 - `λfield::Symbol=Symbol(:λ,field)`. The field of the Lagrange multiplier.
 
 # Examples
-```jldoctest; output = false
+```
 using Muscade
 model = Model(:TestModel)
 node  = addnode!(model,𝕣[0,0])
 e     = addelement!(model,Hold,[node];field=:tx)
-
-# output
-
-EleID(1, 1)
 ```    
 
 See also: [`DofConstraint`](@ref), [`DofLoad`](@ref), [`DofCost`](@ref) 
