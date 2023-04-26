@@ -96,9 +96,7 @@ See [`doflist`](@ref).
 
 Elements that implement a cost on the degrees of freedom must implement a method of the form
 
-```@docs
-lagrangian
-```
+See [`lagrangian`](@ref) for the list of arguments and outputs.
 
 ### Automatic differentiation
 
@@ -117,7 +115,7 @@ datatype supporting automatic diffeentiation instead of `Float64`.
 ### Extraction of intermediate element results
 
 The function definition must be anotated with the macro call `@espy`.  Variables within the body of `lagrange`, which
-the user may want to obtain must be anotated with `☼` (by typing `\\sun` they pressing `TAB`) at the place where they
+the user may want to obtain must be anotated with `☼` (by typing `\sun` they pressing `TAB`) at the place where they
 are calculated. An example would be 
 
 ```julia
@@ -133,8 +131,7 @@ See [`@espy`](@ref) for a complete guide on code anotations.
 
 ## `Muscade.residual`
 
-Elements that implement "physics" will typicaly implement `residual` (they could implement the 
-same using `lagrangian`, but the resulting code would be less performant).
+Elements that implement "physics" will typicaly implement `residual` (they could implement the same using `lagrangian`, but the resulting code would be less performant).
 
 The interface is mostly the same as for `lagrangian` with the differences that
 
@@ -223,14 +220,28 @@ See [`residual`](@ref).
 
 ## Help functions
 
-## Simple example
+`Muscade` provides functions and constants to make it easier to comply with the API:
+
+- Element constructors can use function [`coord`](@ref) to extract the coordinates fron the `Vector{Node}` they get as first argument.
+- `residual` and `lagrangian` **must** use [`∂0`](@ref), [`∂1`](@ref) and [`∂2`](@ref) when extracting the zeroth, first and second time derivatives from arguments `X` and `U`.
+- Constants [`noχ`](@ref) and [`noFB`](@ref) (which have value `nothing`) can be used by elements that do not have memory or no feedback to the solving procedure.
 
 ## Performance
 
-Type stability
+For a given element formulation, the performance of `residual` and `lagrangian` can vary with a factor up to 100 between a good and a bad implementation.
 
-Avoiding allocations
+**Type stable code** allows the compiler to know the type of every variable in a function given the type of its parameters. Code that is type unstable is significantly slower. See the page on [type stability](TypeStable.md).
 
-Automatic differentiation
+**Allocation**, and the corresponding deallocation of memory *on the heap* takes time. By contrast, allocation and deallocation *on the stack* is fast.  In Julia, only immutable variables can be allocated on the stack. See the page on [memory management](Memory.md)
+
+**Automatic differentiation** generaly does not affect how `residual` and `lagrangian` are writen.  There are two performance-related exceptions to this:
+
+1. If a complex sub function in `residual` and `lagrangian` (typicaly a material model or other closure) operates on an array (for example, the strain) that is smaller than the number of degrees of freedom of the system, computing time can be saved by computing the derivative of the output (in the example, the stress) with respect to the input to the subfunction, and then compose the derivatives.
+2. Iterative precedures are sometimes used within `residual` and `lagrangian`, a typical example being in plastic material formulations.  There is no need to propagate automatic differentiation through all the iterations - doing so with the result of the iteration provides the same result.
+
+See the page on [advanced automatic differentiation](Adiff.md)
+
+
+
 
 

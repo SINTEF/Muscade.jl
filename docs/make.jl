@@ -1,5 +1,7 @@
 using Documenter, Muscade
 
+deploy = false
+
 push!(LOAD_PATH,"../src")
 cp("./LICENSE.md","./docs/src/LICENSE.md",force=true)
 makedocs(sitename ="Muscade.jl",
@@ -19,11 +21,10 @@ makedocs(sitename ="Muscade.jl",
         source  = "src",
         build   = "build"   
         )
-
-#here = @__DIR__
-# mv(here*"\\build\\index.html",here*"\\index.html", force=true)        
-# mv(here*"\\build\\search.html",here*"\\search.html", force=true)        
-# mv(here*"\\build\\search_index.js",here*"\\search_index.js", force=true)        
-# mv(here*"\\build\\assets",here*"\\assets", force=true)        
-#deploydocs(repo = "github.com/PhilippeMaincon/Muscade.jl.git")
-
+if deploy
+        mv("./build/index.html"     ,"./index.html"     , force=true)        
+        mv("./build/search.html"    ,"./search.html"    , force=true)        
+        mv("./build/search_index.js","./search_index.js", force=true)        
+        mv("./build/assets"         ,"./assets"         , force=true)        
+        deploydocs(repo = "github.com/PhilippeMaincon/Muscade.jl.git")
+end

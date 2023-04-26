@@ -108,7 +108,7 @@ doflist(     ::Type{E}) where{E<:AbstractElement}  = muscadeerror(@sprintf("meth
 - `U` a `NTuple` of `SVector{nUdof,R} where{R<:Real}`, containing the Udofs and, depending on the solver,
    their time derivatives. Use `u=∂0(U)`, `̇u=∂1(U)` and `̈u=∂2(U)` to safely obtain vectors of zeros
    where the solver leaves time derivatives undefined.
-- `Q` a `SVector{nqdof,R} where{R<:Real}`.
+- `A` a `SVector{nAdof,R} where{R<:Real}`.
 - `t` a ``Real` containing the time.
 - `χ` the element memory
 - `χcv` a function used to built the updated element memory.

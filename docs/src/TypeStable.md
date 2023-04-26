@@ -1,4 +1,4 @@
-# Type-stability
+# Type-stability 
 
 ## Introduction
 This text presents *type stability*, which is one of the important concepts that one needs to understand in order to write high-performance Julia code.

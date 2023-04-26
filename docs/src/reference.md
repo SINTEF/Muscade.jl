@@ -1,6 +1,5 @@
 # [Reference manual](@id reference)
 
-
 ## Constants
 
 ```@autodocs
