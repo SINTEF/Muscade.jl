@@ -325,7 +325,7 @@ end
   `residual` and `lagrangian` must not allocate and thus use immutables.
                 
 
-See also: [`@request`](@ref), [`@espydbg`](@ref), [`@getresult`](@ref)
+See also: [`@request`](@ref), [`@espydbg`](@ref), [`getresult`](@ref)
 """
 macro espy(ex)
     cntr = 0
@@ -336,8 +336,7 @@ macro espy(ex)
 end
 
 """
-    @espydbg function ...
-    end
+    @espydbg function ... end
 
 Generate the same code as [`@espy`](@ref) and print it (for debug purposes).
 

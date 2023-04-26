@@ -99,18 +99,18 @@ function addin!(out::AssemblyStaticΛXU,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nx
 end
 
 """
-`StaticXUA`
+	StaticXUA
 
 A non-linear static solver for optimisation FEM.
 The current algorithm does not handle element memory. 
 
 An analysis is carried out by a call with the following syntax:
 
-`
+```
 initialstate    = initialize!(model)
 stateX          = solve(StaticX  ;initialstate=initialstate,time=[0.,1.])
 stateXUA        = solve(StaticXUA;initialstate=stateX)
-`
+```
 
 # Named arguments
 - `dbg=(;)`           a named tuple to trace the call tree (for debugging)
@@ -136,9 +136,8 @@ stateXUA        = solve(StaticXUA;initialstate=stateX)
 - `γfac2=100.`        by γfac1*exp(-min(αᵢ)/γfac2)^2), where αᵢ is computed by the i-th
                       interior point savvy element as αᵢ=abs(λ-g)/γ                                               
 
-                      maxAiter::ℤ=50,maxYiter::ℤ=0,maxΔy::ℝ=1e-5,maxLy::ℝ=∞,maxΔa::ℝ=1e-5,maxLa::ℝ=∞,γ0::𝕣=1.,γfac1::𝕣=.5,γfac2::𝕣=100.
-
 # Output
+
 A vector of length equal to that of `initialstate` containing the state of the optimized model at each of these steps                       
 
 See also: [`solve`](@ref), [`StaticX`](@ref) 

@@ -1,7 +1,6 @@
 
 # by Philippe Mainçon
 #
-# To get special characters in ATOM, type their "code", e.g. \partial, followed by ctrl-space (to get a suggestion) and TAB (or RETURN) to accept it.
 # In VScode, use the "Fast Unicode math characters" plugging
 # To interrupt Julia, CTRL-j,k
 using Printf,StaticArrays
@@ -9,16 +8,78 @@ import Base.Threads.@spawn, Base.Threads.nthreads
 
 ## Basic types
 # abstract types for dispatch
+"""
+    𝔹 (\\bbB)
+
+an alias for `Bool`. For use in dispatching.
+`𝔹1`... `𝔹4` are `AbstractArrays` of dimensions 1 to 4.
+"""        
 const 𝔹  = Bool      # \bbB
+"""
+    ℕ (\\bbN)
+
+an alias for `UInt64`. For use in dispatching.
+`ℕ1`... `ℕ4` are `AbstractArrays` of dimensions 1 to 4.
+"""        
 const ℕ  = UInt64
+"""
+    ℤ (\\bbℤ)
+
+an alias for abstract type `Integer`. For use in dispatching.
+`ℤ1`... `ℤ4` are `AbstractArrays` of dimensions 1 to 4.
+`ℤ11` is an `AbstractVector` of `AbstractVector`.
+"""        
 const ℤ  = Integer
+"""
+    ℝ (\\bbR)
+
+an alias for abstract type `Real`. For use in dispatching.
+`ℝ1`... `ℝ4` are `AbstractArrays` of dimensions 1 to 4.
+`ℝ11` is an `AbstractVector` of `AbstractVector`.
+"""        
 const ℝ  = Real
 # concrete types for allocation
+"""
+    𝕓 (\\bbb)
+
+an alias for `Bool`. For use in `struct` definitions.
+`𝕓1`... `𝕓4` are `Arrays` of dimensions 1 to 4.
+"""
 const 𝕓  = Bool
+"""
+    𝕟 (\\bbn)
+
+an alias for `UInt64`. For use in `struct` definitions.
+`𝕟1`... `𝕟4` are `Arrays` of dimensions 1 to 4.
+"""
 const 𝕟  = UInt64
+"""
+    𝕫 (\\bbz)
+
+an alias for `Int64`. For use in `struct` definitions.
+`𝕫1`... `𝕫4` are `Arrays` of dimensions 1 to 4.
+`𝕫11` is a `Vector` of `Vector`.
+"""
 const 𝕫  = Int64
+"""
+    𝕣 (\\bbr)
+
+an alias for `Float64`. For use in `struct` definitions.
+`𝕣1`... `𝕣4` are `Arrays` of dimensions 1 to 4.
+`𝕣11` is a `Vector` of `Vector`.
+"""
 const 𝕣  = Float64
+"""
+    ϵ (\\epsilon)
+
+an alias for `Base.eps(𝕣)`. 
+"""
 const ϵ  = Base.eps(𝕣)
+"""
+    ∞ (\\infty)
+
+an alias for `Base.inf`. 
+"""
 const ∞  = Base.Inf
 
 # define arrays of these
@@ -51,29 +112,21 @@ subtypeof(a::AbstractVector,b::AbstractVector) = a[a .<: Union{b...}]
 # Given a variable, or its type, e.g. SMatrix{S,T}, get the name of the constructor, e.g. SMatrix
 constructor(T::DataType)               = T.name.wrapper
 constructor(x::T) where{T}             = T.name.wrapper
-# typestable equivalent of a ? b : c
+"""
+
+    toggle(condition,a,b)
+
+Typestable equivalent of `condition ? a : b`.  
+Returns a value converted to `promote_type(typeof(a),typeof(b))`
+"""
 toggle(cond::Bool,a::Ta,b::Tb) where{Ta,Tb} = convert(promote_type(Ta,Tb), cond ? a : b)
-macro toggle(cond,a,b) # evaluate only a or only b
-    return :(convert(promote_type(typeof($a),typeof($b)), $cond ? $a : $b))
-end
+# macro toggle(cond,a,b) # evaluate only a or only b
+#     return :(convert(promote_type(typeof($a),typeof($b)), $cond ? $a : $b))
+# end
 getval(::Val{v}) where{v} = v
 
 ## Array handling
 flat(a)                                = reshape(a,length(a))
-# Take slice i from the d'th dimension of array a
-# @generated function Base.selectdim(a,::Val{d},i) where{d}
-#     precols = ()
-#     pstcols = ()
-#     for i = 1:d-1
-#         precols = (precols...,:)
-#     end
-#     for i = 1:ndims(a)-d
-#         pstcols = (pstcols...,:)
-#     end
-#     return quote
-#         return view(a,$(precols...),i,$(pstcols...))
-#     end
-# end
 # flatten a vector of vectors of identical size, but lead a matrix as-is
 consolidate(a) = a
 consolidate(a::AbstractVector{E}) where{E<:AbstractVector{T}} where{T} = reduce(hcat,a)
@@ -91,40 +144,7 @@ function uniques(v::AbstractVector{T}) where{T}
     return u,idx
 end
 
-## Rear: indexing into the last index of an array
-# @generated function rearview(a,i)
-#     colons = ()
-#     for i = 1:ndims(a)-1
-#         colons = (colons...,:)
-#     end
-#     return quote
-#         return view(a,$(colons...),i)
-#     end
-# end
-# @generated function rearget(a,i)
-#     colons = ()
-#     for i = 1:ndims(a)-1
-#         colons = (colons...,:)
-#     end
-#     return quote
-#         return a[$(colons...),i]
-#     end
-# end
-# rearalloc(siz::NTuple{N, Any},el::E) where{E,N} = Array{E,N}(undef,siz)
-# @generated function rearalloc(siz::NTuple{Nsiz, Any},el::AbstractArray{E,Nel}) where{Nsiz,Nel,E}
-#     N = Nel+Nsiz
-#     return quote
-#         return Array{E,$N}(undef,(size(el)...,siz...))
-#     end
-# end
-# function rearset!(a::Array{E,Na},i::ℤ,b::Array{E,Nb}) where{E,Na,Nb}
-#     rearview(a,i)[:] = b
-#     return nothing
-# end
-# function rearset!(a::Vector{E},i::ℤ,b::E) where{E}
-#     rearview(a,i)[]  = b
-#     return nothing
-# end
+
 
 function showtime(t)
     return if t<1e-6
@@ -154,8 +174,14 @@ end
 
 copies(n,a::T) where{T} = NTuple{n,T}(deepcopy(a) for i∈1:n)
 
-# @once f f(x)= x^2 # do not parse f again if not modified (prevent recompilation when passing function as arg from script)
 using MacroTools: postwalk,gensym_ids,rmlines,unblock 
+"""
+    @once f(x)= x^2 
+    
+do not parse the definition of function `f` again if not modified.
+Using in a script, this prevents recompilations in `Muscade` or applications
+based on it when they receive such functions as argument
+"""    
 macro once(ex)
     ex  = postwalk(rmlines,ex)
     ex  = postwalk(unblock,ex)
@@ -169,8 +195,12 @@ macro once(ex)
         end 
     end
 end
+"""
+    default{:fieldname}(namedtuple,defval)
 
-# get a field from a NamedTuple - or a default otherwise (which by default is nothing)
+attempt to get a field `fieldname` from a `NamedTuple`. If `namedtuple` does not have 
+such a field - or is not a `NamedTuple`, return `defval`.
+"""
 struct default{S} end
 default{S}(t::T,d=nothing) where{S,T<:NamedTuple} = hasfield(T,S) ? getfield(t,S) : d
 default{S}(t::T,d=nothing) where{S,T            } =                                 d

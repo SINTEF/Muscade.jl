@@ -1,5 +1,6 @@
 """
-    DofCost{Class,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,Tcost,Tcostargs} <: AbstractElement
+    DofCost{Class,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,
+        afield,Tcost,Tcostargs} <: AbstractElement
 
 An element to apply costs on combinations of dofs.  
 
@@ -21,10 +22,13 @@ An element to apply costs on combinations of dofs.
 # Requestable internal variables
 - `cost`, the value of the cost.
 
-# Examples
-TODO
+# Example
+```
+ele1 = addelement!(model,DofCost,[nod1],xinod=(1,),field=(:tx1,),
+       class=:I,cost=(X,U,A,t)->X[1]^2
+```
 
-See also: [`SingleDofCost`](@ref), [`ElementCost`](@ref)  
+See also: [`SingleDofCost`](@ref), [`ElementCost`](@ref), [`addelement!`](@ref)  
 """
 struct DofCost{Class,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,Tcost,Tcostargs} <: AbstractElement
     cost     :: Tcost     
@@ -42,11 +46,11 @@ doflist(::Type{<:DofCost{Class,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield}}
    (inod =(xinod...           ,uinod...           ,ainod...           ), 
     class=(ntuple(i->:X,Nx)...,ntuple(i->:U,Nu)...,ntuple(i->:A,Na)...), 
     field=(xfield...          ,ufield...          ,afield...          ) )
-@espy function lagrangian(o::DofCost{:I,Nx,Nu,Na},δX,X,U,A,t,χ,χcv,SP,dbg) where{Nx,Nu,Na} 
+@espy function lagrangian(o::DofCost{:I,Nx,Nu,Na},Λ,X,U,A,t,χ,χcv,SP,dbg) where{Nx,Nu,Na} 
     ☼cost = o.cost(X,U,A,t,o.costargs...)
     return cost,noχ,noFB
 end
-@espy function lagrangian(o::DofCost{:A,Nx,Nu,Na},δX,X,U,A,t,χ,χcv,SP,dbg) where{Nx,Nu,Na} 
+@espy function lagrangian(o::DofCost{:A,Nx,Nu,Na},Λ,X,U,A,t,χ,χcv,SP,dbg) where{Nx,Nu,Na} 
     ☼cost = o.cost(    A  ,o.costargs...)
     return cost,noχ,noFB
 end
@@ -69,6 +73,16 @@ An element to apply costs on another element's element-results.
 # Requestable internal variables
 - `cost`, the value of the cost.
 
+# Example
+```
+@once cost(eleres,X,U,A,t) = eleres.Fh^2
+ele1 = addelement!(model,ElementCost,[nod1],req=@request(Fh),
+                   cost=cost,ElementType=AnchorLine,
+                   Λₘtop=[5.,0,0], xₘbot=[250.,0], L=290., buoyancy=-5e3)
+```
+
+
+
 See also: [`SingleDofCost`](@ref), [`DofCost`](@ref), [`@request`](@ref) 
 """
 struct ElementCost{Teleobj,Treq,Tcost,Tcostargs}
@@ -82,13 +96,12 @@ function ElementCost(nod::Vector{Node};req,cost,costargs=(;),ElementType,element
     return ElementCost(eleobj,req,cost,costargs)
 end
 doflist( ::Type{<:ElementCost{Teleobj}}) where{Teleobj} = doflist(Teleobj)
-@espy function lagrangian(o::ElementCost, δX,X,U,A,t,χ,χcv,SP,dbg)
-    L,χ,FB,eleres  = ☼lagrangian(o.eleobj,δX,X,U,A,t,χ,χcv,SP,(dbg...,via=ElementCost),o.req)
+@espy function lagrangian(o::ElementCost, Λ,X,U,A,t,χ,χcv,SP,dbg)
+    L,χ,FB,eleres  = ☼lagrangian(o.eleobj,Λ,X,U,A,t,χ,χcv,SP,(dbg...,via=ElementCost),o.req)
     ☼cost          = o.cost(eleres,X,U,A,t,o.costargs...) 
     return L+cost,χ,FB
 end    
 
-#-------------------------------------------------
 """
     SingleDofCost{Derivative,Class,Field,Tcost} <: AbstractElement
 
@@ -104,14 +117,15 @@ An element with a single node, for adding a cost to a given dof.
 # Requestable internal variables
 - `cost`, the value of the cost.
 
-# Examples
+# Example
 ```
 using Muscade
 model = Model(:TestModel)
 node  = addnode!(model,𝕣[0,0])
-e     = addelement!(model,SingleDofCost,[node];class=:X,field=:tx,costargs=(3.,),cost=(x,t,three)->(x/three)^2)
-
+e     = addelement!(model,SingleDofCost,[node];class=:X,field=:tx,
+                    costargs=(3.,),cost=(x,t,three)->(x/three)^2)
 ```    
+
 See also: [`DofCost`](@ref), [`ElementCost`](@ref)
 """
 struct SingleDofCost <: AbstractElement end
@@ -188,11 +202,19 @@ end
 """
     off(t) → :off
 
-See also: [`DofConstraint`](@ref), [`equal`](@ref), [`positive`](@ref)
+A function which for any value `t` returns the symbol `off`.  Usefull for specifying
+the keyword argument `mode=off` in adding an element of type ``DofConstraint` to
+a `Model`.
+
+    See also: [`DofConstraint`](@ref), [`equal`](@ref), [`positive`](@ref)
 """
 off(t)     = :off
 """
     equal(t) → :equal
+
+A function which for any value `t` returns the symbol `equal`.  Usefull for specifying
+the keyword argument `mode=equal` in adding an element of type ``DofConstraint` to
+a `Model`.
 
 See also: [`DofConstraint`](@ref), [`off`](@ref), [`positive`](@ref)
 """
@@ -200,12 +222,16 @@ equal(t)   = :equal
 """
     positive(t) → :positive
 
+A function which for any value `t` returns the symbol `positive`.  Usefull for specifying
+the keyword argument `mode=positive` in adding an element of type ``DofConstraint` to
+a `Model`.
+
 See also: [`DofConstraint`](@ref), [`off`](@ref), [`equal`](@ref)
 """
 positive(t) = :positive
-# length of comment                                           stop here|
 """
-    DofConstraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,Tg,Tmode} <: AbstractElement
+    DofConstraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,
+        afield,λinod,λfield,Tg,Tmode} <: AbstractElement
 
 An element to apply physical/optimisation equality/inequality constraints on dofs. 
 
@@ -241,14 +267,16 @@ This element can generate three classes of constraints, depending on the input a
                                  `:positive` or `:off` at any time. An `:off` constraint 
                                  will set the Lagrange multiplier to zero.
 
-# Examples
-```jldoctest
+# Example
+```jldoctest; output = false
 using Muscade
 model           = Model(:TestModel)
 n1              = addnode!(model,𝕣[0]) 
 e1              = addelement!(model,DofConstraint,[n1],xinod=(1,),xfield=(:t1,),
-                              λinod=1, λclass=:X, λfield=:λ1,gap=(x,t)->x[1]+.1,mode=positive)
-e2              = addelement!(model,QuickFix  ,[n1],inod=(1,),field=(:t1,),res=(x,u,a,t)->0.4x.+.08+.5x.^2)
+                              λinod=1, λclass=:X, λfield=:λ1,gap=(x,t)->x[1]+.1,
+                              mode=positive)
+e2              = addelement!(model,QuickFix  ,[n1],inod=(1,),field=(:t1,),
+                              res=(x,u,a,t)->0.4x.+.08+.5x.^2)
 state           = solve(staticX;model,time=[0.],verbose=false) 
 X               = state[1].X[1]
 
@@ -259,7 +287,7 @@ X               = state[1].X[1]
   0.045000397353771225
 ```    
 
-See also: [`Hold`,`off`,`equal`,`positive`](@ref)
+See also: [`Hold`](@ref), [`off`](@ref), [`equal`](@ref), [`positive`](@ref)
 """
 struct DofConstraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,Tg,Tgargs,Tmode} <: AbstractElement
     gap      :: Tg    # Class==:X gap(x,t,gargs...) ,Class==:U  gap(x,u,a,t,gargs...), Class==:A gap(a,gargs...) 
@@ -295,7 +323,7 @@ doflist(::Type{<:DofConstraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,
     elseif     o.mode(t)==:off;      SVector{Nx+1}(ntuple(i->0,Nx)...,-gₛ/λₛ*λ           ) ,noχ,(α=∞                  ,)
     end
 end
-@espy function lagrangian(o::DofConstraint{:U,Nx,Nu,Na}, δX,X,U,A,t,χ,χcv,SP,dbg) where{Nx,Nu,Na}
+@espy function lagrangian(o::DofConstraint{:U,Nx,Nu,Na}, Λ,X,U,A,t,χ,χcv,SP,dbg) where{Nx,Nu,Na}
     γ          = default{:γ}(SP,0.)
     x,u,a,☼λ   = ∂0(X),∂0(U)[SVector{Nu}(1:Nu)],A,∂0(U)[Nu+1]
     ☼gap       = o.gap(x,u,a,t,o.gargs...)
@@ -304,7 +332,7 @@ end
     elseif     o.mode(t)==:off;      -o.gₛ/(2o.λₛ)*λ^2        ,noχ,(α=∞                      ,)  
     end
 end
-@espy function lagrangian(o::DofConstraint{:A,Nx,Nu,Na}, δX,X,U,A,t,χ,χcv,SP,dbg) where{Nx,Nu,Na}
+@espy function lagrangian(o::DofConstraint{:A,Nx,Nu,Na}, Λ,X,U,A,t,χ,χcv,SP,dbg) where{Nx,Nu,Na}
     γ          = default{:γ}(SP,0.)
     a,☼λ       = A[SVector{Na}(1:Na)],A[    Na+1] 
     ☼gap       = o.gap(a,o.gargs...)
@@ -317,7 +345,7 @@ end
 #-------------------------------------------------
 
 """
-`Hold <: AbstractElement`
+    Hold <: AbstractElement
 
 An element to set a single X-dof to zero.  
 
@@ -325,7 +353,7 @@ An element to set a single X-dof to zero.
 - `field::Symbol`. The field of the X-dof to constraint.
 - `λfield::Symbol=Symbol(:λ,field)`. The field of the Lagrange multiplier.
 
-# Examples
+# Example
 ```
 using Muscade
 model = Model(:TestModel)
@@ -345,7 +373,7 @@ end
 #-------------------------------------------------
 
 """
-`QuickFix <: AbstractElement`
+    QuickFix <: AbstractElement
 
 An element for creating simple elements with "one line" of code.  
 Elements thus created have several limitations:

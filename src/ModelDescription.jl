@@ -1,7 +1,18 @@
 using StaticArrays,Printf
 
 # model datastructure - private, structure may change, use accessor functions
+"""
+    AbstractElement
 
+An abstract data type.  An element type `MyElement` must be
+declared as a subtype of `AbstractElement`.
+
+`MyELement`must provide a constructor with interface
+
+    `eleobj = MyElement(nod::Vector{Node}; kwargs...)`
+
+See also: [`coord`](@ref), [`Node`](@ref), [`lagrangian`](@ref)    
+"""    
 abstract type AbstractElement  end
 abstract type ID end 
 struct DofID <: ID
@@ -23,7 +34,7 @@ struct Dof
 end
 Dof1 = Vector{Dof}
 """
-`Node`
+    Node
 
 The eltype of vectors handed by Muscade as first argument to element constructors.
 
@@ -81,7 +92,9 @@ Base.getindex(ele::AbstractArray,eleID::EleID)   = ele[eleID.ieletyp][eleID.iele
 Base.getindex(A  ::AbstractArray,id::AbstractArray{ID})   = [A[i] for i ∈ id]
 getidof(E::DataType,class)        = findall(doflist(E).class.==class)  
 """
-`getndof(model)`,`getndof(model,class)`,`getndof(model,(class1,class2,[,...]))`
+    getndof(model)
+    getndof(model,class)
+    getndof(model,(class1,class2,[,...]))
 
 where `class` can be any of `:X`, `:U`, `:A`: get the number of dofs in the
 specified classes (or in the whole model).
@@ -89,7 +102,7 @@ specified classes (or in the whole model).
 `model` can be replaced with a concrete element type.  The number of dofs is
 then per element.
 
-See also: [`describe`](@ref), [`getnele`](@ref) 
+See also: [`describe`](@ref)
 """
 getndof(E::DataType)              = length(doflist(E).inod)
 getndof(E::DataType,class)        = length(getidof(E,class))  
@@ -119,7 +132,7 @@ end
 # Model construction - API
 
 """
-`model = Model([ID=:my_model])`
+    model = Model([ID=:my_model])
 
 Construct a blank `model`, which will be mutated to create a finite element [optimization] problem.
 
@@ -128,7 +141,7 @@ See also: [`addnode!`](@ref), [`addelement!`](@ref), [`describe`](@ref), [`solve
 Model(ID=:muscade_model::Symbol) = Model(ID, Vector{Node}(),Vector{Vector{Element}}(),(X=Dof1(),U=Dof1(),A=Dof1()),Vector{Any}(),Vector{DofTyp}(),1.,false)
 
 """
-`nodid = addnode!(model,coord)`
+    nodid = addnode!(model,coord)
 
 If `coord` is an `AbstractVector` of `Real`: add a single node to the model.  
 Muscade does not prescribe what coordinate system to use.  Muscade will handle 
@@ -152,7 +165,7 @@ addnode!(model::Model,coord::ℝ1)  = addnode!(model,reshape(coord,(1,length(coo
 
 
 """
-`eleid = addelement!(model,ElType,nodid;kwargs...)`
+    eleid = addelement!(model,ElType,nodid;kwargs...)
 
 Add one or several elements to `model`, connecting them to the nodes specified 
 by `nodid`.
@@ -164,7 +177,7 @@ If `nodid` is an `AbstractMatrix`: add multiple elements to the model. Each
 column of `nodid` identifies the node of a single element. `eleid` is then 
 a vector of element identifiers.
 
-For each element, `addelement!` will call `eleobj = ElType(nodes;kwargs)` where
+For each element, `addelement!` will call `eleobj = ElType(nodes;kwargs...)` where
 `nodes` is a vector of nodes of the element.
 
 See also: [`addnode!`](@ref), [`describe`](@ref), [`coord`](@ref)
@@ -245,7 +258,7 @@ end
 addelement!(model::Model,::Type{E},nodID::Vector{NodID};kwargs...) where{E<:AbstractElement} = addelement!(model,E,reshape(nodID,(1,length(nodID)));kwargs...)[1] 
 
 """
-`setscale!(model;scale=nothing,Λscale=nothing)`
+    setscale!(model;scale=nothing,Λscale=nothing)
 
 Provides an order of magnitude for each type of dof in the model.  
 This is usued to improve the conditioning of the incremental problems and
@@ -286,7 +299,6 @@ and return an initial `State` (with all dofs set to zero, as starting point for 
 
 See also: [`addnode!`](@ref), [`addelement!`](@ref), [`solve`](@ref)
 """
-
 function initialize!(model::Model)
     assert_unlocked(model)
     model.locked = true

@@ -38,17 +38,17 @@ function addin!(out::AssemblyStaticX,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxder
 end
 
 """
-`StaticX`
+    StaticX
 
 A non-linear static solver for forward (not inverse, optimisation) FEM.
 The current implementation does not handle element memory. 
 
 An analysis is carried out by a call with the following syntax:
 
-`
+```
 initialstate    = initialize!(model)
 state           = solve(StaticX;initialstate=initialstate,time=[0.,1.])
-`
+```
 
 # Named arguments
 - `dbg=(;)`           a named tuple to trace the call tree (for debugging)

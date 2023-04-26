@@ -20,7 +20,6 @@ module Muscade
 
     include("Espy.jl") 
     export @request
-    export makekey,forloop,scalar
     export @espy,@espydbg
 
     include("Exceptions.jl")
@@ -28,12 +27,12 @@ module Muscade
 
 
     include("ModelDescription.jl")
+    export AbstractElement
     export Model,addnode!,addelement!,setscale!,initialize!
     export Node
     export describe,getndof
 
     include("ElementAPI.jl")
-    export AbstractElement
     export lagrangian,residual,espyable
     export coord,∂0,∂1,∂2
     export doflist
@@ -69,6 +68,7 @@ module Muscade
         export unit,←,→,convert
     end
     module ElTest
+        using Muscade
         include("ElTest.jl")
         export test_static_element,gradient
     end

@@ -25,7 +25,7 @@ Turbine(nod::Vector{Node};seadrag,sea,skydrag,sky) = Turbine(SVector(coord(nod)[
     R  = -o.sea(t,x)*o.seadrag*(1+A[1]) - o.sky(t,x)*o.skydrag*(1+A[2])
     return R,noχ,noFB 
 end
-function Muscade.draw(axe,o::Turbine, δX,X,U,A, t,χ,χcv,SP,dbg)
+function Muscade.draw(axe,o::Turbine, Λ,X,U,A, t,χ,χcv,SP,dbg)
     x    = ∂0(X)+o.xₘ  
     lines!(axe,SMatrix{2,3}(x[1],x[1],x[2],x[2],o.z-10,o.z+10)' ,color=:orange, linewidth=5)
 end

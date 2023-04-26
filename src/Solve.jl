@@ -1,6 +1,6 @@
 using Printf
 """
-`solve(Solver;dbg=(;),verbose=true,silenterror=false,kwargs...)`
+    solve(Solver;dbg=(;),verbose=true,silenterror=false,kwargs...)
 
 Execute an analysis using `Solver`, and safeguard partial results in the
 case of error. 
