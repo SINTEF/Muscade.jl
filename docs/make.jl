@@ -1,7 +1,9 @@
 using Documenter, Muscade
 
-push!(LOAD_PATH,"../src")
-cp("./LICENSE.md","./docs/src/LICENSE.md",force=true)
+repo = normpath((@__DIR__)*"/..")
+push!(LOAD_PATH,joinpath(repo,"src"))
+cp(joinpath(repo,"LICENSE.md"),joinpath(repo,"docs/src/LICENSE.md"),force=true)
+
 makedocs(sitename ="Muscade.jl",
         format    = Documenter.HTML(prettyurls = false,sidebar_sitename = false),
         pages     = ["index.md",
@@ -17,12 +19,16 @@ makedocs(sitename ="Muscade.jl",
                      "Adiff.md",
                      "reference.md",
                      "LICENSE.md"],
-        source  = "src",
-        build   = "build"   
+                     source  = "src",
+                     build   = "build"   
         )
 
-# mv("./build/index.html"     ,"./index.html"     , force=true)        
-# mv("./build/search.html"    ,"./search.html"    , force=true)        
-# mv("./build/search_index.js","./search_index.js", force=true)        
-# mv("./build/assets"         ,"./assets"         , force=true)        
-deploydocs(repo = "github.com/SINTEF/Muscade.jl.git")
+deploydocs(repo = "github.com/SINTEF/Muscade.jl.git",target="build",devbranch="philippe")
+
+# for f ∈ readdir(joinpath(repo,"docs/build")) # needed so that the doc will deploy on 
+# mv(joinpath(repo,"docs/build/",f), joinpath(repo,"docs",f) , force=true)        
+# end       
+# deploydocs(repo = "github.com/SINTEF/Muscade.jl.git")
+
+# https://sintef.github.io/muscade.jl/dev    → philippe
+# https://sintef.github.io/muscade.jl/stable → main 
