@@ -1,7 +1,6 @@
 using Documenter, Muscade
 
 repo = normpath((@__DIR__)*"/..")
-
 push!(LOAD_PATH,joinpath(repo,"src"))
 cp(joinpath(repo,"LICENSE.md"),joinpath(repo,"docs/src/LICENSE.md"),force=true)
 makedocs(sitename ="Muscade.jl",
@@ -19,11 +18,17 @@ makedocs(sitename ="Muscade.jl",
                      "Adiff.md",
                      "reference.md",
                      "LICENSE.md"],
-        source  = "src",
-        build   = "build"   
+                     source  = "src",
+                     build   = "build"   
         )
 
-for f ∈ readdir(joinpath(repo,"docs/build"))
-    mv(joinpath(repo,"docs/build/",f), joinpath(repo,"docs",f) , force=true)        
-end       
-deploydocs(repo = "github.com/SINTEF/Muscade.jl.git")
+deploydocs(repo = "github.com/SINTEF/Muscade.jl.git",target="build",devbranch="philippe")
+
+# for f ∈ readdir(joinpath(repo,"docs/build")) # needed so that the doc will deploy on 
+# mv(joinpath(repo,"docs/build/",f), joinpath(repo,"docs",f) , force=true)        
+# end       
+# deploydocs(repo = "github.com/SINTEF/Muscade.jl.git")
+
+# https://sintef.github.io/muscade.jl/dev    → philippe
+# https://sintef.github.io/muscade.jl/stable → main 
+# https://sintef.github.io/muscade.jl/v0.3.3 → ? 
