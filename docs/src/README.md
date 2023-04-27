@@ -11,7 +11,7 @@ From [code.visualstudio.com](https://code.visualstudio.com), download and instal
 
 Create a new file, and save it with a title ending in `.jl`. If VSCode has detected the Julia language isntallation, a right pointing triangle allowing to execute the current file. In the file, type the canonical `print("Hello world!")`, and execute by clicking the triangle.  This should open a Julia REPL (a Julia terminal) pane at the bottom of the VSCode window.  After a little compiling, the greeting should appear (a second execution will be much faster, typical Julia).
 
-Other extensions that are highly recommended are "Fast Unicode Math Character" (with it installed, typing `\alpha` and then pressing TAB will cause `α`"" to appear), `Julia Color Themes` for syntax highlighting, `vscode-js-profile-flame` (a part of producing graphs for profiling of code). GIT users should consider "GitLens".
+Other extensions that are highly recommended are "Fast Unicode Math Character" (with it installed, typing `\alpha` and then pressing TAB will cause "`α`" to appear), `Julia Color Themes` for syntax highlighting, `vscode-js-profile-flame` (a part of producing graphs for profiling of code). GIT users should consider "GitLens".
 
 ## Installing Muscade
 

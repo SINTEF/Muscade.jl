@@ -5,7 +5,7 @@ deploy = false
 push!(LOAD_PATH,"../src")
 cp("./LICENSE.md","./docs/src/LICENSE.md",force=true)
 makedocs(sitename ="Muscade.jl",
-        format    = Documenter.HTML(prettyurls = false),
+        format    = Documenter.HTML(prettyurls = false,sidebar_sitename = false),
         pages     = ["index.md",
                      "README.md",
                      "Theory.md",
@@ -16,6 +16,7 @@ makedocs(sitename ="Muscade.jl",
                      "Builtin_sol.md",
                      "TypeStable.md",
                      "Memory.md",
+                     "Adiff.md",
                      "reference.md",
                      "LICENSE.md"],
         source  = "src",

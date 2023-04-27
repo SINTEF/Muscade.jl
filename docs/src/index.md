@@ -10,7 +10,7 @@ CurrentModule = Muscade
 
 **Framework**: `Muscade` provides an API to create new elements and new solvers.  It also provides the "piping" - facilities to create models, assemble matrices and vectors and extract and export results. As a framework, `Muscade` does not provide finite element types modeling any specific domain of physics.  It does however provide some domain-agnostic element types for doing things like introducing boundary conditions and introducing costs. 
 
-The API to create new elements is quite classic (given degrees of freedom, compute their duals, aka. residuals): as such Muscade is not a *modeling language* like for example UFL which provides a formalism in which a "well posed problem" can be defined with domain, differential equations and boundary conditions.
+The API to create new elements is quite classic (given degrees of freedom, compute their duals, aka. residuals): as such Muscade is not a *modelling language* like for example UFL which provides a formalism in which a "well posed problem" can be defined with domain, differential equations and boundary conditions.
 
 In order to obtain high performance, elements have to be implemented using a specific programming style: functional programming, using immutables.
 

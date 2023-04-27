@@ -1,3 +1,3 @@
-# Advanced automatic differentiation
+# Automatic differentiation
 
 TODO

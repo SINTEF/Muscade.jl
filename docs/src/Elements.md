@@ -239,7 +239,7 @@ For a given element formulation, the performance of `residual` and `lagrangian` 
 1. If a complex sub function in `residual` and `lagrangian` (typicaly a material model or other closure) operates on an array (for example, the strain) that is smaller than the number of degrees of freedom of the system, computing time can be saved by computing the derivative of the output (in the example, the stress) with respect to the input to the subfunction, and then compose the derivatives.
 2. Iterative precedures are sometimes used within `residual` and `lagrangian`, a typical example being in plastic material formulations.  There is no need to propagate automatic differentiation through all the iterations - doing so with the result of the iteration provides the same result.
 
-See the page on [advanced automatic differentiation](Adiff.md)
+See the page on [automatic differentiation](Adiff.md)
 
 
 
