@@ -32,3 +32,4 @@ deploydocs(repo = "github.com/SINTEF/Muscade.jl.git",target="build",devbranch="p
 # https://sintef.github.io/muscade.jl/dev    → philippe
 # https://sintef.github.io/muscade.jl/stable → main 
 # https://sintef.github.io/muscade.jl/v0.3.3 → ? 
+# https://sintef.github.io/Muscade.jl/       → README.html
