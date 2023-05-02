@@ -277,14 +277,15 @@ e1              = addelement!(model,DofConstraint,[n1],xinod=(1,),xfield=(:t1,),
                               mode=positive)
 e2              = addelement!(model,QuickFix  ,[n1],inod=(1,),field=(:t1,),
                               res=(x,u,a,t)->0.4x.+.08+.5x.^2)
-state           = solve(staticX;model,time=[0.],verbose=false) 
+initialstate    = initialize!(model)
+state           = solve(StaticX;initialstate,time=[0.],verbose=false) 
 X               = state[1].X[1]
 
 # output
 
 2-element Vector{Float64}:
- -0.09999867546403915
-  0.045000397353771225
+ -0.09999997108612142
+  0.04500000867027695
 ```    
 
 See also: [`Hold`](@ref), [`off`](@ref), [`equal`](@ref), [`positive`](@ref)
@@ -400,7 +401,7 @@ e = addelement!(model,QuickFix,[node1,node2];inod=(1,2),field=(:tx1,:tx1),
 
 # output
 
-EleID(1, 1)                       
+Muscade.EleID(1, 1)                       
 ```    
 """
 struct QuickFix{Nx,inod,field,Tres} <: AbstractElement

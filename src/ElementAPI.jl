@@ -44,7 +44,7 @@ a static solver), the output is a vector of zeros.
 
 See also: [`∂0`](@ref),[`∂2`](@ref)  
 """
-∂1(y)   = length(y) ≥2 ? y[2] : SVector(0. for x∈y[1])
+∂1(y)   = length(y) ≥2 ? y[2] : zeros(SVector{length(y[1])})
 
 """
     position = ∂2(X)
@@ -55,7 +55,7 @@ a static solver), the output is a vector of zeros.
 
 See also: [`∂0`](@ref),[`∂1`](@ref)  
 """
-∂2(y)   = length(y) ≥3 ? y[2] : SVector(0. for x∈y[1])
+∂2(y)   = length(y) ≥3 ? y[2] : zeros(SVector{length(y[1])})
 ∂n(n)   = (∂0,∂1,∂2)[n+1]
 
 """

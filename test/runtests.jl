@@ -34,6 +34,6 @@ module Runtest
         @testset "TestUnit" begin
             include("TestUnit.jl")
         end
-        #doctest(Muscade)
+        doctest(Muscade)
     end
 end
