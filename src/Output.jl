@@ -1,6 +1,6 @@
 ## Nodal results
 """
-    dofres = getdof(state;[class=:X],field=:somefield,nodID=[nodids...],[iders=0|1|2])
+    dofres,dofID = getdof(state;[class=:X],field=:somefield,nodID=[nodids...],[iders=0|1|2])
 
 Obtain the value of dofs of the same class and field, at various nodes and for various states.
 

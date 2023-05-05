@@ -112,7 +112,7 @@ implementing a function header with
 would cause a `MethodError`, because `Muscade` will attempt to call with a `SVector` instead of `Vector`, and a special
 datatype supporting automatic diffeentiation instead of `Float64`.
 
-### Extraction of intermediate element results
+### Extraction of element-results
 
 The function definition must be anotated with the macro call `@espy`.  Variables within the body of `lagrange`, which
 the user may want to obtain must be anotated with `☼` (by typing `\sun` they pressing `TAB`) at the place where they

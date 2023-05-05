@@ -1,11 +1,13 @@
 # Type-stability 
 
 ## Introduction
+
 This text presents *type stability*, which is one of the important concepts that one needs to understand in order to write high-performance Julia code.
 
 This text is aimed at Julia users that are familiar with composite types, abstract types, functions, methods and multiple dispatch. At the same time, as little advanced Julia syntax as possible is used, to make the text accessible.
 
 ## To type, or not to type
+
 The developers of Julia wanted to solve the two-language problem.  They have achieved this and produced a language that "walks like Python and runs like C".  Julia "walks like Python", because it is not necessary to systematically define the type of every variable that appears in the code.  It "runs like C" because it is a compiled language, and produces (or rather, *can* produce) highly efficient machine code.
 
 Python and MATLAB are examples of interpreted language.  In a pure interpreted language, the type of the variables is computed at run time, at the same time as the value of the variables.  As long as the values of the inputs to the code are known at the top level (in the REPL or the top script), the interpretation infers, step by step the type of the variables, all the way down the call stack. This allows to write functions without specifying types, and this in turn allows to write generic code (for example an iterative solver that works just as well with `Float64` and `Float32` variables).  The disadvantage is that inferring the type of variables on the fly introduces significant overhead at run time.
