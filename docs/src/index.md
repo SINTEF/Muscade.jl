@@ -2,11 +2,16 @@
 CurrentModule = Muscade
 ```
 
+!!! warning
+    `Muscade.jl` is work in progress.
+
+    - Functionality is incomplete. 
+    - Documentation is incomplete.
+    - APIs are subject to change.
+
 # [Purpose](@id purpose)
 
-## NB: Muscade.jl and its documentation are work in progress!
-
-**[Muscade.jl](https://github.com/SINTEF/Muscade.jl) is a framework for the rapid development of domain-specific, multiphysics FEM and optimization-FEM models.**
+**[Muscade.jl](https://github.com/SINTEF/Muscade.jl): Create and solve optimization-FEM models.**
 
 **Framework**: `Muscade` provides an API to create new elements and new solvers.  It also provides the "piping" - facilities to create models, assemble matrices and vectors and extract and export results. As a framework, `Muscade` does not provide finite element types modeling any specific domain of physics.  It does however provide some domain-agnostic element types for doing things like introducing boundary conditions and introducing costs. 
 
@@ -16,7 +21,7 @@ In order to obtain high performance, elements have to be implemented using a spe
 
 **Rapid development**: `Muscade` lets application developer focus on the interesting parts: formulating new element types and creating new solvers.  `Muscade` takes care of the tedious parts.
 
-It further accelerates the rapid development of new element types by using automatic differentiation and automatic extraction of "intermediate element results" (think of stresses and strains, in an element that given nodal displacements computes nodal forces).  This results in shorter and more readable element code.
+It further accelerates the rapid development of new element types by using automatic differentiation and automatic extraction of element-results (think of stresses and strains, in an element that given nodal displacements computes nodal forces).  This results in shorter and more readable element code.
 
 The idea is thus to be able to produce specialised FEM applications, at low cost, to create highly efficient solution to niche problems.  It is also hope that `Muscade` will help students of the finite element method to put theory into practice.
 

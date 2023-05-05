@@ -58,13 +58,17 @@ end
 """
     ElementCost{Teleobj,Treq,Tcost,Tcostargs} <: AbstractElement
 
-An element to apply costs on another element's element-results.  
+An element to apply costs on another element's dofs and element-results.  
+The other element must *not* be added separatly to the model.  Instead, the 
+`ElementType`, and the named arguments to the other element are provided
+as input to the `ElementCost` constructor.
 
 # Named arguments to the constructor
 - `req`               a request for element-results for `ElementType`, resulting in the output `eleres`
 - `cost`              a cost function `cost(eleres,X,U,A,t,costargs...)→ℝ`
                       `X` and `U` are tuples (derivates of dofs...), and `∂0(X)`,`∂1(X)`,`∂2(X)` 
-                      must be used by `cost` to access the value and derivatives of `X` (resp. `U`) 
+                      must be used by `cost` to access the value and derivatives of `X` (resp. `U`).
+                      `X`, `U` and `A` are the degrees of freedom of the element `ElementType`.
 - `costargs=(;)`      A named tuple of additional arguments to the cost function 
 - `ElementType`       The named of the constructor for the relevant element 
 - `elementkwargs...`  Additional named arguments to the `ElementCost` constructor are passed on to the `ElementType` constructor.     
@@ -110,7 +114,8 @@ An element with a single node, for adding a cost to a given dof.
 # Named arguments to the constructor
 - `class::Symbol`, either `:X`, `:U` or `:A`.
 - `field::Symbol`.
-- `cost::Function`, where `cost(x::ℝ,t::ℝ[,costargs...]) → ℝ`.
+- `cost::Function`, where `cost(x::ℝ,t::ℝ[,costargs...]) → ℝ` if `class` is `:X` or 
+  `:U`, and `cost(x::ℝ,[,costargs...]) → ℝ` if `class` is `:A`.
 - `costargs::NTuple`
 - `derivative::Int` 0, 1 or 2 - which derivative of the dof enters the cost	    
 

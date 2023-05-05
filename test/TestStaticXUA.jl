@@ -26,7 +26,9 @@ e11             = addelement!(model,SingleDofCost ,class=:A, field=:ΞEI,[n4]   
 initialstate    = initialize!(model)
 @testset "StaticX" begin
     stateX           = solve(StaticX;initialstate,time=[0.,1.],verbose=false)
-    @test stateX[2].X[1] ≈ [ 1.000830542358214,    0.056562064402879385,    0.0,    0.0,    0.0,    0.0,   -1.0006330261310143,    0.006289232571302405,    0.0006330261310144671,   -0.006289232571302405]
+    @test stateX[2].X[1] ≈ [1.0008305423582147, 0.056562064402881376, 0.0, 0.0, 0.0, 0.0, 
+    -1.0006330261310146, 0.006289232571302629, 
+    0.0006330261310144907, -0.006289232571302629]
 end
 stateX             = solve(StaticX;  initialstate,time=[.5,1.],verbose=false)
 stateXUA           = solve(StaticXUA;initialstate=stateX,maxYiter= 50,verbose=false)
