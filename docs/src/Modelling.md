@@ -15,36 +15,28 @@ Here is a simple example of analysis:
 
 ```jldoctest; output = false
 using Muscade
-include("../Test/SomeElements.jl")
-
-@once sea(t,x)  = SVector(1.,0.)*t
-@once sky(t,x)  = SVector(0.,10.)
-α(i)            = SVector(cos(i*2π/3),sin(i*2π/3))
+using StaticArrays
 
 model           = Model(:TestModel)
-n1              = addnode!(model,𝕣[0,0,+100]) # turbine
-n2              = addnode!(model,𝕣[])         # Anod for turbine 
-n3              = addnode!(model,𝕣[])         # Anod for anchor
-e1              =  addelement!(model,Turbine   ,[n1,n2], 
-                  seadrag=1e6, sea=sea, skydrag=1e5, sky=sky)
-e2              = [addelement!(model,AnchorLine,[n1,n3], 
-                  Δxₘtop=vcat(5*α(i),[0.]), xₘbot=250*α(i), 
-                  L=290., buoyancy=-5e3) for i∈0:2]
+n1              = addnode!(model,[0.]) 
+n2              = addnode!(model,[1.])
+e1              = addelement!(model,Hold,[n1];field=:tx1)
+e2              = addelement!(model,DofLoad,[n2];field=:tx1,value=t->3t)
+e3              = addelement!(model,QuickFix,[n1,n2];inod=(1,2),field=(:tx1,:tx1),
+                              res=(X,X′,X″,t)->12SVector{2}(X[1]-X[2],X[2]-X[1]))
 
 initialstate    = initialize!(model)
 state           = solve(StaticX;initialstate,time=[0.,1.],verbose=false)
 
-tx1  ,dofid_tx1 = getdof(state[1],         field=:tx1,nodID=[n1])
-ΔL   ,dofid_ΔL  = getdof(state[1],class=:A,field=:ΔL ,nodID=[n2])
-req             = @request cr,ltf
-eleres          = getresult(state,req,e2) 
-iele,istep      = 2,1
-cr              = eleres[iele,istep].cr
-ltf             = eleres[iele,istep].ltf
+tx1,_           = getdof(state[2],field=:tx1,nodID=[n2])
+req             = @request F
+eleres          = getresult(state,req,[e2]) 
+iele,istep      = 1,2
+force           = eleres[iele,istep].F
 
 # output
 
-121.62396272109176
+3.0
 ```
 
 ## Model definition
