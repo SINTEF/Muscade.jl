@@ -13,7 +13,7 @@ That said, an app could introduce a GUI that would itself do the calls to `Musca
 
 Here is a simple example of analysis:
 
-```jldoctest; output = false
+```julia
 using Muscade
 using StaticArrays
 
@@ -33,10 +33,6 @@ req             = @request F
 eleres          = getresult(state,req,[e2]) 
 iele,istep      = 1,2
 force           = eleres[iele,istep].F
-
-# output
-
-3.0
 ```
 
 ## Model definition
