@@ -1,4 +1,4 @@
-# Type-stability 
+# Type-stability
 
 ## Introduction
 
@@ -21,10 +21,10 @@ Julia takes the sweet spot in between, not requiring to specify the type of each
 The compiler now has the source code of the method, and the types of all the arguments. The compiler will produce a *method instance* (or instance, for short), which is machine code for this combination. One interesting implication is that writing strictly typed method interfaces in Julia does not provide any improvement of machine code performance: the compiler takes the type of the arguments from the calling context anyway. A strictly typed interface has the disadvantage of offering no flexibility. A method that only accepts a `Vector` will not accept other vector-like things like a `SubArray` (an array view), a `Adjoint` (a transposed array), a `SparseMatrix` or a `StaticArray`, even thought the method probably implements an algorithm that would compile perfectly well for all of these.
 
 However, providing partial specification of the type of the arguments of a method serves important purposes in Julia:
+
 1. If a function has several methods, it allows to specify which method should be executed (multiple dispatch). This is where abstract types like `Real`,  `AbstractVector` and `AbstractVector{<:Real}` come into their own.
 2. It improves code readability, stating for example "this method expects some vector of some real numbers - but not a string".
 3. It provides more graceful failures: "function `foo` has no method that takes in a string" is more informative that some esoteric failure down the line when attempting to add two strings.
-
 
 ## What is type stability?
 
@@ -37,14 +37,17 @@ If, for a variety of reasons that will be studied in the following, the type of 
 The rest of this text will examine a variety of situations, ranging from obvious to more tricky tricky, in which it is not possible to infer the types of local variables from the types of the arguments, resulting in type instability.
 
 For this purpose, it will be useful to write down the information available to the compiler.  So for example, if the method
-```
+
+```julia
 function add(a::Number,b::Number)
     c = a+b
     return c
 end
 ```
+
 is called with `a` of type `Float64` and `b` of type `Int32`, then we will write the information available to the compiler to create an instance as
-```
+
+```julia
 instance add(a::Float64,b::Int32)
     c = a+b
     return c
@@ -53,8 +56,10 @@ end
 `instance` is not Julia syntax, it is just a notation introduced in this text to describe an instance.  In such `instance` description, a *concrete* type must be associated with every argument.
 
 ## If, then
+
 Consider the following method instance
-```
+
+```julia
 instance largest(a::Float64,b::Int64)
     if a > b
         c = a
@@ -64,10 +69,12 @@ instance largest(a::Float64,b::Int64)
     return c
 end
 ```
+
 The variable `c` will be set to either `a` or `b`. `c` will take the value *and the type* of either *a* or *b*.  The type of `c` depends on an operation `a > b` on the *values* of `a` and `b`: the type of `c` cannot be inferred from the type of arguments alone, and this code is not typestable.
 
 Several approaches might be relevant to prevent type instability.  The simplest is to code `largest` so that it only accepts two arguments of the same type.
-```
+
+```julia
 function largest(a::R,b::R) where{R<:Real}
     if a > b
         c = a
@@ -77,8 +84,10 @@ function largest(a::R,b::R) where{R<:Real}
     return c
 end
 ```
+
 The method is general, it can result in the generation of method instances like `instance largest(a::Float64,b::Float64)`, `instance largest(a::Int64,b::Int64)` and many others. It cannot result in the generation of machine code for `instance largest(a::Float64,b::Int64)` (because `R` cannot be both `Int64` and `Float64`). If we need to be able to handle variables of different types, yet want type stability, a solution is to use *promotion* to ensure that `c` is always of the same type.
-```
+
+```julia
 function largest(a,b)
     pa,pb = promote(a,b)
     if a > b
@@ -89,21 +98,24 @@ function largest(a,b)
     return c
 end
 ```
+
 `promote` is defined so that `pa` and `pb` have the same type, and this type is inferred from the types of `a` and `b`. For example, for a call `instance largest(a::Float64,b::Int64)`, the types of `pa`, `pb` and `c` will be `Float64`, to which one can convert a `Int64` variable without loss of information (well, mostly).
 
 **Do not allow an if-then construct to return a variable which type depends on the branch taken.**
 
 ## Method return value
+
 A method `foo` that would call the above first, not typestable, version of the method instance `largest` would receive as output a variable of a type that is value dependent: `foo` itself would not be typestable.  The workaround here is to create typestable methods for `largest`, as suggested above.
 
 One example is the method `Base.findfirst(A)`, which given a `Vector{Boolean}` returns the index of the first `true` element of the vector.  The catch is that if all the vector's elements are `false`, the method returns `nothing`. `nothing` is of type `Nothing`, while the index is of type `Int64`.  Using this method will make the calling method not typestable.
 
 **Avoid methods that return variables of value-dependant types.**
 
-
 ## Array of abstract element type
+
 Consider the following code
-```
+
+```julia
 v = [3.,1,"Hello world!"]
 function showall(v)
     for e ∈ v
@@ -112,32 +124,39 @@ function showall(v)
 end
 showall(v)
 ```
+
 The above call `showall(v)` generates a method instance
-```
+
+```julia
 instance showall(v::Array{Any,1})
     for e ∈ v
         @show e
     end
 end
 ```
-The concrete type of `e` cannot be inferred from `Array{Any,1}`, because `Any` is not a concrete type. More specifically, the type of `e` changes from one iteration to the next: the code is not typestable. If `v` is of type `Array{Any,1}`, even if `V` is has elements that are all of the same type, this does not help:
-```
+
+The concrete type of `e` cannot be inferred from `Array{Any,1}`, because `Any` is not a concrete type. More specifically, the type of `e` changes from one iteration to the next: the code is not typestable. If `v` is of type `Array{Any,1}`, even if `V` has elements that are all of the same type, this does not help:
+
+```julia
 v = Vector{Any}(undef,3)
 v[1] = 3.
 v[2] = 1.
 v[3] = 3.14
 showall(v)
 ```
+
 `e` may have the same type at each iteration, but this type still cannot be inferred from the type `Array{Any,1}` of the argument.
 
 If we define `w = randn(3)`, `w` has type `Array{Float64,1}`.  This is much more informative: every element of `w` is known to have the same concrete type `Float64`. Hence the call `showall(w)` generates a method instance
-```
+
+```julia
 instance showall(v::Array{Float64,1})
     for e ∈ v
         @show e
     end
 end
 ```
+
 and the compiler can infer that `e` is a `Float64`.
 
 **Wherever possible use arrays with a concrete element type.**
@@ -145,15 +164,18 @@ and the compiler can infer that `e` is a `Float64`.
 Sometimes, the use of array with abstract element type is deliberate.  One may really wish to iterate over a heterogeneous collection of elements and apply various methods of the same function to them: we design for dynamic dispatch, and must accept that the process of deciding which method to call takes time.  Two techniques can be used to limit the performance penalty.
 
 The first is the use of a "function barrier": The loop over the heterogenous array should contain as little code as possible, ideally only the access to the arrays element, and the call to a method.
-```
+
+```julia
 for e ∈ v
     foo(e)
 end
 ```
+
 If `v` contains elements of different type, the loop is not typestable and hence slow. Yet each value of `e` at each iteration has its unique concrete type, for which an instance of `foo` will be generated: `foo` can be made typestable and fast.
 
 The second, a further improvement of the first, is to group elements by concrete type, for example, using a heterogenous arrays of homogeneous arrays.
-```
+
+```julia
 vv = [[1.,2.,3.],[1,2]]
 for v ∈ vv  # outerloop
     innerloop(v)
@@ -164,9 +186,11 @@ function innerloop(v)
     end
 end
 ```
+
 Here `vv` is an `Array{Any,1}`, containing two vectors of different types. `vv[1]` is a `Array{Float64,1}` and `vv[2]` is a `Array{Int64,1}`.
 Function `innerloop` is called twice and two instances are generated
-```
+
+```julia
 instance innerloop(v::Array{Float64,1})
     for e ∈ v  # e is Float64
         foo(e)
@@ -178,13 +202,16 @@ instance innerloop(v::Array{Int64,1})
     end
 end
 ```
+
 and in both instances, the type of `e` is clearly defined: the instances are typestable.
 
 The with this second approach is that the loop `for v ∈ vv` has few iterations (if the number of types is small compared to the number of elements in each types).
 
 ## Structure of abstract field type
+
 A similar loss of type stability arises when reading data from structures that have a field of abstract type:
-```
+
+```julia
 struct SlowType
     a
 end
@@ -201,30 +228,37 @@ show_a(SlowType(3.))
 show_a(JustAsBad(3.))
 show_a(MuchBetter(3.))
 ```
+
 The first call to `show_a` generates
-```
+
+```julia
 instance show_a(s::SlowType)
     @show s.a # The concrete type of field a of type SlowType cannot be
               # inferred from the definition of SlowType
 end
 ```
+
 The second call to `show_a` has the same problem.  The third call generates a typestable instance
-```
+
+```julia
 instance show_a(s::Better)
     @show s.a # That's a Float64
 end
 ```
 
 It is often interesting to create structures with fields that can have various types. A classic example is Julia's `Complex` type, which can have real and imaginary components which are either both `Float64`, both `Float32` or other more exotic choices. This can be done without losing type stability by using parametric types:
-```
+
+```julia
 struct FlexibleAndFast{R}
     a::R
 end
 show_a(FlexibleAndFast(3.))
 show_a(FlexibleAndFast(3 ))
 ```
+
 The above calls generate two typestable instances of `show_a`
-```
+
+```julia
 instance show_a(s::FlexibleAndFast{Float64})
     @show s.a # That's a Float64
 end
@@ -236,71 +270,91 @@ end
 **Always use `struct` with fields of concrete types.  Use parametric structure where necessary**.
 
 ## A note on constructors for parametric types
+
 Consider a `struct` definition without inner constructor:
-```
+
+```julia
 struct MyType{A,B}
     a::A
     b::B
 end
 ```
+
 Julia will automatically generate a constructor *method* with signature
-```
+
+```julia
 MyType{A,B}(a::A,b::B)
 ```
+
 Julia will also produce another method with signature
-```
+
+```julia
 MyType(a::A,b::B)
 ```
+
 because for `MyType`, it is possible to infer all type parameters from the types of the inputs to the constructor. Other constructors like
-```
+
+```julia
 MyType{A}(a::A,b::B)
 ```
+
 have to be defined explicitly (how should the compiler decide whether to interpret a single type-parameter input as `A` or `B`...).
 
 Consider another example:
-```
+
+```julia
 struct MyType{A,B,C}
     a::A
     b::B
 end
 ```
+
 Julia will automatically generate a constructor method with signature
-```
+
+```julia
 MyType{A,B,C}(a::A,b::B)
 ```
+
 but will not generate other methods.  A method like
-```
+
+```julia
 MyType{C}(a::A,b::B)
 ```
+
 would have to be defined explicitly.
 
-## StaticArray
+## StaticArrays
 
 Julia `Array`s are an example of parametric type, where the parameters are the type of elements, and the dimension (the number of indices). Importantly, the *size* of the array is not part of the *type*, it is a part of the *value* of the array.
 
 The package `StaticArrays.jl` provides the type `StaticArray`, useful for avoiding another performance problem: garbage collection that follows the allocation of `Array`s on the heap. This is because `StaticArray` are allocated on the stack, simplifying runtime memory management.
-```
+
+```julia
 using StaticArrays
 SA = SVector{3,Float64}([1.,2.,3.])
 SA = SVector(1.,2.,3.)
 SA = SVector([1.,2.,3.])
-
 ```
+
 The first call to `SVector` is typestable: all the information needed to infer the type of `SA` is provided in curly braces. The second call is typestable too, because the compiler can deduce the same information from the type and number of inputs. The third call is problematic: while the type of the elements of `SA` can be inferred by the compiler, the length of `[1.,2.,3.]` is part of this array's value, not type. The type of `SA` has a parameter that depends on the value (the size) of the argument passed to the constructor.  Not only does this generate an instance of the constructor that is not type stable, but the non-inferable type of `SA` "contaminates" the calling code with type instability.
 
 ## Val
+
 What if we want to write a function that takes an `Vector` as an input, processes it (for example just keeps it as it is), and returns a `SVector` of the same shape. Of course we want this function to be general and not be limited to a given array size *and* we want this function to be typestable, for good performance.
 
 First attempt:
-```
+
+```julia
 function static(v::Vector)
     return SVector{length(v),eltype(v)}(v)
 end
 ```
+
 This function is not typestable. It constructs a variable of type `StaticArray{(3,),Float64}`, where `3` is obtained as the `length` of `v`, and the length is part of the value of an `Array`.  Value-to-type alarm!
 
 One possible solution is to use `Val`. Let us say that `static` is called by a function `foo` within which the length of `v` can be inferred at compile time.  We could create the following code
-```
+
+```julia
 function static(v,::Val{L}) where{L}
     return SVector{L,Float64}(v)
 end
@@ -311,14 +365,17 @@ function foo()
     @show static([1.,2.,3.,4.],Val4)
 end
 ```
+
 The call `Val(3)` generates a variable, of type `Val{3}`. Clearly, `Val` as a function is not typestable, since it creates a variable of a type depending on the value of its argument.
 
 However, function `foo` is typestable.  This may come as a surprise, but two things conspire to allow this:
+
 1. The source code of `foo` explicitly mentions the *constants* `3` and `4`, and the compiler has access to it.
 2. The compiler is greedy - it evaluates at compile time whenever possible.  Hence the call `Val(3)` is evaluated during compilation, and `Val3` is known to the compiler to be a a value-empty variable of type `Val{3}`.
 
 In `foo`, the method `static` is called twice, leading to the generation of two typestable instances
-```
+
+```julia
 instance static(v,::Val{3})
     return SVector{3,Float64}(v)
 end
@@ -331,32 +388,42 @@ What if the length of the vectors is not defined as a constant in `foo`?  If thi
 
 **`Val` allows to move type instability up the call hierarchy, or eliminate it altogether.**
 
-# Anonymous function
-Before Julia 1.6.0, the output type of an anonymous function was known to the compiler as `Any`.  As a consequence, the following code was not typestable:
-```
-function foo(f)
-    @show f(randn())
-    return
-end
-foo(x->0)
-```
-However the following code was
-```
-function f(x)
-    return 0
-end
-foo(f)
-```
-This is not an issue with Julia 1.6, and anonymous functions can be used.
+## Functions
 
-# @code_warntype
-One important tool to check that an instance is typestable is the macro `@code_warntype`. For example
+The type `Function` is an *abstract* datatype, and every function in Julia has its own type.  Here we refer not to the type of the variables returned by the function, but to the function being a variable in itself.
+
+The implication is that if we have a scalar-valued function `energy` that takes a function `signal` as an input, and computes the energy of the signal over some interval, then a new instance of `energy` will be compiled every time it is called with an new argument `signal`.
+
+This also has implications on how to store functions in a `struct`. This is not typestable
+
+```julia
+struct MyType
+    foo::Function
+end
 ```
+
+but this is
+
+```julia
+struct MyType{Tfoo}
+    foo::Tfoo
+end
+```
+
+## @code_warntype
+
+One important tool to check that an instance is typestable is the macro `@code_warntype`. For example
+
+```julia
 v = randn(3)
 @code_warntype Val(length(v))
 @code_warntype static(v,Val(length(v)))
 ```
+
 The first invocation of `@code_warntype` outputs a semi-compiled code, and highlights some of the types in red: the call `Val(3)` is not typestable. The second invocation of `@code_warntype` produces an output in which all types are highlighted in blue: the call to `static` is typestable.  Note that `@code_warntype` only analyses the compilation of the outermost function `static` - given the arguments `v` and `Val(length(v))`.
 
-# Profiler.jl
-`Profiler.jl` provides a graphical representation of where processor time goes, in which code that is not typestable is highlighted. Output from the profiler often shows how type instability propagates: a single variable that is not typestable makes "anything it touches" type unstable.
+## Profile.jl
+
+`Profile.jl` and `ProfileView.jl` together provide a "flame graph", a graphical representation of where processor time goes, in which code that is not typestable is highlighted. Output from the profiler often shows how type instability propagates: a single variable that is not typestable makes "anything it touches" type unstable.
+
+Particularly useful, one can click on a function, and then type `warntype_last()` in the REPL to get to see a `@code_warntype` output for that function.
