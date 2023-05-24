@@ -314,7 +314,7 @@ The following is an example of anotated code:
 end
 ```
 - The keyword `function` is preceded by the macro-call `@espy`.  
-- The name of requestable variables of interest is preceded by `☼` (`\\sun`). 
+- The name of requestable variables is preceded by `☼` (`\\sun`). 
   Such anotation must always appear on the left of an assigment. 
 - If the name of a variable is preceded by `♢` (`\\diamond`), then
   the variable is evaluated only if requested. Such a notation can only

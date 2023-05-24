@@ -211,7 +211,7 @@ A function which for any value `t` returns the symbol `off`.  Usefull for specif
 the keyword argument `mode=off` in adding an element of type ``DofConstraint` to
 a `Model`.
 
-    See also: [`DofConstraint`](@ref), [`equal`](@ref), [`positive`](@ref)
+    See also: [`DofConstraint`](@ref), [`ElementConstraint`](@ref), [`equal`](@ref), [`positive`](@ref)
 """
 off(t)     = :off
 """
@@ -221,7 +221,7 @@ A function which for any value `t` returns the symbol `equal`.  Usefull for spec
 the keyword argument `mode=equal` in adding an element of type ``DofConstraint` to
 a `Model`.
 
-See also: [`DofConstraint`](@ref), [`off`](@ref), [`positive`](@ref)
+See also: [`DofConstraint`](@ref), [`ElementConstraint`](@ref), [`off`](@ref), [`positive`](@ref)
 """
 equal(t)   = :equal
 """
@@ -231,7 +231,7 @@ A function which for any value `t` returns the symbol `positive`.  Usefull for s
 the keyword argument `mode=positive` in adding an element of type ``DofConstraint` to
 a `Model`.
 
-See also: [`DofConstraint`](@ref), [`off`](@ref), [`equal`](@ref)
+See also: [`DofConstraint`](@ref), [`ElementConstraint`](@ref), [`off`](@ref), [`equal`](@ref)
 """
 positive(t) = :positive
 """
@@ -293,7 +293,7 @@ X               = state[1].X[1]
   0.04500000867027695
 ```    
 
-See also: [`Hold`](@ref), [`off`](@ref), [`equal`](@ref), [`positive`](@ref)
+See also: [`Hold`](@ref), [`ElementConstraint`](@ref), [`off`](@ref), [`equal`](@ref), [`positive`](@ref)
 """
 struct DofConstraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,Tg,Tgargs,Tmode} <: AbstractElement
     gap      :: Tg    # Class==:X gap(x,t,gargs...) ,Class==:U  gap(x,u,a,t,gargs...), Class==:A gap(a,gargs...) 
@@ -316,7 +316,7 @@ end
 doflist(::Type{<:DofConstraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield}}) where
                             {λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield} = 
    (inod =(xinod...           ,uinod...           ,ainod...           ,λinod ), 
-    class=(ntuple(i->:X,Nx)...,ntuple(i->:U,Nu)...,ntuple(i->:A,Na)...,λclass    ), 
+    class=(ntuple(i->:X,Nx)...,ntuple(i->:U,Nu)...,ntuple(i->:A,Na)...,λclass), 
     field=(xfield...          ,ufield...          ,afield...          ,λfield)) 
 @espy function residual(o::DofConstraint{:X,Nx}, X,U,A,t,χ,χcv,SP,dbg) where{Nx}
     γ          = default{:γ}(SP,0.)
@@ -324,29 +324,30 @@ doflist(::Type{<:DofConstraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,
     x,☼λ       = ∂0(X)[SVector{Nx}(1:Nx)], ∂0(X)[Nx+1]   
     x∂         = variate{P,Nx}(x) 
     ☼gap,g∂x   = value_∂{P,Nx}(o.gap(x∂,t,o.gargs...)) 
-    return if  o.mode(t)==:equal;    SVector{Nx+1}((       -g∂x*λ)...,-gap              ) ,noχ,(α=∞                  ,)
+    return if  o.mode(t)==:equal;    SVector{Nx+1}((       -g∂x*λ)...,-gap              ) ,noχ,(α=∞                    ,)
     elseif     o.mode(t)==:positive; SVector{Nx+1}((       -g∂x*λ)...,-gₛ*S(λ/λₛ,gap/gₛ,γ)) ,noχ,(α=decided(λ/λₛ,gap/gₛ,γ),)
-    elseif     o.mode(t)==:off;      SVector{Nx+1}(ntuple(i->0,Nx)...,-gₛ/λₛ*λ           ) ,noχ,(α=∞                  ,)
+    elseif     o.mode(t)==:off;      SVector{Nx+1}(ntuple(i->0,Nx)...,-gₛ/λₛ*λ           ) ,noχ,(α=∞                    ,)
     end
 end
 @espy function lagrangian(o::DofConstraint{:U,Nx,Nu,Na}, Λ,X,U,A,t,χ,χcv,SP,dbg) where{Nx,Nu,Na}
     γ          = default{:γ}(SP,0.)
     x,u,a,☼λ   = ∂0(X),∂0(U)[SVector{Nu}(1:Nu)],A,∂0(U)[Nu+1]
     ☼gap       = o.gap(x,u,a,t,o.gargs...)
-    return if  o.mode(t)==:equal;    -gap*λ                  ,noχ,(α=∞                      ,)
+    return if  o.mode(t)==:equal;    -gap*λ                  ,noχ,(α=∞                        ,)
     elseif     o.mode(t)==:positive; -KKT(λ,gap,γ,o.λₛ,o.gₛ)  ,noχ,(α=decided(λ/o.λₛ,gap/o.gₛ,γ),)
-    elseif     o.mode(t)==:off;      -o.gₛ/(2o.λₛ)*λ^2        ,noχ,(α=∞                      ,)  
+    elseif     o.mode(t)==:off;      -o.gₛ/(2o.λₛ)*λ^2        ,noχ,(α=∞                        ,)  
     end
 end
 @espy function lagrangian(o::DofConstraint{:A,Nx,Nu,Na}, Λ,X,U,A,t,χ,χcv,SP,dbg) where{Nx,Nu,Na}
     γ          = default{:γ}(SP,0.)
     a,☼λ       = A[SVector{Na}(1:Na)],A[    Na+1] 
     ☼gap       = o.gap(a,o.gargs...)
-    return if  o.mode(t)==:equal;    -gap*λ                  ,noχ,(α=∞                      ,) 
+    return if  o.mode(t)==:equal;    -gap*λ                  ,noχ,(α=∞                        ,) 
     elseif     o.mode(t)==:positive; -KKT(λ,gap,γ,o.λₛ,o.gₛ)  ,noχ,(α=decided(λ/o.λₛ,gap/o.gₛ,γ),)
-    elseif     o.mode(t)==:off;      -o.gₛ/(2o.λₛ)*λ^2        ,noχ,(α=∞                      ,)   
+    elseif     o.mode(t)==:off;      -o.gₛ/(2o.λₛ)*λ^2        ,noχ,(α=∞                        ,)   
     end
 end
+
 
 #-------------------------------------------------
 
@@ -373,7 +374,71 @@ struct Hold <: AbstractElement end
 function Hold(nod::Vector{Node};field::Symbol,λfield::Symbol=Symbol(:λ,field)) 
     gap(v,t)=v[1]
     return DofConstraint{:X     ,1, 0, 0, (1,),(field,),(),   (),    (),   (),    1,    λfield, typeof(gap),typeof(()),typeof(equal)}(gap,(),equal,1.,1.)
-    #      Xconstraint{λclass,Nx,Nu,Na,xinod,xfield, uinod,ufield,ainod,afield,λinod,λfield}
+end
+
+#-------------------------------------------------
+
+"""
+    ElementConstraint{Teleobj,λinod,λfield,Nu,Treq,Tg,Tgargs,Tmode} <: AbstractElement
+
+An element to apply optimisation equality/inequality constraints on the element-results of 
+another element. The other element must *not* be added separatly to the model.  Instead, the 
+`ElementType`, and the named arguments to the other element are provided as input to the 
+`ElementConstraint` constructor.
+
+This element generates a time varying optimisation constraint. For example: find `A`-parameters so that
+   at all times, the element-result von-Mises stress does not exceed a given value. 
+
+# Named arguments to the constructor
+- `λinod::𝕫`            The element-node number of the Lagrange multiplier.
+- `λfield::Symbol`      The field of the Lagrange multiplier.
+- `req`                 A request for element-results, see [`@request`](@ref).
+- `gₛ::𝕣=1.`             A scale for the gap.
+- `λₛ::𝕣=1.`             A scale for the Lagrange multiplier.
+- `gap::Function`       The gap function.
+- `gargs::NTuple`       Additional inputs to the gap function.
+- `mode::Function`      where `mode(t::ℝ) -> Symbol`, with value `:equal`, 
+                        `:positive` or `:off` at any time. An `:off` constraint 
+                        will set the Lagrange multiplier to zero.
+- `ElementType`         The named of the constructor for the relevant element 
+- `elementkwargs...`    Additional named arguments to the `ElementCost` constructor are passed on to the `ElementType` constructor.     
+                                 
+# Example
+
+TODO
+
+See also: [`Hold`](@ref), [`DofConstraint`](@ref), [`off`](@ref), [`equal`](@ref), [`positive`](@ref), [`@request`](@ref)
+"""
+struct ElementConstraint{Teleobj,λinod,λfield,Nu,Treq,Tg,Tgargs,Tmode}
+    eleobj   :: Teleobj
+    req      :: Treq
+    gap      :: Tg    
+    gargs    :: Tgargs
+    mode     :: Tmode 
+    gₛ        :: 𝕣
+    λₛ        :: 𝕣  
+end
+function ElementConstraint(nod::Vector{Node};λinod::𝕫, λfield::Symbol,
+    req,gap::Function,gargs=(;),mode::Function,gₛ::𝕣=1,λₛ::𝕣=1,ElementType,elementkwargs...)
+    eleobj   = ElementType(nod;elementkwargs...)
+    Nu       = getndof(typeof(eleobj),:U)
+    return ElementConstraint{typeof(eleobj),λinod,λfield,Nu,typeof(req),typeof(gap),typeof(gargs),typeof(mode)}(eleobj,req,gap,gargs,mode,gₛ,λₛ)
+end
+doflist( ::Type{<:ElementConstraint{Teleobj,λinod,λfield}}) where{Teleobj,λinod,λfield} =
+    (inod =(doflist(Teleobj).inod... ,λinod),
+     class=(doflist(Teleobj).class...,:U),
+     field=(doflist(Teleobj).field...,λfield))
+@espy function lagrangian(o::ElementConstraint{Teleobj,λinod,λfield,Nu}, Λ,X,U,A,t,χ,χcv,SP,dbg) where{Teleobj,λinod,λfield,Nu} 
+    γ          = default{:γ}(SP,0.)
+    u          = getsomedofs(U,SVector{Nu}(1:Nu)) 
+    ☼λ         = ∂0(U)[Nu+1]
+    L,χn,FB,eleres  = ☼lagrangian(o.eleobj,Λ,X,u,A,t,χ,χcv,SP,(dbg...,via=ElementCost),o.req)
+    ☼gap       = o.gap(eleres,o.gargs...)
+    kkt =  if  o.mode(t)==:equal;    -gap*λ                  ,noχ,(α=∞                        ,)
+    elseif     o.mode(t)==:positive; -KKT(λ,gap,γ,o.λₛ,o.gₛ)  ,noχ,(α=decided(λ/o.λₛ,gap/o.gₛ,γ),)
+    elseif     o.mode(t)==:off;      -o.gₛ/(2o.λₛ)*λ^2        ,noχ,(α=∞                        ,)  
+    end
+    return L+kkt,χn,FB
 end
 
 #-------------------------------------------------

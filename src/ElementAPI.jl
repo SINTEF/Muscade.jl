@@ -24,14 +24,13 @@ See also: [`noFB`](@ref)
 """
 const noFB=nothing
 
-#∂n(Y,n) = n+1≤lastindex(Y) ? Y[n+1] : zeros(eltype(Y[1]),size(Y[1])...)  # TODO this implementation will be slow if zero is to be returned!
 """
     position = ∂0(X)
 
 Used by elements' `residual` or `lagrangian` to extract the zero-th order time derivative
 from the variables `X` and `U`.
 
-See also: [`∂1`](@ref),[`∂2`](@ref)  
+See also: [`∂1`](@ref),[`∂2`](@ref),[`getsomedofs`](@ref)  
 """
 ∂0(y)   = y[1]
 
@@ -42,7 +41,7 @@ Used by elements' `residual` or `lagrangian` to extract the first order time der
 from the variables `X` and `U`. Where the solver does not provide this derivative (e.g.
 a static solver), the output is a vector of zeros.
 
-See also: [`∂0`](@ref),[`∂2`](@ref)  
+See also: [`∂0`](@ref),[`∂2`](@ref),[`getsomedofs`](@ref)  
 """
 ∂1(y)   = length(y) ≥2 ? y[2] : zeros(SVector{length(y[1])})
 
@@ -53,10 +52,22 @@ Used by elements' `residual` or `lagrangian` to extract the zero-th order time d
 from the variables `X` and `U`. Where the solver does not provide this derivative (e.g.
 a static solver), the output is a vector of zeros.
 
-See also: [`∂0`](@ref),[`∂1`](@ref)  
+See also: [`∂0`](@ref),[`∂1`](@ref),[`getsomedofs`](@ref)  
 """
 ∂2(y)   = length(y) ≥3 ? y[2] : zeros(SVector{length(y[1])})
 ∂n(n)   = (∂0,∂1,∂2)[n+1]
+
+"""
+    rotations = getsomedofs(X,[3,6])
+
+Used by elements' `residual` or `lagrangian` to some degrees of freedom, and their
+time derivatives, from the variables `X` and `U`. 
+
+See also: [`∂0`](@ref),[`∂1`](@ref),[`∂2`](@ref)  
+"""
+getsomedofs(A::NTuple{Nder,SVector},ind) where{Nder} = ntuple(i->A[i][ind],Nder)
+
+#const Dof{Ndof,Nder} = NTuple{Nder,SVector{Ndof}}
 
 """
     c = coord(node)

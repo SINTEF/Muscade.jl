@@ -34,14 +34,14 @@ module Muscade
 
     include("ElementAPI.jl")
     export lagrangian,residual,espyable
-    export coord,∂0,∂1,∂2
+    export coord,∂0,∂1,∂2,getsomedofs
     export doflist
     export noχ,noFB
 
     include("BasicElements.jl")
     export off,equal,positive
     export DofCost,SingleDofCost,ElementCost
-    export DofConstraint,Hold
+    export DofConstraint,Hold,ElementConstraint
     export QuickFix,DofLoad
 
     include("Assemble.jl")

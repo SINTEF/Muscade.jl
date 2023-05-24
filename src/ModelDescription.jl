@@ -92,15 +92,13 @@ Base.getindex(ele::AbstractArray,eleID::EleID)   = ele[eleID.ieletyp][eleID.iele
 Base.getindex(A  ::AbstractArray,id::AbstractArray{ID})   = [A[i] for i ∈ id]
 getidof(E::DataType,class)        = findall(doflist(E).class.==class)  
 """
-    getndof(model)
-    getndof(model,class)
-    getndof(model,(class1,class2,[,...]))
+    getndof(model|Element)
+    getndof(model|Element,class)
+    getndof(model|Element,(class1,class2,[,...]))
 
-where `class` can be any of `:X`, `:U`, `:A`: get the number of dofs in the
-specified classes (or in the whole model).
-
-`model` can be replaced with a concrete element type.  The number of dofs is
-then per element.
+where `class` can be any of `:X`, `:U`, `:A`: get the number of dofs of the
+specified dof-classes (default: all classes) for the variable `model` or the type
+`Element`.
 
 See also: [`describe`](@ref)
 """
