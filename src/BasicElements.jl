@@ -80,7 +80,7 @@ as input to the `ElementCost` constructor.
 # Example
 ```
 @once cost(eleres,X,U,A,t) = eleres.Fh^2
-ele1 = addelement!(model,ElementCost,[nod1],req=@request(Fh),
+ele1 = addelement!(model,ElementCost,[nod1];req=@request(Fh),
                    cost=cost,ElementType=AnchorLine,
                    Λₘtop=[5.,0,0], xₘbot=[250.,0], L=290., buoyancy=-5e3)
 ```
@@ -395,17 +395,30 @@ This element generates a time varying optimisation constraint. For example: find
 - `req`                 A request for element-results, see [`@request`](@ref).
 - `gₛ::𝕣=1.`             A scale for the gap.
 - `λₛ::𝕣=1.`             A scale for the Lagrange multiplier.
-- `gap::Function`       The gap function.
-- `gargs::NTuple`       Additional inputs to the gap function.
+- `gap`                 a gap function `gap(eleres,X,U,A,t,gargs...)→ℝ`
+                        `X` and `U` are tuples (derivates of dofs...), and `∂0(X)`,`∂1(X)`,`∂2(X)` 
+                        must be used by `cost` to access the value and derivatives of `X` (resp. `U`).
+                        `X`, `U` and `A` are the degrees of freedom of the element `ElementType`.
+- `gargs::NTuple`       Additional inputs to the gap function. 
+
 - `mode::Function`      where `mode(t::ℝ) -> Symbol`, with value `:equal`, 
                         `:positive` or `:off` at any time. An `:off` constraint 
                         will set the Lagrange multiplier to zero.
 - `ElementType`         The named of the constructor for the relevant element 
 - `elementkwargs...`    Additional named arguments to the `ElementCost` constructor are passed on to the `ElementType` constructor.     
-                                 
+
+
+
+
 # Example
 
-TODO
+```
+@once gap(eleres,X,U,A,t) = eleres.Fh^2
+ele1 = addelement!(model,ElementCoonstraint,[nod1];req=@request(Fh),
+                   gap,λinod=1,λfield=:λ,mode=equal, 
+                   ElementType=AnchorLine,Δxₘtop=[5.,0,0], xₘbot=[250.,0], 
+                   L=290., buoyancy=-5e3)
+```
 
 See also: [`Hold`](@ref), [`DofConstraint`](@ref), [`off`](@ref), [`equal`](@ref), [`positive`](@ref), [`@request`](@ref)
 """
@@ -419,7 +432,7 @@ struct ElementConstraint{Teleobj,λinod,λfield,Nu,Treq,Tg,Tgargs,Tmode}
     λₛ        :: 𝕣  
 end
 function ElementConstraint(nod::Vector{Node};λinod::𝕫, λfield::Symbol,
-    req,gap::Function,gargs=(;),mode::Function,gₛ::𝕣=1,λₛ::𝕣=1,ElementType,elementkwargs...)
+    req,gap::Function,gargs=(;),mode::Function,gₛ::𝕣=1.,λₛ::𝕣=1.,ElementType,elementkwargs...)
     eleobj   = ElementType(nod;elementkwargs...)
     Nu       = getndof(typeof(eleobj),:U)
     return ElementConstraint{typeof(eleobj),λinod,λfield,Nu,typeof(req),typeof(gap),typeof(gargs),typeof(mode)}(eleobj,req,gap,gargs,mode,gₛ,λₛ)
@@ -432,13 +445,12 @@ doflist( ::Type{<:ElementConstraint{Teleobj,λinod,λfield}}) where{Teleobj,λin
     γ          = default{:γ}(SP,0.)
     u          = getsomedofs(U,SVector{Nu}(1:Nu)) 
     ☼λ         = ∂0(U)[Nu+1]
-    L,χn,FB,eleres  = ☼lagrangian(o.eleobj,Λ,X,u,A,t,χ,χcv,SP,(dbg...,via=ElementCost),o.req)
-    ☼gap       = o.gap(eleres,o.gargs...)
-    kkt =  if  o.mode(t)==:equal;    -gap*λ                  ,noχ,(α=∞                        ,)
-    elseif     o.mode(t)==:positive; -KKT(λ,gap,γ,o.λₛ,o.gₛ)  ,noχ,(α=decided(λ/o.λₛ,gap/o.gₛ,γ),)
-    elseif     o.mode(t)==:off;      -o.gₛ/(2o.λₛ)*λ^2        ,noχ,(α=∞                        ,)  
+    L,χn,FB,eleres  = ☼lagrangian(o.eleobj,Λ,X,u,A,t,χ,χcv,SP,(dbg...,via=ElementConstraint),o.req)
+    ☼gap       = o.gap(eleres,X,u,A,t,o.gargs...)
+    return if  o.mode(t)==:equal;    L-gap*λ                  ,noχ,(α=∞                        ,)
+    elseif     o.mode(t)==:positive; L-KKT(λ,gap,γ,o.λₛ,o.gₛ)  ,noχ,(α=decided(λ/o.λₛ,gap/o.gₛ,γ),)
+    elseif     o.mode(t)==:off;      L-o.gₛ/(2o.λₛ)*λ^2        ,noχ,(α=∞                        ,)  
     end
-    return L+kkt,χn,FB
 end
 
 #-------------------------------------------------
