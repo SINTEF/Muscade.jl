@@ -1,3 +1,4 @@
+using Muscade
 module Runtest
     using Test,Documenter,Muscade
     @testset "Muscade.jl package" begin

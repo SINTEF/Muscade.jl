@@ -1,13 +1,6 @@
 # Muscade.jl
 
 **Create and solve optimization-FEM models.**
-
-!!! warning
-    `Muscade` is work in progress.
-
-    - Functionality is incomplete. 
-    - Documentation is incomplete.
-    - APIs are subject to change.
   
 ## Purpose
 

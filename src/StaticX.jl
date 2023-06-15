@@ -56,7 +56,10 @@ state           = solve(StaticX;initialstate=initialstate,time=[0.,1.])
 - `silenterror=false` set to true to suppress print out of error (for testing) 
 - `initialstate`      a single `state` - obtained from a call to `initialize!`, or 
                       from a previous analysis
-- `time`              an `AbstractVector` vector of the times at which to compute the 
+- `time`              an `AbstractVector` vector of the times at which to compute 
+                      equilibrium.  While this solver does not account for dynamic
+                      effect, the model will typicaly describe some loads as time 
+                      dependent. 
 - `maxiter=50`        maximum number of Newton-Raphson iteration at any given step 
 - `maxΔx=1e-5`        convergence criteria: a norm on the scaled `X` increment 
 - `maxincrement=∞`    convergence criteria: a norm on the scaled residual
