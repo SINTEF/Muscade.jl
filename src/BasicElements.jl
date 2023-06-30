@@ -101,7 +101,7 @@ function ElementCost(nod::Vector{Node};req,cost,costargs=(;),ElementType,element
 end
 doflist( ::Type{<:ElementCost{Teleobj}}) where{Teleobj} = doflist(Teleobj)
 @espy function lagrangian(o::ElementCost, Λ,X,U,A,t,χ,χcv,SP,dbg)
-    L,χ,FB,eleres  = ☼lagrangian(o.eleobj,Λ,X,U,A,t,χ,χcv,SP,(dbg...,via=ElementCost),o.req)
+    L,χ,FB,eleres  = ☼getlagrangian(implemented(o.eleobj)...,o.eleobj,Λ,X,U,A,t,χ,χcv,SP,(dbg...,via=ElementCost),o.req)
     ☼cost          = o.cost(eleres,X,U,A,t,o.costargs...) 
     return L+cost,χ,FB
 end    
@@ -324,27 +324,27 @@ doflist(::Type{<:DofConstraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,
     x,☼λ       = ∂0(X)[SVector{Nx}(1:Nx)], ∂0(X)[Nx+1]   
     x∂         = variate{P,Nx}(x) 
     ☼gap,g∂x   = value_∂{P,Nx}(o.gap(x∂,t,o.gargs...)) 
-    return if  o.mode(t)==:equal;    SVector{Nx+1}((       -g∂x*λ)...,-gap              ) ,noχ,(α=∞                    ,)
-    elseif     o.mode(t)==:positive; SVector{Nx+1}((       -g∂x*λ)...,-gₛ*S(λ/λₛ,gap/gₛ,γ)) ,noχ,(α=decided(λ/λₛ,gap/gₛ,γ),)
-    elseif     o.mode(t)==:off;      SVector{Nx+1}(ntuple(i->0,Nx)...,-gₛ/λₛ*λ           ) ,noχ,(α=∞                    ,)
+    if         o.mode(t)==:equal;    return SVector{Nx+1}((       -g∂x*λ)...,-gap              ) ,noχ,(α=∞                    ,)
+    elseif     o.mode(t)==:positive; return SVector{Nx+1}((       -g∂x*λ)...,-gₛ*S(λ/λₛ,gap/gₛ,γ)) ,noχ,(α=decided(λ/λₛ,gap/gₛ,γ),)
+    elseif     o.mode(t)==:off;      return SVector{Nx+1}(ntuple(i->0,Nx)...,-gₛ/λₛ*λ           ) ,noχ,(α=∞                    ,)
     end
 end
 @espy function lagrangian(o::DofConstraint{:U,Nx,Nu,Na}, Λ,X,U,A,t,χ,χcv,SP,dbg) where{Nx,Nu,Na}
     γ          = default{:γ}(SP,0.)
     x,u,a,☼λ   = ∂0(X),∂0(U)[SVector{Nu}(1:Nu)],A,∂0(U)[Nu+1]
     ☼gap       = o.gap(x,u,a,t,o.gargs...)
-    return if  o.mode(t)==:equal;    -gap*λ                  ,noχ,(α=∞                        ,)
-    elseif     o.mode(t)==:positive; -KKT(λ,gap,γ,o.λₛ,o.gₛ)  ,noχ,(α=decided(λ/o.λₛ,gap/o.gₛ,γ),)
-    elseif     o.mode(t)==:off;      -o.gₛ/(2o.λₛ)*λ^2        ,noχ,(α=∞                        ,)  
+    if         o.mode(t)==:equal;    return -gap*λ                  ,noχ,(α=∞                        ,)
+    elseif     o.mode(t)==:positive; return -KKT(λ,gap,γ,o.λₛ,o.gₛ)  ,noχ,(α=decided(λ/o.λₛ,gap/o.gₛ,γ),)
+    elseif     o.mode(t)==:off;      return -o.gₛ/(2o.λₛ)*λ^2        ,noχ,(α=∞                        ,)  
     end
 end
 @espy function lagrangian(o::DofConstraint{:A,Nx,Nu,Na}, Λ,X,U,A,t,χ,χcv,SP,dbg) where{Nx,Nu,Na}
     γ          = default{:γ}(SP,0.)
     a,☼λ       = A[SVector{Na}(1:Na)],A[    Na+1] 
     ☼gap       = o.gap(a,o.gargs...)
-    return if  o.mode(t)==:equal;    -gap*λ                  ,noχ,(α=∞                        ,) 
-    elseif     o.mode(t)==:positive; -KKT(λ,gap,γ,o.λₛ,o.gₛ)  ,noχ,(α=decided(λ/o.λₛ,gap/o.gₛ,γ),)
-    elseif     o.mode(t)==:off;      -o.gₛ/(2o.λₛ)*λ^2        ,noχ,(α=∞                        ,)   
+    if         o.mode(t)==:equal;    return -gap*λ                  ,noχ,(α=∞                        ,) 
+    elseif     o.mode(t)==:positive; return -KKT(λ,gap,γ,o.λₛ,o.gₛ)  ,noχ,(α=decided(λ/o.λₛ,gap/o.gₛ,γ),)
+    elseif     o.mode(t)==:off;      return -o.gₛ/(2o.λₛ)*λ^2        ,noχ,(α=∞                        ,)   
     end
 end
 
@@ -388,6 +388,8 @@ another element. The other element must *not* be added separatly to the model.  
 
 This element generates a time varying optimisation constraint. For example: find `A`-parameters so that
    at all times, the element-result von-Mises stress does not exceed a given value. 
+
+The Lagrangian multiplier introduced by this optimisation constraint is of class :U   
 
 # Named arguments to the constructor
 - `λinod::𝕫`            The element-node number of the Lagrange multiplier.
@@ -445,11 +447,11 @@ doflist( ::Type{<:ElementConstraint{Teleobj,λinod,λfield}}) where{Teleobj,λin
     γ          = default{:γ}(SP,0.)
     u          = getsomedofs(U,SVector{Nu}(1:Nu)) 
     ☼λ         = ∂0(U)[Nu+1]
-    L,χn,FB,eleres  = ☼lagrangian(o.eleobj,Λ,X,u,A,t,χ,χcv,SP,(dbg...,via=ElementConstraint),o.req)
+    L,χn,FB,eleres  = ☼getlagrangian(implemented(o.eleobj)...,o.eleobj,Λ,X,u,A,t,χ,χcv,SP,(dbg...,via=ElementConstraint),o.req)
     ☼gap       = o.gap(eleres,X,u,A,t,o.gargs...)
-    return if  o.mode(t)==:equal;    L-gap*λ                  ,noχ,(α=∞                        ,)
-    elseif     o.mode(t)==:positive; L-KKT(λ,gap,γ,o.λₛ,o.gₛ)  ,noχ,(α=decided(λ/o.λₛ,gap/o.gₛ,γ),)
-    elseif     o.mode(t)==:off;      L-o.gₛ/(2o.λₛ)*λ^2        ,noχ,(α=∞                        ,)  
+    if         o.mode(t)==:equal;    return L-gap*λ                  ,noχ,(α=∞                        ,)
+    elseif     o.mode(t)==:positive; return L-KKT(λ,gap,γ,o.λₛ,o.gₛ)  ,noχ,(α=decided(λ/o.λₛ,gap/o.gₛ,γ),)
+    elseif     o.mode(t)==:off;      return L-o.gₛ/(2o.λₛ)*λ^2        ,noχ,(α=∞                        ,)  
     end
 end
 

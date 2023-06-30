@@ -394,10 +394,11 @@ getresidual(  ::Type{False},::Type{False},eleobj::AbstractElement,  X,U,A,t,χ,�
 getlagrangian(::Type{False},::Type{False},eleobj::AbstractElement,Λ,X,U,A,t,χ,χcv,SP,dbg,req...) = muscadeerror(dbg,@sprintf("Element %s must have method 'Muscade.lagrangian' or/and 'Muscade.residual' with correct interface",typeof(eleobj)))
 getresidual(  ::Type{True },::Type{<:Val},eleobj::AbstractElement,  X,U,A,t,χ,χcv,SP,dbg,req...) = checkresidual(  eleobj,  X,U,A,t,χ,χcv,SP,dbg,req...)
 getlagrangian(::Type{<:Val},::Type{True },eleobj::AbstractElement,Λ,X,U,A,t,χ,χcv,SP,dbg,req...) = checklagrangian(eleobj,Λ,X,U,A,t,χ,χcv,SP,dbg,req...)    
+
 # want residual, lagrangian implemented
 function getresidual(::Type{False},::Type{True} ,eleobj::AbstractElement,X,U,A,t,χ,χcv,SP,dbg,req...)  
     P   = constants(∂0(X),∂0(U),A,t)
-    Nx  = length(∂0(X))
+    Nx  = length(∂0(X)) # TODO this does no generalize to dynamics
     Λ   = δ{P,Nx,𝕣}() 
     L,χn,FB,eleres... = checklagrangian(eleobj,Λ,X,U,A,t,χ,χcv,SP,dbg,req...)    
     return ∂{P,Nx}(L),χn,FB,eleres...
