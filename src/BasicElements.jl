@@ -89,7 +89,7 @@ ele1 = addelement!(model,ElementCost,[nod1];req=@request(Fh),
 
 See also: [`SingleDofCost`](@ref), [`DofCost`](@ref), [`@request`](@ref) 
 """
-struct ElementCost{Teleobj,Treq,Tcost,Tcostargs}
+struct ElementCost{Teleobj,Treq,Tcost,Tcostargs} <: AbstractElement
     eleobj   :: Teleobj
     req      :: Treq
     cost     :: Tcost     
@@ -422,7 +422,7 @@ ele1 = addelement!(model,ElementCoonstraint,[nod1];req=@request(Fh),
 
 See also: [`Hold`](@ref), [`DofConstraint`](@ref), [`off`](@ref), [`equal`](@ref), [`positive`](@ref), [`@request`](@ref)
 """
-struct ElementConstraint{Teleobj,λinod,λfield,Nu,Treq,Tg,Tgargs,Tmode}
+struct ElementConstraint{Teleobj,λinod,λfield,Nu,Treq,Tg,Tgargs,Tmode} <: AbstractElement
     eleobj   :: Teleobj
     req      :: Treq
     gap      :: Tg    

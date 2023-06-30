@@ -20,7 +20,7 @@ function solve(Solver;dbg=NamedTuple(),verbose::𝕓=true,silenterror::𝕓=fals
     verbose && printstyled("\n\n\nMuscade:",bold=true,color=:cyan)
     verbose && printstyled(@sprintf(" %s solver\n\n",Symbol(Solver)),color=:cyan)
 
-    Tstate = getTstate(Solver)
+    Tstate = getStateType(Solver)
     pstate = Base.RefValue{Vector{Tstate}}() # state is not a return argument of the solver, so that partial results are not lost on error
     try
         t = @elapsed solve(Solver,pstate,verbose,(dbg...,solver=Symbol(Solver));kwargs...)  
