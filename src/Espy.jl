@@ -50,11 +50,48 @@ macro request(ex)
     if     @capture(ex,(args__,));      prettify(code_tuple(request_.(args)...))
     elseif @capture(ex,name_(args__));  prettify(code_tuple(request_(ex)))
     elseif @capture(ex,symbol_);        prettify(code_tuple(request_(ex)))
-    else;                               error("Not a valid request")
+    else;                               muscadeerror("Not a valid request")
     end
 end
 request_(ex::Symbol) = quote $ex=nothing end
-request_(ex        ) = @capture(ex,name_(args__)) ? quote $name=$(code_tuple(request_.(args)...)) end : error("Not a valid request")
+request_(ex        ) = @capture(ex,name_(args__)) ? quote $name=$(code_tuple(request_.(args)...)) end : muscadeerror("Not a valid request")
+
+instantiate(::Type{Nothing}        )            = nothing
+instantiate(::Type{NamedTuple{k,F}}) where{k,F} = NamedTuple{k}(instantiate.(fieldtypes(F)))
+"""
+
+    req = Muscade.merge(o.req)
+
+Elements like [`ElementCost`](@ref) and [`ElementConstraint`](@ref) use requests to apply a cost or a constraint to
+requestables from another "target" element. These cost/constraint elements must be coded carefully so that `getresult` can be used to extracted
+both requestable internal results from the cost/constraint and from the target element.
+
+`merge` (which is *not exported by Muscade*) is used to merge the requests for the request needed to enforce a cost or constraint, and the user's 
+request for element to be obtained from the analysis.  The call to `merge`, to be inserted in the code of `lagrange` for the cost/constraint element
+will be modified by `@espy`.  
+
+See the code of `ElementCost`'s constructor and `lagrange` method for an example.
+
+See also: [`ElementCost`](@ref),[`@request`](@ref),[`getresult`](@ref)
+"""
+@inline merge(x)            = x
+merge(x        , ::Nothing) = x
+merge(::Nothing, x        ) = x
+merge(::Nothing, ::Nothing) = nothing
+@generated function merge(NT1::NamedTuple, NT2::NamedTuple) 
+    nt1     = instantiate(NT1)
+    nt2     = instantiate(NT2)
+    kout    = union(keys(nt1), keys(nt2))
+    t       = ntuple(length(kout)) do ikey
+        key = kout[ikey]
+        v1  = get(nt1, key, nothing)
+        v2  = get(nt2, key, nothing)
+        v   = merge(v1, v2)
+        :($key = $v) 
+    end
+    return code_tuple(t...)
+    return c
+end
 
 
 ######################## Generate new function code
@@ -89,6 +126,17 @@ function code_write_to_out(out,req,var,trace)
     printtrace(trace,"done")
     return code,newout
 end
+function code_merge_req(left,oreq,req,out,trace=-999999) # req = merge(o.req)
+    printtrace(trace,"code_merge_req")
+    code   = quote
+        $left  = merge($req,$oreq)
+    end 
+    printtrace(trace,"done")
+    return code,out
+end
+
+
+
 function code_call(left,foo,args,req,out,trace=-999999) # left,... = foo(args)
     printtrace(trace,"code_call")
     out_new = newsym(out)
@@ -144,7 +192,11 @@ end
 function code_assigment_rhs(left,right,out,req,trace=-999999) # work with the rhs of an assigment, return the whole assigment
     printtrace(trace,"code_assigment_rhs")
     trace += 1
-    if @capture(right,  foo_(args__)   ) &&  ☼tag(foo)           
+    if @capture(right,  merge(oreq_)   )            
+        printtrace(trace,"req = merge(o.req)")
+        code,out_new = code_merge_req(left,oreq,req,out,trace+1)
+        printtrace(trace,"done")
+    elseif @capture(right,  foo_(args__)   ) &&  ☼tag(foo)           
         printtrace(trace,"left = ☼foo(args)")
         code,out_new = code_call(left,☼tail(foo),args,req,out,trace+1)
         printtrace(trace,"done")
@@ -192,11 +244,12 @@ function code_recursion(ex::Expr,out,req,trace=-999999)
         elseif @capture(left,   (args__,)    )                                               # (a,☼b) = ...
             printtrace(trace,"(a,☼b) = ...")
             write  = Vector{Expr}(undef,0)                                          # will contain the macros to insert
-            left   = code_clean_function(left)
             @capture(left,   (args__,)    )
+            left   = code_clean_function(left)
             assignement,out_new = code_assigment_rhs(left,right,out,req,trace+1)
             for arg ∈ args
                 if ☼tag(arg) 
+                    arg = ☼tail(arg)
                     w,out_new = code_write_to_out(out_new,req,arg,trace+1)
                     push!(write,w)                                        # @espy_record out req b
                 end
@@ -354,7 +407,7 @@ macro espydbg(ex)
     println(prettify(clean))
     printstyled("\n@espydbg: ";bold,color=:cyan)
     printstyled("Espying code\n";bold,color=:yellow)
-    espying = code_espying_function(ex,:out,:req)
+    espying = code_espying_function(ex,newsym(:out),newsym(:req))#,0) #trace
     println(prettify(espying)) 
     printstyled("\n@espydbg: ";bold,color=:cyan)
     printstyled("Done\n\n";bold,color=:cyan)

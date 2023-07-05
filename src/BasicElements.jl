@@ -58,24 +58,32 @@ end
 """
     ElementCost{Teleobj,Treq,Tcost,Tcostargs} <: AbstractElement
 
-An element to apply costs on another element's dofs and element-results.  
-The other element must *not* be added separatly to the model.  Instead, the 
-`ElementType`, and the named arguments to the other element are provided
+An element to apply costs on another "target" element's dofs and element-results.  
+The target element must *not* be added separatly to the model.  Instead, the 
+`ElementType`, and the named arguments to the target element are provided
 as input to the `ElementCost` constructor.
 
 # Named arguments to the constructor
-- `req`               a request for element-results for `ElementType`, resulting in the output `eleres`
-- `cost`              a cost function `cost(eleres,X,U,A,t,costargs...)→ℝ`
-                      `X` and `U` are tuples (derivates of dofs...), and `∂0(X)`,`∂1(X)`,`∂2(X)` 
-                      must be used by `cost` to access the value and derivatives of `X` (resp. `U`).
-                      `X`, `U` and `A` are the degrees of freedom of the element `ElementType`.
-- `costargs=(;)`      A named tuple of additional arguments to the cost function 
-- `ElementType`       The named of the constructor for the relevant element 
-- `elementkwargs...`  Additional named arguments to the `ElementCost` constructor are passed on to the `ElementType` constructor.     
+- `req`                 A request for element-results to be extracted from the target element, see [`@request`](@ref).
+                        The request is formulated as if adressed directly to the target element (no "prefixing" with 
+                        `eleres`, see "Requestable internal variables")
+- `cost`                a cost function `cost(eleres,X,U,A,t,costargs...)→ℝ`
+                        `X` and `U` are tuples (derivates of dofs...), and `∂0(X)`,`∂1(X)`,`∂2(X)` 
+                        must be used by `cost` to access the value and derivatives of `X` (resp. `U`).
+                        `X`, `U` and `A` are the degrees of freedom of the element `ElementType`.
+- `costargs=(;)`        A named tuple of additional arguments to the cost function 
+- `ElementType`         The named of the constructor for the relevant element 
+- `elementkwargs...`    Additional named arguments to the `ElementCost` constructor are passed on to the `ElementType` constructor.     
 
 
 # Requestable internal variables
-- `cost`, the value of the cost.
+
+From `ElementConstraint` one can request
+- `cost`               The value of the cost
+
+From the target element on can request
+- `eleres(...)`        where `...` is the list of requestables from the target element.  It must be "prefixed" by 
+                       `eleres` to prevent possible confusion with variables requestable from `ElementConstraint`.
 
 # Example
 ```
@@ -84,8 +92,6 @@ ele1 = addelement!(model,ElementCost,[nod1];req=@request(Fh),
                    cost=cost,ElementType=AnchorLine,
                    Λₘtop=[5.,0,0], xₘbot=[250.,0], L=290., buoyancy=-5e3)
 ```
-
-
 
 See also: [`SingleDofCost`](@ref), [`DofCost`](@ref), [`@request`](@ref) 
 """
@@ -97,11 +103,12 @@ struct ElementCost{Teleobj,Treq,Tcost,Tcostargs} <: AbstractElement
 end
 function ElementCost(nod::Vector{Node};req,cost,costargs=(;),ElementType,elementkwargs...)
     eleobj   = ElementType(nod;elementkwargs...)
-    return ElementCost(eleobj,req,cost,costargs)
+    return ElementCost(eleobj,(eleres=req,),cost,costargs)
 end
 doflist( ::Type{<:ElementCost{Teleobj}}) where{Teleobj} = doflist(Teleobj)
 @espy function lagrangian(o::ElementCost, Λ,X,U,A,t,χ,χcv,SP,dbg)
-    L,χ,FB,eleres  = ☼getlagrangian(implemented(o.eleobj)...,o.eleobj,Λ,X,U,A,t,χ,χcv,SP,(dbg...,via=ElementCost),o.req)
+    req        = merge(o.req)
+    L,χ,FB,☼eleres = getlagrangian(implemented(o.eleobj)...,o.eleobj,Λ,X,U,A,t,χ,χcv,SP,(dbg...,via=ElementCost),req.eleres)
     ☼cost          = o.cost(eleres,X,U,A,t,o.costargs...) 
     return L+cost,χ,FB
 end    
@@ -382,8 +389,8 @@ end
     ElementConstraint{Teleobj,λinod,λfield,Nu,Treq,Tg,Tgargs,Tmode} <: AbstractElement
 
 An element to apply optimisation equality/inequality constraints on the element-results of 
-another element. The other element must *not* be added separatly to the model.  Instead, the 
-`ElementType`, and the named arguments to the other element are provided as input to the 
+another "target" element. The target element must *not* be added separatly to the model.  Instead, the 
+`ElementType`, and the named arguments to the target element are provided as input to the 
 `ElementConstraint` constructor.
 
 This element generates a time varying optimisation constraint. For example: find `A`-parameters so that
@@ -392,9 +399,12 @@ This element generates a time varying optimisation constraint. For example: find
 The Lagrangian multiplier introduced by this optimisation constraint is of class :U   
 
 # Named arguments to the constructor
+
 - `λinod::𝕫`            The element-node number of the Lagrange multiplier.
 - `λfield::Symbol`      The field of the Lagrange multiplier.
-- `req`                 A request for element-results, see [`@request`](@ref).
+- `req`                 A request for element-results to be extracted from the target element, see [`@request`](@ref).
+                        The request is formulated as if adressed directly to the target element (no "prefixing" with 
+                        `eleres`, see "Requestable internal variables")
 - `gₛ::𝕣=1.`             A scale for the gap.
 - `λₛ::𝕣=1.`             A scale for the Lagrange multiplier.
 - `gap`                 a gap function `gap(eleres,X,U,A,t,gargs...)→ℝ`
@@ -409,8 +419,15 @@ The Lagrangian multiplier introduced by this optimisation constraint is of class
 - `ElementType`         The named of the constructor for the relevant element 
 - `elementkwargs...`    Additional named arguments to the `ElementCost` constructor are passed on to the `ElementType` constructor.     
 
+# Requestable internal variables
 
+From `ElementConstraint` one can request
+- `λ`                   The constraints Lagrange multiplier
+- `gap`                 The constraints gap function
 
+From the target element on can request
+- `eleres(...)`         where `...` is the list of requestables from the target element.  It must be "prefixed" by 
+                        `eleres` to prevent possible confusion with variables requestable from `ElementConstraint`.
 
 # Example
 
@@ -437,17 +454,18 @@ function ElementConstraint(nod::Vector{Node};λinod::𝕫, λfield::Symbol,
     req,gap::Function,gargs=(;),mode::Function,gₛ::𝕣=1.,λₛ::𝕣=1.,ElementType,elementkwargs...)
     eleobj   = ElementType(nod;elementkwargs...)
     Nu       = getndof(typeof(eleobj),:U)
-    return ElementConstraint{typeof(eleobj),λinod,λfield,Nu,typeof(req),typeof(gap),typeof(gargs),typeof(mode)}(eleobj,req,gap,gargs,mode,gₛ,λₛ)
+    return ElementConstraint{typeof(eleobj),λinod,λfield,Nu,typeof((eleres=req,)),typeof(gap),typeof(gargs),typeof(mode)}(eleobj,(eleres=req,),gap,gargs,mode,gₛ,λₛ)
 end
 doflist( ::Type{<:ElementConstraint{Teleobj,λinod,λfield}}) where{Teleobj,λinod,λfield} =
     (inod =(doflist(Teleobj).inod... ,λinod),
      class=(doflist(Teleobj).class...,:U),
      field=(doflist(Teleobj).field...,λfield))
 @espy function lagrangian(o::ElementConstraint{Teleobj,λinod,λfield,Nu}, Λ,X,U,A,t,χ,χcv,SP,dbg) where{Teleobj,λinod,λfield,Nu} 
+    req        = merge(o.req)
     γ          = default{:γ}(SP,0.)
     u          = getsomedofs(U,SVector{Nu}(1:Nu)) 
     ☼λ         = ∂0(U)[Nu+1]
-    L,χn,FB,eleres  = ☼getlagrangian(implemented(o.eleobj)...,o.eleobj,Λ,X,u,A,t,χ,χcv,SP,(dbg...,via=ElementConstraint),o.req)
+    L,χn,FB,☼eleres = getlagrangian(implemented(o.eleobj)...,o.eleobj,Λ,X,u,A,t,χ,χcv,SP,(dbg...,via=ElementConstraint),req.eleres)
     ☼gap       = o.gap(eleres,X,u,A,t,o.gargs...)
     if         o.mode(t)==:equal;    return L-gap*λ                  ,noχ,(α=∞                        ,)
     elseif     o.mode(t)==:positive; return L-KKT(λ,gap,γ,o.λₛ,o.gₛ)  ,noχ,(α=decided(λ/o.λₛ,gap/o.gₛ,γ),)

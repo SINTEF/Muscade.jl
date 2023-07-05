@@ -55,7 +55,7 @@ One can actually add nodes to the model after elements have been added.  One can
 
 ## Extracting results
 
-`State`s (returned by `initialize!` and `solve`). are variables which contents are private (not part of the API, and subject to change), but can be accessed using functions like `getdof` and `getres`.
+`State`s (returned by `initialize!` and `solve`). are variables which contents are private (not part of the API, and subject to change), but can be accessed using functions like `getdof` and `getresult`.
 
 `getdof` allows to obtain dofs which are directly stored in `state`, by specifying class, field and node.
 

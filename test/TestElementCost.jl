@@ -55,4 +55,13 @@ L,χ,FB  = lagrangian(el, Λ+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A+ΔA, 0.,nothi
      @test ∂{1,Nz}(L) ≈ [-438861.1307445675, 9278.602091074139, 1.8715107899328927e6, 2.322235123921358e10, -4.9097753633879846e8, -9.903105530914653e10, -1.926851845351649e11, 6.735986859485705e12, -3.853703690703298e11]
 end
 
+req = @request λ,eleres(cr)
+
+L,χ,FB,eleres  = lagrangian(el, Λ+ΔΛ, X,U,A, 0.,nothing,identity,nothing,(testall=true,),req)                 
+@testset "ElementConstraintResult" begin
+     @test eleres.λ ≈ 1.
+     @test eleres.eleres.cr ≈ 87.79184120068672
+     @test eleres.eleres.Fh ≈ 438959.2060034336
+end
+
 end

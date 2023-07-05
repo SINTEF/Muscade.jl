@@ -1,4 +1,4 @@
-#module TestStaticXUA
+module TestStaticXUA
 
 using Test
 using Muscade
@@ -37,5 +37,6 @@ stateXUA           = solve(StaticXUA;initialstate=stateX,maxYiter= 50,verbose=fa
     @test stateXUA[2].A    ≈ [0.004212461115295247,    0.5743380076037062]
     @test stateXUA[2].A == stateXUA[1].A
 end
-#end 
+
+end 
 
