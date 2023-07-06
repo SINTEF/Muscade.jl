@@ -170,7 +170,7 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
                     facLyys = lu(out1.Lyy) 
                 else
                     lu!(facLyys,out1.Lyy) 
-                end catch; muscadeerror(@sprintf("Incremental Y-solution failed at step=%i, iAiter=%i, iYiter",step,iAiter,iYiter)) end
+                end catch; muscadeerror(@sprintf("Incremental Y-solution failed at step=%i, iAiter=%i, iYiter=%i",step,iAiter,iYiter)) end
                 Δy[ step]  = facLyys\out1.Ly
                 decrement!(state[step],0,Δy[ step],Ydofgr)
                 Δy²s,Ly²s = sum(Δy[step].^2),sum(out2.Ly.^2)
