@@ -127,9 +127,6 @@ stateXUA        = solve(StaticXUA;initialstate=stateX)
                       iterations".   
 - `maxΔy=1e-5`        "inner" convergence criteria: a norm on the scaled `Y=[XU]` increment 
 - `maxLy=∞`           "inner" convergence criteria: a norm on the scaled `Ly=[Lx,Lu]` residual
-- `saveiter=false`    set to true so that the output `state` is a vector describing 
-                      the states of the model at the last iteration (for debugging 
-                      non-convergence) 
 - `γ0=1.`             an initial value of the barrier coefficient for the handling of contact
                       using an interior point method
 - `γfac1=0.5`         at each iteration, the barrier parameter γ is multiplied 
@@ -143,14 +140,14 @@ A vector of length equal to that of `initialstate` containing the state of the o
 See also: [`solve`](@ref), [`StaticX`](@ref) 
 """
 struct StaticXUA end
-getTstate(::Type{StaticXUA}) = State{1,1,typeof((γ=0.,))} #  nXder,nUder
+getStateType(::Type{StaticXUA}) = State{1,1,typeof((γ=0.,))} #  nXder,nUder
 function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<:State},
     maxAiter::ℤ=50,maxYiter::ℤ=0,maxΔy::ℝ=1e-5,maxLy::ℝ=∞,maxΔa::ℝ=1e-5,maxLa::ℝ=∞,γ0::𝕣=1.,γfac1::𝕣=.5,γfac2::𝕣=100.)
 
     model,dis          = initialstate[begin].model,initialstate[begin].dis
     out1,asm1,Ydofgr   = prepare(AssemblyStaticΛXU  ,model,dis)
     out2,asm2,Adofgr,_ = prepare(AssemblyStaticΛXU_A,model,dis)
-    Tstate             = getTstate(StaticX)
+    Tstate             = getStateType(StaticX)
     state              = allocate(pstate,[Tstate(i.Λ,deepcopy(i.X),deepcopy(i.U),deepcopy(i.A),i.time,(γ=γ0,),i.model,i.dis) for i ∈ initialstate]) 
     cΔy²,cLy²,cΔa²,cLa²= maxΔy^2,maxLy^2,maxΔa^2,maxLa^2
     nA,nStep           = getndof(model,:A),length(state)
@@ -173,7 +170,7 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
                     facLyys = lu(out1.Lyy) 
                 else
                     lu!(facLyys,out1.Lyy) 
-                end catch; muscadeerror(@sprintf("Incremental Y-solution failed at step=%i, iAiter=%i, iYiter",step,iAiter,iYiter)) end
+                end catch; muscadeerror(@sprintf("Incremental Y-solution failed at step=%i, iAiter=%i, iYiter=%i",step,iAiter,iYiter)) end
                 Δy[ step]  = facLyys\out1.Ly
                 decrement!(state[step],0,Δy[ step],Ydofgr)
                 Δy²s,Ly²s = sum(Δy[step].^2),sum(out2.Ly.^2)

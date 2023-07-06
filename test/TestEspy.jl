@@ -50,6 +50,20 @@ exbar = @macroexpand @espy function bar(x,y,z)
     return r,χ,nothing
 end
 
+exmerge = @macroexpand @espy function lagrangian(o::ElementConstraint{Teleobj,λinod,λfield,Nu}, Λ,X,U,A,t,χ,χcv,SP,dbg) where{Teleobj,λinod,λfield,Nu} 
+    req        = merge(o.req)
+    γ          = default{:γ}(SP,0.)
+    u          = getsomedofs(U,SVector{Nu}(1:Nu)) 
+    ☼λ         = ∂0(U)[Nu+1]
+    L,χn,FB,☼eleres  = getlagrangian(implemented(o.eleobj)...,o.eleobj,Λ,X,u,A,t,χ,χcv,SP,(dbg...,via=ElementConstraint),req)
+    ☼gap       = o.gap(eleres,X,u,A,t,o.gargs...)
+    if         o.mode(t)==:equal;    return L-gap*λ                  ,noχ,(α=∞                        ,)
+    elseif     o.mode(t)==:positive; return L-KKT(λ,gap,γ,o.λₛ,o.gₛ)  ,noχ,(α=decided(λ/o.λₛ,gap/o.gₛ,γ),)
+    elseif     o.mode(t)==:off;      return L-o.gₛ/(2o.λₛ)*λ^2        ,noχ,(α=∞                        ,)  
+    end
+end
+
+
 ############# @espy outputs
 
 exresidual_ = quote
@@ -87,7 +101,18 @@ exresidual_ = quote
                     (s, t) = material(z)
                     out_001_gp_002 = out_001_gp_001
                 end
-                (s = s, out = out_001_gp_002)
+                out_001_gp_003 = if haskey(req_001_gp, :s)
+                        (out_001_gp_002..., s = s)
+                    else
+                        out_001_gp_002
+                    end
+                out_001_gp_004 = if haskey(req_001_gp, :t)
+                        (out_001_gp_003..., t = t)
+                    else
+                        out_001_gp_003
+                    end
+                (s, t)
+                (s = s, out = out_001_gp_004)
             end
         out_002 = if haskey(req_001, :gp)
                 (out_001..., gp = NTuple{ngp}(((accum[igp]).out for igp = 1:ngp)))
@@ -204,11 +229,64 @@ exbar_ = quote
     end
 end
 
+exmerge_ = quote
+    function lagrangian(o::ElementConstraint{Teleobj, λinod, λfield, Nu}, Λ, X, U, A, t, χ, χcv, SP, dbg) where {Teleobj, λinod, λfield, Nu}
+        req = merge(o.req)
+        γ = default{:γ}(SP, 0.0)
+        u = getsomedofs(U, SVector{Nu}(1:Nu))
+        λ = (∂0(U))[Nu + 1]
+        (L, χn, FB, eleres) = getlagrangian(implemented(o.eleobj)..., o.eleobj, Λ, X, u, A, t, χ, χcv, SP, (dbg..., via = ElementConstraint), req)
+        gap = o.gap(eleres, X, u, A, t, o.gargs...)
+        if o.mode(t) == :equal
+            return (L - gap * λ, noχ, (α = ∞,))
+        elseif o.mode(t) == :positive
+            return (L - KKT(λ, gap, γ, o.λₛ, o.gₛ), noχ, (α = decided(λ / o.λₛ, gap / o.gₛ, γ),))
+        elseif o.mode(t) == :off
+            return (L - (o.gₛ / (2 * o.λₛ)) * λ ^ 2, noχ, (α = ∞,))
+        end
+    end
+    function lagrangian(o::ElementConstraint{Teleobj, λinod, λfield, Nu}, Λ, X, U, A, t, χ, χcv, SP, dbg, req_001; ) where {Teleobj, λinod, λfield, Nu}
+        out_001 = (;)
+        req = merge(req_001, o.req)
+        γ = default{:γ}(SP, 0.0)
+        u = getsomedofs(U, SVector{Nu}(1:Nu))
+        λ = (∂0(U))[Nu + 1]
+        out_002 = if haskey(req_001, :λ)
+                (out_001..., λ = λ)
+            else
+                out_001
+            end
+        λ
+        (L, χn, FB, eleres) = getlagrangian(implemented(o.eleobj)..., o.eleobj, Λ, X, u, A, t, χ, χcv, SP, (dbg..., via = ElementConstraint), req)
+        out_003 = if haskey(req_001, :eleres)
+                (out_002..., eleres = eleres)
+            else
+                out_002
+            end
+        (L, χn, FB, eleres)
+        gap = o.gap(eleres, X, u, A, t, o.gargs...)
+        out_004 = if haskey(req_001, :gap)
+                (out_003..., gap = gap)
+            else
+                out_003
+            end
+        gap
+        if o.mode(t) == :equal
+            return (L - gap * λ, noχ, (α = ∞,), out_004)
+        elseif o.mode(t) == :positive
+            return (L - KKT(λ, gap, γ, o.λₛ, o.gₛ), noχ, (α = decided(λ / o.λₛ, gap / o.gₛ, γ),), out_004)
+        elseif o.mode(t) == :off
+            return (L - (o.gₛ / (2 * o.λₛ)) * λ ^ 2, noχ, (α = ∞,), out_004)
+        end
+    end
+end
+
 @testset "Transformed codes" begin
     @test prettify(exresidual)   == prettify(exresidual_)
     @test prettify(exmaterial)   == prettify(exmaterial_)
     @test prettify(exlagrangian) == prettify(exlagrangian_)
     @test prettify(exbar)        == prettify(exbar_)
+    @test prettify(exmerge)        == prettify(exmerge_)
 end
 
 r1 = @request (a,b,c)
@@ -217,6 +295,14 @@ r2 = @request (a,b,c(x,y))
     @test r1 == (a = nothing, b = nothing, c = nothing)
     @test r2 == (a = nothing, b = nothing, c = (x = nothing, y = nothing))
 end
+
+r1 = @request a(x(α),y),b,e
+r2 = @request a(x(α),z),c(x,y),d(f),e
+r = merge(r1,r2)
+@testset "MergeRequest" begin
+    @test r == (a=(x=(α=nothing,),y=nothing,z=nothing),b=nothing,e=nothing,c=(x=nothing,y=nothing),d=(f=nothing,))
+end
+
 
 eval(exresidual)
 eval(exmaterial)
@@ -227,7 +313,7 @@ req         = @request gp(z,s,t,material(a,b))
 r,χ,SFB,out = residual([1.,2.],[3.,4.],req)
 
 @testset "Get output" begin
-    @test out == (gp = ((z = 4.0, material = (a = 5.0, b = 20.0)), (z = 6.0, material = (a = 7.0, b = 42.0))),)
+    @test out ==  (gp = ((z = 4.0, material = (a = 5.0, b = 20.0), s = 20.0, t = 3.0), (z = 6.0, material = (a = 7.0, b = 42.0), s = 42.0, t = 3.0)),)
 end
 
 

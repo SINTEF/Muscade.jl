@@ -33,19 +33,27 @@ To make the problem well-posed again, we introduce a target function ``Q(X,U,A)`
 
 In design optimisation, one can associate a monetary value to ``A`` (building stronger costs more money), and to ``X`` (some system responses, including failure, would cost money). The objective is to find the design with the lowest associated cost.
 
-In an load estimation problem where part of the response is measured, we wish to find the most probable unknown load ``U`` (large loads are not likely) and response (a computed response ``X`` that drasticaly disagrees with the actual measurements is not likely) - under the constraint that load and response verify equilibrium.  In this case, we minimize the *surprisal* ``s = -\log(P)`` instead of maximizing ``P``.  Making probabilities or surprisal extremal is equivalent.   However, since probabilities multiply (the joint probability density of independant variables is equal to the product of the marginal probability densities), the corresponding surprisals add, which fits into the system of having elements *add* contribution to the system of equations to be solved. Further, it is typicaly easier to find the e surprisals are typicaly the former is numericaly "kinder".
+In an load estimation problem where part of the response is measured, we wish to find the most probable unknown load ``U`` (large loads are not likely) and response (a computed response ``X`` that drasticaly disagrees with the actual measurements is not likely) - under the constraint that load and response verify equilibrium.  In this case, we minimize the *surprisal* ``s = -\log(P)`` instead of maximizing ``P``.  Making probabilities or surprisal extremal is equivalent.   However, since probabilities multiply (the joint probability density of independant variables is equal to the product of the marginal probability densities), the corresponding surprisals add, which fits into the system of having elements *add* contribution to the system of equations to be solved. Further, the surprisals are typicaly numericaly "kinder".
 
 ## Lagrangian
 
 Making ``Q`` extremal under the constraint ``R(X,U,A)=0`` is equivalent to finding an extremal (a saddle point) of the *Lagrangian* ``L(\Lambda,X,U,A)`` (not to be confused with the potential in Lagrangian mechanics)
 
 ```math
-L(\Lambda,X,U,A) = Q(X,U,A) + Λ\cdot R(X,U,A)
+L(\Lambda,X,U,A) = Q(X,U,A) + R(X,U,A) \cdot \Lambda
 ```
 
 where ``Λ`` are Lagrange multipliers.  There is again a one-to-one correspondance between Λdofs and residuals, and this between Λdofs and Xdofs.  One result of this correspondance is that when implmenting a new element, the method `doflist` does not list the Λdofs (this would otherwise just have been a compulsory repetition of the list of Xdofs). 
 
-For evolution problems, the dot product ``Λ\cdot R(X,U,A)`` includes an integral over time: the Lagrangian is a *functional*, and the gradients of ``L`` are ordinary (or integral) differential equations (in time), found using Frechet derivatives.
+For evolution problems, the dot product ``R(X,U,A) \cdot \Lambda`` includes an integral over time: the Lagrangian is a *functional*, and the gradients of ``L`` are ordinary (or integral) differential equations (in time), found using Frechet derivatives.
+
+Additional constraints may be introduced. *Physical constraints* (like contact or boundary conditions) are added by augmenting ``X`` and ``R``.  *Optimisation constraints* may have to be verified at every step (stresses to remain below a critical level, at any time).  They are handled by augmenting ``U`` (introducing a Udof Lagrange multiplier).  Optimisation constraints that act only on Adofs (there is a limit to the strength of steel we can order)  are handled by augmenting ``A``.  With the additional constraints, the Lagrangian is of the form
+
+```math
+\begin{split}
+L(\Lambda,X,U,A) = Q(X,U,A)  &+ \left[\begin{array}{c}R(X,U,A) - ∇g_x(X,U,A) \cdot X_λ \\ g_x(X,U,A)\end{array}\right] \cdot Λ \\ &+ g_u(X,U,A) \cdot U_\lambda \\ &+ g_a(A) \cdot A_\lambda 
+\end{split}
+```
 
 ## Elements
 

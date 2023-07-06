@@ -23,7 +23,7 @@ n2              = addnode!(model,[1.])
 e1              = addelement!(model,Hold,[n1];field=:tx1)
 e2              = addelement!(model,DofLoad,[n2];field=:tx1,value=t->3t)
 e3              = addelement!(model,QuickFix,[n1,n2];inod=(1,2),field=(:tx1,:tx1),
-                              res=(X,X′,X″,t)->12SVector{2}(X[1]-X[2],X[2]-X[1]))
+                              res=(X,X′,X″,t)->12SVector(X[1]-X[2],X[2]-X[1]))
 
 initialstate    = initialize!(model)
 state           = solve(StaticX;initialstate,time=[0.,1.],verbose=false)
@@ -55,7 +55,7 @@ One can actually add nodes to the model after elements have been added.  One can
 
 ## Extracting results
 
-`State`s (returned by `initialize!` and `solve`). are variables which contents are private (not part of the API, and subject to change), but can be accessed using functions like `getdof` and `getres`.
+`State`s (returned by `initialize!` and `solve`). are variables which contents are private (not part of the API, and subject to change), but can be accessed using functions like `getdof` and `getresult`.
 
 `getdof` allows to obtain dofs which are directly stored in `state`, by specifying class, field and node.
 

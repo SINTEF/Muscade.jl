@@ -161,6 +161,7 @@ function addnode!(model::Model,coord::ℝ2)
 end
 addnode!(model::Model,coord::ℝ1)  = addnode!(model,reshape(coord,(1,length(coord))))[1]
 
+Base.adjoint(nodid::NodID)=nodid
 
 """
     eleid = addelement!(model,ElType,nodid;kwargs...)
@@ -172,7 +173,7 @@ If `nodid` is an `AbstractVector`: add a single element to the model. `eleid`
 is then a single element identifier.
 
 If `nodid` is an `AbstractMatrix`: add multiple elements to the model. Each 
-column of `nodid` identifies the node of a single element. `eleid` is then 
+row of `nodid` identifies the node of a single element. `eleid` is then 
 a vector of element identifiers.
 
 For each element, `addelement!` will call `eleobj = ElType(nodes;kwargs...)` where
@@ -180,7 +181,7 @@ For each element, `addelement!` will call `eleobj = ElType(nodes;kwargs...)` whe
 
 See also: [`addnode!`](@ref), [`describe`](@ref), [`coord`](@ref)
 """
-function addelement!(model::Model,::Type{T},nodID::Matrix{NodID};kwargs...) where{T<:AbstractElement}
+function addelement!(model::Model,::Type{T},nodID::AbstractMatrix{NodID};kwargs...) where{T<:AbstractElement}
     assert_unlocked(model)
     # new element type? make space in model.eletyp and model.eleobj for that
     nod      = [model.nod[nodID[1,i]] for i∈eachindex(nodID[1,:])]
@@ -200,7 +201,6 @@ function addelement!(model::Model,::Type{T},nodID::Matrix{NodID};kwargs...) wher
     inod,class,field = getdoflist(E)
     neledof          = getndof(E)
     nnod == getnnod(E) || muscadeerror(@sprintf "Connecting element of type %s: Second dimension of inod (%i) must be equal to element's nnod (%i)" T nnod getnnod(E) ) 
-
     dofID  = Vector{DofID  }(undef,neledof )         # work array
     eleID  = Vector{EleID  }(undef,nele_new)         # allocate return variable
     ele    = Vector{Element}(undef,nele_new)         # work array - will be appended to model.ele
@@ -208,13 +208,9 @@ function addelement!(model::Model,::Type{T},nodID::Matrix{NodID};kwargs...) wher
     for iele_new = 1:nele_new
         # add eleID to nodes
         eleID[iele_new] = EleID(ieletyp,iele_new+iele_sofar) 
-        nod = [model.nod[i] for i∈unique(nodID[iele_new,:])]
         for nod ∈ [model.nod[i] for i∈unique(nodID[iele_new,:])] # unique: if several nodes of an element are connected to the same model node, mention element only once
             push!(nod.eleID,eleID[iele_new])
         end
-        # for nod ∈ model.nod[unique(nodID[iele_new,:])] # unique: if several nodes of an element are connected to the same model node, mention element only once
-        #     push!(nod.eleID,eleID[iele_new])
-        # end
         # for all dofs of the element, make sure they are represented in the nod object and get an ID
         for ieledof  = 1:neledof
             nodid    = nodID[iele_new,inod[ieledof]]  # nodID of current eledof
@@ -241,7 +237,7 @@ function addelement!(model::Model,::Type{T},nodID::Matrix{NodID};kwargs...) wher
             end
         end
         # add element to model (always)
-        ele[   iele_new] = Element(eleID[iele_new], ieletyp, iele_sofar+iele_new, nodID[iele_new,:],dofID)
+        ele[   iele_new] = Element(eleID[iele_new], ieletyp, iele_sofar+iele_new, nodID[iele_new,:],deepcopy(dofID))
         if iele_new==1
             eleobj[iele_new] = ele1
         else
@@ -253,7 +249,7 @@ function addelement!(model::Model,::Type{T},nodID::Matrix{NodID};kwargs...) wher
     append!(model.eleobj[ieletyp],eleobj)
     return eleID 
 end
-addelement!(model::Model,::Type{E},nodID::Vector{NodID};kwargs...) where{E<:AbstractElement} = addelement!(model,E,reshape(nodID,(1,length(nodID)));kwargs...)[1] 
+addelement!(model::Model,::Type{E},nodID::AbstractVector{NodID};kwargs...) where{E<:AbstractElement} = addelement!(model,E,reshape(nodID,(1,length(nodID)));kwargs...)[1] 
 
 """
     setscale!(model;scale=nothing,Λscale=nothing)
@@ -319,8 +315,13 @@ using Printf
     describe(model,spec)
 
 Print out information about `model`.
-`spec` can be an `EleID`, a `DofID`, a `NodID` to describe an element, a dof or a node.
-`spec` can be `:dof` to obtain a list of dofs or `:eletyp` for a list of element types.
+`spec` can be 
+- an `EleID` to describe an element,
+- a `DofID` to describe a dof.
+- a `NodID` to describe a node,
+- `:doftyp` to obtain a list of doftypes, 
+- `:dof` to obtain a list of dofs or 
+- `:eletyp` for a list of element types.
 
 See also: [`addelement!`](@ref), [`addnode!`](@ref)
 """
@@ -395,7 +396,7 @@ function describe(model::Model,nodID::NodID)
     for dofid ∈ nod.dofID
         dof = model.dof[dofid]
         doftyp = model.doftyp[dof.idoftyp]
-        @printf "      DofID(:%s,%i), class=:%s, idof=%i, field=:%-12s\n" dofid.class dofid.idof dofid.class dofid.idof doftyp.field    
+        @printf "      DofID(:%s,%i), class=:%s, inod=%i, field=:%-12s\n" dofid.class dofid.idof dofid.class nodID.inod doftyp.field    
     end
     @printf "   elements:\n"
     for eleID ∈ nod.eleID
@@ -408,17 +409,27 @@ function describe(model::Model,s::Symbol)
     if s==:dof
         for class ∈ (:X,:U,:A)
         ndof    = getndof(model,class)
-        ndof>0 && @printf "\n   Dofs of class %s:\n" class
+        ndof>0 && @printf "\n   Dofs of class :%s\n" class
         for idof = 1:ndof
                 dof     = model.dof[class][idof] 
                 doftyp  = model.doftyp[dof.idoftyp]
-                @printf "      %6d. field=:%-15s NodID(%i)\n" idof doftyp.field dof.nodID.inod 
+                @printf "      %6d. field= :%-15s NodID(%i)\n" idof doftyp.field dof.nodID.inod 
             end
+        end
+    elseif s==:doftyp
+        for doftyp ∈ model.doftyp
+            doftyp.class==:X && @printf "      class= :%-5s field= :%-15s\n" doftyp.class doftyp.field 
+        end
+        for doftyp ∈ model.doftyp
+            doftyp.class==:U && @printf "      class= :%-5s field= :%-15s\n" doftyp.class doftyp.field 
+        end
+        for doftyp ∈ model.doftyp
+            doftyp.class==:A && @printf "      class= :%-5s field= :%-15s\n" doftyp.class doftyp.field 
         end
     elseif s==:eletyp
         et = eletyp(model)
         for i∈eachindex(et)
-            @printf "    %3d. %6d elements of type %s\n" i length(model.eleobj[i]) et[i]
+            @printf "    %6d elements of type %s\n" length(model.eleobj[i]) et[i]
         end
     end
 end
