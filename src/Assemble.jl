@@ -18,12 +18,16 @@ end
 # dis.dis[ieletyp].index.[iele].X|U|A[ieledof]      - disassembling model state into element dofs
 # dis.dis[ieletyp].scale.Λ|X|U|A[ieledof]           - scaling each element type 
 # dis.scaleΛ|X|U|A[imoddof]                         - scaling the model state
+# dis.field  X|U|A[imoddof]                         - field of dofs in model state
 struct Disassembler
-    dis     :: Vector{EletypDisassembler} 
+    dis::Vector{EletypDisassembler}
     scaleΛ  :: 𝕣1
     scaleX  :: 𝕣1
     scaleU  :: 𝕣1
     scaleA  :: 𝕣1
+    fieldX  :: Vector{Symbol}
+    fieldU  :: Vector{Symbol}
+    fieldA  :: Vector{Symbol}
 end
 function Disassembler(model::Model)
     neletyp                   = length(model.eleobj)  
@@ -33,6 +37,9 @@ function Disassembler(model::Model)
     scaleX                    = Vector{𝕣}(undef,NX)
     scaleU                    = Vector{𝕣}(undef,NU)
     scaleA                    = Vector{𝕣}(undef,NA)
+    fieldX                    = Vector{Symbol}(undef,NX)
+    fieldU                    = Vector{Symbol}(undef,NU)
+    fieldA                    = Vector{Symbol}(undef,NA)
     for ieletyp               = 1:neletyp
         nele                  = length(model.eleobj[ieletyp])  
         E                     = eltype(model.eleobj[ieletyp])
@@ -51,7 +58,7 @@ function Disassembler(model::Model)
                 sU[iudof]     = scale
             elseif class == :A
                 iadof        += 1
-                sA[iadof] = scale
+                sA[iadof]     = scale
             end
         end
         scale                 = ΛXUA{𝕣,nX,nU,nA}(sΛ,sX,sU,sA) # scale for element type
@@ -62,16 +69,20 @@ function Disassembler(model::Model)
             for dofID         ∈ model.ele[ieletyp][iele].dofID
                 doftyp        = getdoftyp(model,dofID)
                 class         = doftyp.class
-                idof          = dofID.idof
+                field         = doftyp.field
+                idof          = dofID.idof  # model idof
                 if     class == :X
                     ixdof    += 1
                     iX[ixdof] = idof  
+                    fieldX[idof]= field
                 elseif class == :U
                     iudof    += 1
                     iU[iudof] = idof
+                    fieldU[idof]= field
                 elseif class == :A
                     iadof    += 1
                     iA[iadof] = idof
+                    fieldA[idof]= field
                 else
                     muscadeerror("element dof class must be :X,:U or :A")
                 end
@@ -84,7 +95,7 @@ function Disassembler(model::Model)
         end # for iele
         dis[ieletyp]          = EletypDisassembler{nX,nU,nA}(index,scale)
     end # for ieletyp
-    return Disassembler(dis,scaleΛ,scaleX,scaleU,scaleA)
+    return Disassembler(dis,scaleΛ,scaleX,scaleU,scaleA,fieldX,fieldU,fieldA)
 end
 
 ######## state and initstate
@@ -110,7 +121,7 @@ end
 #### DofGroup
 
 struct DofGroup{T1,T2,T3,T4,T5,T6,T7,T8} 
-    nX     :: 𝕫 # of the _model_
+    nX     :: 𝕫 # of the _model
     nU     :: 𝕫
     nA     :: 𝕫
 
@@ -128,6 +139,12 @@ struct DofGroup{T1,T2,T3,T4,T5,T6,T7,T8}
     scaleX :: 𝕣1
     scaleU :: 𝕣1
     scaleA :: 𝕣1
+
+    fieldΛ :: Vector{Symbol}
+    fieldX :: Vector{Symbol}
+    fieldU :: Vector{Symbol}
+    fieldA :: Vector{Symbol}
+
 end
 function DofGroup(dis::Disassembler,iΛ,iX,iU,iA) 
     # constructor for dofgroup with permutation within class.  The datastructure of DofGroup supports dofgroups with arbitrary permutations - write another constructor
@@ -135,7 +152,8 @@ function DofGroup(dis::Disassembler,iΛ,iX,iU,iA)
     nλ,nx,nu,na = length(iΛ),length(iX),length(iU),length(iA)              # number of dofs of each class in group
     jΛ,jX,jU,jA = gradientpartition(nλ,nx,nu,na)                               # we stack classes on top of each other in group vectors
     Λs,Xs,Us,As = dis.scaleΛ[iΛ],dis.scaleX[iX],dis.scaleU[iU],dis.scaleA[iA]
-    return DofGroup(nX,nU,nA, iΛ,iX,iU,iA,  jΛ,jX,jU,jA, Λs,Xs,Us,As)
+    Λf,Xf,Uf,Af = dis.fieldX[iΛ],dis.fieldX[iX],dis.fieldU[iU],dis.fieldA[iA]
+    return DofGroup(nX,nU,nA, iΛ,iX,iU,iA,  jΛ,jX,jU,jA, Λs,Xs,Us,As, Λf,Xf,Uf,Af)
 end
 function decrement!(s::State,der::𝕫,y::𝕣1,gr::DofGroup) 
     for i ∈ eachindex(gr.iΛ); s.Λ[       gr.iΛ[i]] -= y[gr.jΛ[i]] * gr.scaleΛ[i]; end

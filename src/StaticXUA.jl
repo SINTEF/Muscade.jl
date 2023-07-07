@@ -173,6 +173,18 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
                 end catch; muscadeerror(@sprintf("Incremental Y-solution failed at step=%i, iAiter=%i, iYiter=%i",step,iAiter,iYiter)) end
                 Δy[ step]  = facLyys\out1.Ly
                 decrement!(state[step],0,Δy[ step],Ydofgr)
+
+                # if iAiter==1 && step==1 && iYiter==1   
+                #     println("Lyy")
+                #     describeScale(out1.Lyy,Ydofgr,Ydofgr)
+                #     println("Ly") 
+                #     describeScale(out1.Ly,Ydofgr)
+                #     println("Δy")
+                #     describeScale(Δy[ step],Ydofgr)
+                #     println("state - NB: total, not incremental")
+                #     describe(state[step],class=:scale)
+                # end
+
                 Δy²s,Ly²s = sum(Δy[step].^2),sum(out2.Ly.^2)
                 if Δy²s≤cΔy² && Ly²s≤cLy² 
                     verbose && @printf "        step % i Y-converged in %3d Y-iterations:   |ΔY|=%7.1e  |∇L/∂Y|=%7.1e\n" step iYiter √(Δy²s) √(Ly²s)

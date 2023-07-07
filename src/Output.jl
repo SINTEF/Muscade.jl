@@ -109,8 +109,7 @@ function describeX(state::State)
     for iX = 1:nX
         dofID   = DofID(:X,iX)
         dof     = model.dof[dofID] 
-        doftyp  = model.doftyp[dof.idoftyp]
-        @printf "NodID(%i), class=:%s, field=:%-15s   " dof.nodID.inod dofID.class doftyp.field
+        @printf "NodID(%i), class=:%s, field=:%-15s   " dof.nodID.inod dofID.class model.dis.fieldX[iX]
         for ider = 1:nder
             @printf "%15g " state.X[ider][iX]
         end
@@ -124,8 +123,7 @@ function describeΛX(state::State)
     for iX = 1:nX
         dofID   = DofID(:X,iX)
         dof     = model.dof[dofID] 
-        doftyp  = model.doftyp[dof.idoftyp]
-        @printf "NodID(%i), class=:%s, field=:%-15s   %15g " dof.nodID.inod dofID.class doftyp.field state.Λ[iX]
+        @printf "NodID(%i), class=:%s, field=:%-15s   %15g " dof.nodID.inod dofID.class model.dis.fieldX[iX] state.Λ[iX]
         for ider = 1:nder
             @printf "%15g " state.X[ider][iX]
         end
@@ -139,8 +137,7 @@ function describeU(state::State)
     for iU = 1:nU
         dofID   = DofID(:U,iU)
         dof     = model.dof[dofID] 
-        doftyp  = model.doftyp[dof.idoftyp]
-        @printf "NodID(%i), class=:%s, field=:%-15s   " dof.nodID.inod dofID.class doftyp.field
+        @printf "NodID(%i), class=:%s, field=:%-15s   " dof.nodID.inod dofID.class model.dis.fieldU[iU]
         for ider = 1:nder
             @printf "%15g " state.U[ider][iU]
         end
@@ -153,32 +150,97 @@ function describeA(state::State)
     for iA = 1:nA
         dofID   = DofID(:A,iA)
         dof     = model.dof[dofID] 
-        doftyp  = model.doftyp[dof.idoftyp]
-        @printf "NodID(%i), class=:%s, field=:%-15s   %15g\n" dof.nodID.inod dofID.class doftyp.field state.A[iA] 
+        @printf "NodID(%i), class=:%s, field=:%-15s   %15g\n" dof.nodID.inod dofID.class model.dis.fieldA[iA] state.A[iA] 
     end
 end
 function describeScale(state::State)
-    model = state.model
-    scale = Dict{Symbol,Dict{Symbol,𝕣}}() # scale[class][field]
+    dis = state.dis
+    bigΛ            = Dict{Symbol,𝕣}()
+    for idof        ∈ eachindex(state.Λ)
+        field       = dis.fieldX[idof]
+        bigΛ[field] = max(get(bigΛ,field,0.),abs(state.Λ[idof]))
+    end
+    for field       ∈ keys(bigΛ)
+        @printf "class= :Λ field= :%-15s  max(|dof|)= %g\n" field bigΛ[field]
+    end
+    bigX            = Dict{Symbol,𝕣}()
+    for idof        ∈ eachindex(state.X[1])
+        field       = dis.fieldX[idof]
+        bigX[field] = max(get(bigX,field,0.),abs(state.X[1][idof]))
+    end
+    for field       ∈ keys(bigX)
+        @printf "class= :X field= :%-15s  max(|dof|)= %g\n" field bigX[field]
+    end
+    bigU            = Dict{Symbol,𝕣}()
+    for idof        ∈ eachindex(state.U[1])
+        field       = dis.fieldU[idof]
+        bigU[field] = max(get(bigU,field,0.),abs(state.U[1][idof]))
+    end
+    for field       ∈ keys(bigU)
+        @printf "class= :U field= :%-15s  max(|dof|)= %g\n" field bigU[field]
+    end
+    bigA            = Dict{Symbol,𝕣}()
+    for idof        ∈ eachindex(state.A)
+        field       = dis.fieldA[idof]
+        bigA[field] = max(get(bigA,field,0.),abs(state.A[idof]))
+    end
+    for field       ∈ keys(bigA)
+        @printf "class= :A field= :%-15s  max(|dof|)= %g\n" field bigA[field]
+    end
+end 
+
+function getfield_(dg::DofGroup,class)
+    return if class == :Λ dg.fieldΛ
+    elseif    class == :X dg.fieldX
+    elseif    class == :U dg.fieldU
+    elseif    class == :A dg.fieldA
+    else muscadeerror("Class must be :Λ, :X,:U or :A")
+    end 
+end    
+function getj(dg::DofGroup,class)
+    return if class == :Λ dg.jΛ
+    elseif    class == :X dg.jX
+    elseif    class == :U dg.jU
+    elseif    class == :A dg.jA
+    else muscadeerror("Class must be :Λ, :X,:U or :A")
+    end 
+end    
+function describeScale(v::Vector,dofgr::DofGroup) # Actually for debugging use
+    big             = Dict{Tuple{Symbol, Symbol},𝕣}()
     for class ∈ (:Λ,:X,:U,:A)
-        scale[class] = Dict{Symbol,𝕣}()
-        for dof ∈ model.dof[class==:Λ ? :X : class]
-            idof    = dof.ID.idof
-            field   = model.doftyp[dof.idoftyp].field
-            val     = if class==:Λ; state.Λ[idof] 
-                  elseif class==:X; state.X[1][idof]    
-                  elseif class==:U; state.U[1][idof]    
-                  elseif class==:A; state.A[idof]    
-            end
-            top     = max(get(scale,field,0.),abs(val))
-            scale[class][field] = top
-        end
-        for field ∈ keys(scale[class])
-            @printf "class= :%-5s field= :%-15s  max(|dof|)= %g\n" class field scale[class][field]
+        js              = getj(    dofgr,class)
+        fields          = getfield_(dofgr,class)
+        for (i,field)   ∈ enumerate(fields)
+            big[(class,field)] = max(get(big,(class,field),0.),abs(v[js[i]]))
         end
     end
-end    
-
+    for (class,field) ∈ keys(big)
+        @printf "|v[%s-%s]| ≤ %g\n" class field big[(class,field)]
+    end
+end
+function describeScale(m::AbstractMatrix,idofgr::DofGroup,jdofgr::DofGroup) # Actually for debugging use
+    big             = Dict{Tuple{Symbol, Symbol,Symbol, Symbol},𝕣}()
+    for iclass ∈ (:Λ,:X,:U,:A)
+        ijs              = getj(    idofgr,iclass)
+        ifields          = getfield_(idofgr,iclass)
+        for jclass ∈ (:Λ,:X,:U,:A)
+            jjs              = getj(    jdofgr,jclass)
+            jfields          = getfield_(jdofgr,jclass)
+            for (i,ifield)   ∈ enumerate(ifields)
+                for (j,jfield) ∈ enumerate(jfields)
+                    key           = (iclass,ifield,jclass,jfield)
+                    val           = abs(m[ijs[i],jjs[j]])
+                    if val>0
+                        big[key]      = max(get(big,key,0.),abs(m[ijs[i],jjs[j]]))
+                    end
+                end
+            end
+        end
+    end
+    for (iclass,ifield,jclass,jfield) ∈ keys(big)
+        @printf "|m[%s-%s,%s-%s]| ≤ %g\n" iclass ifield jclass jfield big[(iclass,ifield,jclass,jfield)]
+    end
+end
 """
     describe(state;class=:all)
 

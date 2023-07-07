@@ -99,6 +99,7 @@ function solve(::Type{StaticX},pstate,verbose,dbg;
         for iiter    = 1:maxiter
             citer   += 1
             assemble!(out,asm,dis,model,s,(dbg...,solver=:StaticX,step=step,iiter=iiter))
+
             try if step==1 && iiter==1
                 facLλx = lu(firstelement(out).Lλx) 
             else

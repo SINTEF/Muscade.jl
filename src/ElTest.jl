@@ -20,29 +20,29 @@ function gradient(eleobj,Λ,X,U,A,t,χ,χcv,SP,dbg)
     return (L=value{P}(L), Lλ=Ly[iΛ], Lx=Ly[iX], Lu=Ly[iU], La=Ly[iA],χn=χn)
 end
 """
-    test_static_element(eleobj,δX,X,U,A,t=0,χ=nothing,χcv=identity,SP=nothing,verbose=true,dbg=(;))
+    test_static_element(eleobj;Λ,X,U,A,t=0,χ=nothing,χcv=identity,SP=nothing,verbose=true,dbg=(;))
 
 Compute the Lagrangian, its gradients, and the memory of an element.
 For element debugging and testing. 
 
 See also: [`residual`](@ref),[`lagrangian`](@ref),[`gradient`](@ref)
 """     
-function test_static_element(ele::eletyp; δX,X,U,A, t::Float64=0.,χ=nothing,
+function test_static_element(ele::eletyp; Λ,X,U,A, t::Float64=0.,χ=nothing,
      χcv::Function=identity,SP=nothing,verbose::Bool=true,dbg = NamedTuple()) where{eletyp<:AbstractElement}
     inod,class,field = Muscade.getdoflist(eletyp)
     iXdof            = Muscade.getidof(eletyp,:X)
     iUdof            = Muscade.getidof(eletyp,:U)
     iAdof            = Muscade.getidof(eletyp,:A)
     nX,nU,nA         = Muscade.getndof(eletyp,(:X,:U,:A))
-    L,Lδx,Lx,Lu,La,χn   = gradient(ele,δX,[X],[U],A, t,χ,χcv,SP,dbg)
+    L,Lλ,Lx,Lu,La,χn   = gradient(ele,Λ,[X],[U],A, t,χ,χcv,SP,dbg)
 
     if verbose
         @printf "\nElement type: %s\n" typeof(el)
         if nX > 0
-            @printf "\n    idof               doftyp   inod          δX           X         Lδx          Lx \n"
+            @printf "\n    idof               doftyp   inod          Λ            X         Lλ           Lx \n"
             for iX = 1:nX
                 idof = iXdof[iX]
-                @printf "    %4d     %16s  %5d  %10.3g  %10.3g  %10.3g  %10.3g\n" idof field[idof] inod[idof] δX[idof] X[idof] Lδx[idof] Lx[idof]
+                @printf "    %4d     %16s  %5d  %10.3g  %10.3g  %10.3g  %10.3g\n" idof field[idof] inod[idof] Λ[idof] X[idof] Lλ[idof] Lx[idof]
             end
         end
         if nU > 0
@@ -61,7 +61,7 @@ function test_static_element(ele::eletyp; δX,X,U,A, t::Float64=0.,χ=nothing,
         end
     end
 
-    return Lδx,Lx,Lu,La,χn
+    return Lλ,Lx,Lu,La,χn
 end
 
 

@@ -10,25 +10,25 @@ include("SomeElements.jl")
 sea(t,x) = SVector(1.,0.)
 sky(t,x) = SVector(0.,1.)
 turbine  = Turbine(SVector(0.,0.),-10., 2.,sea, 3.,sky)
-δX       = @SVector [1.,1.]
+Λ        = @SVector [1.,1.]
 X        = @SVector [1.,2.]
 U        = @SVector 𝕣[]
 A        = @SVector [0.,0.]  # [Δseadrag,Δskydrag]
 
 #                             eleobj, Λ, X,  U,  A, t, χ,      χcv,     SP,     dbg
-L,Lδx,Lx,Lu,La,χn  = gradient(turbine,δX,[X],[U],A, 0.,nothing,identity,nothing,(;))
+L,Lλ,Lx,Lu,La,χn  = gradient(turbine,Λ ,[X],[U],A, 0.,nothing,identity,nothing,(;))
 
 @testset "Turbine gradient" begin
-    @test Lδx           ≈ [-2, -3]
+    @test Lλ            ≈ [-2, -3]
     @test Lx            ≈ [0, 0]
     @test length(Lu)    == 0
     @test La            ≈ [-2, -3]
 end
 
-Lδx,Lx,Lu,La,χn   = test_static_element(turbine;δX,X,U,A,verbose=false)
+Lλ,Lx,Lu,La,χn   = test_static_element(turbine;Λ,X,U,A,verbose=false)
 
 @testset "test_static_element" begin
-    @test Lδx           ≈ [-2, -3]
+    @test Lλ            ≈ [-2, -3]
     @test Lx            ≈ [0, 0]
     @test length(Lu)    == 0
     @test La            ≈ [-2, -3]
@@ -38,14 +38,14 @@ end
 
 anchorline      = AnchorLine(SVector(0.,0.,100.), SVector(0,2.,0), SVector(94.,0.), 170., -1.)
 
-δX       = @SVector [1.,1.,1.]
+Λ        = @SVector [1.,1.,1.]
 X        = @SVector [0.,0.,0.]
 U        = @SVector 𝕣[]
 A        = @SVector [0.,0.]  # [Δseadrag,Δskydrag]
 #                             eleobj, Λ, X,  U,  A, t, χ,      χcv,     SP,     dbg
-L,Lδx,Lx,Lu,La   = gradient(anchorline,δX,[X],[U],A, 0.,nothing,identity,nothing,(;))
+L,Lλ,Lx,Lu,La   = gradient(anchorline,Λ ,[X],[U],A, 0.,nothing,identity,nothing,(;))
 @testset "anchorline1" begin
-    @test Lδx           ≈ [-12.25628901693551, 0.2607721067433087, 24.51257803387102]
+    @test Lλ            ≈ [-12.25628901693551, 0.2607721067433087, 24.51257803387102]
     @test Lx            ≈ [-0.91509745608786, 0.14708204066349, 1.3086506986891027]
     @test length(Lu)    == 0
     @test La            ≈ [-156.06324599170992, 12.517061123678818]
@@ -70,8 +70,12 @@ dis = Muscade.Disassembler(model)
     @test  dis.dis[2].index[1].U == []
     @test  dis.dis[2].index[1].A == [3,4]
     @test  dis.scaleX ≈  [1,1,1]
+    @test  dis.scaleΛ ≈  [1,1,1]
     @test  dis.scaleU ≈  𝕫[]
     @test  dis.scaleA ≈  [1,1,1,1]
+    @test  dis.fieldX ==  [:tx1,:tx2,:rx3]
+    @test  dis.fieldU ==  Symbol[]
+    @test  dis.fieldA ==  [:Δseadrag,:Δskydrag,:ΔL,:Δbuoyancy]
 end
 
 dofgr       = Muscade.allXdofs(model,dis)
@@ -94,6 +98,10 @@ iΛ,iX,iU,iA = Muscade.gradientpartition(nΛ,nX,nU,nA)  # indices into said grad
     @test dofgr.scaleX ≈  [1,1,1]
     @test dofgr.scaleU == Float64[]
     @test dofgr.scaleA == Float64[]
+    @test dofgr.fieldΛ == Symbol[]
+    @test dofgr.fieldX == [:tx1,:tx2,:rx3]
+    @test dofgr.fieldU == Symbol[]
+    @test dofgr.fieldA == Symbol[]
 end
 @testset "state" begin
     @test Λ == [0, 0 ,0]

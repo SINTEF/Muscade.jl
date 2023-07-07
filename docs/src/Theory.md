@@ -50,9 +50,9 @@ For evolution problems, the dot product ``R(X,U,A) \cdot \Lambda`` includes an i
 Additional constraints may be introduced. *Physical constraints* (like contact or boundary conditions) are added by augmenting ``X`` and ``R``.  *Optimisation constraints* may have to be verified at every step (stresses to remain below a critical level, at any time).  They are handled by augmenting ``U`` (introducing a Udof Lagrange multiplier).  Optimisation constraints that act only on Adofs (there is a limit to the strength of steel we can order)  are handled by augmenting ``A``.  With the additional constraints, the Lagrangian is of the form
 
 ```math
-\begin{split}
+\begin{aligned}
 L(\Lambda,X,U,A) = Q(X,U,A)  &+ \left[\begin{array}{c}R(X,U,A) - ∇g_x(X,U,A) \cdot X_λ \\ g_x(X,U,A)\end{array}\right] \cdot Λ \\ &+ g_u(X,U,A) \cdot U_\lambda \\ &+ g_a(A) \cdot A_\lambda 
-\end{split}
+\end{aligned}
 ```
 
 ## Elements
