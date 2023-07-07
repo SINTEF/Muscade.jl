@@ -88,6 +88,18 @@ end
 # eleres[iele].gp[3].σ
 getresult(state::State,req,args...) = flat(getresult([state],req,args...)) 
 
+"""
+    ilast = findlastassigned(state)
+
+Find the index `ilast` of the element before the first non assigment element in a vector `state`.
+
+In multistep analyses, `solve` returns a vector `state` of length equal to the number of steps
+requested by the user.  If the analysis is aborted, `solve` still returns any available results
+at the begining of `state`, and the vector `state[1:ilast]` is fully assigned.
+
+See also: [`solve`](@ref)
+"""     
+findlastassigned(v::Vector) = findlast([isassigned(v,i) for i=1:length(v)])
 
 ############## describe state to the user
 function describeX(state::State)
@@ -145,11 +157,33 @@ function describeA(state::State)
         @printf "NodID(%i), class=:%s, field=:%-15s   %15g\n" dof.nodID.inod dofID.class doftyp.field state.A[iA] 
     end
 end
+function describeScale(state::State)
+    model = state.model
+    scale = Dict{Symbol,Dict{Symbol,𝕣}}() # scale[class][field]
+    for class ∈ (:Λ,:X,:U,:A)
+        scale[class] = Dict{Symbol,𝕣}()
+        for dof ∈ model.dof[class==:Λ ? :X : class]
+            idof    = dof.ID.idof
+            field   = model.doftyp[dof.idoftyp].field
+            val     = if class==:Λ; state.Λ[idof] 
+                  elseif class==:X; state.X[1][idof]    
+                  elseif class==:U; state.U[1][idof]    
+                  elseif class==:A; state.A[idof]    
+            end
+            top     = max(get(scale,field,0.),abs(val))
+            scale[class][field] = top
+        end
+        for field ∈ keys(scale[class])
+            @printf "class= :%-5s field= :%-15s  max(|dof|)= %g\n" class field scale[class][field]
+        end
+    end
+end    
+
 """
     describe(state;class=:all)
 
 Provide a description of the dofs stored in `state`.
-`class` can be either `:all`, `:Λ`, `:ΛX`, `:X`, `:U` or `:A`
+`class` can be either `:all`, `:Λ`, `:ΛX`, `:X`, `:U`, `:A` or `:scale`
 
 See also: [`solve`](@ref)
 """
@@ -166,19 +200,10 @@ function describe(state::State;class::Symbol=:all)
         describeU(state)
     elseif class ==:A    
         describeA(state)
+    elseif class == :scale 
+        describeScale(state)    
     else
         printstyled("Not a valid class\n",color=:red,bold=true)
     end
 end
-"""
-    ilast = findlastassigned(state)
 
-Find the index `ilast` of the element before the first non assigment element in a vector `state`.
-
-In multistep analyses, `solve` returns a vector `state` of length equal to the number of steps
-requested by the user.  If the analysis is aborted, `solve` still returns any available results
-at the begining of `state`, and the vector `state[1:ilast]` is fully assigned.
-
-See also: [`solve`](@ref)
-"""     
-findlastassigned(v::Vector) = findlast([isassigned(v,i) for i=1:length(v)])

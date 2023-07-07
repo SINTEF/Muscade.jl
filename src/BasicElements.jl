@@ -81,7 +81,7 @@ as input to the `ElementCost` constructor.
 From `ElementConstraint` one can request
 - `cost`               The value of the cost
 
-From the target element on can request
+From the target element once can request
 - `eleres(...)`        where `...` is the list of requestables from the target element.  It must be "prefixed" by 
                        `eleres` to prevent possible confusion with variables requestable from `ElementConstraint`.
 

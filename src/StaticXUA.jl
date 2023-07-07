@@ -148,7 +148,7 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
     out1,asm1,Ydofgr   = prepare(AssemblyStaticΛXU  ,model,dis)
     out2,asm2,Adofgr,_ = prepare(AssemblyStaticΛXU_A,model,dis)
     Tstate             = getStateType(StaticX)
-    state              = allocate(pstate,[Tstate(i.Λ,deepcopy(i.X),deepcopy(i.U),deepcopy(i.A),i.time,(γ=γ0,),i.model,i.dis) for i ∈ initialstate]) 
+    state              = allocate(pstate,[Tstate(deepcopy(i.Λ),deepcopy(i.X),deepcopy(i.U),deepcopy(i.A),i.time,(γ=γ0,),i.model,i.dis) for i ∈ initialstate]) 
     cΔy²,cLy²,cΔa²,cLa²= maxΔy^2,maxLy^2,maxΔa^2,maxLa^2
     nA,nStep           = getndof(model,:A),length(state)
     La                 = Vector{𝕣 }(undef,nA   )

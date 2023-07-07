@@ -408,9 +408,9 @@ function describe(model::Model,s::Symbol)
     @printf "\nModel '%s'\n" model.ID
     if s==:dof
         for class ∈ (:X,:U,:A)
-        ndof    = getndof(model,class)
-        ndof>0 && @printf "\n   Dofs of class :%s\n" class
-        for idof = 1:ndof
+            ndof    = getndof(model,class)
+            ndof>0 && @printf "\n   Dofs of class :%s\n" class
+            for idof = 1:ndof
                 dof     = model.dof[class][idof] 
                 doftyp  = model.doftyp[dof.idoftyp]
                 @printf "      %6d. field= :%-15s NodID(%i)\n" idof doftyp.field dof.nodID.inod 

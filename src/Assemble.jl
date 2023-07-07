@@ -15,9 +15,9 @@ struct EletypDisassembler{nX,nU,nA}
     index :: Vector{XUA{𝕫,nX,nU,nA}}
     scale :: ΛXUA{𝕣,nX,nU,nA}
 end
-# dis.dis[ieletyp].index.[iele].X|U|A[ieledof]
-# dis.dis[ieletyp].scale.Λ|X|U|A[ieledof]
-# dis.scaleΛ|X|U|A[imoddof]
+# dis.dis[ieletyp].index.[iele].X|U|A[ieledof]      - disassembling model state into element dofs
+# dis.dis[ieletyp].scale.Λ|X|U|A[ieledof]           - scaling each element type 
+# dis.scaleΛ|X|U|A[imoddof]                         - scaling the model state
 struct Disassembler
     dis     :: Vector{EletypDisassembler} 
     scaleΛ  :: 𝕣1
@@ -130,7 +130,7 @@ struct DofGroup{T1,T2,T3,T4,T5,T6,T7,T8}
     scaleA :: 𝕣1
 end
 function DofGroup(dis::Disassembler,iΛ,iX,iU,iA) 
-    # constructor for dofgroup with permutation within classe.  The datastructure of DofGroup supports dofgroups with arbitrary permutations - write another constructor
+    # constructor for dofgroup with permutation within class.  The datastructure of DofGroup supports dofgroups with arbitrary permutations - write another constructor
     nX,nU,nA    = length(dis.scaleX),length(dis.scaleU),length(dis.scaleA) # number of dofs in _model_
     nλ,nx,nu,na = length(iΛ),length(iX),length(iU),length(iA)              # number of dofs of each class in group
     jΛ,jX,jU,jA = gradientpartition(nλ,nx,nu,na)                               # we stack classes on top of each other in group vectors
