@@ -113,10 +113,11 @@ end
 # a constructor that provides an initial state
 State(model::Model,dis;time=-∞) = State(zeros(getndof(model,:X)),(zeros(getndof(model,:X)),),(zeros(getndof(model,:U)),),zeros(getndof(model,:A)),time,nothing,model,dis)
 function State{nXder,nUder}(s::State,SP::TSP) where{nXder,nUder,TSP}
-    X = ntuple(i->copy(∂n(s.X,i)),nXder)
-    U = ntuple(i->copy(∂n(s.U,i)),nUder)
+    X = ntuple(i->copy(∂n(s.X,i-1)),nXder)
+    U = ntuple(i->copy(∂n(s.U,i-1)),nUder)
     State{nXder,nUder,TSP}(copy(s.Λ),X,U,copy(s.A),s.time,SP,s.model,s.dis)
 end 
+State{nXder,nUder}(s::State) where{nXder,nUder} = State{nXder,nUder}(s,nothing)
 
 #### DofGroup
 
