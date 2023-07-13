@@ -1,4 +1,5 @@
 using Printf
+abstract type AbstractSolver  end
 """
     solve(Solver;dbg=(;),verbose=true,silenterror=false,kwargs...)
 
@@ -16,7 +17,7 @@ This will call the method `solve` provided by the solver with
 
 See also: [`StaticX`](@ref), [`StaticXUA`](@ref), [`initialize!`](@ref) 
 """
-function solve(Solver;dbg=NamedTuple(),verbose::𝕓=true,silenterror::𝕓=false,kwargs...) 
+function solve(Solver::Type{<:AbstractSolver};dbg=NamedTuple(),verbose::𝕓=true,silenterror::𝕓=false,kwargs...) 
     verbose && printstyled("\n\n\nMuscade:",bold=true,color=:cyan)
     verbose && printstyled(@sprintf(" %s solver\n\n",Symbol(Solver)),color=:cyan)
 

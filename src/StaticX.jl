@@ -77,7 +77,7 @@ A vector of length equal to that of `time` containing the state of the model at 
 
 See also: [`solve`](@ref), [`StaticXUA`](@ref), [`initialize!`](@ref)
 """
-struct StaticX end
+struct StaticX <: AbstractSolver end 
 getStateType(::Type{StaticX}) = State{1,1,typeof((γ=0.,))} #  nXder,nUder,TSP
 function solve(::Type{StaticX},pstate,verbose,dbg;
                     time::AbstractVector{𝕣},
@@ -89,9 +89,8 @@ function solve(::Type{StaticX},pstate,verbose,dbg;
     out,asm,dofgr    = prepare(AssemblyStaticX,model,dis)
     citer            = 0
     cΔx²,cLλ²        = maxΔx^2,maxresidual^2
-    Tstate,i         = getStateType(StaticX),initialstate
-    s                = Tstate(i.Λ,deepcopy(i.X),i.U,i.A,i.time,(γ=0.,),i.model,i.dis)
-    state            = allocate(pstate,Vector{Tstate}(undef,saveiter ? maxiter : length(time))) # state is not a return argument of this function.  Hence it is not lost in case of exception
+    s                = State{1,1}(initialstate,(γ=0.,))
+    state            = allocate(pstate,Vector{typeof(s)}(undef,saveiter ? maxiter : length(time))) # state is not a return argument of this function.  Hence it is not lost in case of exception
     local facLλx 
     for (step,t)     ∈ enumerate(time)
         s.time       = t

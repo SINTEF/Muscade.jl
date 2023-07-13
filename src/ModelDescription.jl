@@ -293,10 +293,10 @@ and return an initial `State` (with all dofs set to zero, as starting point for 
 
 See also: [`addnode!`](@ref), [`addelement!`](@ref), [`solve`](@ref)
 """
-function initialize!(model::Model)
+function initialize!(model::Model;kwargs...)
     assert_unlocked(model)
     model.locked = true
-    return State(model,Disassembler(model))
+    return State(model,Disassembler(model);kwargs...)
 end
 function unlock(model::Model,ID::Symbol)
     ID == model.ID && muscadeerror("ID must be distinct from model.ID")

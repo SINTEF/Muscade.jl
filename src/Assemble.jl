@@ -112,10 +112,10 @@ mutable struct State{Nxder,Nuder,TSP}
 end
 # a constructor that provides an initial state
 State(model::Model,dis;time=-∞) = State(zeros(getndof(model,:X)),(zeros(getndof(model,:X)),),(zeros(getndof(model,:U)),),zeros(getndof(model,:A)),time,nothing,model,dis)
-function State{nXder,nUder}(s::State) where{nXder,nUder}
+function State{nXder,nUder}(s::State,SP::TSP) where{nXder,nUder,TSP}
     X = ntuple(i->copy(∂n(s.X,i)),nXder)
     U = ntuple(i->copy(∂n(s.U,i)),nUder)
-    State{nXder,nUder}(copy(s.Λ),X,U,copy(s.A),s.time,s.SP,s.model,s.dis)
+    State{nXder,nUder,TSP}(copy(s.Λ),X,U,copy(s.A),s.time,SP,s.model,s.dis)
 end 
 
 #### DofGroup
@@ -160,6 +160,18 @@ function decrement!(s::State,der::𝕫,y::𝕣1,gr::DofGroup)
     for i ∈ eachindex(gr.iX); s.X[der+1][gr.iX[i]] -= y[gr.jX[i]] * gr.scaleX[i]; end
     for i ∈ eachindex(gr.iU); s.U[der+1][gr.iU[i]] -= y[gr.jU[i]] * gr.scaleU[i]; end
     for i ∈ eachindex(gr.iA); s.A[       gr.iA[i]] -= y[gr.jA[i]] * gr.scaleA[i]; end
+end
+function increment!(s::State,der::𝕫,y::𝕣1,gr::DofGroup) 
+    for i ∈ eachindex(gr.iΛ); s.Λ[       gr.iΛ[i]] += y[gr.jΛ[i]] * gr.scaleΛ[i]; end
+    for i ∈ eachindex(gr.iX); s.X[der+1][gr.iX[i]] += y[gr.jX[i]] * gr.scaleX[i]; end
+    for i ∈ eachindex(gr.iU); s.U[der+1][gr.iU[i]] += y[gr.jU[i]] * gr.scaleU[i]; end
+    for i ∈ eachindex(gr.iA); s.A[       gr.iA[i]] += y[gr.jA[i]] * gr.scaleA[i]; end
+end
+function getdof!(s::State,der::𝕫,y::𝕣1,gr::DofGroup) 
+    for i ∈ eachindex(gr.iΛ); y[gr.jΛ[i]] = s.Λ[       gr.iΛ[i]] / gr.scaleΛ[i]; end
+    for i ∈ eachindex(gr.iX); y[gr.jX[i]] = s.X[der+1][gr.iX[i]] / gr.scaleX[i]; end
+    for i ∈ eachindex(gr.iU); y[gr.jU[i]] = s.U[der+1][gr.iU[i]] / gr.scaleU[i]; end
+    for i ∈ eachindex(gr.iA); y[gr.jA[i]] = s.A[       gr.iA[i]] / gr.scaleA[i]; end
 end
 getndof(gr::DofGroup) = length(gr.iΛ)+length(gr.iX)+length(gr.iU)+length(gr.iA)
 allΛdofs(  model::Model,dis) = DofGroup(dis, 1:getndof(model,:X),𝕫[],𝕫[],𝕫[])
@@ -470,6 +482,6 @@ function add_∂!{P}(out::Array,asm,iele,a::SVector{M,∂ℝ{P,N,R}},i1as,i2as) 
 end  
 add_∂!{P}(out::SparseMatrixCSC,args...) where{P}                      = add_∂!{P}(out.nzval,args...)
 add_∂!{P}(out::Array,asm,iele,a::SVector{M,R},args...) where{P,M,R}   = nothing
-add_∂!{P}(out::Array,asm,iele,a::SVector{M,∂ℝ{P,N,R}}) where{P,N,R,M} = add_∂!{P}(out,asm,iele,a,1:M,1:N)
+add_∂!{P}(out::Array,asm,iele,a::SVector{M,∂ℝ{P,N,R}}) where{P,N,R,M} = add_∂!{P}(out,asm,iele,a,SVector{M}(1:M),SVector{N}(1:N))
 
 
