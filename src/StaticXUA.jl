@@ -127,6 +127,9 @@ stateXUA        = solve(StaticXUA;initialstate=stateX)
                       iterations".   
 - `maxΔy=1e-5`        "inner" convergence criteria: a norm on the scaled `Y=[XU]` increment 
 - `maxLy=∞`           "inner" convergence criteria: a norm on the scaled `Ly=[Lx,Lu]` residual
+- `saveiter=false`    set to true so that the output `state` is a vector (over the Aiter) of 
+                      vectors (over the steps) of `State`s of the model (for debugging 
+                      non-convergence). 
 - `γ0=1.`             an initial value of the barrier coefficient for the handling of contact
                       using an interior point method
 - `γfac1=0.5`         at each iteration, the barrier parameter γ is multiplied 
@@ -135,7 +138,7 @@ stateXUA        = solve(StaticXUA;initialstate=stateX)
 
 # Output
 
-A vector of length equal to that of `initialstate` containing the state of the optimized model at each of these steps                       
+A vector of length equal to that of `initialstate` containing the state of the optimized model at each of these steps.                       
 
 See also: [`solve`](@ref), [`StaticX`](@ref) 
 """
