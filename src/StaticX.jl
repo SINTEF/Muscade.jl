@@ -78,7 +78,6 @@ A vector of length equal to that of `time` containing the state of the model at 
 See also: [`solve`](@ref), [`StaticXUA`](@ref), [`initialize!`](@ref)
 """
 struct StaticX <: AbstractSolver end 
-getStateType(::Type{StaticX}) = State{1,1,typeof((γ=0.,))} #  nXder,nUder,TSP
 function solve(::Type{StaticX},pstate,verbose,dbg;
                     time::AbstractVector{𝕣},
                     initialstate::State,

@@ -140,17 +140,20 @@ A vector of length equal to that of `initialstate` containing the state of the o
 See also: [`solve`](@ref), [`StaticX`](@ref) 
 """
 struct StaticXUA <: AbstractSolver end 
-getStateType(::Type{StaticXUA}) = State{1,1,typeof((γ=0.,))} #  nXder,nUder
 function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<:State},
-    maxAiter::ℤ=50,maxYiter::ℤ=0,maxΔy::ℝ=1e-5,maxLy::ℝ=∞,maxΔa::ℝ=1e-5,maxLa::ℝ=∞,γ0::𝕣=1.,γfac1::𝕣=.5,γfac2::𝕣=100.)
+    maxAiter::ℤ=50,maxYiter::ℤ=0,maxΔy::ℝ=1e-5,maxLy::ℝ=∞,maxΔa::ℝ=1e-5,maxLa::ℝ=∞,
+    saveiter::𝔹=false,γ0::𝕣=1.,γfac1::𝕣=.5,γfac2::𝕣=100.)
 
     model,dis          = initialstate[begin].model,initialstate[begin].dis
     out1,asm1,Ydofgr   = prepare(AssemblyStaticΛXU  ,model,dis)
     out2,asm2,Adofgr,_ = prepare(AssemblyStaticΛXU_A,model,dis)
-#    Tstate             = getStateType(StaticXUA)
-    state              = allocate(pstate,[State{1,1}(i,(γ=0.,)) for i ∈ initialstate]) 
+    if saveiter
+        states         = allocate(pstate,Vector{Vector{State{1,1,typeof((γ=0.,))}}}(undef,maxAiter)) 
+    else
+        state          = allocate(pstate,[State{1,1}(i,(γ=0.,)) for i ∈ initialstate]) 
+    end    
     cΔy²,cLy²,cΔa²,cLa²= maxΔy^2,maxLy^2,maxΔa^2,maxLa^2
-    nA,nStep           = getndof(model,:A),length(state)
+    nA,nStep           = getndof(model,:A),length(initialstate)
     La                 = Vector{𝕣 }(undef,nA   )
     Laa                = Matrix{𝕣 }(undef,nA,nA)
     Δy                 = Vector{𝕣1}(undef,nStep)
@@ -159,6 +162,10 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
     cAiter,cYiter      = 0,0
     local facLyy, facLyys, Δa
     for iAiter          = 1:maxAiter
+        if saveiter
+            states[iAiter] = [State{1,1}(i,(γ=0.,)) for i ∈ (iAiter==1 ? initialstate : states[iAiter-1])]
+            state          = states[iAiter]
+        end
         verbose && @printf "    A-iteration %3d\n" iAiter
         La            .= 0
         Laa           .= 0
@@ -173,18 +180,6 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
                 end catch; muscadeerror(@sprintf("Incremental Y-solution failed at step=%i, iAiter=%i, iYiter=%i",step,iAiter,iYiter)) end
                 Δy[ step]  = facLyys\out1.Ly
                 decrement!(state[step],0,Δy[ step],Ydofgr)
-
-                # if iAiter==1 && step==1 && iYiter==1   
-                #     println("Lyy")
-                #     describeScale(out1.Lyy,Ydofgr,Ydofgr)
-                #     println("Ly") 
-                #     describeScale(out1.Ly,Ydofgr)
-                #     println("Δy")
-                #     describeScale(Δy[ step],Ydofgr)
-                #     println("state - NB: total, not incremental")
-                #     describe(state[step],class=:scale)
-                # end
-
                 Δy²s,Ly²s = sum(Δy[step].^2),sum(out2.Ly.^2)
                 if Δy²s≤cΔy² && Ly²s≤cLy² 
                     verbose && @printf "        step % i Y-converged in %3d Y-iterations:   |ΔY|=%7.1e  |∇L/∂Y|=%7.1e\n" step iYiter √(Δy²s) √(Ly²s)
