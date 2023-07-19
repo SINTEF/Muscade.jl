@@ -37,7 +37,7 @@ stateXUA           = solve(StaticXUA;initialstate=stateX,maxYiter= 50,verbose=fa
     @test stateXUA[2].A    ≈ [0.004212461115295247,    0.5743380076037062]
     @test stateXUA[2].A == stateXUA[1].A
 end
-stateXUA           = solve(StaticXUA;initialstate=stateX,saveiter=true,verbose=true)
+stateXUA           = solve(StaticXUA;initialstate=stateX,saveiter=true,verbose=false)
 @testset "StaticXUA-saveiter" begin
     @test stateXUA[6][2].X[1] ≈ [  0.16947517267111387,    -0.09872147216175686,     0.0,     0.0,     0.0,     0.0,    -0.9998314994105624,    -0.01004064780561606,    -0.00016850058943765545,     0.01004064780561606]
     @test stateXUA[6][2].A    ≈ [0.004212461115295247,    0.5743380076037062]

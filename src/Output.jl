@@ -109,7 +109,7 @@ function describeX(state::State)
     for iX = 1:nX
         dofID   = DofID(:X,iX)
         dof     = model.dof[dofID] 
-        @printf "NodID(%i), class=:%s, field=:%-15s   " dof.nodID.inod dofID.class model.dis.fieldX[iX]
+        @printf "NodID(%i), class=:%s, field=:%-15s   " dof.nodID.inod dofID.class state.dis.fieldX[iX]
         for ider = 1:nder
             @printf "%15g " state.X[ider][iX]
         end
@@ -123,7 +123,7 @@ function describeΛX(state::State)
     for iX = 1:nX
         dofID   = DofID(:X,iX)
         dof     = model.dof[dofID] 
-        @printf "NodID(%i), class=:%s, field=:%-15s   %15g " dof.nodID.inod dofID.class model.dis.fieldX[iX] state.Λ[iX]
+        @printf "NodID(%i), class=:%s, field=:%-15s   %15g " dof.nodID.inod dofID.class state.dis.fieldX[iX] state.Λ[iX]
         for ider = 1:nder
             @printf "%15g " state.X[ider][iX]
         end
@@ -137,7 +137,7 @@ function describeU(state::State)
     for iU = 1:nU
         dofID   = DofID(:U,iU)
         dof     = model.dof[dofID] 
-        @printf "NodID(%i), class=:%s, field=:%-15s   " dof.nodID.inod dofID.class model.dis.fieldU[iU]
+        @printf "NodID(%i), class=:%s, field=:%-15s   " dof.nodID.inod dofID.class state.dis.fieldU[iU]
         for ider = 1:nder
             @printf "%15g " state.U[ider][iU]
         end
@@ -150,7 +150,7 @@ function describeA(state::State)
     for iA = 1:nA
         dofID   = DofID(:A,iA)
         dof     = model.dof[dofID] 
-        @printf "NodID(%i), class=:%s, field=:%-15s   %15g\n" dof.nodID.inod dofID.class model.dis.fieldA[iA] state.A[iA] 
+        @printf "NodID(%i), class=:%s, field=:%-15s   %15g\n" dof.nodID.inod dofID.class state.dis.fieldA[iA] state.A[iA] 
     end
 end
 function describeScale(state::State)
@@ -218,7 +218,7 @@ function describeScale(v::Vector,dofgr::DofGroup) # Actually for debugging use
         @printf "|v[%s-%s]| ≤ %g\n" class field big[(class,field)]
     end
 end
-function describeScale(m::AbstractMatrix,idofgr::DofGroup,jdofgr::DofGroup) # Actually for debugging use
+function describeScale(m::AbstractMatrix,idofgr::DofGroup,jdofgr::DofGroup=idofgr) # Actually for debugging use
     big             = Dict{Tuple{Symbol, Symbol,Symbol, Symbol},𝕣}()
     for iclass ∈ (:Λ,:X,:U,:A)
         ijs              = getj(    idofgr,iclass)
