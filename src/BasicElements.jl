@@ -73,7 +73,7 @@ as input to the `ElementCost` constructor.
                         `X`, `U` and `A` are the degrees of freedom of the element `ElementType`.
 - `costargs=(;)`        A named tuple of additional arguments to the cost function 
 - `ElementType`         The named of the constructor for the relevant element 
-- `elementkwargs...`    Additional named arguments to the `ElementCost` constructor are passed on to the `ElementType` constructor.     
+- `elementkwargs`       A named tuple containing the named arguments of the `ElementType` constructor.     
 
 
 # Requestable internal variables
@@ -90,7 +90,7 @@ From the target element once can request
 @once cost(eleres,X,U,A,t) = eleres.Fh^2
 ele1 = addelement!(model,ElementCost,[nod1];req=@request(Fh),
                    cost=cost,ElementType=AnchorLine,
-                   Λₘtop=[5.,0,0], xₘbot=[250.,0], L=290., buoyancy=-5e3)
+                   elementkwargs=(Λₘtop=[5.,0,0], xₘbot=[250.,0], L=290., buoyancy=-5e3))
 ```
 
 See also: [`SingleDofCost`](@ref), [`DofCost`](@ref), [`@request`](@ref) 
@@ -101,7 +101,7 @@ struct ElementCost{Teleobj,Treq,Tcost,Tcostargs} <: AbstractElement
     cost     :: Tcost     
     costargs :: Tcostargs
 end
-function ElementCost(nod::Vector{Node};req,cost,costargs=(;),ElementType,elementkwargs...)
+function ElementCost(nod::Vector{Node};req,cost,costargs=(;),ElementType,elementkwargs)
     eleobj   = ElementType(nod;elementkwargs...)
     return ElementCost(eleobj,(eleres=req,),cost,costargs)
 end
@@ -417,7 +417,7 @@ The Lagrangian multiplier introduced by this optimisation constraint is of class
                         `:positive` or `:off` at any time. An `:off` constraint 
                         will set the Lagrange multiplier to zero.
 - `ElementType`         The named of the constructor for the relevant element 
-- `elementkwargs...`    Additional named arguments to the `ElementCost` constructor are passed on to the `ElementType` constructor.     
+- `elementkwargs`       A named tuple containing the named arguments of the `ElementType` constructor.     
 
 # Requestable internal variables
 
@@ -435,8 +435,8 @@ From the target element on can request
 @once gap(eleres,X,U,A,t) = eleres.Fh^2
 ele1 = addelement!(model,ElementCoonstraint,[nod1];req=@request(Fh),
                    gap,λinod=1,λfield=:λ,mode=equal, 
-                   ElementType=AnchorLine,Δxₘtop=[5.,0,0], xₘbot=[250.,0], 
-                   L=290., buoyancy=-5e3)
+                   ElementType=AnchorLine,
+                   elementkwargs=(Δxₘtop=[5.,0,0], xₘbot=[250.,0],L=290., buoyancy=-5e3))
 ```
 
 See also: [`Hold`](@ref), [`DofConstraint`](@ref), [`off`](@ref), [`equal`](@ref), [`positive`](@ref), [`@request`](@ref)
@@ -451,7 +451,7 @@ struct ElementConstraint{Teleobj,λinod,λfield,Nu,Treq,Tg,Tgargs,Tmode} <: Abst
     λₛ        :: 𝕣  
 end
 function ElementConstraint(nod::Vector{Node};λinod::𝕫, λfield::Symbol,
-    req,gap::Function,gargs=(;),mode::Function,gₛ::𝕣=1.,λₛ::𝕣=1.,ElementType,elementkwargs...)
+    req,gap::Function,gargs=(;),mode::Function,gₛ::𝕣=1.,λₛ::𝕣=1.,ElementType,elementkwargs)
     eleobj   = ElementType(nod;elementkwargs...)
     Nu       = getndof(typeof(eleobj),:U)
     return ElementConstraint{typeof(eleobj),λinod,λfield,Nu,typeof((eleres=req,)),typeof(gap),typeof(gargs),typeof(mode)}(eleobj,(eleres=req,),gap,gargs,mode,gₛ,λₛ)
