@@ -10,7 +10,7 @@ n3              = addnode!(model,𝕣[])  # Anod for anchor
 
 @once cost(eleres,X,U,A,t) = eleres.Fh^2
 el = ElementCost(model.nod;req=@request(Fh),cost,ElementType=AnchorLine, 
-                 Δxₘtop=[5.,0,0], xₘbot=[250.,0], L=290., buoyancy=-5e3)
+                 elementkwargs=(Δxₘtop=[5.,0,0], xₘbot=[250.,0], L=290., buoyancy=-5e3))
 d  = doflist(typeof(el))
 Nx,Nu,Na        = 3,0,2   
 Nz              = 2Nx+Nu+Na     
@@ -34,7 +34,7 @@ end
 
 @once gap(eleres,X,U,A,t) = eleres.Fh^2
 el = ElementConstraint(model.nod;req=@request(Fh),gap,ElementType=AnchorLine,λinod=1,λfield=:λ,mode=equal, 
-                 Δxₘtop=[5.,0,0], xₘbot=[250.,0], L=290., buoyancy=-5e3)
+                 elementkwargs=(Δxₘtop=[5.,0,0], xₘbot=[250.,0], L=290., buoyancy=-5e3))
 
 d               = doflist(typeof(el))
 Nx,Nu,Na        = 3,0+1,2   

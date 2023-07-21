@@ -56,6 +56,9 @@ module Muscade
     include("StaticXUA.jl")
     export StaticXUA
 
+    include("StudyScale.jl")
+    export studyscale
+
     include("Output.jl")
     export getdof,getresult,findlastassigned
 

@@ -270,7 +270,7 @@ incremental matrices is a hard problem.
 `Λscale` is a scalar. The scale of a Λ-dof will be deemed to be the scale of the 
 corresponding X-dof, times `Λscale`.
 
-See also: [`addnode!`](@ref), [`describe`](@ref), [`coord`](@ref)
+See also: [`addnode!`](@ref), [`describe`](@ref), [`coord`](@ref), [`studyscale`](@ref)
 """
 function setscale!(model::Model;scale=nothing,Λscale=nothing)  # scale = (X=(tx=10,rx=1),A=(drag=3.))
     assert_unlocked(model)
