@@ -19,8 +19,8 @@ initialstate    = initialize!(model)
 state           = solve(StaticX;initialstate,time=[0.,1.],verbose=false)
 step = 1
 @testset "StaticX" begin
-    @test  state[step].Λ ≈ [0.0, 0.0, 0.0]
-    @test  state[step].X[1] ≈  [-5.332268523655259, 21.09778288272267, 0.011304253608808651]
+    @test  state[step].Λ[1] ≈ [0.0, 0.0, 0.0]
+    @test  state[step].X[1] ≈ [-5.332268523655259, 21.09778288272267, 0.011304253608808651]
     @test  state[step].U[1] ≈  Float64[]
     @test  state[step].A ≈ [0.0, 0.0, 0.0, 0.0]
     @test  state[step].time ≈ 0.

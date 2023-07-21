@@ -17,11 +17,11 @@ function getdof(state::Vector{S};class::Symbol=:X,field::Symbol,nodID::Vector{No
     class ∈ [:Λ,:X,:U,:A] || muscadeerror(sprintf("Unknown dof class %s",class))
     c     = class==:Λ      ? :X                                   : class
     dofID = nodID==NodID[] ? getdofID(state[begin].model,c,field) : getdofID(state[begin].model,c,field,nodID)
-    iders = class∈[:Λ,:A]  ? [0]                                  : iders
+    iders = class==:A      ? [0]                                  : iders
     dofres   = Array{𝕣,3}(undef,length(dofID),length(iders),length(state)) # dofres[inod,ider+1]
     for istate ∈ eachindex(state)
         for ider∈iders
-            s = if class==:Λ; state[istate].Λ 
+            s = if class==:Λ; state[istate].Λ[ider+1] 
             elseif class==:X; state[istate].X[ider+1]    
             elseif class==:U; state[istate].U[ider+1]    
             elseif class==:A; state[istate].A    
@@ -39,7 +39,7 @@ end
 function extractkernel!(iele::AbstractVector{𝕫},eleobj::Vector{E},dis::EletypDisassembler,state::Vector{S},dbg,req) where{E,S<:State}# typestable kernel
     return [begin
         index = dis.index[i]
-        Λ     = s.Λ[index.X]                 
+        Λ     = s.Λ[1][index.X]                 
         X     = Tuple(x[index.X] for x∈s.X)
         U     = Tuple(u[index.U] for u∈s.U)
         A     = s.A[index.A]
@@ -119,13 +119,19 @@ end
 function describeΛX(state::State)
     model = state.model
     nX    = getndof(model,:X)
-    nder  = length(state.X)
+    nXder = length(state.X)
+    nΛder = length(state.Λ)
     for iX = 1:nX
         dofID   = DofID(:X,iX)
         dof     = model.dof[dofID] 
-        @printf "NodID(%i), class=:%s, field=:%-15s   %15g " dof.nodID.inod dofID.class state.dis.fieldX[iX] state.Λ[iX]
-        for ider = 1:nder
+        @printf "NodID(%i), class=:%s, field=:%-15s, " dof.nodID.inod dofID.class state.dis.fieldX[iX] 
+        @printf "X="
+        for ider = 1:nXder
             @printf "%15g " state.X[ider][iX]
+        end
+        @printf ", Λ="
+        for ider = 1:nΛder
+            @printf "%15g " state.Λ[ider][iX]
         end
         @printf "\n" 
     end
@@ -158,7 +164,7 @@ function describeScale(state::State)
     bigΛ            = Dict{Symbol,𝕣}()
     for idof        ∈ eachindex(state.Λ)
         field       = dis.fieldX[idof]
-        bigΛ[field] = max(get(bigΛ,field,0.),abs(state.Λ[idof]))
+        bigΛ[field] = max(get(bigΛ,field,0.),abs(state.Λ[1][idof]))
     end
     for field       ∈ keys(bigΛ)
         @printf "class= :Λ field= :%-15s  max(|dof|)= %g\n" field bigΛ[field]

@@ -46,7 +46,7 @@ function addin!(out::AssemblyStaticΛXU_A,asm,iele,scale,eleobj::E,Λ,X::NTuple{
     iλ,ix,iu,ia     = gradientpartition(Nx,Nx,Nu,Na) # index into element vectors ΔZ and Lz
     iy              = 1:Ny  
     ΔΛ,ΔX,ΔU,ΔA     = view(ΔZ,iλ),view(ΔZ,ix),view(ΔZ,iu),view(ΔZ,ia) # TODO Static?
-    L,χn,FB         = getlagrangian(implemented(eleobj)...,eleobj, Λ+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A+ΔA,t,nothing,nothing,SP,dbg)
+    L,χn,FB         = getlagrangian(implemented(eleobj)...,eleobj, ∂0(Λ)+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A+ΔA,t,nothing,nothing,SP,dbg)
     ∇L              = ∂{2,Nz}(L)
     add_value!(out.Ly ,asm[1],iele,∇L,iy   )
     add_value!(out.La ,asm[2],iele,∇L,ia   )
@@ -91,7 +91,7 @@ function addin!(out::AssemblyStaticΛXU,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nx
     ΔY              = variate{2,Ny}(δ{1,Ny,𝕣}(scaleY),scaleY)                 
     iλ,ix,iu,_      = gradientpartition(Nx,Nx,Nu,0) # index into element vectors ΔY and Ly
     ΔΛ,ΔX,ΔU        = view(ΔY,iλ),view(ΔY,ix),view(ΔY,iu)
-    L,χn,FB         = getlagrangian(implemented(eleobj)...,eleobj, Λ+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A, t,nothing,nothing,SP,dbg)
+    L,χn,FB         = getlagrangian(implemented(eleobj)...,eleobj, ∂0(Λ)+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A, t,nothing,nothing,SP,dbg)
     ∇L              = ∂{2,Ny}(L)
     add_value!(out.Ly ,asm[1],iele,∇L)
     add_∂!{1}( out.Lyy,asm[2],iele,∇L)
@@ -151,9 +151,9 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
     out1,asm1,Ydofgr   = prepare(AssemblyStaticΛXU  ,model,dis)
     out2,asm2,Adofgr,_ = prepare(AssemblyStaticΛXU_A,model,dis)
     if saveiter
-        states         = allocate(pstate,Vector{Vector{State{1,1,typeof((γ=0.,))}}}(undef,maxAiter)) 
+        states         = allocate(pstate,Vector{Vector{State{1,1,1,typeof((γ=0.,))}}}(undef,maxAiter)) 
     else
-        state          = allocate(pstate,[State{1,1}(i,(γ=0.,)) for i ∈ initialstate]) 
+        state          = allocate(pstate,[State{1,1,1}(i,(γ=0.,)) for i ∈ initialstate]) 
     end    
     cΔy²,cLy²,cΔa²,cLa²= maxΔy^2,maxLy^2,maxΔa^2,maxLa^2
     nA,nStep           = getndof(model,:A),length(initialstate)
@@ -166,7 +166,7 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
     local facLyy, facLyys, Δa
     for iAiter          = 1:maxAiter
         if saveiter
-            states[iAiter] = [State{1,1}(i,(γ=0.,)) for i ∈ (iAiter==1 ? initialstate : states[iAiter-1])]
+            states[iAiter] = [State{1,1,1}(i,(γ=0.,)) for i ∈ (iAiter==1 ? initialstate : states[iAiter-1])]
             state          = states[iAiter]
         end
         verbose && @printf "    A-iteration %3d\n" iAiter

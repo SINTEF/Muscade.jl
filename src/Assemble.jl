@@ -100,10 +100,10 @@ end
 
 ######## state and initstate
 # at each step, contains the complete, unscaled state of the system
-mutable struct State{Nxder,Nuder,TSP}
-    Λ     :: 𝕣1
-    X     :: NTuple{Nxder,𝕣1}
-    U     :: NTuple{Nuder,𝕣1}
+mutable struct State{nΛder,nXder,nUder,TSP}
+    Λ     :: NTuple{nΛder,𝕣1}
+    X     :: NTuple{nXder,𝕣1}
+    U     :: NTuple{nUder,𝕣1}
     A     :: 𝕣1
     time  :: 𝕣
     SP    :: TSP # solver parameter
@@ -111,13 +111,14 @@ mutable struct State{Nxder,Nuder,TSP}
     dis   :: Disassembler
 end
 # a constructor that provides an initial state
-State(model::Model,dis;time=-∞) = State(zeros(getndof(model,:X)),(zeros(getndof(model,:X)),),(zeros(getndof(model,:U)),),zeros(getndof(model,:A)),time,nothing,model,dis)
-function State{nXder,nUder}(s::State,SP::TSP) where{nXder,nUder,TSP}
+State(model::Model,dis;time=-∞) = State((zeros(getndof(model,:X)),),(zeros(getndof(model,:X)),),(zeros(getndof(model,:U)),),zeros(getndof(model,:A)),time,nothing,model,dis)
+function State{nΛder,nXder,nUder}(s::State,SP::TSP) where{nΛder,nXder,nUder,TSP}
+    Λ = ntuple(i->copy(∂n(s.Λ,i-1)),nΛder)
     X = ntuple(i->copy(∂n(s.X,i-1)),nXder)
     U = ntuple(i->copy(∂n(s.U,i-1)),nUder)
-    State{nXder,nUder,TSP}(copy(s.Λ),X,U,copy(s.A),s.time,SP,s.model,s.dis)
+    State{nΛder,nXder,nUder,TSP}(Λ,X,U,copy(s.A),s.time,SP,s.model,s.dis)
 end 
-State{nXder,nUder}(s::State) where{nXder,nUder} = State{nXder,nUder}(s,nothing)
+State{nΛder,nXder,nUder}(s::State) where{nΛder,nXder,nUder} = State{nΛder,nXder,nUder}(s,(;))
 
 #### DofGroup
 
@@ -157,19 +158,19 @@ function DofGroup(dis::Disassembler,iΛ,iX,iU,iA)
     return DofGroup(nX,nU,nA, iΛ,iX,iU,iA,  jΛ,jX,jU,jA, Λs,Xs,Us,As, Λf,Xf,Uf,Af)
 end
 function decrement!(s::State,der::𝕫,y::𝕣1,gr::DofGroup) 
-    for i ∈ eachindex(gr.iΛ); s.Λ[       gr.iΛ[i]] -= y[gr.jΛ[i]] * gr.scaleΛ[i]; end
+    for i ∈ eachindex(gr.iΛ); s.Λ[der+1][gr.iΛ[i]] -= y[gr.jΛ[i]] * gr.scaleΛ[i]; end
     for i ∈ eachindex(gr.iX); s.X[der+1][gr.iX[i]] -= y[gr.jX[i]] * gr.scaleX[i]; end
     for i ∈ eachindex(gr.iU); s.U[der+1][gr.iU[i]] -= y[gr.jU[i]] * gr.scaleU[i]; end
     for i ∈ eachindex(gr.iA); s.A[       gr.iA[i]] -= y[gr.jA[i]] * gr.scaleA[i]; end
 end
 function increment!(s::State,der::𝕫,y::𝕣1,gr::DofGroup) 
-    for i ∈ eachindex(gr.iΛ); s.Λ[       gr.iΛ[i]] += y[gr.jΛ[i]] * gr.scaleΛ[i]; end
+    for i ∈ eachindex(gr.iΛ); s.Λ[der+1][gr.iΛ[i]] += y[gr.jΛ[i]] * gr.scaleΛ[i]; end
     for i ∈ eachindex(gr.iX); s.X[der+1][gr.iX[i]] += y[gr.jX[i]] * gr.scaleX[i]; end
     for i ∈ eachindex(gr.iU); s.U[der+1][gr.iU[i]] += y[gr.jU[i]] * gr.scaleU[i]; end
     for i ∈ eachindex(gr.iA); s.A[       gr.iA[i]] += y[gr.jA[i]] * gr.scaleA[i]; end
 end
 function getdof!(s::State,der::𝕫,y::𝕣1,gr::DofGroup) 
-    for i ∈ eachindex(gr.iΛ); y[gr.jΛ[i]] = s.Λ[       gr.iΛ[i]] / gr.scaleΛ[i]; end
+    for i ∈ eachindex(gr.iΛ); y[gr.jΛ[i]] = s.Λ[der+1][gr.iΛ[i]] / gr.scaleΛ[i]; end
     for i ∈ eachindex(gr.iX); y[gr.jX[i]] = s.X[der+1][gr.iX[i]] / gr.scaleX[i]; end
     for i ∈ eachindex(gr.iU); y[gr.jU[i]] = s.U[der+1][gr.iU[i]] / gr.scaleU[i]; end
     for i ∈ eachindex(gr.iA); y[gr.jA[i]] = s.A[       gr.iA[i]] / gr.scaleA[i]; end
@@ -341,13 +342,13 @@ function assemble!(out::Assembly,asm,dis,model,state,dbg)
         assemble_!(out,view(asm,:,ieletyp),dis.dis[ieletyp],eleobj,state,state.SP,(dbg...,ieletyp=ieletyp))
     end
 end
-function assemble_!(out::Assembly,asm,dis,eleobj,state::State{Nxder,Nuder},SP,dbg) where{Nxder,Nuder}
+function assemble_!(out::Assembly,asm,dis,eleobj,state::State{nΛder,nXder,nUder},SP,dbg) where{nΛder,nXder,nUder}
     scale     = dis.scale
     for iele  = 1:lastindex(eleobj)
         index = dis.index[iele]
-        Λe    = state.Λ[index.X]                 
-        Xe    = NTuple{Nxder}(x[index.X] for x∈state.X)
-        Ue    = NTuple{Nuder}(u[index.U] for u∈state.U)
+        Λe    = NTuple{nΛder}(λ[index.X] for λ∈state.Λ)
+        Xe    = NTuple{nXder}(x[index.X] for x∈state.X)
+        Ue    = NTuple{nUder}(u[index.U] for u∈state.U)
         Ae    = state.A[index.A]
         addin!(out,asm,iele,scale,eleobj[iele],Λe,Xe,Ue,Ae, state.time,SP,(dbg...,iele=iele))
     end
@@ -382,13 +383,13 @@ function assemble!(out::AbstractVector{A},asm,dis,model,state,dbg) where{A<:Asse
     end
 end
 
-function assemble_!(out::AbstractVector{A},asm,dis,eleobj,state::State{Nxder,Nuder},SP,dbg) where{Nxder,Nuder,A<:Assembly}
+function assemble_!(out::AbstractVector{A},asm,dis,eleobj,state::State{nΛder,nXder,nUder},SP,dbg) where{nΛder,nXder,nUder,A<:Assembly}
     scale     = dis.scale
     @threads for iele  = 1:lastindex(eleobj)
         index = dis.index[iele]
-        Λe    = state.Λ[index.X]                 
-        Xe    = NTuple{Nxder}(x[index.X] for x∈state.X)
-        Ue    = NTuple{Nuder}(u[index.U] for u∈state.U)
+        Λe    = NTuple{nΛder}(λ[index.X] for λ∈state.Λ)
+        Xe    = NTuple{nXder}(x[index.X] for x∈state.X)
+        Ue    = NTuple{nUder}(u[index.U] for u∈state.U)
         Ae    = state.A[index.A]
         addin!(out[threadid()],asm,iele,scale,eleobj[iele],Λe,Xe,Ue,Ae, state.time,SP,(dbg...,iele=iele))
     end
@@ -402,9 +403,9 @@ end
 ####### Lagrangian from residual and residual from Lagrangian
 const True,False  = Val{true},Val{false}
 @generated function implemented(eleobj) 
-#                                    δX,X,     U,     A, t,χ,  χcv,     SP,       dbg    
-    r = hasmethod(residual  ,(eleobj,   NTuple,NTuple,𝕣1,𝕣,Any,Function,NamedTuple,NamedTuple))
-    l = hasmethod(lagrangian,(eleobj,𝕣1,NTuple,NTuple,𝕣1,𝕣,Any,Function,NamedTuple,NamedTuple))
+#                                    Λ,     X,     U,     A, t,χ,  χcv,     SP,       dbg    
+    r = hasmethod(residual  ,(eleobj,       NTuple,NTuple,𝕣1,𝕣,Any,Function,NamedTuple,NamedTuple))
+    l = hasmethod(lagrangian,(eleobj,NTuple,NTuple,NTuple,𝕣1,𝕣,Any,Function,NamedTuple,NamedTuple))
     return :(Val{$r},Val{$l})
 end
 

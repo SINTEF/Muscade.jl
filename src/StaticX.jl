@@ -88,7 +88,7 @@ function solve(::Type{StaticX},pstate,verbose,dbg;
     out,asm,dofgr    = prepare(AssemblyStaticX,model,dis)
     citer            = 0
     cΔx²,cLλ²        = maxΔx^2,maxresidual^2
-    s                = State{1,1}(initialstate,(γ=0.,))
+    s                = State{1,1,1}(initialstate,(γ=0.,))
     state            = allocate(pstate,Vector{typeof(s)}(undef,saveiter ? maxiter : length(time))) # state is not a return argument of this function.  Hence it is not lost in case of exception
     local facLλx 
     for (step,t)     ∈ enumerate(time)

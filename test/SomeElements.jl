@@ -49,7 +49,7 @@ p = SVector(   2.82040487827,  -24.86027164695,   153.69500343165, -729.52107422
                 687.83550335374)
 
 
-@espy function Muscade.lagrangian(o::AnchorLine, δX,X,U,A,t,χ,χcv,SP,dbg)
+@espy function Muscade.lagrangian(o::AnchorLine, Λ,X,U,A,t,χ,χcv,SP,dbg)
     xₘtop,Δxₘtop,xₘbot,L,buoyancy = o.xₘtop,o.Δxₘtop,o.xₘbot,o.L*(1+A[1]),o.buoyancy*(1+A[2])      # a for anchor, t for TDP, f for fairlead
     x        = ∂0(X)  
     ☼Xtop    = SVector(x[1],x[2],0.) + xₘtop
@@ -63,13 +63,13 @@ p = SVector(   2.82040487827,  -24.86027164695,   153.69500343165, -729.52107422
     ☼ltf     = √(Xtop[3]^2+2Xtop[3]*cr)          # horizontal distance from fairlead to TDP
     Fd       = ΔXchain/xaf.*Fh
     m3       = ΔXtop[1]*Fd[2]-ΔXtop[2]*Fd[1]
-    δW       = δX[1:2] ∘₁ Fd
-    δW      += δX[3  ] *  m3 
-    return δW,noχ,noFB
+    L        = Λ[1:2] ∘₁ Fd
+    L       += Λ[3  ] *  m3 
+    return L,noχ,noFB
 end
-function Muscade.draw(axe,o::AnchorLine, δX,X,U,A, t,χ,χcv,SP,dbg)
+function Muscade.draw(axe,o::AnchorLine, Λ,X,U,A, t,χ,χcv,SP,dbg)
     req   = @request (Xtop,ΔXtop,ΔXchain,cr,xaf,ltf)
-    L,χn,FB,out = Muscade.lagrangian(o, δX,X,U,A, t,χ,χcv,SP,(dbg...,espy2draw=true),req)
+    L,χn,FB,out = Muscade.lagrangian(o, Λ,X,U,A, t,χ,χcv,SP,(dbg...,espy2draw=true),req)
     Laf,Xbot,Xtop,ΔXtop,ΔXchain,cr,xaf,Ltf = o.L, o.xₘbot, out.Xtop,out.ΔXtop,out.ΔXchain, out.cr, out.xaf, out.ltf
     n     = ΔXchain./xaf  # horizontal normal vector from anchor to fairlead
     xat   = Laf-Ltf

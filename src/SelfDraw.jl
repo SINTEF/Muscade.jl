@@ -3,7 +3,7 @@ function draw_(axe,dis::EletypDisassembler,eleobj,iele,state,dbg;kwargs...)
     # typestable kernel
     for ie ∈ iele
         index = dis.index[ie]
-        Λe    = state.Λ[index.X]                 
+        Λe    = state.Λ[1][index.X]                 
         Xe    = Tuple(x[index.X] for x∈state.X)
         Ue    = Tuple(u[index.U] for u∈state.U)
         Ae    = state.A[index.A]
