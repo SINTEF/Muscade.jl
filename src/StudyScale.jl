@@ -44,7 +44,7 @@ function listdoftypes(dis) # specalised for allΛXUAdofs, should be rewriten to 
     type = vcat([(:Λ,f) for f∈dis.fieldX],[(:X,f) for f∈dis.fieldX],[(:U,f) for f∈dis.fieldU],[(:A,f) for f∈dis.fieldA])
     return type,unique(type)
 end
-function frobenius(M::SparseMatrixCSC,type,types)
+function maxes(M::SparseMatrixCSC,type,types)
     ntype         = length(types)
     f             = zeros(ntype,ntype)
     for j         = 1:size(M,2)
@@ -57,7 +57,7 @@ function frobenius(M::SparseMatrixCSC,type,types)
     end 
     return f
 end
-function frobenius(V::Vector,type,types)    
+function maxes(V::Vector,type,types)    
     ntype         = length(types)
     f             = zeros(ntype)
     for i         = 1:length(V)
@@ -86,25 +86,25 @@ function studyscale(state::State;verbose::𝕓=true,dbg=(;))
     assemble!(out,asm,dis,model,state,(dbg...,solver=:studyscale))
 
     type,types         = listdoftypes(dis)
-    matfrob            = frobenius(out.Lzz,type,types)
-    vecfrob            = frobenius(out.Lz ,type,types)
+    matmax             = maxes(out.Lzz,type,types)
+    vecmax             = maxes(out.Lz ,type,types)
     ntype              = length(types)
 
-    nnz,n              = sum(matfrob.>0),length(vecfrob)
+    nnz,n              = sum(matmax.>0),length(vecmax)
     M                  = zeros(nnz,n)
     V                  = Vector{𝕣}(undef,nnz)
     inz                = 0
     for i=1:n, j=1:n
-        if matfrob[i,j]>0
+        if matmax[i,j]>0
             inz += 1
-            V[inz]     = log10(matfrob[i,j])
+            V[inz]     = log10(matmax[i,j])
             M[inz,i]   = 1
             M[inz,j]   = 1
         end
     end
     s = -(M'*M)\(M'*V)  
     S = exp10.(s)
-    scaledfrob = diagm(S)*matfrob*diagm(S)
+    scaledmatmax = diagm(S)*matmax*diagm(S)
     Ss = short.(S,2)
 
 
@@ -123,7 +123,7 @@ function studyscale(state::State;verbose::𝕓=true,dbg=(;))
 
 
     if verbose       
-        @printf "\nMagnitudes of the Frobenius norms of the blocks of the Hessian (as computed with the current scaling of the model):\n\n                   "
+        @printf "\nMagnitudes of the maxes of the blocks of the Hessian (as computed with the current scaling of the model):\n\n                   "
         for jtype = 1:ntype
             @printf "%1s%-4s " types[jtype][1] types[jtype][2]
         end
@@ -131,41 +131,41 @@ function studyscale(state::State;verbose::𝕓=true,dbg=(;))
         for itype = 1:ntype
             @printf "    %2s-%-8s  " types[itype][1] types[itype][2]
             for jtype = 1:ntype
-                if matfrob[itype,jtype]==0
+                if matmax[itype,jtype]==0
                     @printf "     ."
                 else
-                    @printf "%6i" magnitude(matfrob[itype,jtype])
+                    @printf "%6i" magnitude(matmax[itype,jtype])
                 end
             end
             @printf "\n"
         end
-        @printf "\nMagnitudes of the Frobenius norms of the blocks of the gradient(as computed with the current scaling of the model):\n\n                 "
+        @printf "\nMagnitudes of the maxes of the blocks of the gradient(as computed with the current scaling of the model):\n\n                 "
         for itype = 1:ntype
-            if vecfrob[itype]==0
+            if vecmax[itype]==0
                 @printf "     ."
             else
-                @printf "%6i" magnitude(vecfrob[itype])
+                @printf "%6i" magnitude(vecmax[itype])
             end
         end
         @printf "\n\nMagnitudes of the scaling:\n\n                 "
         for itype = 1:ntype
              @printf "%6i" s[itype]
         end
-        @printf "\n\nMagnitude of the condition number of the matrix of Frobenius norms of the blocks of the Hessian = %i\n\n" magnitude(cond(matfrob))
-        @printf "\nMagnitudes of the Frobenius norms of the blocks of the SCALED Hessian:\n\n                 "
+        @printf "\n\nMagnitude of the condition number of the matrix of maxes of the blocks of the Hessian = %i\n\n" magnitude(cond(matmax))
+        @printf "\nMagnitudes of the maxes of the blocks of the SCALED Hessian:\n\n                 "
         @printf "\n"
         for itype = 1:ntype
             @printf "    %2s-%-8s  " types[itype][1] types[itype][2]
             for jtype = 1:ntype
-                if scaledfrob[itype,jtype]==0
+                if scaledmatmax[itype,jtype]==0
                     @printf "     ."
                 else
-                    @printf "%6i" magnitude(scaledfrob[itype,jtype])
+                    @printf "%6i" magnitude(scaledmatmax[itype,jtype])
                 end
             end
             @printf "\n"
         end
-        @printf "\n\nMagnitude of the condition number of the matrix of Frobenius norms of the blocks of the SCALED Hessian = %i\n\n" magnitude(cond(scaledfrob))
+        @printf "\n\nMagnitude of the condition number of the matrix of maxes of the blocks of the SCALED Hessian = %i\n\n" magnitude(cond(scaledmatmax))
     end    
     return scale
 end

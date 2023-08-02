@@ -33,7 +33,32 @@ function getdof(state::Vector{S};class::Symbol=:X,field::Symbol,nodID::Vector{No
     end
     return dofres,dofID
 end
-
+function setdof!(state::State,dofval::𝕣1;class::Symbol=:X,field::Symbol,nodID::Vector{NodID},ider::ℤ=0)
+    class ∈ [:Λ,:X,:U,:A] || muscadeerror(sprintf("Unknown dof class %s",class))
+    c     = class==:Λ ? :X : class
+    dofID = getdofID(state.model,c,field,nodID)
+    s = if class==:Λ; state.Λ[ider+1] 
+    elseif class==:X; state.X[ider+1]    
+    elseif class==:U; state.U[ider+1]    
+    elseif class==:A; state.A    
+    end
+    for (idof,d) ∈ enumerate(dofID)
+        s[d.idof] = dofval[idof]  
+    end
+end
+function setdof!(state::State,dofval::𝕣;class::Symbol=:X,field::Symbol,ider::ℤ=0)
+    class ∈ [:Λ,:X,:U,:A] || muscadeerror(sprintf("Unknown dof class %s",class))
+    c     = class==:Λ ? :X : class
+    dofID = getdofID(state.model,c,field)
+    s = if class==:Λ; state.Λ[ider+1] 
+    elseif class==:X; state.X[ider+1]    
+    elseif class==:U; state.U[ider+1]    
+    elseif class==:A; state.A    
+    end
+    for d ∈ dofID
+        s[d.idof] = dofval  
+    end
+end
 # Elemental results
 
 function extractkernel!(iele::AbstractVector{𝕫},eleobj::Vector{E},dis::EletypDisassembler,state::Vector{S},dbg,req) where{E,S<:State}# typestable kernel

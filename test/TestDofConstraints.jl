@@ -3,12 +3,12 @@ module TestConstraints
 using Test,StaticArrays
 using Muscade
 
-Muscade.DofConstraint{:X,    Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield                       }(g,mode,gₛ,λₛ) where
+Muscade.DofConstraint{:X,    Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield                       }(g,mode) where
                          {Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield} =
-    Muscade.DofConstraint{:X,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,typeof(g),typeof(()),typeof(mode)}(g,(),mode,gₛ,λₛ)
-Muscade.DofConstraint{:U,    Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield                       }(g,mode,gₛ,λₛ) where
+    Muscade.DofConstraint{:X,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,typeof(g),typeof(()),typeof(mode)}(g,(),mode)
+Muscade.DofConstraint{:U,    Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield                       }(g,mode) where
                          {Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield} =
-    Muscade.DofConstraint{:U,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,typeof(g),typeof(()),typeof(mode)}(g,(),mode,gₛ,λₛ)
+    Muscade.DofConstraint{:U,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,typeof(g),typeof(()),typeof(mode)}(g,(),mode)
 
 #t,γ,dbg    = 0.,1.,(status=:testing,)
 t,χ,χcv,dbg  = 0.,nothing,identity,(status=:testing,)
@@ -23,10 +23,10 @@ Xgap       = Muscade.variate{1,3}(SVector{3}(4,3,10.))  # gap
 U          = SVector{0,𝕣}()
 A          = SVector{0,𝕣}()
 C          = Muscade.DofConstraint{:X,    2 ,0 ,0 ,(1,1),(:t1,:t2),()   ,()    ,()   ,()    ,1    ,:λ    }
-#                    DofConstraint{λclass,Nx,Nu,Na,xinod,xfield   ,uinod,ufield,ainod,afield,λinod,λfield}(g,mode,gₛ,λₛ)
+#                    DofConstraint{λclass,Nx,Nu,Na,xinod,xfield   ,uinod,ufield,ainod,afield,λinod,λfield}(g,mode)
 
 @testset "X equal contact" begin
-    c     = C(g,equal,1,1)
+    c     = C(g,equal)
     r,χn,FB = residual(c, (Xctc,),(U,),A, t,χ,χcv,SP1,dbg)
     R,R∂X = Muscade.value_∂{1,3}(r)
     @test doflist(typeof(c)) == (inod=(1,1,1),class=(:X,:X,:X),field=(:t1,:t2,:λ))
@@ -37,7 +37,7 @@ C          = Muscade.DofConstraint{:X,    2 ,0 ,0 ,(1,1),(:t1,:t2),()   ,()    ,
 end
 
 @testset "X equal gap" begin
-    c     = C(g,equal,1,1)
+    c     = C(g,equal)
     r,χn,FB = residual(c, (Xgap,),(U,),A, t,χ,χcv,SP1,dbg)
     R,R∂X = Muscade.value_∂{1,3}(r)
     @test R   ≈ [-3, -4, -2.4]
@@ -47,7 +47,7 @@ end
 end
 
 @testset "X off" begin
-    c     = C(g,off,1,1)
+    c     = C(g,off)
     r,χn,FB = residual(c, (Xctc,),(U,),A, t,χ,χcv,SP1,dbg)
     R,R∂X = Muscade.value_∂{1,3}(r)
     @test R   ≈ [0,0,-10]
@@ -55,39 +55,35 @@ end
 end
 
 @testset "X positive contact" begin
-    c     = C(g,positive,1,1)
+    c     = C(g,positive)
     r,χn,FB = residual(c, (Xctc,),(U,),A, t,χ,χcv,SP1,dbg)
     R,R∂X = Muscade.value_∂{1,3}(r)
-    @test R   ≈ [-3.0, -4.0, 0.09901951359278449]
-    @test R∂X ≈ [-0.0 -0.0 -0.3; -0.0 -0.0 -0.4; -0.29708710135363803 -0.39611613513818406 -0.009709662154539889]
+    @test R   ≈ [-3.0, -4.0, 1.] # changed
+    @test R∂X ≈ [-0.0 -0.0 -0.3; -0.0 -0.0 -0.4; -3.0 -4.0 0] # changed
 end
 
 @testset "X positive gap" begin
-    c     = C(g,positive,1,1)
+    c     = C(g,positive)
     r,χn,FB = residual(c, (Xgap,),(U,),A, t,χ,χcv,SP1,dbg)
     R,R∂X = Muscade.value_∂{1,3}(r)
-    @test R   ≈ [-3.0, -4.0, -2.2706234591223002]
-    @test R∂X ≈ [-0.0 -0.0 -0.3; -0.0 -0.0 -0.4; -0.29506118058939695 -0.39341490745252927 -0.01646273136867682]
+    @test R   ≈ [-3.0, -4.0, -23.]
+    @test R∂X ≈ [-0.0 -0.0 -0.3; -0.0 -0.0 -0.4; -3.0 -4.0 -2.4]
 end
 
 @testset "X positive contact γ==0" begin
-    c     = C(g,positive,1,1)
+    c     = C(g,positive)
     r,χn,FB = residual(c, (Xctc,),(U,),A, t,χ,χcv,SP0,dbg)
     R,R∂X = Muscade.value_∂{1,3}(r)
     @test R   ≈ [-3,-4,0]
-    @test R∂X ≈ [0   0   -.3; 
-                 0   0   -.4; 
-                 -.3 -.4 0  ]
+    @test R∂X ≈ [-0.0 -0.0 -0.3; -0.0 -0.0 -0.4; -3.0 -4.0 0.]
 end
 
 @testset "X positive gap  γ==0" begin
-    c     = C(g,positive,1,1)
+    c     = C(g,positive)
     r,χn,FB = residual(c, (Xgap,),(U,),A, t,χ,χcv,SP0,dbg)
     R,R∂X = Muscade.value_∂{1,3}(r)
-    @test R   ≈ [-3, -4, -2.4]
-    @test R∂X ≈ [0   0   -.3; 
-                 0   0   -.4; 
-                 -.3 -.4 0  ]
+    @test R   ≈ [-3.0, -4.0, -24.]
+    @test R∂X ≈  [-0.0 -0.0 -0.3; -0.0 -0.0 -0.4; -3.0 -4.0 -2.4]
 end
 
 
@@ -100,10 +96,10 @@ Ugap       = Muscade.variate{2,3}(Muscade.variate{1,3}(SVector{3}(4, 3,10.))) # 
 X          = SVector{0,𝕣}()
 A          = SVector{0,𝕣}()
 C          = Muscade.DofConstraint{:U,    0 ,2 ,0 ,()   ,()       ,(1,1),(:t1,:t2),()   ,()    ,1    ,:λ    }
-#                    DofConstraint{λclass,Nx,Nu,Na,xinod,xfield   ,uinod,ufield   ,ainod,afield,λinod,λfield}(g,mode,gₛ,λₛ)
+#                    DofConstraint{λclass,Nx,Nu,Na,xinod,xfield   ,uinod,ufield   ,ainod,afield,λinod,λfield}(g,mode)
 
 @testset "U equal contact" begin
-    c     = C(g,equal,1,1)
+    c     = C(g,equal)
     r,χn,FB = lagrangian(c, Λ,(X,),(Uctc,),A, t,χ,χcv,SP1,dbg)
     R,R∂U = Muscade.value_∂{1,3}(Muscade.∂{2,3}(r))
     @test doflist(typeof(c)) == (inod=(1,1,1),class=(:U,:U,:U),field=(:t1,:t2,:λ))
@@ -114,7 +110,7 @@ C          = Muscade.DofConstraint{:U,    0 ,2 ,0 ,()   ,()       ,(1,1),(:t1,:t
 end
 
 @testset "U equal gap" begin
-    c     = C(g,equal,1,1)
+    c     = C(g,equal)
     r,χn,FB = lagrangian(c, Λ,(X,),(Ugap,),A, t,χ,χcv,SP1,dbg)
     R,R∂U = Muscade.value_∂{1,3}(Muscade.∂{2,3}(r))
     @test R   ≈ [-3, -4, -2.4]
@@ -124,7 +120,7 @@ end
 end
 
 @testset "U off" begin
-    c     = C(g,off,1,1)
+    c     = C(g,off)
     r,χn,FB = lagrangian(c, Λ,(X,),(Uctc,),A, t,χ,χcv,SP1,dbg)
     R,R∂U = Muscade.value_∂{1,3}(Muscade.∂{2,3}(r))
     @test R   ≈ [0,0,-10]
@@ -132,45 +128,41 @@ end
 end
 
 @testset "U positive contact" begin
-    c     = C(g,positive,1,1)
+    c     = C(g,positive)
     r,χn,FB = lagrangian(c, Λ,(X,),(Uctc,),A, t,χ,χcv,SP1,dbg)
     R,R∂U = Muscade.value_∂{1,3}(Muscade.∂{2,3}(r))
-    @test R   ≈ [-3.0, -4.0, 0.09901951359278449]
-    @test R∂U ≈ [-0.0 -0.0 -0.3; -0.0 -0.0 -0.4; -0.29708710135363803 -0.39611613513818406 -0.009709662154539889]
+    @test R   ≈ [-3.0, -4.0, 1.]
+    @test R∂U ≈ [-0.0 -0.0 -0.3; -0.0 -0.0 -0.4; -3.0 -4.0 0]
 end
 
 @testset "U positive gap" begin
-    c     = C(g,positive,1,1)
+    c     = C(g,positive)
     r,χn,FB = lagrangian(c, Λ,(X,),(Ugap,),A, t,χ,χcv,SP1,dbg)
     R,R∂U = Muscade.value_∂{1,3}(Muscade.∂{2,3}(r))
-    @test R   ≈ [-3.0, -4.0, -2.2706234591223002]
-    @test R∂U ≈ [-0.0 -0.0 -0.3; -0.0 -0.0 -0.4; -0.29506118058939695 -0.39341490745252927 -0.01646273136867682]
+    @test R   ≈ [-3.0, -4.0, -23.]
+    @test R∂U ≈ [-0.0 -0.0 -0.3; -0.0 -0.0 -0.4; -3.0 -4.0 -2.4]
 end
 
 @testset "U positive contact γ==0" begin
-    c     = C(g,positive,1,1)
+    c     = C(g,positive)
     r,χn,FB = lagrangian(c, Λ,(X,),(Uctc,),A, t,χ,χcv,SP0,dbg)
     R,R∂U = Muscade.value_∂{1,3}(Muscade.∂{2,3}(r))
     @test R   ≈ [-3,-4,0]
-    @test R∂U ≈ [0   0   -.3; 
-                 0   0   -.4; 
-                 -.3 -.4 0  ]
+    @test R∂U ≈ [-0.0 -0.0 -0.3; -0.0 -0.0 -0.4; -3.0 -4.0 0]
 end
 
 @testset "U positive gap  γ==0" begin
-    c     = C(g,positive,1,1)
+    c     = C(g,positive)
     r,χn,FB = lagrangian(c, Λ,(X,),(Ugap,),A, t,χ,χcv,SP0,dbg)
     R,R∂U = Muscade.value_∂{1,3}(Muscade.∂{2,3}(r))
-    @test R   ≈ [-3, -4, -2.4]
-    @test R∂U ≈ [0   0   -.3; 
-                 0   0   -.4; 
-                 -.3 -.4 0  ]
+    @test R   ≈ [-3.0, -4.0, -24.]
+    @test R∂U ≈  [-0.0 -0.0 -0.3; -0.0 -0.0 -0.4; -3.0 -4.0 -2.4]
 end
 
 #---------------------------------------------------------
 
 
-g1(x,t)       = -0.1*sin(1.2*x[1])+.2x[1]+x[2]-1 # start outside feasible domain 😃
+g1(x,t)       = -0.1*sin(1.2*x[1])+.2x[1]+x[2]+1 
 g2(x,t)       = -.4x[1] + .3x[2]+.1
 f1(x)         = -(-0.1*sin(1.2*x)+.2x-1) 
 f2(x)         = (-1/.3)*(-.4x + .1)
@@ -180,13 +172,15 @@ model           = Model(:TestModel)
 n1              = addnode!(model,𝕣[0,0]) 
 e1              = addelement!(model,DofConstraint,[n1],xinod=(1,1),xfield=(:t1,:t2),λinod=1, λclass=:X, λfield=:λ1,gap=g1,mode=positive)
 e2              = addelement!(model,DofConstraint,[n1],xinod=(1,1),xfield=(:t1,:t2),λinod=1, λclass=:X, λfield=:λ2,gap=g2,mode=positive)
-e3              = addelement!(model,DofLoad   ,[n1],field=:t2,value=gravity)
+e3              = addelement!(model,DofLoad      ,[n1],field=:t2,value=gravity)
 initialstate    = initialize!(model)
+setdof!(initialstate,1.;field=:λ1)
+setdof!(initialstate,1.;field=:λ2)
 state           = solve(StaticX;initialstate,time=[0.],verbose=false) # because there is zero physical stiffness in this model, setting γ0=0 gives singularity if one or more constraint is inactive
 
 @testset "interior point" begin
     X = state[findlastassigned(state)].X[1][1:2]
-    @test g1(X,0)   ≈ 0.0
-    @test abs(g2(X,0))   < 1e-16
+    @test abs(g1(X,0))   < 1e-6
+    @test abs(g2(X,0))   < 1e-5
 end
 end

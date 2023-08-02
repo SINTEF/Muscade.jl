@@ -29,15 +29,15 @@ To simplify the presentations in the following, we drop time ``t`` from the nota
 
 ## Target function
 
-To make the problem well-posed again, we introduce a target function ``Q(X,U,A)``.  We then seek to make ``Q`` extremal (finding a local minimum, maximum), under the constraint ``R(X,U,A)=0``. Depending on the relevant application, ``Q`` can represent different concepts.
+To make the problem well-posed again, we introduce a target function ``Q(X,U,A)``.  We then seek to make ``Q`` stationary (finding a local minimum or maximum), under the constraint ``R(X,U,A)=0``. Depending on the relevant application, ``Q`` can represent different concepts.
 
 In design optimisation, one can associate a monetary value to ``A`` (building stronger costs more money), and to ``X`` (some system responses, including failure, would cost money). The objective is to find the design with the lowest associated cost.
 
-In an load estimation problem where part of the response is measured, we wish to find the most probable unknown load ``U`` (large loads are not likely) and response (a computed response ``X`` that drasticaly disagrees with the actual measurements is not likely) - under the constraint that load and response verify equilibrium.  In this case, we minimize the *surprisal* ``s = -\log(P)`` instead of maximizing ``P``.  Making probabilities or surprisal extremal is equivalent.   However, since probabilities multiply (the joint probability density of independant variables is equal to the product of the marginal probability densities), the corresponding surprisals add, which fits into the system of having elements *add* contribution to the system of equations to be solved. Further, the surprisals are typicaly numericaly "kinder".
+In an load estimation problem where part of the response is measured, we wish to find the most probable unknown load ``U`` (large loads are not likely) and response (a computed response ``X`` that drasticaly disagrees with the actual measurements is not likely) - under the constraint that load and response verify equilibrium.  In this case, we minimize the *surprisal* ``s = -\log(P)`` instead of maximizing ``P``.  Making probabilities or surprisal stationary is equivalent.   However, since probabilities multiply (the joint probability density of independant variables is equal to the product of the marginal probability densities), the corresponding surprisals add, which fits into the system of having elements *add* contribution to the system of equations to be solved. Further, the surprisals are typicaly numericaly "kinder".
 
 ## Lagrangian
 
-Making ``Q`` extremal under the constraint ``R(X,U,A)=0`` is equivalent to finding an extremal (a saddle point) of the *Lagrangian* ``L(\Lambda,X,U,A)`` (not to be confused with the potential in Lagrangian mechanics)
+Making ``Q`` stationary under the equilibrium constraints ``R(X,U,A)=0`` is equivalent to finding a stationary point (a saddle point) of the *Lagrangian* ``L(\Lambda,X,U,A)`` (not to be confused with the potential in Lagrangian mechanics)
 
 ```math
 L(\Lambda,X,U,A) = Q(X,U,A) + R(X,U,A) \cdot \Lambda
@@ -47,23 +47,16 @@ where ``Λ`` are Lagrange multipliers.  There is again a one-to-one correspondan
 
 For evolution problems, the dot product ``R(X,U,A) \cdot \Lambda`` includes an integral over time: the Lagrangian is a *functional*, and the gradients of ``L`` are ordinary (or integral) differential equations (in time), found using Frechet derivatives.
 
-Additional constraints may be introduced. *Physical constraints* (like contact or boundary conditions) are added by augmenting ``X`` and ``R``.  *Optimisation constraints* may have to be verified at every step (stresses to remain below a critical level, at any time).  They are handled by augmenting ``U`` (introducing a Udof Lagrange multiplier).  Optimisation constraints that act only on Adofs (there is a limit to the strength of steel we can order)  are handled by augmenting ``A``.  With the additional constraints, the Lagrangian is of the form
-
-```math
-\begin{aligned}
-L(\Lambda,X,U,A) = Q(X,U,A)  &+ \left[\begin{array}{c}R(X,U,A) - ∇g_x(X,U,A) \cdot X_λ \\ g_x(X,U,A)\end{array}\right] \cdot Λ \\ &+ g_u(X,U,A) \cdot U_\lambda \\ &+ g_a(A) \cdot A_\lambda 
-\end{aligned}
-```
 
 ## Elements
 
 In the original finite element analysis, the *elements* in a model form a partition of a domain over which differential equations are to be solved. We will call these "physical elements".  These elements provide additive contributions to the system of equations ``R(X,U,A)=0``. Further contributions can come from external loads.
 
-When doing optimization-FEM in `Muscade`, the elements provide additive contributions to the Lagrangian scalar ``L``, instead of to the residual vector ``R``. Actualy when creating a new element in `Muscade` to create an application, one can either implement a contribution to ``R`` by implementing a method `Muscade.residual` for the element, or a contribution to ``L`` by implementing `Muscade.lagrangian`.  For performance, whenever possible (for example when implementing a physical element), prefer `Muscade.residual`. 
+When doing optimization-FEM in `Muscade`, the elements provide additive contributions to the Lagrangian scalar ``L``, instead of to the residual vector ``R``. Actually when creating a new element in `Muscade` to create an application, one can either implement a contribution to ``R`` by implementing a method `Muscade.residual` for the element, or a contribution to ``L`` by implementing `Muscade.lagrangian`.  For performance, whenever possible (for example when implementing a physical element), prefer `Muscade.residual`. 
 
-In `Muscade`, the broad view is taken that anything that contributes to ``L`` is an element (even if no part of the domain is actualy associated to the element).  This more general definition of "elements" includes a variety of types:
+In `Muscade`, the broad view is taken that anything that contributes to ``L`` is an element (even if no part of the domain is actually associated to the element).  This more general definition of "elements" includes a variety of types:
 
-- Physical element, disretizing differential equations over a part of the domain
+- Physical element, discretizing differential equations over a part of the domain
 - Known external loads on the boundary (non-essential boundary conditions)
 - Known external loads in the domain
 - Constrained dofs (essential boundary conditions)
@@ -71,22 +64,58 @@ In `Muscade`, the broad view is taken that anything that contributes to ``L`` is
 - Optimisation constraints (e.g. stresses shal not exceed some limit at any point within part of the domain)
 - Response measurements (surprisal on Xdofs)
 - Unknown external loads (surprisal on Udofs)
-- Damage (surprisal on Adofs)
+- Observed damage (surprisal on Adofs)
 - Cost of unfavorable response (cost on Xdofs)
 - Cost of actuators (cost on Udofs)
 - Cost of building a system (cost on Adofs)
 
 Because "everything" is an element, app developers can express a wide range of ideas through `Muscade`'s element API.
 
+## Physical and optimisation constraints
+
+*Physical constraints* (including contact or Dirichlet/essential boundary conditions) are added to the model by using an element that adds adds a dof of class ``X`` to the model.  This new dof ``X_λ`` is a Lagrange multiplier for the constraint. If we note ``R``, ``X`` and ``Λ`` the list of dofs before adding the constraint element and ``R^*``, ``X^*`` and ``Λ^*`` after, then  
+
+```math
+L^*(\Lambda^*,X^*,U,A) = Q(X,U,A)  + R^*(X^*,U,A) \cdot Λ^* 
+```
+
+with
+
+```math
+\begin{aligned}
+Λ^* &= [Λ,Λ_λ]\\
+X^* &= [X,X_λ]\\
+R^*(X^*,U,A) &= \left[R(X,U,A) - ∇g_x(X,U,A) \cdot X_λ \; , \; g_x(X,U,A)\right]
+\end{aligned}
+```
+
+*Optimisation constraints* allow to define that some situations are impossible, or inacceptable. For example, in a design optimisation analysis, excessive stresses would lead to failure, so would be constrained to remain under a given threshold. In a tracking or optimal control problem, an actuator force may not exceed some limit for the actuator's capacity.
+
+Optimisation constraints that have to be verified at every step (for example stresses that must remain below a critical level, at any time) require a Lagrange multiplier that changes over time, and that is thus of class ``U``. Optimisation constraints that act only on Adofs (for example, there is a limit to the strength of steel we can order)  require a Lagrange multiplier of class ``A``.  With optimisation constraints, the Lagrangian is of the form
+
+```math
+L^*(\Lambda,X,U^*,A^*) = Q^*(X,U^*,A^*)  + R(X,U,A) \cdot Λ 
+```
+
+with
+
+```math
+\begin{aligned}
+U^* &= [U,U_λ]\\
+A^* &= [A,A_λ]\\
+Q^*(X,U^*,A^*) &= Q(X,U,A) +  g_u(X,U,A) \cdot U_\lambda + g_a(A) \cdot A_λ \\
+\end{aligned}
+```
+
 ## Solvers
 
-Solvers in `Muscade` solve problems of different forms including forward `X` problems
+Solvers in `Muscade` solve problems of different forms including forward ``X`` problems
 
 ```math
 R(X,0,0)=0
 ```
 
-optimisation `XUA` problems
+optimisation ``XUA`` problems
 
 ```math
 \begin{aligned}
@@ -97,6 +126,6 @@ optimisation `XUA` problems
 \end{aligned}
 ```
 
-as well as corresponding `XU` and `XA` problems.
+as well as corresponding ``XU`` and `XA` problems.
 
 

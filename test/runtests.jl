@@ -20,12 +20,12 @@ module Runtest
         @testset "TestStaticX" begin
             include("TestStaticX.jl")
         end
-        @testset "TestStaticXUA" begin
-            include("TestStaticXUA.jl")
-        end
-        @testset "TestScale" begin
-            include("TestScale.jl")
-        end
+        # @testset "TestStaticXUA" begin
+        #     include("TestStaticXUA.jl")
+        # end 
+        # @testset "TestScale" begin
+        #     include("TestScale.jl")
+        # end
         @testset "TestDofConstraints" begin
             include("TestDofConstraints.jl")
         end

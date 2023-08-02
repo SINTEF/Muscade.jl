@@ -187,25 +187,24 @@ end
 #-------------------------------------------------
 
 #McCormick(a,b)= α->a*exp(-(α/b)^2)            # provided as input to solvers, used by their Addin
-decided(λ,g,γ)  = abs(VALUE(λ)-VALUE(g))/γ    # used by constraint elements
 
-S(λ,g,γ) = (g+λ-hypot(g-λ,2γ))/2 # Modified interior point method's take on KKT's-complementary slackness 
+S(λ,g,γ) = g*λ-γ # complementary slackness 
 
-KKT(λ::𝕣        ,g::𝕣         ,γ::𝕣,λₛ,gₛ)                 = 0 # A pseudo-potential with strange derivatives
-KKT(λ::∂ℝ{P,N,R},g::∂ℝ{P,N,R},γ::𝕣,λₛ,gₛ) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(0, λ.x*g.dx + gₛ*S(λ.x/λₛ,g.x/gₛ,γ)*λ.dx)
-KKT(λ:: ℝ       ,g::∂ℝ{P,N,R},γ::𝕣,λₛ,gₛ) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(0, λ.x*g.dx                           )
-KKT(λ:: 𝕣       ,g::∂ℝ{P,N,R},γ::𝕣,λₛ,gₛ) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(0, λ  *g.dx                           )
-KKT(λ::∂ℝ{P,N,R},g:: ℝ       ,γ::𝕣,λₛ,gₛ) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(0,            gₛ*S(λ.x/λₛ,g.x/gₛ,γ)*λ.dx)
-function KKT(λ::∂ℝ{Pλ,Nλ,Rλ},g::∂ℝ{Pg,Ng,Rg},γ::𝕣,λₛ,gₛ) where{Pλ,Pg,Nλ,Ng,Rλ<:ℝ,Rg<:ℝ}
+KKT(λ::𝕣        ,g::𝕣         ,γ::𝕣)                 = 0 # A pseudo-potential with strange derivatives
+KKT(λ::∂ℝ{P,N,R},g::∂ℝ{P,N,R},γ::𝕣) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(0, λ.x*g.dx + S(λ.x,g.x,γ)*λ.dx)
+KKT(λ:: ℝ       ,g::∂ℝ{P,N,R},γ::𝕣) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(0, λ.x*g.dx                    )
+KKT(λ:: 𝕣       ,g::∂ℝ{P,N,R},γ::𝕣) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(0, λ  *g.dx                    )
+KKT(λ::∂ℝ{P,N,R},g:: ℝ       ,γ::𝕣) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(0,            S(λ.x,g.x,γ)*λ.dx)
+function KKT(λ::∂ℝ{Pλ,Nλ,Rλ},g::∂ℝ{Pg,Ng,Rg},γ::𝕣) where{Pλ,Pg,Nλ,Ng,Rλ<:ℝ,Rg<:ℝ}
     if Pλ==Pg
         R = promote_type(Rλ,Rg)
-        return ∂ℝ{Pλ,Nλ}(convert(R,KKT(λ.x,g.x,γ,λₛ,gₛ)),convert.(R,     λ.x*g.dx + gₛ*S(λ.x/λₛ,g.x/gₛ,γ)*λ.dx))
+        return ∂ℝ{Pλ,Nλ}(convert(R,KKT(λ.x,g.x,γ)),convert.(R,     λ.x*g.dx + S(λ.x,g.x,γ)*λ.dx))
     elseif Pλ> Pg
         R = promote_type(Rλ,typeof(b))
-        return ∂ℝ{Pλ,Nλ}(convert(R,KKT(λ  ,g.x,γ,λₛ,gₛ)),convert.(R,     λ.x*g.dx                            ))
+        return ∂ℝ{Pλ,Nλ}(convert(R,KKT(λ  ,g.x,γ)),convert.(R,     λ.x*g.dx                    ))
     else
         R = promote_type(typeof(a),Rg)
-        return ∂ℝ{Pg,Ng}(convert(R,KKT(λ.x,g  ,γ,λₛ,gₛ)),convert.(R,                gₛ*S(λ.x/λₛ,g.x/gₛ,γ)*λ.dx))
+        return ∂ℝ{Pg,Ng}(convert(R,KKT(λ.x,g  ,γ)),convert.(R,                S(λ.x,g.x,γ)*λ.dx))
     end
 end
 
@@ -271,8 +270,6 @@ This element can generate three classes of constraints, depending on the input a
 - `λclass::Symbol`               The class (`:X`,`:U` or `:A`) of the Lagrange multiplier. 
                                  See the explanation above for classes of constraints
 - `λfield::Symbol`               The field of the Lagrange multiplier.
-- `gₛ::𝕣=1.`                      A scale for the gap.
-- `λₛ::𝕣=1.`                      A scale for the Lagrange multiplier.
 - `gap::Function`                The gap function.
 - `gargs::NTuple`                Additional inputs to the gap function.
 - `mode::Function`               where `mode(t::ℝ) -> Symbol`, with value `:equal`, 
@@ -306,53 +303,56 @@ struct DofConstraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λi
     gap      :: Tg    # Class==:X gap(x,t,gargs...) ,Class==:U  gap(x,u,a,t,gargs...), Class==:A gap(a,gargs...) 
     gargs    :: Tgargs
     mode     :: Tmode # mode(t)->symbol, or Symbol for Aconstraints
-    gₛ        :: 𝕣
-    λₛ        :: 𝕣  
 end
 function DofConstraint(nod::Vector{Node};xinod::NTuple{Nx,𝕫}=(),xfield::NTuple{Nx,Symbol}=(),
                                       uinod::NTuple{Nu,𝕫}=(),ufield::NTuple{Nu,Symbol}=(),
                                       ainod::NTuple{Na,𝕫}=(),afield::NTuple{Na,Symbol}=(),
                                       λinod::𝕫, λclass::Symbol, λfield::Symbol,
-                                      gₛ::𝕣=1.,λₛ::𝕣=1.,
                                       gap::Function ,gargs=(),mode::Function) where{Nx,Nu,Na} 
     (λclass==:X && (Nu>0||Na>0)) && muscadeerror("Constraints with λclass=:X must have zero U-dofs and zero A-dofs") 
     (λclass==:A && (Nx>0||Nu>0)) && muscadeerror("Constraints with λclass=:A must have zero X-dofs and zero U-dofs") 
     return DofConstraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,
-                       typeof(gap),typeof(gargs),typeof(mode)}(gap,gargs,mode,gₛ,λₛ)
+                       typeof(gap),typeof(gargs),typeof(mode)}(gap,gargs,mode)
 end
 doflist(::Type{<:DofConstraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield}}) where
-                            {λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield} = 
+                              {λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield} = 
    (inod =(xinod...           ,uinod...           ,ainod...           ,λinod ), 
     class=(ntuple(i->:X,Nx)...,ntuple(i->:U,Nu)...,ntuple(i->:A,Na)...,λclass), 
     field=(xfield...          ,ufield...          ,afield...          ,λfield)) 
 @espy function residual(o::DofConstraint{:X,Nx}, X,U,A,t,χ,χcv,SP,dbg) where{Nx}
     γ          = default{:γ}(SP,0.)
-    P,gₛ,λₛ     = constants(∂0(X)),o.gₛ,o.λₛ
+    P          = constants(∂0(X))
+    m          = o.mode(t)
     x,☼λ       = ∂0(X)[SVector{Nx}(1:Nx)], ∂0(X)[Nx+1]   
     x∂         = variate{P,Nx}(x) 
     ☼gap,g∂x   = value_∂{P,Nx}(o.gap(x∂,t,o.gargs...)) 
-    if         o.mode(t)==:equal;    return SVector{Nx+1}((       -g∂x*λ)...,-gap              ) ,noχ,(α=∞                    ,)
-    elseif     o.mode(t)==:positive; return SVector{Nx+1}((       -g∂x*λ)...,-gₛ*S(λ/λₛ,gap/gₛ,γ)) ,noχ,(α=decided(λ/λₛ,gap/gₛ,γ),)
-    elseif     o.mode(t)==:off;      return SVector{Nx+1}(ntuple(i->0,Nx)...,-gₛ/λₛ*λ           ) ,noχ,(α=∞                    ,)
+    R = if     m==:equal;    SVector{Nx+1}((       -g∂x*λ)...,-gap       ) 
+    elseif     m==:positive; SVector{Nx+1}((       -g∂x*λ)...,-S(λ,gap,γ)) 
+    elseif     m==:off;      SVector{Nx+1}(ntuple(i->0,Nx)...,-λ         ) 
     end
+    return R,noχ,(λ=λ,g=gap,mode=m)
 end
 @espy function lagrangian(o::DofConstraint{:U,Nx,Nu,Na}, Λ,X,U,A,t,χ,χcv,SP,dbg) where{Nx,Nu,Na}
     γ          = default{:γ}(SP,0.)
+    m          = o.mode(t)
     x,u,a,☼λ   = ∂0(X),∂0(U)[SVector{Nu}(1:Nu)],A,∂0(U)[Nu+1]
     ☼gap       = o.gap(x,u,a,t,o.gargs...)
-    if         o.mode(t)==:equal;    return -gap*λ                  ,noχ,(α=∞                        ,)
-    elseif     o.mode(t)==:positive; return -KKT(λ,gap,γ,o.λₛ,o.gₛ)  ,noχ,(α=decided(λ/o.λₛ,gap/o.gₛ,γ),)
-    elseif     o.mode(t)==:off;      return -o.gₛ/(2o.λₛ)*λ^2        ,noχ,(α=∞                        ,)  
+    L = if     m==:equal;    -gap*λ         
+    elseif     m==:positive; -KKT(λ,gap,γ)  
+    elseif     m==:off;      -0.5λ^2         
     end
+    return L,noχ,(λ=λ,g=gap,mode=m)
 end
 @espy function lagrangian(o::DofConstraint{:A,Nx,Nu,Na}, Λ,X,U,A,t,χ,χcv,SP,dbg) where{Nx,Nu,Na}
     γ          = default{:γ}(SP,0.)
+    m          = o.mode(t)
     a,☼λ       = A[SVector{Na}(1:Na)],A[    Na+1] 
     ☼gap       = o.gap(a,o.gargs...)
-    if         o.mode(t)==:equal;    return -gap*λ                  ,noχ,(α=∞                        ,) 
-    elseif     o.mode(t)==:positive; return -KKT(λ,gap,γ,o.λₛ,o.gₛ)  ,noχ,(α=decided(λ/o.λₛ,gap/o.gₛ,γ),)
-    elseif     o.mode(t)==:off;      return -o.gₛ/(2o.λₛ)*λ^2        ,noχ,(α=∞                        ,)   
+    L = if     m==:equal;    m-gap*λ         
+    elseif     m==:positive; m-KKT(λ,gap,γ)  
+    elseif     m==:off;      m-0.5λ^2           
     end
+    return L,noχ,(λ=λ,g=gap,mode=m)
 end
 
 
@@ -380,7 +380,7 @@ See also: [`DofConstraint`](@ref), [`DofLoad`](@ref), [`DofCost`](@ref)
 struct Hold <: AbstractElement end  
 function Hold(nod::Vector{Node};field::Symbol,λfield::Symbol=Symbol(:λ,field)) 
     gap(v,t)=v[1]
-    return DofConstraint{:X     ,1, 0, 0, (1,),(field,),(),   (),    (),   (),    1,    λfield, typeof(gap),typeof(()),typeof(equal)}(gap,(),equal,1.,1.)
+    return DofConstraint{:X     ,1, 0, 0, (1,),(field,),(),   (),    (),   (),    1,    λfield, typeof(gap),typeof(()),typeof(equal)}(gap,(),equal)
 end
 
 #-------------------------------------------------
@@ -447,14 +447,12 @@ struct ElementConstraint{Teleobj,λinod,λfield,Nu,Treq,Tg,Tgargs,Tmode} <: Abst
     gap      :: Tg    
     gargs    :: Tgargs
     mode     :: Tmode 
-    gₛ        :: 𝕣
-    λₛ        :: 𝕣  
 end
 function ElementConstraint(nod::Vector{Node};λinod::𝕫, λfield::Symbol,
-    req,gap::Function,gargs=(;),mode::Function,gₛ::𝕣=1.,λₛ::𝕣=1.,ElementType,elementkwargs)
+    req,gap::Function,gargs=(;),mode::Function,ElementType,elementkwargs)
     eleobj   = ElementType(nod;elementkwargs...)
     Nu       = getndof(typeof(eleobj),:U)
-    return ElementConstraint{typeof(eleobj),λinod,λfield,Nu,typeof((eleres=req,)),typeof(gap),typeof(gargs),typeof(mode)}(eleobj,(eleres=req,),gap,gargs,mode,gₛ,λₛ)
+    return ElementConstraint{typeof(eleobj),λinod,λfield,Nu,typeof((eleres=req,)),typeof(gap),typeof(gargs),typeof(mode)}(eleobj,(eleres=req,),gap,gargs,mode)
 end
 doflist( ::Type{<:ElementConstraint{Teleobj,λinod,λfield}}) where{Teleobj,λinod,λfield} =
     (inod =(doflist(Teleobj).inod... ,λinod),
@@ -463,14 +461,16 @@ doflist( ::Type{<:ElementConstraint{Teleobj,λinod,λfield}}) where{Teleobj,λin
 @espy function lagrangian(o::ElementConstraint{Teleobj,λinod,λfield,Nu}, Λ,X,U,A,t,χ,χcv,SP,dbg) where{Teleobj,λinod,λfield,Nu} 
     req        = merge(o.req)
     γ          = default{:γ}(SP,0.)
+    m          = o.mode(t)
     u          = getsomedofs(U,SVector{Nu}(1:Nu)) 
     ☼λ         = ∂0(U)[Nu+1]
     L,χn,FB,☼eleres = getlagrangian(implemented(o.eleobj)...,o.eleobj,Λ,X,u,A,t,χ,χcv,SP,(dbg...,via=ElementConstraint),req.eleres)
     ☼gap       = o.gap(eleres,X,u,A,t,o.gargs...)
-    if         o.mode(t)==:equal;    return L-gap*λ                  ,noχ,(α=∞                        ,)
-    elseif     o.mode(t)==:positive; return L-KKT(λ,gap,γ,o.λₛ,o.gₛ)  ,noχ,(α=decided(λ/o.λₛ,gap/o.gₛ,γ),)
-    elseif     o.mode(t)==:off;      return L-o.gₛ/(2o.λₛ)*λ^2        ,noχ,(α=∞                        ,)  
+    L += if    m==:equal;    -gap*λ   
+    elseif     m==:positive; -KKT(λ,gap,γ) 
+    elseif     m==:off;      -0.5λ^2 
     end
+    return L,noχ,(λ=λ,g=gap,mode=m)
 end
 
 #-------------------------------------------------

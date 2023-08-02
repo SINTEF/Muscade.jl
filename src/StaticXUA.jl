@@ -19,7 +19,7 @@ function prepare(::Type{AssemblyStaticΛXU_A},model,dis)
     Lya                = asmfullmat!(view(asm,4,:),view(asm,1,:),view(asm,2,:),nY,nA) 
     Laa                = asmfullmat!(view(asm,5,:),view(asm,2,:),view(asm,2,:),nA,nA)  
     out                = AssemblyStaticΛXU_A(Ly,La,Lyy,Lya,Laa,0.)
-    return out,asm,Adofgr,Ydofgr
+    return out,asm,Ydofgr,Adofgr
 end
 function zero!(out::AssemblyStaticΛXU_A)
     zero!(out.Ly )
@@ -56,47 +56,7 @@ function addin!(out::AssemblyStaticΛXU_A,asm,iele,scale,eleobj::E,Λ,X::NTuple{
     out.α           = min(out.α,default{:α}(FB,∞))
 end
 
-#------------------------------------
 
-mutable struct AssemblyStaticΛXU{Ty,Tyy} <:Assembly 
-    Ly    :: Ty
-    Lyy   :: Tyy 
-    α     :: 𝕣
-end   
-function prepare(::Type{AssemblyStaticΛXU},model,dis) 
-    Ydofgr             = allΛXUdofs(model,dis)
-    nY                 = getndof(Ydofgr)
-    narray,neletyp     = 2,getneletyp(model)
-    asm                = Matrix{𝕫2}(undef,narray,neletyp)  
-    Ly                 = asmvec!(view(asm,1,:),Ydofgr,dis) 
-    Lyy                = asmmat!(view(asm,2,:),view(asm,1,:),view(asm,1,:),nY,nY) 
-    out                = AssemblyStaticΛXU(Ly,Lyy,0.)
-    return out,asm,Ydofgr
-end
-function zero!(out::AssemblyStaticΛXU)
-    zero!(out.Ly )
-    zero!(out.Lyy)
-    out.α = ∞    
-end
-function add!(out1::AssemblyStaticΛXU,out2::AssemblyStaticΛXU) 
-    add!(out1.Ly,out2.Ly)
-    add!(out1.Lyy,out2.Lyy)
-    out1.α = min(out1.α,out2.α)
-end
-function addin!(out::AssemblyStaticΛXU,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxdir,<:SVector{Nx}},
-                                                             U::NTuple{Nudir,<:SVector{Nu}},A, t,SP,dbg) where{E,Nxdir,Nx,Nudir,Nu}
-    Ny              = 2Nx+Nu                           # Y=[Λ;X;U]   
-    if Ny==0; return end # don't waste time on Acost elements...    
-    scaleY          = SVector(scale.Λ...,scale.X...,scale.U...)
-    ΔY              = variate{2,Ny}(δ{1,Ny,𝕣}(scaleY),scaleY)                 
-    iλ,ix,iu,_      = gradientpartition(Nx,Nx,Nu,0) # index into element vectors ΔY and Ly
-    ΔΛ,ΔX,ΔU        = view(ΔY,iλ),view(ΔY,ix),view(ΔY,iu)
-    L,χn,FB         = getlagrangian(implemented(eleobj)...,eleobj, ∂0(Λ)+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A, t,nothing,nothing,SP,dbg)
-    ∇L              = ∂{2,Ny}(L)
-    add_value!(out.Ly ,asm[1],iele,∇L)
-    add_∂!{1}( out.Lyy,asm[2],iele,∇L)
-    out.α           = min(out.α,default{:α}(FB,∞))
-end
 
 """
 	StaticXUA
@@ -144,14 +104,15 @@ See also: [`solve`](@ref), [`StaticX`](@ref)
 """
 struct StaticXUA <: AbstractSolver end 
 function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<:State},
-    maxAiter::ℤ=50,maxYiter::ℤ=0,maxΔy::ℝ=1e-5,maxLy::ℝ=∞,maxΔa::ℝ=1e-5,maxLa::ℝ=∞,
-    saveiter::𝔹=false,γ0::𝕣=1.,γfac1::𝕣=.5,γfac2::𝕣=100.)
+    maxAiter::ℤ=50,maxΔy::ℝ=1e-5,maxLy::ℝ=∞,maxΔa::ℝ=1e-5,maxLa::ℝ=∞,
+    saveiter::𝔹=false,
+    maxLineIter::ℤ=50,α::𝕣=.1,β::𝕣=.5,γfac::𝕣=.5)
 
     model,dis          = initialstate[begin].model,initialstate[begin].dis
-    out1,asm1,Ydofgr   = prepare(AssemblyStaticΛXU  ,model,dis)
-    out2,asm2,Adofgr,_ = prepare(AssemblyStaticΛXU_A,model,dis)
+    out1,asm1,Ydofgr,Adofgr = prepare(AssemblyStaticΛXU_A,model,dis)
+    out2,asm2,_     ,_      = prepare(AssemblyStaticΛXU_Aline,model,dis)
     if saveiter
-        states         = allocate(pstate,Vector{Vector{State{1,1,1,typeof((γ=0.,))}}}(undef,maxAiter)) 
+        statess         = allocate(pstate,Vector{Vector{State{1,1,1,typeof((γ=0.,))}}}(undef,maxAiter)) 
     else
         state          = allocate(pstate,[State{1,1,1}(i,(γ=0.,)) for i ∈ initialstate]) 
     end    
@@ -163,56 +124,74 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
     y∂a                = Vector{𝕣2}(undef,nStep)
     Δy²,Ly²            = Vector{𝕣 }(undef,nStep),Vector{𝕣}(undef,nStep)
     cAiter,cYiter      = 0,0
-    local facLyy, facLyys, Δa
+    local facLyy, Δa
+
+    Σλg,npos           = 0.,0
+    for (step,state)   ∈ enumerate(states) 
+        assemble!(out2,asm2,dis,model,state,(dbg...,solver=:StaticXUA,step=step,phase=:preliminary))
+        out2.ming ≤ 0 && muscadeerror(@sprintf("Initial point is not strictly primal-feasible at step %3d",step))
+        out2.minλ ≤ 0 && muscadeerror(@sprintf("Initial point is not strictly dual-feasible at step %3d"  ,step))
+        Σλg  += out2.Σλg
+        npos += out2.npos
+    end    
+    γ = Σλg/npos * γfac
+    for state ∈ states
+        state.SP = (γ=γ,)
+    end
+
     for iAiter          = 1:maxAiter
         if saveiter
-            states[iAiter] = [State{1,1,1}(i,(γ=0.,)) for i ∈ (iAiter==1 ? initialstate : states[iAiter-1])]
-            state          = states[iAiter]
+            statess[iAiter] = [State{1,1,1}(i,(γ=0.,)) for i ∈ (iAiter==1 ? initialstate : statess[iAiter-1])]
+            states          = statess[iAiter]
         end
         verbose && @printf "    A-iteration %3d\n" iAiter
+
         La            .= 0
         Laa           .= 0
-        for step     ∈ eachindex(state)
-            for iYiter = 1:maxYiter
-                cYiter+=1
-                assemble!(out1,asm1,dis,model,state[step],(dbg...,solver=:StaticXUA,step=step,iYiter=iYiter))
-                try if iAiter==1 && step==1 && iYiter==1
-                    facLyys = lu(out1.Lyy) 
-                else
-                    lu!(facLyys,out1.Lyy) 
-                end catch; muscadeerror(@sprintf("Incremental Y-solution failed at step=%i, iAiter=%i, iYiter=%i",step,iAiter,iYiter)) end
-                Δy[ step]  = facLyys\out1.Ly
-                decrement!(state[step],0,Δy[ step],Ydofgr)
-                Δy²s,Ly²s = sum(Δy[step].^2),sum(out2.Ly.^2)
-                if Δy²s≤cΔy² && Ly²s≤cLy² 
-                    verbose && @printf "        step % i Y-converged in %3d Y-iterations:   |ΔY|=%7.1e  |∇L/∂Y|=%7.1e\n" step iYiter √(Δy²s) √(Ly²s)
-                    break#out of iYiter
-                end
-                iYiter==maxYiter && muscadeerror(@sprintf("no Y-convergence after %3d Y-iterations. |ΔY|=%7.1e |Ly|=%7.1e\n",iYiter,√(Δy²s),√(Ly²s)))
-            end
-            assemble!(out2,asm2,dis,model,state[step],(dbg...,solver=:StaticXUA,step=step,iAiter=iAiter))
+        for (step,state)   ∈ enumerate(states)
+            assemble!(out1,asm1,dis,model,state,(dbg...,solver=:StaticXUA,step=step,iAiter=iAiter))
             try if iAiter==1 && step==1
-                facLyy = lu(out2.Lyy) 
+                facLyy = lu(out1.Lyy) 
             else
-                lu!(facLyy,out2.Lyy)
+                lu!(facLyy,out1.Lyy)
             end catch; muscadeerror(@sprintf("Lyy matrix factorization failed at step=%i, iAiter=%i",step,iAiter));end
-            Δy[ step]  = facLyy\out2.Ly  
-            y∂a[step]  = facLyy\out2.Lya 
-            La       .+= out2.La  - out2.Lya' * Δy[ step]  
-            Laa      .+= out2.Laa - out2.Lya' * y∂a[step]
-            Δy²[step],Ly²[step] = sum(Δy[step].^2),sum(out2.Ly.^2)
+            Δy[ step]  = facLyy\out1.Ly  
+            y∂a[step]  = facLyy\out1.Lya 
+            La       .+= out1.La  - out1.Lya' * Δy[ step]  
+            Laa      .+= out1.Laa - out1.Lya' * y∂a[step]
+            Ly²[step]  = sum(out1.Ly.^2) 
         end   
+
         try 
             Δa         = Laa\La 
         catch; muscadeerror(@sprintf("Laa\\La solution failed at iAiter=%i",iAiter));end
         Δa²,La²        = sum(Δa.^2),sum(La.^2)
-        for (step,s)   ∈ enumerate(state)
-            ΔY         = Δy[step] - y∂a[step] * Δa
-            decrement!(s,0,ΔY,Ydofgr)
-            decrement!(s,0,Δa,Adofgr)
-            s.SP = (γ= s.SP.γ* γfac1*exp(-(out2.α/γfac2)^2),)
+
+        for (step,state)   ∈ enumerate(states)
+            Δy[step] .-= y∂a[step] * Δa
+            Δy²[step]  = sum(Δy[step].^2)
+            decrement!(state,0,Δy[step],Ydofgr)
+            decrement!(state,0,Δa,Adofgr)
+            state.SP = (γ= state.SP.γ* γfac1*exp(-(out1.α/γfac2)^2),)
         end    
         
+        s  = 1.    
+        for iline = 1:maxLineIter
+            Lz,minλ,ming = 0.,∞,∞
+            for (step,state)   ∈ enumerate(states)
+                assemble!(out2,asm2,dis,model,state,(dbg...,solver=:StaticXUA,step=step,iiter=iiter,phase=:linesearch))
+                Lz += sum(firstelement(out2).Lz.^2)
+                minλ = min(minλ,out2)
+                out2.minλ > 0 && out2.ming > 0 && sum(firstelement(out2).Lz.^2) ≤ Lz²*(1-α*s)^2 && break
+                iline==maxLineIter && muscadeerror(@sprintf("Line search failed in step %3d iteration %3d",step,iiter))
+                Δs = s*(β-1)
+                s += Δs
+                decrement!(state,0,Δs*Δx,dofgr1)
+            end
+        end
+
+
+
         if all(Δy².≤cΔy²) && all(Ly².≤cLy²) && Δa².≤cΔa² && La².≤cLa² 
             cAiter    = iAiter
             verbose && @printf "\n    StaticXUA converged in %3d A-iterations.\n" iAiter
