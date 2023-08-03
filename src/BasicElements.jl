@@ -287,14 +287,15 @@ e1              = addelement!(model,DofConstraint,[n1],xinod=(1,),xfield=(:t1,),
 e2              = addelement!(model,QuickFix  ,[n1],inod=(1,),field=(:t1,),
                               res=(x,u,a,t)->0.4x.+.08+.5x.^2)
 initialstate    = initialize!(model)
+setdof!(initialstate,1.;field=:λ1)
 state           = solve(StaticX;initialstate,time=[0.],verbose=false) 
 X               = state[1].X[1]
 
 # output
 
 2-element Vector{Float64}:
- -0.09999997108612142
-  0.04500000867027695
+ -0.09999152289496528
+  0.04500254313151041
 ```    
 
 See also: [`Hold`](@ref), [`ElementConstraint`](@ref), [`off`](@ref), [`equal`](@ref), [`positive`](@ref)

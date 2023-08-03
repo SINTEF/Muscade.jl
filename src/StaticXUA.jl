@@ -162,23 +162,22 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
     model,dis          = initialstate[begin].model,initialstate[begin].dis
     out1,asm1,Ydofgr,Adofgr = prepare(AssemblyStaticΛXU_A    ,model,dis)
     out2,asm2,_     ,_      = prepare(AssemblyStaticΛXU_Aline,model,dis)
+    states                  = [State{1,1,1}(i,(γ=0.,)) for i ∈ initialstate]
     if saveiter
-        statess        = allocate(pstate,Vector{Vector{State{1,1,1,typeof((γ=0.,))}}}(undef,maxAiter)) 
-        states = [State{1,1,1}(i,(γ=0.,)) for i ∈ initialstate]
-    else
-        states         = allocate(pstate,[State{1,1,1}(i,(γ=0.,)) for i ∈ initialstate]) 
+        statess             = Vector{Vector{State{1,1,1,typeof((γ=0.,))}}}(undef,maxAiter) 
     end    
-    cΔy²,cLy²,cΔa²,cLa²= maxΔy^2,maxLy^2,maxΔa^2,maxLa^2
-    nA,nStep           = getndof(model,:A),length(initialstate)
-    La                 = Vector{𝕣 }(undef,nA   )
-    Laa                = Matrix{𝕣 }(undef,nA,nA)
-    Δy                 = Vector{𝕣1}(undef,nStep)
-    y∂a                = Vector{𝕣2}(undef,nStep)
-    Δy²,Ly²,La²        = copies(3,Vector{𝕣}(undef,nStep))
-    cAiter,cYiter      = 0,0
+    pstate[]                = saveiter ? statess : states
+    cΔy²,cLy²,cΔa²,cLa²     = maxΔy^2,maxLy^2,maxΔa^2,maxLa^2
+    nA,nStep                = getndof(model,:A),length(initialstate)
+    La                      = Vector{𝕣 }(undef,nA   )
+    Laa                     = Matrix{𝕣 }(undef,nA,nA)
+    Δy                      = Vector{𝕣1}(undef,nStep)
+    y∂a                     = Vector{𝕣2}(undef,nStep)
+    Δy²,Ly²,La²             = copies(3,Vector{𝕣}(undef,nStep))
+    cAiter,cYiter           = 0,0
     local facLyy, Δa
 
-    Σλg,npos           = 0.,0
+    Σλg,npos                = 0.,0
     for (step,state)   ∈ enumerate(states) 
         assemble!(out2,asm2,dis,model,state,(dbg...,solver=:StaticXUA,phase=:preliminary,step=step))
         out2.ming ≤ 0 && muscadeerror(@sprintf("Initial point is not strictly primal-feasible at step %3d",step))
@@ -192,10 +191,6 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
     end
 
     for iAiter          = 1:maxAiter
-        if saveiter
-            statess[iAiter] = [State{1,1,1}(i,(γ=0.,)) for i ∈ (iAiter==1 ? initialstate : statess[iAiter-1])]
-            states          = statess[iAiter]
-        end
         verbose && @printf "    A-iteration %3d\n" iAiter
 
         La            .= 0
@@ -237,7 +232,7 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
                 minλ = min(minλ,out2.minλ)
                 ming = min(ming,out2.ming)
             end
-            @show iAiter,iline,s,Lz²-Lz²line
+#            @show iAiter,iline,s,Lz²-Lz²line
 #            @show minλ > 0 , ming > 0 , Lz²line ≤ Lz²*(1-α*s)^2
 #            @show Lz²line , sum(La²),sum(Ly²)
 #            minλ > 0 && ming > 0 && Lz²line ≤ Lz²*(1-α*s)^2 && break#out of line search
@@ -249,6 +244,10 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
                 increment!(state,0,Δs*Δy[step],Ydofgr)
                 increment!(state,0,Δs*Δa      ,Adofgr)
             end
+        end
+
+        if saveiter
+            statess[iAiter] = deepcopy(states)
         end
 
         if all(Δy².*s^2 .≤cΔy²) && all(Ly².≤cLy²) && Δa²*s^2 .≤cΔa² && all(La².≤cLa²) 
