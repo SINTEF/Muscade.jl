@@ -43,7 +43,6 @@ mutable struct AssemblyStaticXline{Tλ} <:Assembly
 end   
 function prepare(::Type{AssemblyStaticXline},model,dis) 
     dofgr              = allXdofs(model,dis)
-    ndof               = getndof(dofgr)
     narray,neletyp     = 1,getneletyp(model)
     asm                = Matrix{𝕫2}(undef,narray,neletyp)  
     Lλ                 = asmvec!(view(asm,1,:),dofgr,dis) 
@@ -63,14 +62,13 @@ function add!(out1::AssemblyStaticXline,out2::AssemblyStaticXline)
     out1.ming = min(out1.ming,out2.ming)
     out1.minλ = min(out1.minλ,out2.minλ)
     out1.Σλg += out2.Σλg
-    out1.npos+= 1
+    out1.npos+= out2.npos
 end
 function addin!(out::AssemblyStaticXline,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A,t,SP,dbg) where{E,Nxder,Nx}
     if Nx==0; return end # don't waste time on Acost elements...  
-    ΔX         = δ{1,Nx,𝕣}(scale.X)                 # NB: precedence==1, input must not be Adiff 
-    Lλ,χ,FB    = getresidual(implemented(eleobj)...,eleobj,(∂0(X)+ΔX,),U,A,t,nothing,nothing,SP,dbg)
+    Lλ,χ,FB    = getresidual(implemented(eleobj)...,eleobj,X,U,A,t,nothing,nothing,SP,dbg)
     Lλ         = Lλ .* scale.X
-    add_value!(out.Lλ ,asm[1],iele,Lλ) # TODO no need for this, all we want is the sum of squares
+    add_value!(out.Lλ ,asm[1],iele,Lλ) 
     if hasfield(typeof(FB),:mode) && FB.mode==:positive
         out.ming   = min(out.ming,VALUE(FB.g))
         out.minλ   = min(out.minλ,VALUE(FB.λ))
@@ -124,8 +122,8 @@ function solve(::Type{StaticX},pstate,verbose,dbg;
                     maxLineIter::ℤ=50,α::𝕣=.1,β::𝕣=.5,γfac::𝕣=.5)
     # important: this code assumes that there is no χ in state.
     model,dis        = initialstate.model,initialstate.dis
-    out1,asm1,dofgr1 = prepare(AssemblyStaticX    ,model,dis)
-    out2,asm2,dofgr2 = prepare(AssemblyStaticXline,model,dis)
+    out1,asm1,Xdofgr = prepare(AssemblyStaticX    ,model,dis)
+    out2,asm2,_      = prepare(AssemblyStaticXline,model,dis)
     citer            = 0
     cΔx²,cLλ²        = maxΔx^2,maxresidual^2
     state            = State{1,1,1}(initialstate,(γ=0.,))
@@ -133,44 +131,44 @@ function solve(::Type{StaticX},pstate,verbose,dbg;
     local facLλx 
     for (step,t)     ∈ enumerate(time)
         state.time   = t
-        assemble!(out2,asm2,dis,model,state,(dbg...,solver=:StaticX,step=step,phase=:preliminary))
-        out2.ming ≤ 0 && muscadeerror(@sprintf("Initial point is not strictly primal-feasible at step %3d",step))
-        out2.minλ ≤ 0 && muscadeerror(@sprintf("Initial point is not strictly dual-feasible at step %3d"  ,step))
+        assemble!(out2,asm2,dis,model,state,(dbg...,solver=:StaticX,phase=:preliminary,step=step))
+        out2.ming ≤ 0 && muscadeerror(@sprintf("Initial point is not strictly primal-feasible at step=%3d",step))
+        out2.minλ ≤ 0 && muscadeerror(@sprintf("Initial point is not strictly dual-feasible at step=%3d"  ,step))
         state.SP     = (γ=out2.Σλg/out2.npos * γfac,)
         for iiter    = 1:maxiter
             citer   += 1
-            assemble!(out1,asm1,dis,model,state,(dbg...,solver=:StaticX,step=step,iiter=iiter,phase=:direction))
+            assemble!(out1,asm1,dis,model,state,(dbg...,solver=:StaticX,phase=:direction,step=step,iiter=iiter))
 
             try if step==1 && iiter==1
                 facLλx = lu(firstelement(out1).Lλx) 
             else
                 lu!(facLλx,firstelement(out1).Lλx) 
-            end catch; muscadeerror(@sprintf("matrix factorization failed at step=%i, iiter=%i",step,iiter)) end
+            end catch; muscadeerror(@sprintf("matrix factorization failed at step=%3d, iiter=%3d",step,iiter)) end
             Δx       = facLλx\firstelement(out1).Lλ
             Δx²,Lλ²  = sum(Δx.^2),sum(firstelement(out1).Lλ.^2)
-            decrement!(state,0,Δx,dofgr1)
+            decrement!(state,0,Δx,Xdofgr)
 
             s = 1.    
             for iline = 1:maxLineIter
-                assemble!(out2,asm2,dis,model,state,(dbg...,solver=:StaticX,step=step,iiter=iiter,phase=:linesearch))
+                assemble!(out2,asm2,dis,model,state,(dbg...,solver=:StaticX,phase=:linesearch,step=step,iiter=iiter,iline=iline))
                 out2.minλ > 0 && out2.ming > 0 && sum(firstelement(out2).Lλ.^2) ≤ Lλ²*(1-α*s)^2 && break
-                iline==maxLineIter && muscadeerror(@sprintf("Line search failed in step %3d iteration %3d, s = %7.1e",step,iiter,s))
+                iline==maxLineIter && muscadeerror(@sprintf("Line search failed at step=%3d, iiter=%3d, iline=%3d, s=%7.1e",step,iiter,iline,s))
                 Δs = s*(β-1)
                 s += Δs
-                decrement!(state,0,Δs*Δx,dofgr1)
+                decrement!(state,0,Δs*Δx,Xdofgr)
             end
 
             verbose && saveiter && @printf("        iteration %3d, γ= %7.1e\n",iiter,γ)
             saveiter && (states[iiter]=State(state.Λ,deepcopy(state.X),state.U,state.A,state.time,state.SP,model,dis))
-            if Δx²≤cΔx² && Lλ²≤cLλ² 
+            if Δx²*s^2≤cΔx² && Lλ²≤cLλ² 
                 verbose && @printf "    step %3d converged in %3d iterations. |Δx|=%7.1e |Lλ|=%7.1e\n" step iiter √(Δx²) √(Lλ²)
                 ~saveiter && (states[step]=State(state.Λ,deepcopy(state.X),state.U,state.A,state.time,state.SP,model,dis))
                 break#out of the iiter loop
             end
-            iiter==maxiter && muscadeerror(@sprintf("no convergence in step %3d after %3d iterations |Δx|=%g / %g, |Lλ|=%g / %g",step,iiter,√(Δx²),maxΔx,√(Lλ²)^2,maxresidual))
+            iiter==maxiter && muscadeerror(@sprintf("no convergence at step=%3d, iiter=%3d, |Δx|=%7.1e / %7.1e, |Lλ|=%7.1e / %7.1e",step,iiter,√(Δx²),maxΔx,√(Lλ²)^2,maxresidual))
             state.SP     = (γ=state.SP.γ*γfac,)
         end
     end
-    verbose && @printf "\n    nel=%d, ndof=%d, nstep=%d, niter=%d, niter/nstep=%5.2f\n" getnele(model) getndof(dofgr1) length(time) citer citer/length(time)
+    verbose && @printf "\n    nel=%d, ndof=%d, nstep=%d, niter=%d, niter/nstep=%5.2f\n" getnele(model) getndof(Xdofgr) length(time) citer citer/length(time)
     return
 end
