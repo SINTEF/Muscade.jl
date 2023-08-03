@@ -58,8 +58,8 @@ end
     c     = C(g,positive)
     r,χn,FB = residual(c, (Xctc,),(U,),A, t,χ,χcv,SP1,dbg)
     R,R∂X = Muscade.value_∂{1,3}(r)
-    @test R   ≈ [-3.0, -4.0, 1.] # changed
-    @test R∂X ≈ [-0.0 -0.0 -0.3; -0.0 -0.0 -0.4; -3.0 -4.0 0] # changed
+    @test R   ≈ [-3.0, -4.0, 1.] 
+    @test R∂X ≈ [-0.0 -0.0 -0.3; -0.0 -0.0 -0.4; -3.0 -4.0 0] 
 end
 
 @testset "X positive gap" begin

@@ -349,9 +349,9 @@ end
     m          = o.mode(t)
     a,☼λ       = A[SVector{Na}(1:Na)],A[    Na+1] 
     ☼gap       = o.gap(a,o.gargs...)
-    L = if     m==:equal;    m-gap*λ         
-    elseif     m==:positive; m-KKT(λ,gap,γ)  
-    elseif     m==:off;      m-0.5λ^2           
+    L = if     m==:equal;    -gap*λ         
+    elseif     m==:positive; -KKT(λ,gap,γ)  
+    elseif     m==:off;      -0.5λ^2           
     end
     return L,noχ,(λ=λ,g=gap,mode=m)
 end

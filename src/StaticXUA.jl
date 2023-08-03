@@ -169,7 +169,7 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
     pstate[]                = saveiter ? statess : states
     cΔy²,cLy²,cΔa²,cLa²     = maxΔy^2,maxLy^2,maxΔa^2,maxLa^2
     nA,nStep                = getndof(model,:A),length(initialstate)
-    La                      = Vector{𝕣 }(undef,nA   )
+    La,La₀                  = copies(2,Vector{𝕣 }(undef,nA   ))
     Laa                     = Matrix{𝕣 }(undef,nA,nA)
     Δy                      = Vector{𝕣1}(undef,nStep)
     y∂a                     = Vector{𝕣2}(undef,nStep)
@@ -193,6 +193,7 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
     for iAiter          = 1:maxAiter
         verbose && @printf "    A-iteration %3d\n" iAiter
 
+        La₀           .= 0
         La            .= 0
         Laa           .= 0
         for (step,state)   ∈ enumerate(states)
@@ -204,12 +205,13 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
             end catch; muscadeerror(@sprintf("Lyy matrix factorization failed at step=%i, iAiter=%i",step,iAiter));end
             Δy[ step]  = -(facLyy\out1.Ly)  
             y∂a[step]  = -(facLyy\out1.Lya) 
+            La₀      .+= out1.La    
             La       .+= out1.La  + out1.Lya' * Δy[ step]  
             Laa      .+= out1.Laa + out1.Lya' * y∂a[step]
             Ly²[step]  = sum(out1.Ly.^2) 
-            La²[step]  = sum(out1.La.^2) 
         end   
-        Lz² = sum(La²)+sum(Ly²)
+        La² = sum(La₀.^2) 
+        Lz² = La²+sum(Ly²)
 
         try 
             Δa         = -(Laa\La) 
@@ -225,18 +227,18 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
         
         s  = 1.    
         for iline = 1:maxLineIter
+            La₀           .= 0
             Lz²line,minλ,ming = 0.,∞,∞
             for (step,state)   ∈ enumerate(states)
                 assemble!(out2,asm2,dis,model,state,(dbg...,solver=:StaticXUA,phase=:linesearch,iAiter=iAiter,iline=iline,step=step))
-                Lz²line += sum(out2.Ly.^2) + sum(out2.La.^2)
+                La₀      .+= out2.La    
+                Ly²[step]  = sum(out2.Ly.^2) 
                 minλ = min(minλ,out2.minλ)
                 ming = min(ming,out2.ming)
             end
-#            @show iAiter,iline,s,Lz²-Lz²line
-#            @show minλ > 0 , ming > 0 , Lz²line ≤ Lz²*(1-α*s)^2
-#            @show Lz²line , sum(La²),sum(Ly²)
-#            minλ > 0 && ming > 0 && Lz²line ≤ Lz²*(1-α*s)^2 && break#out of line search
-            minλ > 0 && ming > 0  && break#out of line search
+            La²      = sum(La₀.^2) 
+            Lz²line  = La²+sum(Ly²)
+            minλ > 0 && ming > 0 && Lz²line ≤ Lz²*(1-α*s)^2 && break#out of line search
             iline==maxLineIter && muscadeerror(@sprintf("Line search failed at iAiter=%3d, iline=%3d, s=%7.1e",iAiter,iline,s))
             Δs = s*(β-1)
             s += Δs
@@ -250,7 +252,7 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
             statess[iAiter] = deepcopy(states)
         end
 
-        if all(Δy².*s^2 .≤cΔy²) && all(Ly².≤cLy²) && Δa²*s^2 .≤cΔa² && all(La².≤cLa²) 
+        if all(Δy².*s^2 .≤cΔy²) && all(Ly².≤cLy²) && Δa²*s^2 .≤cΔa² && La²≤cLa²*nStep 
             cAiter    = iAiter
             verbose && @printf "\n    StaticXUA converged in %3d A-iterations.\n" iAiter
             verbose && @printf "    maxₜ(|ΔY|)=%7.1e  maxₜ(|∇L/∂Y|)=%7.1e  |ΔA|=%7.1e  |∇L/∂A|=%7.1e\n" √(maximum(Δy²)) √(maximum(Ly²)) √(Δa²) √(La²)
