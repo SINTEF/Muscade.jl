@@ -132,20 +132,16 @@ stateXUA        = solve(StaticXUA;initialstate=stateX)
 - `maxAiter=50`       maximum number of "outer" Newton-Raphson iterations over `A` 
 - `maxΔa=1e-5`        "outer" convergence criteria: a norm on the scaled `A` increment 
 - `maxLa=∞`           "outer" convergence criteria: a norm on the scaled `La` residual
-- `maxYiter=0`        maximum number of "inner" Newton-Raphson iterations over `X` 
-                      and `U` for every value of `A`.  Experience so far is that these inner
-                      iterations do not increase performance, so the default is "no inner 
-                      iterations".   
+- `maxLineIter=50`    maximum number of iteration in line search
 - `maxΔy=1e-5`        "inner" convergence criteria: a norm on the scaled `Y=[XU]` increment 
 - `maxLy=∞`           "inner" convergence criteria: a norm on the scaled `Ly=[Lx,Lu]` residual
 - `saveiter=false`    set to true so that the output `state` is a vector (over the Aiter) of 
                       vectors (over the steps) of `State`s of the model (for debugging 
                       non-convergence). 
-- `γ0=1.`             an initial value of the barrier coefficient for the handling of contact
-                      using an interior point method
-- `γfac1=0.5`         at each iteration, the barrier parameter γ is multiplied 
-- `γfac2=100.`        by γfac1*exp(-min(αᵢ)/γfac2)^2), where αᵢ is computed by the i-th
-                      interior point savvy element as αᵢ=abs(λ-g)/γ                                               
+- `α=0.1`             α∈[0,1], 0 for lenient line search, 1 for stringent line search
+- `β=0.5`             β∈[0,1[ line search backtracking coefficient
+- `γfac=0.5`          γfac∈[0,1[, 0 for agressive reduction of the barrier parameter, 
+                      near 1 for cautious
 
 # Output
 
@@ -203,26 +199,26 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
             else
                 lu!(facLyy,out1.Lyy)
             end catch; muscadeerror(@sprintf("Lyy matrix factorization failed at step=%i, iAiter=%i",step,iAiter));end
-            Δy[ step]  = -(facLyy\out1.Ly)  
-            y∂a[step]  = -(facLyy\out1.Lya) 
+            Δy[ step]  = facLyy\out1.Ly  
+            y∂a[step]  = facLyy\out1.Lya 
             La₀      .+= out1.La    
-            La       .+= out1.La  + out1.Lya' * Δy[ step]  
-            Laa      .+= out1.Laa + out1.Lya' * y∂a[step]
+            La       .+= out1.La  - out1.Lya' * Δy[ step]  
+            Laa      .+= out1.Laa - out1.Lya' * y∂a[step]
             Ly²[step]  = sum(out1.Ly.^2) 
         end   
         La² = sum(La₀.^2) 
         Lz² = La²+sum(Ly²)
 
         try 
-            Δa         = -(Laa\La) 
+            Δa         = Laa\La 
         catch; muscadeerror(@sprintf("Laa\\La solution failed at iAiter=%i",iAiter));end
         Δa²            = sum(Δa.^2)
 
         for (step,state)   ∈ enumerate(states)
-            Δy[step] .+= y∂a[step] * Δa
+            Δy[step] .-= y∂a[step] * Δa
             Δy²[step]  = sum(Δy[step].^2)
-            increment!(state,0,Δy[step],Ydofgr)
-            increment!(state,0,Δa,Adofgr)
+            decrement!(state,0,Δy[step],Ydofgr)
+            decrement!(state,0,Δa,Adofgr)
         end    
         
         s  = 1.    
@@ -243,8 +239,8 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
             Δs = s*(β-1)
             s += Δs
             for (step,state)   ∈ enumerate(states)
-                increment!(state,0,Δs*Δy[step],Ydofgr)
-                increment!(state,0,Δs*Δa      ,Adofgr)
+                decrement!(state,0,Δs*Δy[step],Ydofgr)
+                decrement!(state,0,Δs*Δa      ,Adofgr)
             end
         end
 
