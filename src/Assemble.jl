@@ -169,6 +169,16 @@ function increment!(s::State,der::𝕫,y::𝕣1,gr::DofGroup)
     for i ∈ eachindex(gr.iU); s.U[der+1][gr.iU[i]] += y[gr.jU[i]] * gr.scaleU[i]; end
     for i ∈ eachindex(gr.iA); s.A[       gr.iA[i]] += y[gr.jA[i]] * gr.scaleA[i]; end
 end
+function set!(s::State,der::𝕫,y::ℝ1,gr::DofGroup) 
+    s.Λ[der+1] .= 0
+    s.X[der+1] .= 0
+    s.U[der+1] .= 0
+    s.A        .= 0
+    for i ∈ eachindex(gr.iΛ); s.Λ[der+1][gr.iΛ[i]] = y[gr.jΛ[i]] * gr.scaleΛ[i]; end
+    for i ∈ eachindex(gr.iX); s.X[der+1][gr.iX[i]] = y[gr.jX[i]] * gr.scaleX[i]; end
+    for i ∈ eachindex(gr.iU); s.U[der+1][gr.iU[i]] = y[gr.jU[i]] * gr.scaleU[i]; end
+    for i ∈ eachindex(gr.iA); s.A[       gr.iA[i]] = y[gr.jA[i]] * gr.scaleA[i]; end
+end
 function getdof!(s::State,der::𝕫,y::𝕣1,gr::DofGroup) 
     for i ∈ eachindex(gr.iΛ); y[gr.jΛ[i]] = s.Λ[der+1][gr.iΛ[i]] / gr.scaleΛ[i]; end
     for i ∈ eachindex(gr.iX); y[gr.jX[i]] = s.X[der+1][gr.iX[i]] / gr.scaleX[i]; end
@@ -182,7 +192,13 @@ allUdofs(  model::Model,dis) = DofGroup(dis, 𝕫[],𝕫[],1:getndof(model,:U),�
 allAdofs(  model::Model,dis) = DofGroup(dis, 𝕫[],𝕫[],𝕫[],1:getndof(model,:A))
 allΛXUdofs(model::Model,dis) = DofGroup(dis, 1:getndof(model,:X),1:getndof(model,:X),1:getndof(model,:U),𝕫[])
 allΛXUAdofs(model::Model,dis) = DofGroup(dis, 1:getndof(model,:X),1:getndof(model,:X),1:getndof(model,:U),1:getndof(model,:A))
-
+function selecteddofs(model::Model,dis,classes)
+    iΛ = :Λ ∈ classes ? (1:getndof(model,:X)) : 𝕫[] 
+    iX = :X ∈ classes ? (1:getndof(model,:X)) : 𝕫[] 
+    iU = :U ∈ classes ? (1:getndof(model,:U)) : 𝕫[] 
+    iA = :A ∈ classes ? (1:getndof(model,:A)) : 𝕫[] 
+    return DofGroup(dis, iΛ,iX,iU,iA)
+end
 
 ######## Prepare assemblers
 

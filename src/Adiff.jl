@@ -86,6 +86,7 @@ variate{P}(a::R) where{P,R<:ℝ} =  ∂ℝ{P,1}(a,SV{1,R}(one(R)))
 directional{P}(a::SV{N,R},δa::SV{N,R}) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,1,R}}(∂ℝ{P,1}(a[i],SV{1,R}(δa[i])) for i=1:N)
 
 # Analyse
+VALUE(a::Nothing )                     =        nothing
 VALUE(a::ℝ )                           =        a
 VALUE(a::∂ℝ)                           = VALUE( a.x)
 VALUE(a::SA)                           = VALUE.(a)

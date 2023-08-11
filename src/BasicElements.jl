@@ -517,3 +517,46 @@ doflist(::Type{<:QuickFix{Nx,inod,field}}) where{Nx,inod,field} = (inod =inod,cl
 end
 
 #-------------------------------------------------
+
+"""
+    Monitor <: AbstractElement
+
+An element for for monitoring inputs to and outputs from
+another element, during an analysis.     
+
+Instead of adding the element to be monitored directly into the model,
+add this element with the element to be monitored as argument.
+
+# Named arguments to the constructor
+
+- `ElementType`         The the type of element to be monitored-
+- `triggerl`            A function that takes `dbg` as an input and returns a boolean 
+                        (`true`) to printout.
+- `elementkwargs`       a `NamedTuple` containing the named arguments of the `ElementType` constructor.
+
+"""
+struct Monitor{Teleobj,Ttrigger} <: AbstractElement
+    eleobj   :: Teleobj
+    trigger  :: Ttrigger
+end
+function Monitor(nod::Vector{Node};ElementType,trigger::Function,elementkwargs)
+    eleobj = ElementType(nod;elementkwargs...)
+    return Monitor(eleobj,trigger)
+end
+doflist( ::Type{<:Monitor{Teleobj}}) where{Teleobj} = doflist(Teleobj)
+@espy function lagrangian(o::Monitor{Teleobj}, Λ,X,U,A,t,χ,χcv,SP,dbg)  where{Teleobj}
+    L,χn,FB = getlagrangian(implemented(o.eleobj)...,o.eleobj,Λ,X,U,A,t,χ,χcv,SP,(dbg...,via=Monitor))
+    if o.trigger(dbg)
+        @show dbg
+        @show SP
+        @show VALUE(χ)
+        @show VALUE(Λ)
+        @show VALUE(X[1])
+        @show VALUE(U[1])
+        @show VALUE(A)
+        @show Teleobj
+        @show doflist(Teleobj)
+        @show L
+    end
+    return L,χn,FB
+end
