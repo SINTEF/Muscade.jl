@@ -50,6 +50,10 @@ module Muscade
     include("Solve.jl")
     export solve
 
+    include("SparseCat.jl")
+    export cat!
+
+
     include("StaticX.jl")
     export StaticX
     

@@ -35,6 +35,9 @@ module Runtest
         @testset "TestUnit" begin
             include("TestUnit.jl")
         end
+        @testset "TestSparseCat" begin
+            include("TestSparseCat.jl")
+        end
         doctest(Muscade)
     end
 end
