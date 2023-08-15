@@ -103,7 +103,7 @@ end
 Assemble sparse blocs into a preallocated sparse matrix.  Will fail silently or throw an error unless
 `bigsparse` has the correct sparsity structure for the given `blocs`. 
 
-See also: [`blocksparse!`](@ref),[`zero!`](@ref),[`addin!`](@ref)
+See also: [`blocksparse`](@ref),[`zero!`](@ref),[`addin!`](@ref)
 """ 
 function cat!(out::SparseMatrixCSC{Tv,Ti},B::Matrix{SparseMatrixCSC{Tv,Ti}}) where{Tv,Ti<:Integer}
     nbr,nbc                 = size(B)  
@@ -126,10 +126,10 @@ end
     addin!(bigsparse,blocs::Matrix{<:SparseMatrixCSC},start,ibr,ibc)
 
 Add a sparse into one of the blocks of a large sparse matrix.  Will fail silently or throw an error unless
-`bigsparse` has the correct sparsity structure for the given `blocs`. Use [`sparseblocks`](@ref) to
+`bigsparse` has the correct sparsity structure for the given `blocs`. Use [`blocksparse`](@ref) to
     create `bigsparse` and `start`.
 
-See also: [`blocksparse!`](@ref),[`zero!`](@ref),[`cat!`](@ref)
+See also: [`blocksparse`](@ref),[`zero!`](@ref),[`cat!`](@ref)
 """ 
 function addin!(out::SparseMatrixCSC{Tv,Ti},B::SparseMatrixCSC{Tv,Ti},start,ibr::𝕫,ibc::𝕫) where{Tv,Ti<:Integer}
     gv              = out.nzval
@@ -148,7 +148,7 @@ end
 
 Set to zero the vector `nzval` of values in a sparse matrix
 
-See also: [`blocksparse!`](@ref),[`addin!`](@ref),[`cat!`](@ref)
+See also: [`blocksparse`](@ref),[`addin!`](@ref),[`cat!`](@ref)
 """ 
 function zero!(out::SparseMatrixCSC)
     out.nzval .= 0

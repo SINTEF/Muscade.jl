@@ -218,7 +218,7 @@ A function which for any value `t` returns the symbol `off`.  Usefull for specif
 the keyword argument `mode=off` in adding an element of type ``DofConstraint` to
 a `Model`.
 
-    See also: [`DofConstraint`](@ref), [`ElementConstraint`](@ref), [`equal`](@ref), [`positive`](@ref)
+See also: [`DofConstraint`](@ref), [`ElementConstraint`](@ref), [`equal`](@ref), [`positive`](@ref)
 """
 off(t)     = :off
 """
