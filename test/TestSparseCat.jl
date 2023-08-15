@@ -10,19 +10,28 @@ ncol = 2
 B = Matrix{SparseMatrixCSC{𝕣,𝕫}}(undef,nrow,ncol)
 for irow = 1:nrow
     for icol = 1:ncol
-        B[irow,icol] = sparse([1,1,2,3,3],[1,2,2,2,3],randn(5))
+        if irow<nrow || icol<ncol
+            B[irow,icol] = sparse([1,1,2,3,3],[1,2,2,2,3],randn(5))
+        end
     end
 end
-m0 = hvcat(ncol,(B[i] for i = 1:nrow*ncol)...)
-m = cat(B)
-m1 = Matrix(m)
-m.nzval .= 0
+m,s = blocksparse(B)
 cat!(m,B)
+m1 = Matrix(m)
+
+zero!(m)
+for irow = 1:nrow
+    for icol = 1:ncol
+        if irow<nrow || icol<ncol
+            addin!(m,B[irow,icol],s,irow,icol)
+        end
+    end
+end
 m2 = Matrix(m)
 
 @testset "Turbine gradient" begin
     @test m1 == m2
-    @test m1[4:6,1:3] == B[2,1]
+    @test m2[4:6,1:3] == B[2,1]
 end
 
 # using Profile,ProfileView,BenchmarkTools
@@ -35,7 +44,7 @@ end
 #         B[irow,icol] = SparseArrays.sprand(𝕣,N,N,0.1)
 #     end
 # end
-# @btime m0 = hvcat(ncol,(B[i] for i = 1:nrow*ncol)...)
+# @btime m0 = hvcat(ncol,(B[i] for i = 1:nrow*ncol)...) 
 # @btime m = cat(B)
 # m = cat(B)
 # @btime cat!(m,B)
