@@ -30,7 +30,7 @@ module Muscade
     export AbstractElement
     export Model,addnode!,addelement!,setscale!,initialize!
     export Node
-    export describe,getndof
+    export getndof
 
     include("ElementAPI.jl")
     export lagrangian,residual,espyable
@@ -50,14 +50,21 @@ module Muscade
     include("Solve.jl")
     export solve
 
+    include("BlockSparse.jl")
+    export blocksparse,cat!,addin!,zero!,getblock
+
+
     include("StaticX.jl")
     export StaticX
     
+    # include("StaticXUA.jl")
+    # export StaticXUA
+
     include("StaticXUAstepwise.jl")
     export StaticXUAstepwise
 
-    include("StudyScale.jl")
-    export studyscale
+    include("Diagnostic.jl")
+    export studyscale,studysingular,describe
 
     include("Output.jl")
     export setdof!,getdof,getresult,findlastassigned

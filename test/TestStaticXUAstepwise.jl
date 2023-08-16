@@ -32,13 +32,13 @@ initialstate    = initialize!(model)
 end
 stateX             = solve(StaticX;  initialstate,time=[.5,1.],verbose=false)
 stateXUA           = solve(StaticXUAstepwise;initialstate=stateX,verbose=false)
-@testset "StaticXUAstepwise" begin
+@testset "StaticXUA" begin
     @test stateXUA[2].X[1] ≈ [  0.16947517267111387,    -0.09872147216175686,     0.0,     0.0,     0.0,     0.0,    -0.9998314994105624,    -0.01004064780561606,    -0.00016850058943765545,     0.01004064780561606]
     @test stateXUA[2].A    ≈ [0.004212461115295247,    0.5743380076037062]
     @test stateXUA[2].A == stateXUA[1].A
 end
 stateXUA           = solve(StaticXUAstepwise;initialstate=stateX,saveiter=true,verbose=false)
-@testset "StaticXUAstepwise-saveiter" begin
+@testset "StaticXUA-saveiter" begin
     @test stateXUA[6][2].X[1] ≈ [  0.16947517267111387,    -0.09872147216175686,     0.0,     0.0,     0.0,     0.0,    -0.9998314994105624,    -0.01004064780561606,    -0.00016850058943765545,     0.01004064780561606]
     @test stateXUA[6][2].A    ≈ [0.004212461115295247,    0.5743380076037062]
     @test stateXUA[6][2].A == stateXUA[6][1].A

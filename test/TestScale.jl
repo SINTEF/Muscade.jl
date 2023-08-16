@@ -45,7 +45,7 @@ end
     @test  stateXUA1[step].A    ≈ stateXUA2[step].A
 end
 
-scale=studyscale(stateX1[end],verbose=false)
+scale=studyscale(stateX1[end],SP=(γ=0,),verbose=false)
 @testset "StudyScale" begin
     (Λ = (tx1 = 0.41, tx2 = 1.5, λtx1 = 0.38, λtx2 = 0.38), X = (tx1 = 2.6, tx2 = 2.6, λtx1 = 2.4, λtx2 = 0.68), U = NamedTuple(), A = (ΞL₀ = 0.14, ΞEI = 6.6))
     @test scale.Λ.tx1 ≈ 0.41
