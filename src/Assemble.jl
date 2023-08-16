@@ -157,19 +157,20 @@ function DofGroup(dis::Disassembler,iΛ,iX,iU,iA)
     Λf,Xf,Uf,Af = dis.fieldX[iΛ],dis.fieldX[iX],dis.fieldU[iU],dis.fieldA[iA]
     return DofGroup(nX,nU,nA, iΛ,iX,iU,iA,  jΛ,jX,jU,jA, Λs,Xs,Us,As, Λf,Xf,Uf,Af)
 end
-function decrement!(s::State,der::𝕫,y::𝕣1,gr::DofGroup) 
+function decrement!(s::State,der::𝕫,y::AbstractVector{𝕣},gr::DofGroup) 
     for i ∈ eachindex(gr.iΛ); s.Λ[der+1][gr.iΛ[i]] -= y[gr.jΛ[i]] * gr.scaleΛ[i]; end
     for i ∈ eachindex(gr.iX); s.X[der+1][gr.iX[i]] -= y[gr.jX[i]] * gr.scaleX[i]; end
     for i ∈ eachindex(gr.iU); s.U[der+1][gr.iU[i]] -= y[gr.jU[i]] * gr.scaleU[i]; end
     for i ∈ eachindex(gr.iA); s.A[       gr.iA[i]] -= y[gr.jA[i]] * gr.scaleA[i]; end
 end
-function increment!(s::State,der::𝕫,y::𝕣1,gr::DofGroup) 
+function increment!(s::State,der::𝕫,y::AbstractVector{𝕣},gr::DofGroup) 
     for i ∈ eachindex(gr.iΛ); s.Λ[der+1][gr.iΛ[i]] += y[gr.jΛ[i]] * gr.scaleΛ[i]; end
     for i ∈ eachindex(gr.iX); s.X[der+1][gr.iX[i]] += y[gr.jX[i]] * gr.scaleX[i]; end
     for i ∈ eachindex(gr.iU); s.U[der+1][gr.iU[i]] += y[gr.jU[i]] * gr.scaleU[i]; end
     for i ∈ eachindex(gr.iA); s.A[       gr.iA[i]] += y[gr.jA[i]] * gr.scaleA[i]; end
 end
-function set!(s::State,der::𝕫,y::ℝ1,gr::DofGroup) 
+#function set!(s::State,der::𝕫,y::ℝ1,gr::DofGroup) 
+function set!(s::State,der::𝕫,y::AbstractVector{𝕣},gr::DofGroup) 
     s.Λ[der+1] .= 0
     s.X[der+1] .= 0
     s.U[der+1] .= 0
@@ -179,7 +180,7 @@ function set!(s::State,der::𝕫,y::ℝ1,gr::DofGroup)
     for i ∈ eachindex(gr.iU); s.U[der+1][gr.iU[i]] = y[gr.jU[i]] * gr.scaleU[i]; end
     for i ∈ eachindex(gr.iA); s.A[       gr.iA[i]] = y[gr.jA[i]] * gr.scaleA[i]; end
 end
-function getdof!(s::State,der::𝕫,y::𝕣1,gr::DofGroup) 
+function getdof!(s::State,der::𝕫,y::AbstractVector{𝕣},gr::DofGroup) 
     for i ∈ eachindex(gr.iΛ); y[gr.jΛ[i]] = s.Λ[der+1][gr.iΛ[i]] / gr.scaleΛ[i]; end
     for i ∈ eachindex(gr.iX); y[gr.jX[i]] = s.X[der+1][gr.iX[i]] / gr.scaleX[i]; end
     for i ∈ eachindex(gr.iU); y[gr.jU[i]] = s.U[der+1][gr.iU[i]] / gr.scaleU[i]; end
@@ -297,6 +298,7 @@ function asmmat!(asm,iasm,jasm,nimoddof,njmoddof)
     # 4) traverse A[I] 
     #      count nnz
     #      create a list J that to each element of A[I] associates an entry 1≤inz≤nnz into nzval
+    #      create a list K that to each element of A    associates an entry 1≤inz≤nnz into nzval
     #      prepare sparse
     nnz    = 0
     for ipair = 1:npair
@@ -304,28 +306,29 @@ function asmmat!(asm,iasm,jasm,nimoddof,njmoddof)
             nnz +=1
         end
     end    
-    J      = 𝕫1(undef,npair) # to each pair in A[I] associate a unique entry number
     K      = 𝕫1(undef,npair) # to each pair in A    associate a unique entry number
-    nzval  = ones(𝕣,nnz) # could this be left undef and still get past the sparse constructor?
+    nzval  = ones(𝕣,nnz)     # could this be left undef and still get past the sparse constructor?
     colptr = 𝕫1(undef,njmoddof+1) # Column icol is in colptr[icol]:(colptr[icol+1]-1)
-    colptr[njmoddof+1] = nnz+1
+    colptr[1] = 1
     rowval = 𝕫1(undef,nnz)
     inz    = 0
     icol   = 1
-    colptr[icol] = inz+1
     for ipair = 1:npair
         if (ipair==1) || (A[I[ipair]]≠A[I[ipair-1]]) 
             inz +=1
             (j,i) = A[I[ipair]] # NB: (j,i), not (i,j)
             rowval[inz] = i
-            while j>icol
+            while j>icol 
                 icol +=1
                 colptr[icol] = inz  
             end
         end
-        J[ipair] = inz 
+        K[I[ipair]] = inz
     end    
-    K[I] = J
+    for i = icol+1:njmoddof+1
+        colptr[i] = nnz+1
+    end
+    
     # 5) traverse all elements again to distribute J into asm
     ipair = 0
     for ieletyp ∈ eachindex(iasm)
@@ -460,6 +463,13 @@ end
 
 
 #### zero!
+"""
+    zero!(a)
+
+Set to zero all elements of an arrays. If `a` is sparse, 
+the vector `nzval` of values is set to zero and the sparsity structure is unchanged.
+""" 
+
 function zero!(out::DenseArray)
     for i∈eachindex(out)
         out[i] = 0

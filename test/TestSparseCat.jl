@@ -10,20 +10,20 @@ ncol = 2
 B = Matrix{SparseMatrixCSC{𝕣,𝕫}}(undef,nrow,ncol)
 for irow = 1:nrow
     for icol = 1:ncol
-        if irow<nrow || icol<ncol
+        if irow>1 || icol>1
             B[irow,icol] = sparse([1,1,2,3,3],[1,2,2,2,3],randn(5))
         end
     end
 end
-m,s = blocksparse(B)
-cat!(m,B)
+m,blkasm = blocksparse(B)
+cat!(m,B,blkasm)
 m1 = Matrix(m)
 
 zero!(m)
 for irow = 1:nrow
     for icol = 1:ncol
-        if irow<nrow || icol<ncol
-            addin!(m,B[irow,icol],s,irow,icol)
+        if irow>1 || icol>1
+            addin!(m,B[irow,icol],blkasm,irow,icol)
         end
     end
 end

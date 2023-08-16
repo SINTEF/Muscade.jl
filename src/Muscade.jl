@@ -51,7 +51,7 @@ module Muscade
     export solve
 
     include("SparseCat.jl")
-    export blocksparse,cat!,addin!,zero!
+    export blocksparse,cat!,addin!,zero!,getblock
 
 
     include("StaticX.jl")
