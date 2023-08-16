@@ -20,8 +20,8 @@ module Runtest
         @testset "TestStaticX" begin
             include("TestStaticX.jl")
         end
-        @testset "TestStaticXUA" begin
-            include("TestStaticXUA.jl")
+        @testset "TestStaticXUAstepwise" begin
+            include("TestStaticXUAstepwise.jl")
         end 
         @testset "TestScale" begin
             include("TestScale.jl")
