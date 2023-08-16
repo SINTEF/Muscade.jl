@@ -50,7 +50,7 @@ module Muscade
     include("Solve.jl")
     export solve
 
-    include("SparseCat.jl")
+    include("BlockSparse.jl")
     export blocksparse,cat!,addin!,zero!,getblock
 
 
@@ -59,6 +59,9 @@ module Muscade
     
     include("StaticXUA.jl")
     export StaticXUA
+
+    include("StaticXUAstepwise.jl")
+    export StaticXUAstepwise
 
     include("Diagnostic.jl")
     export studyscale,studysingular,describe

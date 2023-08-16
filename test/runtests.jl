@@ -23,6 +23,9 @@ module Runtest
         @testset "TestStaticXUA" begin
             include("TestStaticXUA.jl")
         end
+        @testset "TestStaticXUAstepwise" begin
+            include("TestStaticXUAstepwise.jl")
+        end
         @testset "TestScale" begin
             include("TestScale.jl")
         end
@@ -35,8 +38,8 @@ module Runtest
         @testset "TestUnit" begin
             include("TestUnit.jl")
         end
-        @testset "TestSparseCat" begin
-            include("TestSparseCat.jl")
+        @testset "TestBlockSparse" begin
+            include("TestBlockSparse.jl")
         end
         doctest(Muscade)
     end

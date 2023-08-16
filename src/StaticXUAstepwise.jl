@@ -1,0 +1,229 @@
+
+mutable struct AssemblyStaticΛXU_Astepwise{Ty,Ta,Tyy,Tya,Taa}  <:Assembly
+    Ly    :: Ty
+    La    :: Ta
+    Lyy   :: Tyy 
+    Lya   :: Tya 
+    Laa   :: Taa
+    α     :: 𝕣
+end   
+function prepare(::Type{AssemblyStaticΛXU_Astepwise},model,dis) 
+    Ydofgr             = allΛXUdofs(model,dis)
+    Adofgr             = allAdofs(  model,dis)
+    nY,nA              = getndof(Ydofgr),getndof(Adofgr)
+    narray,neletyp     = 5,getneletyp(model)
+    asm                = Matrix{𝕫2}(undef,narray,neletyp)  
+    Ly                 = asmvec!(view(asm,1,:),Ydofgr,dis) 
+    La                 = asmvec!(view(asm,2,:),Adofgr,dis) 
+    Lyy                = asmmat!(view(asm,3,:),view(asm,1,:),view(asm,1,:),nY,nY) 
+    Lya                = asmfullmat!(view(asm,4,:),view(asm,1,:),view(asm,2,:),nY,nA) 
+    Laa                = asmfullmat!(view(asm,5,:),view(asm,2,:),view(asm,2,:),nA,nA)  
+    out                = AssemblyStaticΛXU_Astepwise(Ly,La,Lyy,Lya,Laa,0.)
+    return out,asm,Adofgr,Ydofgr
+end
+function zero!(out::AssemblyStaticΛXU_Astepwise)
+    zero!(out.Ly )
+    zero!(out.La )
+    zero!(out.Lyy)
+    zero!(out.Lya)
+    zero!(out.Laa)
+    out.α = ∞    
+end
+function add!(out1::AssemblyStaticΛXU_Astepwise,out2::AssemblyStaticΛXU_Astepwise) 
+    add!(out1.Ly,out2.Ly)
+    add!(out1.La,out2.La)
+    add!(out1.Lyy,out2.Lyy)
+    add!(out1.Lya,out2.Lya)
+    add!(out1.Laa,out2.Laa)
+    out1.α = min(out1.α,out2.α)
+end
+function addin!(out::AssemblyStaticΛXU_Astepwise,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxder,<:SVector{Nx}},
+                                         U::NTuple{Nuder,<:SVector{Nu}},A::SVector{Na},t,SP,dbg) where{E,Nxder,Nx,Nuder,Nu,Na} # TODO make Nx,Nu,Na types
+    Ny              = 2Nx+Nu                           # Y=[Λ;X;U]   
+    Nz              = 2Nx+Nu+Na                        # Z = [Y;A]=[Λ;X;U;A]       
+    scaleZ          = SVector(scale.Λ...,scale.X...,scale.U...,scale.A...)
+    ΔZ              = variate{2,Nz}(δ{1,Nz,𝕣}(scaleZ),scaleZ)                 
+    iλ,ix,iu,ia     = gradientpartition(Nx,Nx,Nu,Na) # index into element vectors ΔZ and Lz
+    iy              = 1:Ny  
+    ΔΛ,ΔX,ΔU,ΔA     = view(ΔZ,iλ),view(ΔZ,ix),view(ΔZ,iu),view(ΔZ,ia) # TODO Static?
+    L,χn,FB         = getlagrangian(implemented(eleobj)...,eleobj, ∂0(Λ)+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A+ΔA,t,nothing,nothing,SP,dbg)
+    ∇L              = ∂{2,Nz}(L)
+    add_value!(out.Ly ,asm[1],iele,∇L,iy   )
+    add_value!(out.La ,asm[2],iele,∇L,ia   )
+    add_∂!{1}( out.Lyy,asm[3],iele,∇L,iy,iy)
+    add_∂!{1}( out.Lya,asm[4],iele,∇L,iy,ia)
+    add_∂!{1}( out.Laa,asm[5],iele,∇L,ia,ia)
+    out.α           = min(out.α,default{:α}(FB,∞))
+end
+
+#------------------------------------
+
+mutable struct AssemblyStaticΛXUstepwise{Ty,Tyy} <:Assembly 
+    Ly    :: Ty
+    Lyy   :: Tyy 
+    α     :: 𝕣
+end   
+function prepare(::Type{AssemblyStaticΛXUstepwise},model,dis) 
+    Ydofgr             = allΛXUdofs(model,dis)
+    nY                 = getndof(Ydofgr)
+    narray,neletyp     = 2,getneletyp(model)
+    asm                = Matrix{𝕫2}(undef,narray,neletyp)  
+    Ly                 = asmvec!(view(asm,1,:),Ydofgr,dis) 
+    Lyy                = asmmat!(view(asm,2,:),view(asm,1,:),view(asm,1,:),nY,nY) 
+    out                = AssemblyStaticΛXUstepwise(Ly,Lyy,0.)
+    return out,asm,Ydofgr
+end
+function zero!(out::AssemblyStaticΛXUstepwise)
+    zero!(out.Ly )
+    zero!(out.Lyy)
+    out.α = ∞    
+end
+function add!(out1::AssemblyStaticΛXUstepwise,out2::AssemblyStaticΛXUstepwise) 
+    add!(out1.Ly,out2.Ly)
+    add!(out1.Lyy,out2.Lyy)
+    out1.α = min(out1.α,out2.α)
+end
+function addin!(out::AssemblyStaticΛXUstepwise,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxdir,<:SVector{Nx}},
+                                                             U::NTuple{Nudir,<:SVector{Nu}},A, t,SP,dbg) where{E,Nxdir,Nx,Nudir,Nu}
+    Ny              = 2Nx+Nu                           # Y=[Λ;X;U]   
+    if Ny==0; return end # don't waste time on Acost elements...    
+    scaleY          = SVector(scale.Λ...,scale.X...,scale.U...)
+    ΔY              = variate{2,Ny}(δ{1,Ny,𝕣}(scaleY),scaleY)                 
+    iλ,ix,iu,_      = gradientpartition(Nx,Nx,Nu,0) # index into element vectors ΔY and Ly
+    ΔΛ,ΔX,ΔU        = view(ΔY,iλ),view(ΔY,ix),view(ΔY,iu)
+    L,χn,FB         = getlagrangian(implemented(eleobj)...,eleobj, ∂0(Λ)+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A, t,nothing,nothing,SP,dbg)
+    ∇L              = ∂{2,Ny}(L)
+    add_value!(out.Ly ,asm[1],iele,∇L)
+    add_∂!{1}( out.Lyy,asm[2],iele,∇L)
+    out.α           = min(out.α,default{:α}(FB,∞))
+end
+
+"""
+	StaticXUAstepwise
+
+A non-linear static solver for optimisation FEM.
+The current algorithm does not handle element memory. 
+
+An analysis is carried out by a call with the following syntax:
+
+```
+initialstate    = initialize!(model)
+stateX          = solve(StaticX  ;initialstate=initialstate,time=[0.,1.])
+stateXUA        = solve(StaticXUAstepwise;initialstate=stateX)
+```
+
+# Named arguments
+- `dbg=(;)`           a named tuple to trace the call tree (for debugging)
+- `verbose=true`      set to false to suppress printed output (for testing)
+- `silenterror=false` set to true to suppress print out of error (for testing) 
+- `initialstate`      a vector of `state`s, one for each load case in the optimization problem, 
+                      obtained from one or several previous `StaticX` analyses
+- `maxAiter=50`       maximum number of "outer" Newton-Raphson iterations over `A` 
+- `maxΔa=1e-5`        "outer" convergence criteria: a norm on the scaled `A` increment 
+- `maxLa=∞`           "outer" convergence criteria: a norm on the scaled `La` residual
+- `maxYiter=0`        maximum number of "inner" Newton-Raphson iterations over `X` 
+                      and `U` for every value of `A`.  Experience so far is that these inner
+                      iterations do not increase performance, so the default is "no inner 
+                      iterations".   
+- `maxΔy=1e-5`        "inner" convergence criteria: a norm on the scaled `Y=[XU]` increment 
+- `maxLy=∞`           "inner" convergence criteria: a norm on the scaled `Ly=[Lx,Lu]` residual
+- `saveiter=false`    set to true so that the output `state` is a vector (over the Aiter) of 
+                      vectors (over the steps) of `State`s of the model (for debugging 
+                      non-convergence). 
+- `γ0=1.`             an initial value of the barrier coefficient for the handling of contact
+                      using an interior point method
+- `γfac1=0.5`         at each iteration, the barrier parameter γ is multiplied 
+- `γfac2=100.`        by γfac1*exp(-min(αᵢ)/γfac2)^2), where αᵢ is computed by the i-th
+                      interior point savvy element as αᵢ=abs(λ-g)/γ                                               
+
+# Output
+
+A vector of length equal to that of `initialstate` containing the state of the optimized model at each of these steps.                       
+
+See also: [`solve`](@ref), [`StaticX`](@ref) 
+"""
+struct StaticXUAstepwise <: AbstractSolver end 
+function solve(::Type{StaticXUAstepwise},pstate,verbose::𝕓,dbg;initialstate::Vector{<:State},
+    maxAiter::ℤ=50,maxYiter::ℤ=0,maxΔy::ℝ=1e-5,maxLy::ℝ=∞,maxΔa::ℝ=1e-5,maxLa::ℝ=∞,
+    saveiter::𝔹=false,γ0::𝕣=1.,γfac1::𝕣=.5,γfac2::𝕣=100.)
+
+    model,dis          = initialstate[begin].model,initialstate[begin].dis
+    out1,asm1,Ydofgr   = prepare(AssemblyStaticΛXUstepwise  ,model,dis)
+    out2,asm2,Adofgr,_ = prepare(AssemblyStaticΛXU_Astepwise,model,dis)
+    if saveiter
+        states         = allocate(pstate,Vector{Vector{State{1,1,1,typeof((γ=0.,))}}}(undef,maxAiter)) 
+    else
+        state          = allocate(pstate,[State{1,1,1}(i,(γ=0.,)) for i ∈ initialstate]) 
+    end    
+    cΔy²,cLy²,cΔa²,cLa²= maxΔy^2,maxLy^2,maxΔa^2,maxLa^2
+    nA,nStep           = getndof(model,:A),length(initialstate)
+    La                 = Vector{𝕣 }(undef,nA   )
+    Laa                = Matrix{𝕣 }(undef,nA,nA)
+    Δy                 = Vector{𝕣1}(undef,nStep)
+    y∂a                = Vector{𝕣2}(undef,nStep)
+    Δy²,Ly²            = Vector{𝕣 }(undef,nStep),Vector{𝕣}(undef,nStep)
+    cAiter,cYiter      = 0,0
+    local facLyy, facLyys, Δa
+    for iAiter          = 1:maxAiter
+        if saveiter
+            states[iAiter] = [State{1,1,1}(i,(γ=0.,)) for i ∈ (iAiter==1 ? initialstate : states[iAiter-1])]
+            state          = states[iAiter]
+        end
+        verbose && @printf "    A-iteration %3d\n" iAiter
+        La            .= 0
+        Laa           .= 0
+        for step     ∈ eachindex(state)
+            for iYiter = 1:maxYiter
+                cYiter+=1
+                assemble!(out1,asm1,dis,model,state[step],(dbg...,solver=:StaticXUAstepwise,step=step,iYiter=iYiter))
+                try if iAiter==1 && step==1 && iYiter==1
+                    facLyys = lu(out1.Lyy) 
+                else
+                    lu!(facLyys,out1.Lyy) 
+                end catch; muscadeerror(@sprintf("Incremental Y-solution failed at step=%i, iAiter=%i, iYiter=%i",step,iAiter,iYiter)) end
+                Δy[ step]  = facLyys\out1.Ly
+                decrement!(state[step],0,Δy[ step],Ydofgr)
+                Δy²s,Ly²s = sum(Δy[step].^2),sum(out2.Ly.^2)
+                if Δy²s≤cΔy² && Ly²s≤cLy² 
+                    verbose && @printf "        step % i Y-converged in %3d Y-iterations:   |ΔY|=%7.1e  |∇L/∂Y|=%7.1e\n" step iYiter √(Δy²s) √(Ly²s)
+                    break#out of iYiter
+                end
+                iYiter==maxYiter && muscadeerror(@sprintf("no Y-convergence after %3d Y-iterations. |ΔY|=%7.1e |Ly|=%7.1e\n",iYiter,√(Δy²s),√(Ly²s)))
+            end
+            assemble!(out2,asm2,dis,model,state[step],(dbg...,solver=:StaticXUAstepwise,step=step,iAiter=iAiter))
+            try if iAiter==1 && step==1
+                facLyy = lu(out2.Lyy) 
+            else
+                lu!(facLyy,out2.Lyy)
+            end catch; muscadeerror(@sprintf("Lyy matrix factorization failed at step=%i, iAiter=%i",step,iAiter));end
+            Δy[ step]  = facLyy\out2.Ly  
+            y∂a[step]  = facLyy\out2.Lya 
+            La       .+= out2.La  - out2.Lya' * Δy[ step]  
+            Laa      .+= out2.Laa - out2.Lya' * y∂a[step]
+            Δy²[step],Ly²[step] = sum(Δy[step].^2),sum(out2.Ly.^2)
+        end   
+        try 
+            Δa         = Laa\La 
+        catch; muscadeerror(@sprintf("Laa\\La solution failed at iAiter=%i",iAiter));end
+        Δa²,La²        = sum(Δa.^2),sum(La.^2)
+        for (step,s)   ∈ enumerate(state)
+            ΔY         = Δy[step] - y∂a[step] * Δa
+            decrement!(s,0,ΔY,Ydofgr)
+            decrement!(s,0,Δa,Adofgr)
+            s.SP = (γ= s.SP.γ* γfac1*exp(-(out2.α/γfac2)^2),)
+        end    
+        
+        if all(Δy².≤cΔy²) && all(Ly².≤cLy²) && Δa².≤cΔa² && La².≤cLa² 
+            cAiter    = iAiter
+            verbose && @printf "\n    StaticXUAstepwise converged in %3d A-iterations.\n" iAiter
+            verbose && @printf "    maxₜ(|ΔY|)=%7.1e  maxₜ(|∇L/∂Y|)=%7.1e  |ΔA|=%7.1e  |∇L/∂A|=%7.1e\n" √(maximum(Δy²)) √(maximum(Ly²)) √(Δa²) √(La²)
+            break#out of iAiter
+        end
+        iAiter==maxAiter && muscadeerror(@sprintf("no convergence after %3d A-iterations. |ΔY|=%7.1e |Ly|=%7.1e |ΔA|=%7.1e |La|=%7.1e\n",iAiter,√(maximum(Δy²)),√(maximum(Ly²)),√(Δa²),√(La²)))
+    end
+    verbose && @printf "\n    nel=%d, ndof=%d, nstep=%d, nAiter=%d\n" getnele(model) getndof(Adofgr) nStep cAiter
+    verbose && @printf "\n    nYiter=%d, nYiter/(nstep*nAiter)=%5.2f\n" cYiter cYiter/nStep/cAiter
+    return
+end
+
+
