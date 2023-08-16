@@ -162,16 +162,19 @@ See also: [`solve`](@ref), [`StaticX`](@ref)
 struct StaticXUA <: AbstractSolver end 
 function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<:State},
     maxiter::ℤ=50,maxΔy::ℝ=1e-5,maxΔa::ℝ=1e-5,
-    saveiter::𝔹=false,γ0::𝕣=1.,γfac1::𝕣=.5,γfac2::𝕣=100.)
+    saveiter::𝔹=false,
+    maxLineIter::ℤ=50,α::𝕣=.1,β::𝕣=.5,γfac::𝕣=.5)
 
     model,dis             = initialstate[begin].model,initialstate[begin].dis
-    out,asm,Ydofgr,Adofgr = prepare(AssemblyStaticΛXU_A,model,dis)
+    out,asm,Ydofgr,Adofgr = prepare(AssemblyStaticΛXU_A    ,model,dis)
+    out2,asm2,_     ,_    = prepare(AssemblyStaticΛXU_Aline,model,dis)
 
     cΔy²,cΔa²             = maxΔy^2,maxΔa^2
     nX,nU,nA              = getndof(model,(:X,:U,:A))
     nstep                 = length(initialstate)
     nV                    = nstep*(2*nX+nU) + nA
     nblock                = nstep + 1
+    ΣLa                   = Vector{𝕣}(undef,nA   )
 
     block                 = Matrix{SparseMatrixCSC{𝕣,𝕫}}(undef,nblock,nblock)
     for step ∈ eachindex(initialstate)
@@ -183,22 +186,36 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
     Lvv,blkasm            = blocksparse(block)
     Lv                    = 𝕣1(undef,nV)
 
-    if saveiter; states   = allocate(pstate,Vector{Vector{State{1,1,1,typeof((γ=0.,))}}}(undef,maxiter)) 
-    else         state    = allocate(pstate,[State{1,1,1}(i,(γ=γ0,)) for i ∈ initialstate]) # deepcopy dofs from initstate (including A) 
+
+    states                = [State{1,1,1}(i,(γ=0.,)) for i ∈ initialstate]
+    if saveiter
+        statess           = Vector{Vector{State{1,1,1,typeof((γ=0.,))}}}(undef,maxiter) 
     end    
+    pstate[]              = saveiter ? statess : states
+
     Δy²                   = Vector{𝕣 }(undef,nstep)
+
+    Σλg,npos              = 0.,0
+    for (step,state)   ∈ enumerate(states) 
+        assemble!(out2,asm2,dis,model,state,(dbg...,solver=:StaticXUA,phase=:preliminary,step=step))
+        out2.ming ≤ 0 && muscadeerror(@sprintf("Initial point is not strictly primal-feasible at step %3d",step))
+        out2.minλ ≤ 0 && muscadeerror(@sprintf("Initial point is not strictly dual-feasible at step %3d"  ,step))
+        Σλg  += out2.Σλg
+        npos += out2.npos
+    end    
+    γ = Σλg/npos * γfac
+    for state ∈ states
+        state.SP = (γ=γ,)
+    end
 
     local LU
     for iter              = 1:maxiter
         verbose && @printf "    iteration %3d\n" iter
-        if saveiter
-            states[iter]  = [State{1,1,1}(i,(γ=0.,)) for i ∈ (iter==1 ? initialstate : states[iter-1])]
-            state         = states[iter]
-        end
+
         zero!(Lvv)
         zero!(Lv )
-        for (step,s)   ∈ enumerate(state)
-            assemble!(out,asm,dis,model,s,(dbg...,solver=:StaticXUA,step=step,iter=iter))
+        for (step,state)   ∈ enumerate(states)
+            assemble!(out,asm,dis,model,state,(dbg...,solver=:StaticXUA,step=step,iter=iter))
             addin!(Lvv,out.Lyy,blkasm,step  ,step  )
             addin!(Lvv,out.Lya,blkasm,step  ,nblock)
             addin!(Lvv,out.Lay,blkasm,nblock,step  )
@@ -209,26 +226,50 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
 
         try if iter==1 LU = lu(Lvv) 
         else           lu!(LU ,Lvv)
-        end catch; muscadeerror(@sprintf("Lvv matrix factorization failed at iAiter=%i",iAiter));end
-
+        end catch; muscadeerror(@sprintf("Lvv matrix factorization failed at iter=%i",iter));end
         Δv               = LU\Lv 
 
         Δa               = getblock(Δv,blkasm,nblock)
         Δa²              = sum(Δa.^2)
-        for (step,s)   ∈ enumerate(state)
+        for (step,state)   ∈ enumerate(states)
             Δy           = getblock(Δv,blkasm,step  )
             Δy²[step]    = sum(Δy.^2)
-            decrement!(s,0,Δy,Ydofgr)
-            decrement!(s,0,Δa,Adofgr)
-            s.SP = (γ= s.SP.γ* γfac1*exp(-(out.α/γfac2)^2),)
+            decrement!(state,0,Δy,Ydofgr)
+            decrement!(state,0,Δa,Adofgr)
         end    
         
+        s  = 1.    
+        for iline = 1:maxLineIter
+            ΣLa              .= 0   
+            Lv²line,minλ,ming = 0.,∞,∞
+            for (step,state)   ∈ enumerate(states)
+                assemble!(out2,asm2,dis,model,state,(dbg...,solver=:StaticXUAstepwise,phase=:linesearch,iter=iter,iline=iline,step=step))
+                ΣLa      .+= out2.La    
+                Lv²line   += sum(out2.Ly.^2) 
+                minλ       = min(minλ,out2.minλ)
+                ming       = min(ming,out2.ming)
+            end
+            Lv²line += sum(ΣLa.^2)
+            minλ > 0 && ming > 0 && Lv²line ≤ sum(Lv.^2)*(1-α*s)^2 && break#out of line search
+            iline==maxLineIter && muscadeerror(@sprintf("Line search failed at iter=%3d, iline=%3d, s=%7.1e",iter,iline,s))
+            Δs = s*(β-1)
+            s += Δs
+            for (step,state)   ∈ enumerate(states)
+                decrement!(state,0,Δs*getblock(Δv,blkasm,step),Ydofgr)
+                decrement!(state,0,Δs*Δa                      ,Adofgr)
+            end
+        end
+
+        if saveiter
+            statess[iter] = deepcopy(states) # TODO this deepcopies the model...
+        end
+
         if all(Δy².≤cΔy²)  && Δa²≤cΔa²  
             verbose && @printf "\n    StaticXUA converged in %3d iterations.\n" iter
             verbose && @printf "    maxₜ(|ΔY|)=%7.1e  |ΔA|=%7.1e  \n" √(maximum(Δy²)) √(Δa²) 
             break#out of iter
         end
-        iter<maxiter || muscadeerror(@sprintf("no convergence after %3d iterations. |ΔY|=%7.1e  |ΔA|=%7.1e \n",iAiter,√(maximum(Δy²)),√(Δa²)))
+        iter<maxiter || muscadeerror(@sprintf("no convergence after %3d iterations. |ΔY|=%7.1e  |ΔA|=%7.1e \n",iter,√(maximum(Δy²)),√(Δa²)))
     end
     verbose && @printf "\n    nel=%d, ndof=%d, nstep=%d, niter=%d\n" getnele(model) getndof(Adofgr) nstep cAiter
     verbose && @printf "\n    nYiter=%d, nYiter/(nstep*nAiter)=%5.2f\n" cYiter cYiter/nstep/cAiter

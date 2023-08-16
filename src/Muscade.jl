@@ -57,8 +57,8 @@ module Muscade
     include("StaticX.jl")
     export StaticX
     
-    # include("StaticXUA.jl")
-    # export StaticXUA
+    include("StaticXUA.jl")
+    export StaticXUA
 
     include("StaticXUAstepwise.jl")
     export StaticXUAstepwise

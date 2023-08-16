@@ -27,7 +27,7 @@ Prepare for the assembly of sparse blocks into a large sparse matrix. Unassigned
 `bigsparse` is allocated, with the correct sparsity structure, but its `nzval` undef'ed.    
 Where some blocks share the same sparsity structure, `blocks` can have `===` elements.
 
-See also: [`zero!`](@ref),[`addin!`](@ref),[`cat!`](@ref)
+See also: [`addin!`](@ref),[`cat!`](@ref)
 """ 
 function blocksparse(B::Matrix{SparseMatrixCSC{Tv,Ti}}) where{Tv,Ti<:Integer}
     nbr,nbc                 = size(B)  
@@ -109,7 +109,7 @@ end
 Assemble sparse blocks into a preallocated sparse matrix.  Will fail silently or throw an error unless
 `bigsparse` has the correct sparsity structure for the given `blocks`. 
 
-See also: [`blocksparse`](@ref),[`zero!`](@ref),[`addin!`](@ref)
+See also: [`blocksparse`](@ref),[`addin!`](@ref)
 """ 
 function cat!(out::SparseMatrixCSC{Tv,Ti},B::Matrix{SparseMatrixCSC{Tv,Ti}},asm::BlockSparseAssembler) where{Tv,Ti<:Integer}
     nbr,nbc                 = size(B)  
@@ -136,7 +136,7 @@ Add a sparse into one of the blocks of a large sparse matrix.  Will fail silentl
 `bigsparse` has the correct sparsity structure for the given `blocks`. Use [`blocksparse`](@ref) to
     create `bigsparse` and `asm`.
 
-See also: [`blocksparse`](@ref),[`zero!`](@ref),[`cat!`](@ref)
+See also: [`blocksparse`](@ref),[`cat!`](@ref)
 """ 
 function addin!(out::SparseMatrixCSC{Tv,Ti},B::SparseMatrixCSC{Tv,Ti},asm::BlockSparseAssembler,ibr::𝕫,ibc::𝕫) where{Tv,Ti<:Integer}
     gv              = out.nzval
@@ -155,7 +155,7 @@ end
 
 Add a vector into one of the blocks of a large full vector.  Use [`blocksparse`](@ref) to create `asm`.
 
-See also: [`blocksparse`](@ref),[`zero!`](@ref),[`cat!`](@ref)
+See also: [`blocksparse`](@ref),[`cat!`](@ref)
 """ 
 function addin!(out::Vector{Tv},B::Vector{Tv},asm::BlockSparseAssembler,ibc::𝕫) where{Tv}
     for ilc         = 1:length(B)
