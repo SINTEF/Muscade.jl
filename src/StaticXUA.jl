@@ -125,9 +125,16 @@ An analysis is carried out by a call with the following syntax:
 
 ```
 initialstate    = initialize!(model)
+setdof!(initialstate,1.;class=:U,field=:λcsr)
 stateX          = solve(StaticX  ;initialstate=initialstate,time=[0.,1.])
 stateXUA        = solve(StaticXUA;initialstate=stateX)
 ```
+
+The interior point algorithm requires a starting point that is
+strictly primal feasible (at all steps, all inequality constraints must have 
+positive gaps) and strictly dual feasible (at all steps, all associated Lagrange 
+multipliers must be strictly positive). Note the use of `setdof!` in the example
+above to ensure dual feasibility.
 
 # Named arguments
 - `dbg=(;)`           a named tuple to trace the call tree (for debugging)
@@ -135,29 +142,29 @@ stateXUA        = solve(StaticXUA;initialstate=stateX)
 - `silenterror=false` set to true to suppress print out of error (for testing) 
 - `initialstate`      a vector of `state`s, one for each load case in the optimization problem, 
                       obtained from one or several previous `StaticX` analyses
-- `maxAiter=50`       maximum number of "outer" Newton-Raphson iterations over `A` 
+- `maxiter=50`        maximum number of Newton-Raphson iterations 
 - `maxΔa=1e-5`        "outer" convergence criteria: a norm on the scaled `A` increment 
-- `maxLa=∞`           "outer" convergence criteria: a norm on the scaled `La` residual
-- `maxYiter=0`        maximum number of "inner" Newton-Raphson iterations over `X` 
-                      and `U` for every value of `A`.  Experience so far is that these inner
-                      iterations do not increase performance, so the default is "no inner 
-                      iterations".   
-- `maxΔy=1e-5`        "inner" convergence criteria: a norm on the scaled `Y=[XU]` increment 
-- `maxLy=∞`           "inner" convergence criteria: a norm on the scaled `Ly=[Lx,Lu]` residual
+- `maxΔy=1e-5`        "inner" convergence criteria: a norm on the scaled `Y=[ΛXU]` increment 
 - `saveiter=false`    set to true so that the output `state` is a vector (over the Aiter) of 
                       vectors (over the steps) of `State`s of the model (for debugging 
                       non-convergence). 
-- `γ0=1.`             an initial value of the barrier coefficient for the handling of contact
-                      using an interior point method
-- `γfac1=0.5`         at each iteration, the barrier parameter γ is multiplied 
-- `γfac2=100.`        by γfac1*exp(-min(αᵢ)/γfac2)^2), where αᵢ is computed by the i-th
-                      interior point savvy element as αᵢ=abs(λ-g)/γ                                               
+- `maxLineIter=50`    maximum number of iterations in the linear search that ensure interior points   
+- `α=-1`              Besides primal and dual feasibility, the line search ensures that
+                      `|Lvline|≤|Lv|*(1-α*s)` where `|Lv|` and `|Lvline|` are the gradients of the 
+                      Lagrangian, repsectively at the Newton step and the line search. `s∈]0,1]`
+                      is the step reduction factor in the line search. `α→0` is lenient, `α→1` stringent.
+- `β=0.5`             In the line search, if conditions are not met, then a new line-iteration is done
+                      with `s *= β` where `β∈]0,1[` `β→0` is a hasty backtracking, while `β→1` stands its ground.            
+- `γfac=0.5`          at each iteration, the barrier parameter γ is taken as `γ = (∑ⁿᵢ₌₁ λᵢ gᵢ)/n*γfac` where
+                      `(∑ⁿᵢ₌₁ λᵢ gᵢ)/n` is the complementary slackness, and `n` the number of inequality constraints.
+- `γbot=1e-8`         `γ` will not be reduced to under the original complementary slackness divided by `γbot`,
+                      to avoid conditioning problems.                                               
 
 # Output
 
 A vector of length equal to that of `initialstate` containing the state of the optimized model at each of these steps.                       
 
-See also: [`solve`](@ref), [`StaticX`](@ref) 
+See also: [`solve`](@ref), [`StaticX`](@ref), [`setdof!`](@ref) 
 """
 struct StaticXUA <: AbstractSolver end 
 function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<:State},
