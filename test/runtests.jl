@@ -26,6 +26,9 @@ module Runtest
         @testset "TestStaticXUAstepwise" begin
             include("TestStaticXUAstepwise.jl")
         end
+        @testset "TestStaticXUAwithineq" begin
+            include("TestStaticXUAwithineq.jl")
+        end
         @testset "TestScale" begin
             include("TestScale.jl")
         end

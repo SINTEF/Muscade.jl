@@ -33,6 +33,18 @@ function getdof(state::Vector{S};class::Symbol=:X,field::Symbol,nodID::Vector{No
     end
     return dofres,dofID
 end
+"""
+    setdof!(state,value        ;[class=:X],field=:somefield,                  [iders=0|1|2])
+    setdof!(state,value::Vector;[class=:X],field=:somefield,nodID=[nodids...],[iders=0|1|2])
+
+Set the value of dofs of the same class and field, at various nodes and for various states.
+There are two methods:
+1. A single `value` is applied to all relevant nodes in the model
+2. `value` and `nodID` are vectors of the same lengths, and each element in `value` is applied to the corresponding node.
+
+
+See also: [`getresult`](@ref), [`addnode!`](@ref), [`solve`](@ref)
+"""
 function setdof!(state::State,dofval::𝕣1;class::Symbol=:X,field::Symbol,nodID::Vector{NodID},ider::ℤ=0)
     class ∈ [:Λ,:X,:U,:A] || muscadeerror(sprintf("Unknown dof class %s",class))
     c     = class==:Λ ? :X : class

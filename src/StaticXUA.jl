@@ -163,7 +163,7 @@ struct StaticXUA <: AbstractSolver end
 function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<:State},
     maxiter::ℤ=50,maxΔy::ℝ=1e-5,maxΔa::ℝ=1e-5,
     saveiter::𝔹=false,
-    maxLineIter::ℤ=50,α::𝕣=.1,β::𝕣=.5,γfac::𝕣=.5)
+    maxLineIter::ℤ=50,α::𝕣=.1,β::𝕣=.5,γfac::𝕣=.5,γbot::𝕣=1e-8)
 
     model,dis             = initialstate[begin].model,initialstate[begin].dis
     out,asm,Ydofgr,Adofgr = prepare(AssemblyStaticΛXU_A    ,model,dis)
@@ -190,8 +190,10 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
     states                = [State{1,1,1}(i,(γ=0.,)) for i ∈ initialstate]
     if saveiter
         statess           = Vector{Vector{State{1,1,1,typeof((γ=0.,))}}}(undef,maxiter) 
+        pstate[]          = statess
+    else
+        pstate[]          = states    
     end    
-    pstate[]              = saveiter ? statess : states
 
     Δy²                   = Vector{𝕣 }(undef,nstep)
 
@@ -203,18 +205,16 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
         Σλg  += out2.Σλg
         npos += out2.npos
     end    
-    γ = Σλg/npos * γfac
-    for state ∈ states
-        state.SP = (γ=γ,)
-    end
+    γ = γ₀ = Σλg/max(1,npos)*γfac
 
     local LU
     for iter              = 1:maxiter
-        verbose && @printf "    iteration %3d\n" iter
+        verbose && @printf("    iteration %3d, γ=%g\n",iter,γ)
 
         zero!(Lvv)
         zero!(Lv )
         for (step,state)   ∈ enumerate(states)
+            state.SP = (γ=γ ,)
             assemble!(out,asm,dis,model,state,(dbg...,solver=:StaticXUA,step=step,iter=iter))
             addin!(Lvv,out.Lyy,blkasm,step  ,step  )
             addin!(Lvv,out.Lya,blkasm,step  ,nblock)
@@ -238,41 +238,48 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
             decrement!(state,0,Δa,Adofgr)
         end    
         
-        s  = 1.    
+        s  = 1.  
+        local  Σλg,npos 
         for iline = 1:maxLineIter
             ΣLa              .= 0   
             Lv²line,minλ,ming = 0.,∞,∞
-            for (step,state)   ∈ enumerate(states)
+            Σλg,npos          = 0.,0
+            for (step,state)  ∈ enumerate(states)
                 assemble!(out2,asm2,dis,model,state,(dbg...,solver=:StaticXUAstepwise,phase=:linesearch,iter=iter,iline=iline,step=step))
-                ΣLa      .+= out2.La    
-                Lv²line   += sum(out2.Ly.^2) 
-                minλ       = min(minλ,out2.minλ)
-                ming       = min(ming,out2.ming)
+                ΣLa         .+= out2.La    
+                Lv²line      += sum(out2.Ly.^2) 
+                minλ          = min(minλ,out2.minλ)
+                ming          = min(ming,out2.ming)
+                Σλg          += out2.Σλg
+                npos         += out2.npos
             end
-            Lv²line += sum(ΣLa.^2)
-            minλ > 0 && ming > 0 && Lv²line ≤ sum(Lv.^2)*(1-α*s)^2 && break#out of line search
+            Lv²line          += sum(ΣLa.^2)
+            if minλ>0 && ming>0 && Lv²line≤sum(Lv.^2)*(1-α*s)^2   
+                verbose && @printf("    %3d line-iterations\n",iline)
+                break#out of line search
+            end
             iline==maxLineIter && muscadeerror(@sprintf("Line search failed at iter=%3d, iline=%3d, s=%7.1e",iter,iline,s))
-            Δs = s*(β-1)
-            s += Δs
-            for (step,state)   ∈ enumerate(states)
+            Δs                = s*(β-1)
+            s                += Δs
+            for (step,state)  ∈ enumerate(states)
                 decrement!(state,0,Δs*getblock(Δv,blkasm,step),Ydofgr)
                 decrement!(state,0,Δs*Δa                      ,Adofgr)
             end
         end
+        γ                     = max(Σλg/max(1,npos)*γfac, γ₀*γbot)
 
         if saveiter
-            statess[iter] = deepcopy(states) # TODO this deepcopies the model...
+            statess[iter]     = deepcopy(states) # TODO this deepcopies the model...
         end
 
         if all(Δy².≤cΔy²)  && Δa²≤cΔa²  
-            verbose && @printf "\n    StaticXUA converged in %3d iterations.\n" iter
-            verbose && @printf "    maxₜ(|ΔY|)=%7.1e  |ΔA|=%7.1e  \n" √(maximum(Δy²)) √(Δa²) 
+            verbose && @printf("\n    StaticXUA converged in %3d iterations.\n",iter)
+            verbose && @printf(  "    maxₜ(|ΔY|)=%7.1e  |ΔA|=%7.1e  \n",√(maximum(Δy²)),√(Δa²) )
+            verbose && @printf(  "    nel=%d, nvariables=%d, nstep=%d, niter=%d\n",getnele(model),nV,nstep,iter)
             break#out of iter
         end
         iter<maxiter || muscadeerror(@sprintf("no convergence after %3d iterations. |ΔY|=%7.1e  |ΔA|=%7.1e \n",iter,√(maximum(Δy²)),√(Δa²)))
     end
-    verbose && @printf "\n    nel=%d, ndof=%d, nstep=%d, niter=%d\n" getnele(model) getndof(Adofgr) nstep cAiter
-    verbose && @printf "\n    nYiter=%d, nYiter/(nstep*nAiter)=%5.2f\n" cYiter cYiter/nstep/cAiter
     return
 end
 
