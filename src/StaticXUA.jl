@@ -149,13 +149,13 @@ above to ensure dual feasibility.
                       vectors (over the steps) of `State`s of the model (for debugging 
                       non-convergence). 
 - `maxLineIter=50`    maximum number of iterations in the linear search that ensure interior points   
-- `α=-1`              Besides primal and dual feasibility, the line search ensures that
+- `α=0.1`             α∈[0,1]. Besides primal and dual feasibility, the line search ensures that
                       `|Lvline|≤|Lv|*(1-α*s)` where `|Lv|` and `|Lvline|` are the gradients of the 
                       Lagrangian, repsectively at the Newton step and the line search. `s∈]0,1]`
                       is the step reduction factor in the line search. `α→0` is lenient, `α→1` stringent.
-- `β=0.5`             In the line search, if conditions are not met, then a new line-iteration is done
-                      with `s *= β` where `β∈]0,1[` `β→0` is a hasty backtracking, while `β→1` stands its ground.            
-- `γfac=0.5`          at each iteration, the barrier parameter γ is taken as `γ = (∑ⁿᵢ₌₁ λᵢ gᵢ)/n*γfac` where
+- `β=0.5`             `β∈]0,1[`. In the line search, if conditions are not met, then a new line-iteration is done
+                      with `s *= β` where  `β→0` is a hasty backtracking, while `β→1` stands its ground.            
+- `γfac=0.5`          `γfac∈[0,1[`. At each iteration, the barrier parameter γ is taken as `γ = (∑ⁿᵢ₌₁ λᵢ gᵢ)/n*γfac` where
                       `(∑ⁿᵢ₌₁ λᵢ gᵢ)/n` is the complementary slackness, and `n` the number of inequality constraints.
 - `γbot=1e-8`         `γ` will not be reduced to under the original complementary slackness divided by `γbot`,
                       to avoid conditioning problems.                                               

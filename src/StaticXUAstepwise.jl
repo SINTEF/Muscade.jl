@@ -114,6 +114,7 @@ end
 
 A non-linear static solver for optimisation FEM.
 The current algorithm does not handle element memory. 
+It does not handle :U-constraints - Lyy will be singular
 
 An analysis is carried out by a call with the following syntax:
 
@@ -138,11 +139,18 @@ stateXUA        = solve(StaticXUAstepwise;initialstate=stateX)
 - `saveiter=false`    set to true so that the output `state` is a vector (over the Aiter) of 
                       vectors (over the steps) of `State`s of the model (for debugging 
                       non-convergence). 
-- `α=0.1`             α∈[0,1], 0 for lenient line search, 1 for stringent line search
-- `β=0.5`             β∈[0,1[ line search backtracking coefficient
-- `γfac=0.5`          γfac∈[0,1[, 0 for agressive reduction of the barrier parameter, 
-                      near 1 for cautious
-
+- `maxLineIter=50`    maximum number of iterations in the linear search that ensure interior points   
+- `α=0.1`             α∈[0,1]. Besides primal and dual feasibility, the line search ensures that
+                    `|Lvline|≤|Lv|*(1-α*s)` where `|Lv|` and `|Lvline|` are the gradients of the 
+                    Lagrangian, repsectively at the Newton step and the line search. `s∈]0,1]`
+                    is the step reduction factor in the line search. `α→0` is lenient, `α→1` stringent.
+- `β=0.5`             `β∈]0,1[`. In the line search, if conditions are not met, then a new line-iteration is done
+                    with `s *= β` where  `β→0` is a hasty backtracking, while `β→1` stands its ground.            
+- `γfac=0.5`          `γfac∈[0,1[`. At each iteration, the barrier parameter γ is taken as `γ = (∑ⁿᵢ₌₁ λᵢ gᵢ)/n*γfac` where
+                    `(∑ⁿᵢ₌₁ λᵢ gᵢ)/n` is the complementary slackness, and `n` the number of inequality constraints.
+- `γbot=1e-8`         `γ` will not be reduced to under the original complementary slackness divided by `γbot`,
+                    to avoid conditioning problems.                                               
+                      
 # Output
 
 A vector of length equal to that of `initialstate` containing the state of the optimized model at each of these steps.                       
@@ -153,19 +161,23 @@ struct StaticXUAstepwise <: AbstractSolver end
 function solve(::Type{StaticXUAstepwise},pstate,verbose::𝕓,dbg;initialstate::Vector{<:State},
     maxAiter::ℤ=50,maxΔy::ℝ=1e-5,maxLy::ℝ=∞,maxΔa::ℝ=1e-5,maxLa::ℝ=∞,
     saveiter::𝔹=false,
-    maxLineIter::ℤ=50,α::𝕣=.1,β::𝕣=.5,γfac::𝕣=.5)
+    maxLineIter::ℤ=50,α::𝕣=.1,β::𝕣=.5,γfac::𝕣=.5,γbot::𝕣=1e-8)
 
     model,dis          = initialstate[begin].model,initialstate[begin].dis
     out1,asm1,Ydofgr,Adofgr = prepare(AssemblyStaticΛXU_Astepwise    ,model,dis)
     out2,asm2,_     ,_      = prepare(AssemblyStaticΛXU_Aline_stepwise,model,dis)
-    states                  = [State{1,1,1}(i,(γ=0.,)) for i ∈ initialstate]
+
+    states                = [State{1,1,1}(i,(γ=0.,)) for i ∈ initialstate]
     if saveiter
-        statess             = Vector{Vector{State{1,1,1,typeof((γ=0.,))}}}(undef,maxAiter) 
+        statess           = Vector{Vector{State{1,1,1,typeof((γ=0.,))}}}(undef,maxAiter) 
+        pstate[]          = statess
+    else
+        pstate[]          = states    
     end    
-    pstate[]                = saveiter ? statess : states
+
     cΔy²,cLy²,cΔa²,cLa²     = maxΔy^2,maxLy^2,maxΔa^2,maxLa^2
     nA,nStep                = getndof(model,:A),length(initialstate)
-    La,La₀                  = copies(2,Vector{𝕣 }(undef,nA   ))
+    La,ΣLa                  = copies(2,Vector{𝕣 }(undef,nA   ))
     Laa                     = Matrix{𝕣 }(undef,nA,nA)
     Δy                      = Vector{𝕣1}(undef,nStep)
     y∂a                     = Vector{𝕣2}(undef,nStep)
@@ -181,18 +193,16 @@ function solve(::Type{StaticXUAstepwise},pstate,verbose::𝕓,dbg;initialstate::
         Σλg  += out2.Σλg
         npos += out2.npos
     end    
-    γ = Σλg/npos * γfac
-    for state ∈ states
-        state.SP = (γ=γ,)
-    end
+    γ = γ₀ = Σλg/max(1,npos)*γfac
 
     for iAiter          = 1:maxAiter
         verbose && @printf "    A-iteration %3d\n" iAiter
 
-        La₀           .= 0
+        ΣLa           .= 0
         La            .= 0
         Laa           .= 0
         for (step,state)   ∈ enumerate(states)
+            state.SP = (γ=γ,)
             assemble!(out1,asm1,dis,model,state,(dbg...,solver=:StaticXUAstepwise,phase=:direction,iAiter=iAiter,step=step))
             try if iAiter==1 && step==1
                 facLyy = lu(out1.Lyy) 
@@ -201,12 +211,12 @@ function solve(::Type{StaticXUAstepwise},pstate,verbose::𝕓,dbg;initialstate::
             end catch; muscadeerror(@sprintf("Lyy matrix factorization failed at step=%i, iAiter=%i",step,iAiter));end
             Δy[ step]  = facLyy\out1.Ly  
             y∂a[step]  = facLyy\out1.Lya 
-            La₀      .+= out1.La    
+            ΣLa      .+= out1.La    
             La       .+= out1.La  - out1.Lya' * Δy[ step]  
             Laa      .+= out1.Laa - out1.Lya' * y∂a[step]
             Ly²[step]  = sum(out1.Ly.^2) 
         end   
-        La² = sum(La₀.^2) 
+        La² = sum(ΣLa.^2) 
         Lz² = La²+sum(Ly²)
 
         try 
@@ -222,17 +232,21 @@ function solve(::Type{StaticXUAstepwise},pstate,verbose::𝕓,dbg;initialstate::
         end    
         
         s  = 1.    
+        local  Σλg,npos 
         for iline = 1:maxLineIter
-            La₀           .= 0
+            ΣLa           .= 0
             Lz²line,minλ,ming = 0.,∞,∞
+            Σλg,npos          = 0.,0
             for (step,state)   ∈ enumerate(states)
                 assemble!(out2,asm2,dis,model,state,(dbg...,solver=:StaticXUAstepwise,phase=:linesearch,iAiter=iAiter,iline=iline,step=step))
-                La₀      .+= out2.La    
+                ΣLa      .+= out2.La    
                 Ly²[step]  = sum(out2.Ly.^2) 
                 minλ = min(minλ,out2.minλ)
                 ming = min(ming,out2.ming)
+                Σλg          += out2.Σλg
+                npos         += out2.npos
             end
-            La²      = sum(La₀.^2) 
+            La²      = sum(ΣLa.^2) 
             Lz²line  = La²+sum(Ly²)
             minλ > 0 && ming > 0 && Lz²line ≤ Lz²*(1-α*s)^2 && break#out of line search
             iline==maxLineIter && muscadeerror(@sprintf("Line search failed at iAiter=%3d, iline=%3d, s=%7.1e",iAiter,iline,s))
@@ -243,6 +257,7 @@ function solve(::Type{StaticXUAstepwise},pstate,verbose::𝕓,dbg;initialstate::
                 decrement!(state,0,Δs*Δa      ,Adofgr)
             end
         end
+        γ                     = max(Σλg/max(1,npos)*γfac, γ₀*γbot)
 
         if saveiter
             statess[iAiter] = deepcopy(states)
@@ -254,11 +269,8 @@ function solve(::Type{StaticXUAstepwise},pstate,verbose::𝕓,dbg;initialstate::
             verbose && @printf "    maxₜ(|ΔY|)=%7.1e  maxₜ(|∇L/∂Y|)=%7.1e  |ΔA|=%7.1e  |∇L/∂A|=%7.1e\n" √(maximum(Δy²)) √(maximum(Ly²)) √(Δa²) √(La²)
             break#out of iAiter
         end
-        iAiter==maxAiter && muscadeerror(@sprintf("no convergence at iAiter=%3d, |ΔY|=%7.1e |Ly|=%7.1e |ΔA|=%7.1e |La|=%7.1e\n",iAiter,√(maximum(Δy²)),√(maximum(Ly²)),√(Δa²),√(La²)))
+        iAiter<maxAiter || muscadeerror(@sprintf("no convergence at iAiter=%3d, |ΔY|=%7.1e |Ly|=%7.1e |ΔA|=%7.1e |La|=%7.1e\n",iAiter,√(maximum(Δy²)),√(maximum(Ly²)),√(Δa²),√(La²)))
 
-        for state ∈ states
-            state.SP     = (γ=state.SP.γ * γfac,)
-        end
     end
     verbose && @printf "\n    nel=%d, ndof=%d, nstep=%d, nAiter=%d\n" getnele(model) getndof(Adofgr) nStep cAiter
     verbose && @printf "\n    nYiter=%d, nYiter/(nstep*nAiter)=%5.2f\n" cYiter cYiter/nStep/cAiter
