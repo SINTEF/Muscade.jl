@@ -62,7 +62,7 @@ function Disassembler(model::Model)
             end
         end
         scale                 = ΛXUA{𝕣,nX,nU,nA}(sΛ,sX,sU,sA) # scale for element type
-        iX,iU,iA              = 𝕫1(undef,nX),𝕫1(undef,nU),𝕫1(undef,nA)  # tmp arrays fof index into state of eledofs
+        iX,iU,iA              = 𝕫1(undef,nX),𝕫1(undef,nU),𝕫1(undef,nA)  # tmp arrays for index into state of eledofs
         index                 = Vector{XUA{𝕫,nX,nU,nA}}(undef,nele)     # such indexes, for all elements in type
         for iele              = 1:nele
             ixdof,iudof,iadof = 0,0,0
@@ -127,7 +127,7 @@ struct DofGroup{T1,T2,T3,T4,T5,T6,T7,T8}
     nU     :: 𝕫
     nA     :: 𝕫
 
-    iΛ     :: T1   # state.Λ[iΛ] <-> y[jΛ]*Λscale
+    iΛ     :: T1   # state.Λ[iΛ] <-> y[jΛ]*Λscale (dofgroups can handle permutations)
     iX     :: T2 
     iU     :: T3 
     iA     :: T4 
@@ -146,13 +146,13 @@ struct DofGroup{T1,T2,T3,T4,T5,T6,T7,T8}
     fieldX :: Vector{Symbol}
     fieldU :: Vector{Symbol}
     fieldA :: Vector{Symbol}
-
 end
 function DofGroup(dis::Disassembler,iΛ,iX,iU,iA) 
-    # constructor for dofgroup with permutation within class.  The datastructure of DofGroup supports dofgroups with arbitrary permutations - write another constructor
+    # constructor for dofgroup with permutation within each class.  
+    # The datastructure of DofGroup supports dofgroups with arbitrary permutations - but not this constructor
     nX,nU,nA    = length(dis.scaleX),length(dis.scaleU),length(dis.scaleA) # number of dofs in _model_
     nλ,nx,nu,na = length(iΛ),length(iX),length(iU),length(iA)              # number of dofs of each class in group
-    jΛ,jX,jU,jA = gradientpartition(nλ,nx,nu,na)                               # we stack classes on top of each other in group vectors
+    jΛ,jX,jU,jA = gradientpartition(nλ,nx,nu,na)                           # we stack classes on top of each other in group vectors
     Λs,Xs,Us,As = dis.scaleΛ[iΛ],dis.scaleX[iX],dis.scaleU[iU],dis.scaleA[iA]
     Λf,Xf,Uf,Af = dis.fieldX[iΛ],dis.fieldX[iX],dis.fieldU[iU],dis.fieldA[iA]
     return DofGroup(nX,nU,nA, iΛ,iX,iU,iA,  jΛ,jX,jU,jA, Λs,Xs,Us,As, Λf,Xf,Uf,Af)
@@ -169,7 +169,6 @@ function increment!(s::State,der::𝕫,y::AbstractVector{𝕣},gr::DofGroup)
     for i ∈ eachindex(gr.iU); s.U[der+1][gr.iU[i]] += y[gr.jU[i]] * gr.scaleU[i]; end
     for i ∈ eachindex(gr.iA); s.A[       gr.iA[i]] += y[gr.jA[i]] * gr.scaleA[i]; end
 end
-#function set!(s::State,der::𝕫,y::ℝ1,gr::DofGroup) 
 function set!(s::State,der::𝕫,y::AbstractVector{𝕣},gr::DofGroup) 
     s.Λ[der+1] .= 0
     s.X[der+1] .= 0
@@ -201,7 +200,7 @@ function selecteddofs(model::Model,dis,classes)
     return DofGroup(dis, iΛ,iX,iU,iA)
 end
 
-######## Prepare assemblers
+######## Prepare assembler datastructure "asm"
 
 # asm[iarray,ieletyp][ieledof/ientry,iele] has value zero for terms from element gradient/hessian that are not to be added in. Otherwise, the value they
 # have is where in the matrix/vector/nzval to put the values
@@ -348,9 +347,12 @@ function asmmat!(asm,iasm,jasm,nimoddof,njmoddof)
 end
 
 
-######## Generic assembler
-abstract type Assembly end
-using Base.Threads
+######## Assembler methods
+# assemble! is called by MySolver,and calls MySolver/addin!,
+# which calls getresidual or getlagrangian, 
+# which calls elements' lagrangian or residual
+
+abstract type Assembly end # solver define concrete "assemblies" which is a collection of matrices and solvers wanted for a phase in the solution process
 
 # sequential
 
@@ -374,6 +376,7 @@ function assemble_!(out::Assembly,asm,dis,eleobj,state::State{nΛder,nXder,nUder
 end
 
 # multithreaded
+using Base.Threads
 one_for_each_thread(x) = SVector{nthreads()}(deepcopy(x) for i=1:nthreads())
 firstelement(x::AbstractVector) = x[1]
 firstelement(x                ) = x
@@ -417,7 +420,6 @@ end
 
 #######
 
-# assemble! calls MySolver/addin!, which calls getresidual or getlagrangian
 
 ####### Lagrangian from residual and residual from Lagrangian
 const True,False  = Val{true},Val{false}

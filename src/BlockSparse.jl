@@ -1,6 +1,8 @@
+######## Takes a matrix of sparses, and assembles it into a bigsparse
+
 # i index
 # n length
-# p ptr (using the colptr compression convention)
+# p ptr (using the colptr compression convention - the index of start of a swath within a vector)
 #
 # b block  - indexing blocks
 # l local  - indexing inside a block
@@ -8,7 +10,7 @@
 #
 # r row
 # c col
-# v non zero value
+# v non-zero value
 #
 # sparse.rowval → ilr
 # sparse.colptr → pilr  
@@ -16,9 +18,10 @@
 # irow   = ilr[ilv]  
 
 struct BlockSparseAssembler
-    pigr::Vector{𝕫2}
-    pgc ::𝕫1
+    pigr::Vector{𝕫2}   # pigr[ibc][ibr,ilc] → igv   Variable built up as "asm" in "blocksparse".  Given, index into global column, index into block row and index into local colum, get index into gobal nz
+    pgc ::𝕫1           # pgc[ibc]     →  Given index of block column, get index of first global column of the block 
 end
+
 
 """
     bigsparse,asm = blocksparse(blocks::Matrix{<:SparseMatrixCSC})
@@ -33,7 +36,7 @@ function blocksparse(B::Matrix{SparseMatrixCSC{Tv,Ti}}) where{Tv,Ti<:Integer}
     nbr,nbc                 = size(B)  
     nbr>0 && nbc>0 || muscadeerror("must have length(B)>0")
 
-    pgr                     = 𝕫1(undef,nbr+1)         # pointers into solution vector, with global*solution=rhs
+    pgr                     = 𝕫1(undef,nbr+1)         # pointers to the start of each block in global solution vector, where global*solution=rhs
     pgr[1]                  = 1
     for ibr                 = 1:nbr
         nlr                 = 0
@@ -49,7 +52,7 @@ function blocksparse(B::Matrix{SparseMatrixCSC{Tv,Ti}}) where{Tv,Ti<:Integer}
     end 
     ngr                     = pgr[end]-1
 
-    pgc                     = 𝕫1(undef,nbc+1)         # pointers into rhs vector
+    pgc                     = 𝕫1(undef,nbc+1)         # pointers to the start of each block in global rhs vector
     pgc[1]                  = 1
     for ibc                 = 1:nbc
         nlc                 = 0
@@ -65,7 +68,7 @@ function blocksparse(B::Matrix{SparseMatrixCSC{Tv,Ti}}) where{Tv,Ti<:Integer}
     end 
     ngc                     = pgc[end]-1
 
-    ngv                     = 0 
+    ngv                     = 0                        # number of global nz values     
     for ibc                 = 1:nbc
         for ibr             = 1:nbr
             if isassigned(B,ibr,ibc)
@@ -79,7 +82,7 @@ function blocksparse(B::Matrix{SparseMatrixCSC{Tv,Ti}}) where{Tv,Ti<:Integer}
     pigr                    = 𝕫1(undef,ngc+1) 
     pigr[1]                 = 1
 
-    asm                     = Vector{𝕫2}(undef,nbr)  
+    asm                     = Vector{𝕫2}(undef,nbr)  # asm[ibc][ibr,ilc] → igv 
     igv                     = 1
     for ibc                 = 1:nbc
        nlc                  = pgc[ibc+1]-pgc[ibc]
@@ -94,40 +97,12 @@ function blocksparse(B::Matrix{SparseMatrixCSC{Tv,Ti}}) where{Tv,Ti<:Integer}
                         igr[igv]= pgr[ibr]-1 + ilr[ilv]  
                         igv    += 1    
                     end
-                # else
-                #     pigr[igc] = xx  # REPRISE
                 end
-                pigr[igc+1] = igv   
             end
+            pigr[igc+1] = igv   
         end
     end
     return SparseMatrixCSC(ngr,ngc,pigr,igr,gv),BlockSparseAssembler(asm,pgc)    
-end
-"""
-    cat!(bigsparse,blocks::Matrix{<:SparseMatrixCSC})
-
-Assemble sparse blocks into a preallocated sparse matrix.  Will fail silently or throw an error unless
-`bigsparse` has the correct sparsity structure for the given `blocks`. 
-
-See also: [`blocksparse`](@ref),[`addin!`](@ref)
-""" 
-function cat!(out::SparseMatrixCSC{Tv,Ti},B::Matrix{SparseMatrixCSC{Tv,Ti}},asm::BlockSparseAssembler) where{Tv,Ti<:Integer}
-    nbr,nbc                 = size(B)  
-    igv,gv                  = 1,out.nzval
-    for ibc                 = 1:nbc
-        nlc                 = asm.pgc[ibc+1]-asm.pgc[ibc]
-        for ilc             = 1:nlc
-            for ibr         = 1:nbr
-                if isassigned(B,ibr,ibc)
-                    pilr,lv     = B[ibr,ibc].colptr,B[ibr,ibc].nzval 
-                    for ilv     = pilr[ilc]:pilr[ilc+1]-1 
-                        gv[igv] = lv[ilv]
-                        igv    += 1    
-                    end
-                end
-            end
-        end
-    end
 end
 """
     addin!(bigsparse,block::SparseMatrixCSC,asm,ibr,ibc)
@@ -140,7 +115,7 @@ See also: [`blocksparse`](@ref),[`cat!`](@ref)
 """ 
 function addin!(out::SparseMatrixCSC{Tv,Ti},B::SparseMatrixCSC{Tv,Ti},asm::BlockSparseAssembler,ibr::𝕫,ibc::𝕫) where{Tv,Ti<:Integer}
     gv              = out.nzval
-    asm.pigr[ibc][ibr,1] > 0 || muscadeerror("Trying to cat! into an empty block")
+    asm.pigr[ibc][ibr,1] > 0 || muscadeerror("Trying to addin! into an empty block")
     for ilc         = 1:size(B,2)
         igv         = asm.pigr[ibc][ibr,ilc]
         pilr,lv     = B.colptr,B.nzval 
