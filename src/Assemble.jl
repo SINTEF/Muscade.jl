@@ -306,7 +306,7 @@ function asmmat!(asm,iasm,jasm,nimoddof,njmoddof)
         end
     end    
     K      = 𝕫1(undef,npair) # to each pair in A    associate a unique entry number
-    nzval  = ones(𝕣,nnz)     # could this be left undef and still get past the sparse constructor?
+    nzval  = ones(𝕣,nnz)     # could this be left undef and still get past the sparse constructor?  TODO 𝕣?
     colptr = 𝕫1(undef,njmoddof+1) # Column icol is in colptr[icol]:(colptr[icol+1]-1)
     colptr[1] = 1
     rowval = 𝕫1(undef,nnz)

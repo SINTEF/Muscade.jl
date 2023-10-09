@@ -60,9 +60,6 @@ module Muscade
     include("StaticXUA.jl")
     export StaticXUA
 
-    include("StaticXUAstepwise.jl")
-    export StaticXUAstepwise
-
     include("Diagnostic.jl")
     export studyscale,studysingular,describe
 

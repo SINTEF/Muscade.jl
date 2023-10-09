@@ -29,12 +29,12 @@ model2          = deepcopy(model1)
 
 initialstate1   = initialize!(model1)
 stateX1         = solve(StaticX;  initialstate=initialstate1,time=[.5,1.],verbose=false)
-stateXUA1       = solve(StaticXUAstepwise;initialstate=stateX1,verbose=false)
+stateXUA1       = solve(StaticXUA;initialstate=stateX1,verbose=false)
 
 setscale!(model2;scale=(X=(tx1=1.,tx2=10.,rx3=2.),A=(Δseadrag=3.,Δskydrag=4.,ΔL=5)),Λscale=2)  
 initialstate2   = initialize!(model2)
 stateX2         = solve(StaticX;  initialstate=initialstate2,time=[.5,1.],verbose=false)
-stateXUA2       = solve(StaticXUAstepwise;initialstate=stateX2,verbose=false)
+stateXUA2       = solve(StaticXUA;initialstate=stateX2,verbose=false)
 
 step = 1
 @testset "ScaleStaticX" begin

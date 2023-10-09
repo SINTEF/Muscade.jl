@@ -22,6 +22,20 @@ struct BlockSparseAssembler
     pgc ::𝕫1           # pgc[ibc]     →  Given index of block column, get index of first global column of the block 
 end
 
+struct SparseBlocks{T} <: AbstractMatrix{T}
+    nzval  :: Vector{T         }
+    rowcol :: Vector{Tuple{𝕫,𝕫}}
+    nrow   :: 𝕫
+    ncol   :: 𝕫
+end
+SparseBlocks(nzval,row,col,nrow=maximum(row),ncol=maximum(col)) = SparseBlocks(nzval,[(row[i],col[i]) for i∈eachindex(row)],nrow,ncol)
+function block(sb::SparseBlocks,row,col)
+    i = findfirst(rc->rc==(row,col),sb.rowcol)
+    return i===nothing ? nothing : sb.nzval[i]
+end
+block(B::Matrix{SparseMatrixCSC{Tv,𝕫}},row,col) where{Tv} = isassigned(B,row,col) ? B[row,col] : nothing
+Base.size(B::SparseBlocks) = (B.nrow,B.ncol)
+
 
 """
     bigsparse,asm = blocksparse(blocks::Matrix{<:SparseMatrixCSC})
@@ -30,9 +44,12 @@ Prepare for the assembly of sparse blocks into a large sparse matrix. Unassigned
 `bigsparse` is allocated, with the correct sparsity structure, but its `nzval` undef'ed.    
 Where some blocks share the same sparsity structure, `blocks` can have `===` elements.
 
+`blocks` can be a `Matrix{<:SparseMatrixCSC}`, where empty blocks are unassigned.
+`blocks` can be a `SparseBlocks{<:SparseMatrixCSC}`.
+
 See also: [`addin!`](@ref),[`cat!`](@ref)
 """ 
-function blocksparse(B::Matrix{SparseMatrixCSC{Tv,Ti}}) where{Tv,Ti<:Integer}
+function blocksparse(B::AbstractMatrix{SparseMatrixCSC{Tv,𝕫}}) where{Tv} 
     nbr,nbc                 = size(B)  
     nbr>0 && nbc>0 || muscadeerror("must have length(B)>0")
 
@@ -41,8 +58,9 @@ function blocksparse(B::Matrix{SparseMatrixCSC{Tv,Ti}}) where{Tv,Ti<:Integer}
     for ibr                 = 1:nbr
         nlr                 = 0
         for ibc             = 1:nbc
-            if isassigned(B,ibr,ibc)
-                nlr         = size(B[ibr,ibc],1)
+            b = block(B,ibr,ibc)
+            if ~isnothing(b)
+                nlr         = size(b,1)
                 break
             end
             ibc<nbc || muscadeerror("B has an empty row")
@@ -57,8 +75,9 @@ function blocksparse(B::Matrix{SparseMatrixCSC{Tv,Ti}}) where{Tv,Ti<:Integer}
     for ibc                 = 1:nbc
         nlc                 = 0
         for ibr             = 1:nbr
-            if isassigned(B,ibr,ibc)
-                nlc         = size(B[ibr,ibc],2)
+            b = block(B,ibr,ibc)
+            if ~isnothing(b)
+                nlc         = size(b,2)
                 break
             end
             ibc<nbc || muscadeerror("B has an empty column")
@@ -71,14 +90,15 @@ function blocksparse(B::Matrix{SparseMatrixCSC{Tv,Ti}}) where{Tv,Ti<:Integer}
     ngv                     = 0                        # number of global nz values     
     for ibc                 = 1:nbc
         for ibr             = 1:nbr
-            if isassigned(B,ibr,ibc)
-                ngv        += nnz(B[ibr,ibc])
+            b = block(B,ibr,ibc)
+            if ~isnothing(b)
+                ngv        += nnz(b)
             end
         end
     end
 
     igr                     = 𝕫1(undef,ngv  ) 
-    gv                      = 𝕣1(undef,ngv  )
+    gv                      = Vector{Tv}(undef,ngv)
     pigr                    = 𝕫1(undef,ngc+1) 
     pigr[1]                 = 1
 
@@ -90,9 +110,10 @@ function blocksparse(B::Matrix{SparseMatrixCSC{Tv,Ti}}) where{Tv,Ti<:Integer}
        for ilc              = 1:nlc
             igc             = ilc + pgc[ibc]-1
             for ibr         = 1:nbr
-                if isassigned(B,ibr,ibc)
-                    asm[ibc][ibr,ilc] = igv
-                    pilr,ilr    = B[ibr,ibc].colptr, B[ibr,ibc].rowval
+                b = block(B,ibr,ibc)
+                if ~isnothing(b)
+                        asm[ibc][ibr,ilc] = igv
+                    pilr,ilr    = b.colptr, b.rowval
                     for ilv     = pilr[ilc]:pilr[ilc+1]-1 
                         igr[igv]= pgr[ibr]-1 + ilr[ilv]  
                         igv    += 1    
