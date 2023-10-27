@@ -200,7 +200,7 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
         i[4step-0],j[4step-0],v[4step-0] = nblock,nblock,out.Laa
     end
     block = SparseBlocks(v,i,j)
-    Lvv,blkasm            = blocksparse(block)
+    Lvv,blkasm            = prepare(block)
     Lv                    = 𝕣1(undef,nV)
 
 

@@ -38,7 +38,7 @@ Base.size(B::SparseBlocks) = (B.nrow,B.ncol)
 
 
 """
-    bigsparse,asm = blocksparse(blocks::Matrix{<:SparseMatrixCSC})
+    bigsparse,asm = prepare(blocks::Matrix{<:SparseMatrixCSC})
 
 Prepare for the assembly of sparse blocks into a large sparse matrix. Unassigned blocks (undef'ed) will be treated as all-zero.
 `bigsparse` is allocated, with the correct sparsity structure, but its `nzval` undef'ed.    
@@ -49,7 +49,7 @@ Where some blocks share the same sparsity structure, `blocks` can have `===` ele
 
 See also: [`addin!`](@ref),[`cat!`](@ref)
 """ 
-function blocksparse(B::AbstractMatrix{SparseMatrixCSC{Tv,𝕫}}) where{Tv} 
+function prepare(B::AbstractMatrix{SparseMatrixCSC{Tv,𝕫}}) where{Tv} 
     nbr,nbc                 = size(B)  
     nbr>0 && nbc>0 || muscadeerror("must have length(B)>0")
 

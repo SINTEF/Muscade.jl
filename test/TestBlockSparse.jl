@@ -1,4 +1,4 @@
-module TestTestBlockSparse
+module TestBlockSparse
 
 using Test,SparseArrays
 using Muscade
@@ -15,7 +15,7 @@ for irow = 1:nrow
         end
     end
 end
-m,blkasm = blocksparse(B)
+m,blkasm = prepare(B)
 
 zero!(m)
 for irow = 1:nrow
@@ -27,7 +27,7 @@ for irow = 1:nrow
 end
 m2 = Matrix(m)
 
-@testset "Turbine gradient" begin
+@testset "BlockSparse" begin
     @test m2[4:6,1:3] == B[2,1]
 end
 end
