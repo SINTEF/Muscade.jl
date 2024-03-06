@@ -70,8 +70,10 @@ precedence(a::SA)     = precedence(eltype(a))
 npartial(  a::SA)     = npartial(eltype(a))
 precedence(a::ℝ)      = precedence(typeof(a))
 npartial(  a::ℝ)      = npartial(typeof(a))
+constants(tup::Tuple) = constants(tup...) 
+constants( a,args...) = max(constants(a),constants(args...))
 constants( a)         = 1+precedence(a) 
-constants( a,args...) = max(1+precedence(a),constants(args...)) 
+constants( ::Nothing) = 0
 
 # variate
 struct δ{P,N,R}                end # need dum, because syntax δ{P,N,R}() collides with default constructor
@@ -140,7 +142,8 @@ macro Op2(OP,AB,A,B)
     end)
 end
 
-@Op2(Base.hypot,(a.dx*a.x+b.dx*b.x)/hypot(a.x,b.x),          a.dx*a.x/hypot(a.x,b), b.dx*b.x/hypot(a,b.x))   
+@Op2(Base.atan,  (a.dx*b.x+b.dx*a.x)/(a.x^2+b.x^2),          (a.dx*b)/(a.x^2+b^2),  (b.dx*a)/(a^2+b.x^2) )   
+@Op2(Base.hypot, (a.dx*a.x+b.dx*b.x)/hypot(a.x,b.x),         a.dx*a.x/hypot(a.x,b), b.dx*b.x/hypot(a,b.x))   
 @Op2(Base.:(+),  a.dx+b.dx,                                  a.dx,                  b.dx                 )
 @Op2(Base.:(-),  a.dx-b.dx,                                  a.dx,                  -b.dx                )
 @Op2(Base.:(*),  a.dx*b.x+a.x*b.dx,                          a.dx*b,                a*b.dx               )
@@ -171,6 +174,8 @@ end
 @Op1(Base.sin,         cos(a.x) * a.dx                                         )
 @Op1(Base.cos,        -sin(a.x) * a.dx                                         )
 @Op1(Base.tan,         (1. + tan(a.x)^2) * a.dx                                )
+@Op1(Base.sinpi,       π*cos(a.x) * a.dx                                       )
+@Op1(Base.cospi,      -π*sin(a.x) * a.dx                                       )
 @Op1(Base.sec,         sec(a.x) * tan(a.x) * a.dx                              )
 @Op1(Base.csc,        -csc(a.x) * cot(a.x) * a.dx                              )
 @Op1(Base.cot,        -(1. + cot(a.x)^2) * a.dx                                )

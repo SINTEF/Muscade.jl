@@ -67,7 +67,7 @@ elseif mission == :profile
     Profile.@profile for i=1:10
         local state           = solve(StaticX;initialstate,time=[0.],maxiter=200,saveiter=true,γ0=10.,γfac1=.5,γfac2=10.,verbose=false)
     end
-ProfileView.view(fontsize=30);
+    ProfileView.view(fontsize=30);
 end
 
 

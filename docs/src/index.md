@@ -3,7 +3,7 @@ CurrentModule = Muscade
 ```
 
 !!! info
-    `Muscade.jl` is still under development, and not ready for general usage:
+    `Muscade.jl` is under development.
     - New versions may introduce breaking changes in user and element APIs.
     - Graphics generation will be revised.
     - New solvers will be added.
@@ -31,7 +31,6 @@ The idea is thus to be able to produce specialised FEM applications, at low cost
 Optimization-FEM consists in optimising a target function (here called the cost function) under the constraint that a FEM model be exactly verified. This in turn implies that the problem has more unknowns than the model has equation (or at least: more unknowns than linearly independent equations, as would be the case with “insufficient” boundary conditions).
 
 The unknowns that are dual to the FEM equations are noted X-dofs, and sometimes refered to as “response dofs”. The rest of the unknowns can be separated into U-dofs (varying with time, generaly unknown loads) and A-dofs (comstant over time, generaly unknown model parameters). The conditions for such a constrained optimization problem to be well-posed are the Babushka-Brezzi conditions, which say, in essence “if you do not restrain, then at least measure”.
-
 
 ## Applications of optimization-FEM
 

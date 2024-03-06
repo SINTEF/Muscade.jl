@@ -11,7 +11,7 @@ module Muscade
     include("Adiff.jl")
     export  ∂ℝ #\partial \bbR
     export  variate,δ # \delta
-    export  value,VALUE,∂ # \partial, \nabla
+    export  value,VALUE,∂,value_∂ # \partial, \nabla
     export  constants,precedence,npartial,norm
     export  ≗ #\circeq
 
