@@ -44,6 +44,9 @@ module Muscade
     export DofConstraint,Hold,ElementConstraint
     export QuickFix,DofLoad
 
+    include("BeamElement.jl")
+    export EulerBeam3D
+     
     include("Assemble.jl")
     export Assembly
     

@@ -35,6 +35,9 @@ module Runtest
         @testset "ElementCost" begin
             include("TestElementCost.jl")
         end
+        @testset "BeamElement" begin
+            include("TestBeamElement.jl")
+        end
         @testset "TestUnit" begin
             include("TestUnit.jl")
         end
