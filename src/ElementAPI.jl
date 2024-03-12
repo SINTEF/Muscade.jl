@@ -154,3 +154,66 @@ See [`lagrangian`](@ref) for the rest of the inputs and outputs.
 """
 residual()=nothing
 
+"""
+    P = constants(X,U,A,t)
+    x = Muscade.motion{P}(X)
+
+Transform a `NTuple` of `SVector`s, for example the vector `X` provided as an input to
+`residual` or `Lagrangian` into a `SVector` of `∂ℝ`.  This can be used by an element to 
+compute time derivatives, for example Euler, Coriolis and centrifugal accelerations, 
+or strain rates.
+
+Some principles of safe automatic differentiation must be adhered to:
+- the function that uses `Muscade.motion` must also 'unpack' : no variable that is touched by 
+  the output of `Muscade.motion` must be returned by the function without having been unpacked
+  by `Muscade.position`, `Muscade.velocity` or `Muscade.acceleration`.
+- The precendence `P` must be calculated using `constants` with all variables that are input to 
+  the function and may be differentiated.
+- If other levels of automatic differentiation are introduced within the function, unpack in reverse
+  order of packing.    
+
+See [`Muscade.position`](@ref), [`Muscade.velocity`](@ref), [`Muscade.acceleration`](@ref)
+"""
+struct motion{P}        end 
+struct motion_{P,Q}     end 
+motion{ P  }(a::NTuple{D,SV{N,R}}) where{D,P,N,R        } = SV{N}(motion_{P,P+D-1}(ntuple(j->a[j][i],D)) for i=1:N)
+motion_{P,Q}(a::NTuple{D,     R }) where{D,P  ,R<:Real,Q} = ∂ℝ{Q,1}(motion_{P,Q-1}(a),SV(motion_{P,Q-1}(a[2:D]))) 
+motion_{P,P}(a::NTuple{D,     R }) where{D,P  ,R<:Real  } = a[1]
+
+"""
+    P = constants(X,U,A,t)
+    x = Muscade.motion{P}(X)
+    E = f(X)    
+    ε = Muscade.position(E)
+
+Extract the position from a variable that is a function of the output of `Muscade.motion`.
+
+See [`Muscade.motion`](@ref), [`Muscade.velocity`](@ref), [`Muscade.acceleration`](@ref)
+"""
+position(a::ℝ)     = value{precedence(a)-1  }(value{precedence(a)  }(a)   )   
+"""
+    P = constants(X,U,A,t)
+    x = Muscade.motion{P}(X)
+    E = f(X)    
+    ̇ε = Muscade.velocity(E)
+
+Extract the velocity or rate from a variable that is a function of the output of `Muscade.motion`.
+
+See [`Muscade.motion`](@ref), [`Muscade.position`](@ref), [`Muscade.acceleration`](@ref)
+"""
+velocity(a::ℝ)     = value{precedence(a)-1  }(∂{    precedence(a),1}(a)[1])   
+"""
+    P = constants(X,U,A,t)
+    x = Muscade.motion{P}(X)
+    E = f(X)    
+    ̈ε = Muscade.acceleration(E)
+
+Extract the velocity or rate from a variable that is a function of the output of `Muscade.motion`.
+
+See [`Muscade.motion`](@ref), [`Muscade.position`](@ref), [`Muscade.velocity`](@ref)
+"""
+acceleration(a::ℝ) = ∂{    precedence(a)-1,1}(∂{    precedence(a),1}(a)[1])[1]
+position(    a::AbstractVector) = position.(a)
+velocity(    a::AbstractVector) = velocity.(a)
+acceleration(a::AbstractVector) = acceleration.(a)
+

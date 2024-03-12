@@ -64,4 +64,23 @@ T = Spring{2}
 end
 
 
+const X3 = (SVector{3,𝕣}(1,2,3),SVector{3,𝕣}(4,5,6),SVector{3,𝕣}(7,8,9))
+const X2 = (SVector{3,𝕣}(1,2,3),SVector{3,𝕣}(4,5,6))
+const X1 = (SVector{3,𝕣}(1,2,3),)
+const P  = 2
+Y1=Muscade.motion{P}(X1)
+Y2=Muscade.motion{P}(X2)
+Y3=Muscade.motion{P}(X3)
+@testset "motion" begin
+    @test Muscade.position(Y1) ≈ [1,2,3]
+    @test Muscade.velocity(Y1) ≈ [0,0,0]
+    @test Muscade.acceleration(Y1) ≈ [0,0,0]
+    @test Muscade.position(Y2) ≈ [1,2,3]
+    @test Muscade.velocity(Y2) ≈ [4,5,6]
+    @test Muscade.acceleration(Y2) ≈ [0,0,0]
+    @test Muscade.position(Y3) ≈ [1,2,3]
+    @test Muscade.velocity(Y3) ≈ [4,5,6]
+    @test Muscade.acceleration(Y3) ≈ [7,8,9]
+end
+
 end
