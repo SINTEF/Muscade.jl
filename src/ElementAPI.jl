@@ -174,46 +174,73 @@ Some principles of safe automatic differentiation must be adhered to:
 
 See [`Muscade.position`](@ref), [`Muscade.velocity`](@ref), [`Muscade.acceleration`](@ref)
 """
-struct motion{P}        end 
+struct motion{P,D}      end 
 struct motion_{P,Q}     end 
-motion{ P  }(a::NTuple{D,SV{N,R}}) where{D,P,N,R        } = SV{N}(motion_{P,P+D-1}(ntuple(j->a[j][i],D)) for i=1:N)
-motion_{P,Q}(a::NTuple{D,     R }) where{D,P  ,R<:Real,Q} = ∂ℝ{Q,1}(motion_{P,Q-1}(a),SV(motion_{P,Q-1}(a[2:D]))) 
-motion_{P,P}(a::NTuple{D,     R }) where{D,P  ,R<:Real  } = a[1]
+motion{ P,D}(  a::NTuple{D,SV{N,R}}) where{D,P,N,R        } = SV{N}(motion_{P,P+D-1}(ntuple(j->a[j][i],D)) for i=1:N)
+motion_{P,Q  }(a::NTuple{D,     R }) where{D,P  ,R<:Real,Q} = ∂ℝ{Q,1}(motion_{P,Q-1}(a),SV(motion_{P,Q-1}(a[2:D]))) 
+motion_{P,P  }(a::NTuple{D,     R }) where{D,P  ,R<:Real  } = a[1]
+struct position{P,Q}     end 
+struct velocity{P,Q}     end 
+struct acceleration{P,Q}     end 
 
 """
     P = constants(X,U,A,t)
-    x = Muscade.motion{P}(X)
+    D = length(X)
+    x = Muscade.motion{P,D}(X)
     E = f(X)    
-    ε = Muscade.position(E)
+    ε = Muscade.position{P,D}(E)
 
 Extract the position from a variable that is a function of the output of `Muscade.motion`.
 
 See [`Muscade.motion`](@ref), [`Muscade.velocity`](@ref), [`Muscade.acceleration`](@ref)
 """
-position(a::ℝ)     = value{precedence(a)-1  }(value{precedence(a)  }(a)   )   
+function position{P,Q}(a::ℝ) where{P,Q}
+    if     Q==1                            a 
+    elseif Q==2               value{P+Q-1}(a)
+    elseif Q==3  value{P+Q-2}(value{P+Q-1}(a))
+    else muscadeerror((P=P,Q=Q,a=typeof(a)),"'position' requires Q∈{1,2,3}")
+    end
+end
+  
 """
     P = constants(X,U,A,t)
-    x = Muscade.motion{P}(X)
+    D = length(X)
+    x = Muscade.motion{P,D}(X)
     E = f(X)    
-    ̇ε = Muscade.velocity(E)
+    ̇ε = Muscade.velocity{P,D}(E)
 
 Extract the velocity or rate from a variable that is a function of the output of `Muscade.motion`.
 
 See [`Muscade.motion`](@ref), [`Muscade.position`](@ref), [`Muscade.acceleration`](@ref)
 """
-velocity(a::ℝ)     = value{precedence(a)-1  }(∂{    precedence(a),1}(a)[1])   
+function velocity{P,Q}(a::ℝ) where{P,Q}
+    if     Q==1                          0.   
+    elseif Q==2               ∂{P+Q-1,1}(a)[1]
+    elseif Q==3  value{P+Q-2}(∂{P+Q-1,1}(a)[1]) 
+    else muscadeerror((P=P,Q=Q,a=typeof(a)),"'velocity' requires Q∈{1,2,3}")
+    end
+end  
 """
     P = constants(X,U,A,t)
-    x = Muscade.motion{P}(X)
+    D = length(X)
+    x = Muscade.motion{P,D}(X)
     E = f(X)    
-    ̈ε = Muscade.acceleration(E)
+    ̈ε = Muscade.acceleration{P,D}(E)
 
 Extract the velocity or rate from a variable that is a function of the output of `Muscade.motion`.
 
 See [`Muscade.motion`](@ref), [`Muscade.position`](@ref), [`Muscade.velocity`](@ref)
 """
-acceleration(a::ℝ) = ∂{    precedence(a)-1,1}(∂{    precedence(a),1}(a)[1])[1]
-position(    a::AbstractVector) = position.(a)
-velocity(    a::AbstractVector) = velocity.(a)
-acceleration(a::AbstractVector) = acceleration.(a)
+function acceleration{P,Q}(a::ℝ) where{P,Q}
+    if     Q==1                        0.
+    elseif Q==2                        0.
+    elseif Q==3  ∂{P+Q-2,1}(∂{P+Q-1,1}(a)[1])[1]
+    else muscadeerror((P=P,Q=Q,a=typeof(a)),"'acceleration' requires Q∈{1,2,3}")
+    end
+end  
+
+#acceleration{P,Q}(a::ℝ) where{P,Q} = ∂{P+Q-2,1}(∂{P+Q-1,1}(a)[1])[1]
+position{P,Q}(    a::AbstractVector) where{P,Q} = position{P,Q}.(a)
+velocity{P,Q}(    a::AbstractVector) where{P,Q} = velocity{P,Q}.(a)
+acceleration{P,Q}(a::AbstractVector) where{P,Q} = acceleration{P,Q}.(a)
 
