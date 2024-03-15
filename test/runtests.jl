@@ -11,6 +11,9 @@ module Runtest
         @testset "TestAdiff" begin
             include("TestAdiff.jl")
         end
+        @testset "TestMultiplex" begin
+            include("TestMultiplex.jl")
+        end
         @testset "TestModelDescription" begin
             include("TestModelDescription.jl")
         end

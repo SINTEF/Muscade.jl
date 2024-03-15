@@ -15,6 +15,8 @@ module Muscade
     export  constants,precedence,npartial,norm
     export  ≗ #\circeq
 
+    include("Multiplex.jl")
+    
     include("Dots.jl")
     export dots,∘₀,∘₁,∘₂,⊗
 
