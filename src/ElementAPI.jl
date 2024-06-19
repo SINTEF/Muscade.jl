@@ -80,6 +80,8 @@ c[inod][icoord]
 ```
 where `inod` is the element-node number and `icoord` an index into a vector of coordinates.
 
+Note that `c[inod]` points at the same memory as `nod[inod].coord`: do not mutate `c[inod]`!
+
 See also: [`addnode!`](@ref), [`addelement!`](@ref), [`describe`](@ref), [`solve`](@ref)  
 """
 coord(nod::AbstractVector{Node}) = [n.coord for n∈nod]
@@ -181,14 +183,14 @@ motion_{P,Q  }(a::NTuple{D,     R }) where{D,P  ,R<:Real,Q} = ∂ℝ{Q,1}(motion
 motion_{P,P  }(a::NTuple{D,     R }) where{D,P  ,R<:Real  } = a[1]
 struct position{P,Q}     end 
 struct velocity{P,Q}     end 
-struct acceleration{P,Q}     end 
+struct acceleration{P,Q} end 
 
 """
     P = constants(X,U,A,t)
-    D = length(X)
-    x = Muscade.motion{P,D}(X)
-    E = f(X)    
-    ε = Muscade.position{P,D}(E)
+    N = length(X)
+    x = Muscade.motion{P,ND}(X)
+    E = f(x)    
+    ε = Muscade.position{P,N}(E)
 
 Extract the position from a variable that is a function of the output of `Muscade.motion`.
 
@@ -204,10 +206,10 @@ end
   
 """
     P = constants(X,U,A,t)
-    D = length(X)
-    x = Muscade.motion{P,D}(X)
-    E = f(X)    
-    ̇ε = Muscade.velocity{P,D}(E)
+    N = length(X)
+    x = Muscade.motion{P,N}(X)
+    E = f(x)    
+    ̇ε = Muscade.velocity{P,N}(E)
 
 Extract the velocity or rate from a variable that is a function of the output of `Muscade.motion`.
 
@@ -222,10 +224,10 @@ function velocity{P,Q}(a::ℝ) where{P,Q}
 end  
 """
     P = constants(X,U,A,t)
-    D = length(X)
-    x = Muscade.motion{P,D}(X)
-    E = f(X)    
-    ̈ε = Muscade.acceleration{P,D}(E)
+    N = length(X)
+    x = Muscade.motion{P,N}(X)
+    E = f(x)    
+    ̈ε = Muscade.acceleration{P,N}(E)
 
 Extract the velocity or rate from a variable that is a function of the output of `Muscade.motion`.
 

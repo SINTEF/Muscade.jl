@@ -1,4 +1,4 @@
-module TestAssemble
+#module TestAssemble
 
 using Test,StaticArrays,SparseArrays
 using Muscade
@@ -15,7 +15,7 @@ X        = @SVector [1.,2.]
 U        = @SVector 𝕣[]
 A        = @SVector [0.,0.]  # [Δseadrag,Δskydrag]
 
-#                             eleobj, Λ, X,  U,  A, t, χ,      χcv,     SP,     dbg
+#                            eleobj, Λ, X,  U,  A, t, χ,      χcv,     SP,     dbg
 L,Lλ,Lx,Lu,La,χn  = gradient(turbine,Λ ,[X],[U],A, 0.,nothing,identity,nothing,(;))
 
 @testset "Turbine gradient" begin
@@ -163,4 +163,4 @@ Muscade.assemble!(out,asm,dis,model,state,(someunittest=true,))
     @test  Muscade.firstelement(out).Lλx ≈ sparse([1, 2, 3, 1, 2, 3, 1, 2, 3], [1, 1, 1, 2, 2, 2, 3, 3, 3], [10323.069597975566, 0.0, 0.0, 0.0, 1049.1635310247202, 5245.817655123601, 0.0, 5245.8176551236, 786872.6482685402], 3, 3)
 end
 
-end
+#end

@@ -1,3 +1,13 @@
+# TODO
+# 1) This code is for static analysis. Use `Muscade.motion` to create Adiffs that will facilitate the dynamic computation.
+# 2) This code is not A-parameterized. Arguably, we do not want to A-parameterize the element, just the material:
+#    - create an example of A-parameterized material
+#    - make the element pass on the A-parameters to all Gauss points (valid for material optimisation, not for local damage detection)
+#    - .doflist must interrogate the material to get the list of A-dofs
+# 3) U-dofs, using a "isoparametric" formulation
+# 4) performance.  Liberal use of nested Adiff makes code simple, but not fast...
+
+
 using StaticArrays, LinearAlgebra
 using Muscade
 
@@ -53,7 +63,7 @@ const ndim       = 3
 const ndof       = 12
 const nnod       = 2
 
-# Though the shape function matrices are sparse, do not "unroll" them.  That would be faster byt considerably clutter the code
+# Though the shape function matrices are sparse, do not "unroll" them.  That would be faster but considerably clutter the code
 
 # ζ∈[-1/2,1/2]                          ζ∈[-1,1]
 Nₐ₁(ζ) = -ζ                           # Nₐ₁(ζ) = -ζ/2

@@ -15,7 +15,7 @@ struct EletypDisassembler{nX,nU,nA}
     index :: Vector{XUA{𝕫,nX,nU,nA}}
     scale :: ΛXUA{𝕣,nX,nU,nA}
 end
-# dis.dis[ieletyp].index.[iele].X|U|A[ieledof]      - disassembling model state into element dofs
+# dis.dis[ieletyp].index[iele].X|U|A[ieledof]       - disassembling model state into element dofs
 # dis.dis[ieletyp].scale.Λ|X|U|A[ieledof]           - scaling each element type 
 # dis.scaleΛ|X|U|A[imoddof]                         - scaling the model state
 # dis.field  X|U|A[imoddof]                         - field of dofs in model state
@@ -122,12 +122,15 @@ State{nΛder,nXder,nUder}(s::State) where{nΛder,nXder,nUder} = State{nΛder,nXd
 
 #### DofGroup
 
+# describes the relation between the dofs of the model, and a dof-vector containing an ordered selection
+# of the dofs of the model.
+
 struct DofGroup{T1,T2,T3,T4,T5,T6,T7,T8} 
     nX     :: 𝕫 # of the _model
     nU     :: 𝕫
     nA     :: 𝕫
 
-    iΛ     :: T1   # state.Λ[iΛ] <-> y[jΛ]*Λscale (dofgroups can handle permutations)
+    iΛ     :: T1   # state.Λ[iΛ] <-> y[jΛ]*scaleΛ (hence dofgroups can handle permutations)
     iX     :: T2 
     iU     :: T3 
     iA     :: T4 
@@ -142,13 +145,13 @@ struct DofGroup{T1,T2,T3,T4,T5,T6,T7,T8}
     scaleU :: 𝕣1
     scaleA :: 𝕣1
 
-    fieldΛ :: Vector{Symbol}
+    fieldΛ :: Vector{Symbol}  # fieldΛ[iΛ]
     fieldX :: Vector{Symbol}
     fieldU :: Vector{Symbol}
     fieldA :: Vector{Symbol}
 end
 function DofGroup(dis::Disassembler,iΛ,iX,iU,iA) 
-    # constructor for dofgroup with permutation within each class.  
+    # constructor for dofgroup with permutation within each dof-class.  
     # The datastructure of DofGroup supports dofgroups with arbitrary permutations - but not this constructor
     nX,nU,nA    = length(dis.scaleX),length(dis.scaleU),length(dis.scaleA) # number of dofs in _model_
     nλ,nx,nu,na = length(iΛ),length(iX),length(iU),length(iA)              # number of dofs of each class in group
@@ -157,6 +160,7 @@ function DofGroup(dis::Disassembler,iΛ,iX,iU,iA)
     Λf,Xf,Uf,Af = dis.fieldX[iΛ],dis.fieldX[iX],dis.fieldU[iU],dis.fieldA[iA]
     return DofGroup(nX,nU,nA, iΛ,iX,iU,iA,  jΛ,jX,jU,jA, Λs,Xs,Us,As, Λf,Xf,Uf,Af)
 end
+# use a dof-vector to decrement/increment/set/get the corresponding dofs in a State
 function decrement!(s::State,der::𝕫,y::AbstractVector{𝕣},gr::DofGroup) 
     for i ∈ eachindex(gr.iΛ); s.Λ[der+1][gr.iΛ[i]] -= y[gr.jΛ[i]] * gr.scaleΛ[i]; end
     for i ∈ eachindex(gr.iX); s.X[der+1][gr.iX[i]] -= y[gr.jX[i]] * gr.scaleX[i]; end
@@ -185,7 +189,22 @@ function getdof!(s::State,der::𝕫,y::AbstractVector{𝕣},gr::DofGroup)
     for i ∈ eachindex(gr.iU); y[gr.jU[i]] = s.U[der+1][gr.iU[i]] / gr.scaleU[i]; end
     for i ∈ eachindex(gr.iA); y[gr.jA[i]] = s.A[       gr.iA[i]] / gr.scaleA[i]; end
 end
+# create a tuple (Λ,X,U,A) of indices into the dofgroup - with zeros for modeldofs not in dofgroup
+# so the model's iλ-th Λdof is found in y[Λ[iλ]]
+function indexedstate(gr::DofGroup)
+    Λ        = zeros(𝕫,gr.nX)
+    X        = zeros(𝕫,gr.nX)
+    U        = zeros(𝕫,gr.nU)
+    A        = zeros(𝕫,gr.nA)
+    Λ[gr.iΛ] = gr.jΛ
+    X[gr.iX] = gr.jX
+    U[gr.iU] = gr.jU
+    A[gr.iA] = gr.jA
+    return Λ,X,U,A
+end
 getndof(gr::DofGroup) = length(gr.iΛ)+length(gr.iX)+length(gr.iU)+length(gr.iA)
+
+# some usefull Dofgroups
 allΛdofs(  model::Model,dis) = DofGroup(dis, 1:getndof(model,:X),𝕫[],𝕫[],𝕫[])
 allXdofs(  model::Model,dis) = DofGroup(dis, 𝕫[],1:getndof(model,:X),𝕫[],𝕫[])
 allUdofs(  model::Model,dis) = DofGroup(dis, 𝕫[],𝕫[],1:getndof(model,:U),𝕫[])
@@ -203,40 +222,32 @@ end
 ######## Prepare assembler datastructure "asm"
 
 # asm[iarray,ieletyp][ieledof/ientry,iele] has value zero for terms from element gradient/hessian that are not to be added in. Otherwise, the value they
-# have is where in the matrix/vector/nzval to put the values
+# have is where in the matrix/vector/nzval to put the values.
+# Example: for stiffness matrix iarray=2, beam element ieletyp=3, put the 4th entry (column major) of the iele=5th element into
+# the asm[2,3][4,5]-th non-zero value (nzval) of the stiffness matrix for the solver.
 
-function indexedstate(gr::DofGroup)
-    # create a "state"  (Λ,X,U,A) of indices into the group - with zeros for modeldofs not in group
-    Λ        = zeros(𝕫,gr.nX)
-    X        = zeros(𝕫,gr.nX)
-    U        = zeros(𝕫,gr.nU)
-    A        = zeros(𝕫,gr.nA)
-    Λ[gr.iΛ] = gr.jΛ
-    X[gr.iX] = gr.jX
-    U[gr.iU] = gr.jU
-    A[gr.iA] = gr.jA
-    return Λ,X,U,A
-end
+# number of dofs of each class in the gradient returned by an element
+# because adiff is what it is, the gradient contains either all or no dofs in any given class
 function gradientstructure(dofgr,dis::EletypDisassembler)
-    # number of dofs of each class in the gradient returned by an element
-    # because adiff is what it is, the gradient contains either all or no dofs in any given class
     nΛ       = length(dofgr.iΛ)==0 ? 0 : length(dis.scale.Λ) 
     nX       = length(dofgr.iX)==0 ? 0 : length(dis.scale.X) 
     nU       = length(dofgr.iU)==0 ? 0 : length(dis.scale.U) 
     nA       = length(dofgr.iA)==0 ? 0 : length(dis.scale.A) 
     return nΛ,nX,nU,nA
 end
+# indices into the class partitions of the gradient returned by an element
 function gradientpartition(nΛ,nX,nU,nA)
-    # indices into the class partitions of the gradient returned by an element
     iΛ          =           (1:nΛ)
     iX          = nΛ      .+(1:nX)
     iU          = nΛ+nX   .+(1:nU) 
     iA          = nΛ+nX+nU.+(1:nA)
     return iΛ,iX,iU,iA
 end
+# used in asmvec_kernel!
 nonzeros(v) = v[v.≠0]
+# prepare a vector-assembler.  Modifies asm.  Tyically called with view(asm,iarray,:), so inside the function
+# asm is treated as asm[ieletyp][idof,iele]. Allocates and returns memory for the array to be assembled
 function asmvec!(asm,dofgr,dis) 
-    # asm[ieletyp] == undef, please fill 
     Λ,X,U,A  = indexedstate(dofgr)      # create a state of indices into the group - with zeros for modeldofs not in group
     for ieletyp ∈ eachindex(dis.dis)
         asmvec_kernel!(asm,ieletyp,dofgr,dis.dis[ieletyp],Λ,X,U,A)
@@ -354,8 +365,7 @@ end
 
 abstract type Assembly end # solver define concrete "assemblies" which is a collection of matrices and solvers wanted for a phase in the solution process
 
-# sequential
-
+# sequential, called by the solver
 function assemble!(out::Assembly,asm,dis,model,state,dbg) 
     zero!(out)
     for ieletyp = 1:lastindex(model.eleobj)
@@ -371,8 +381,8 @@ function assemble_!(out::Assembly,asm,dis,eleobj,state::State{nΛder,nXder,nUder
         Xe    = NTuple{nXder}(x[index.X] for x∈state.X)
         Ue    = NTuple{nUder}(u[index.U] for u∈state.U)
         Ae    = state.A[index.A]
-        addin!(out,asm,iele,scale,eleobj[iele],Λe,Xe,Ue,Ae, state.time,SP,(dbg...,iele=iele))
-    end
+        addin!(out,asm,iele,scale,eleobj[iele],Λe,Xe,Ue,Ae, state.time,SP,(dbg...,iele=iele)) # defined by solver.  Called for each element. But the asm that is passed
+    end                                                                                       # is of the form asm[iarray][ientry,iele], because addin! will add to all arrays in one pass
 end
 
 # multithreaded
@@ -423,12 +433,10 @@ end
 
 ####### Lagrangian from residual and residual from Lagrangian
 const True,False  = Val{true},Val{false}
-@generated function implemented(eleobj) 
-#                                    Λ,     X,     U,     A, t,χ,  χcv,     SP,       dbg    
-    r = hasmethod(residual  ,(eleobj,       NTuple,NTuple,𝕣1,𝕣,Any,Function,NamedTuple,NamedTuple))
-    l = hasmethod(lagrangian,(eleobj,NTuple,NTuple,NTuple,𝕣1,𝕣,Any,Function,NamedTuple,NamedTuple))
-    return :(Val{$r},Val{$l})
-end
+# Holy traits
+hasresidual(  eleobj::T) where{T} = Val{hasmethod(residual  ,(T,       NTuple,NTuple,𝕣1,𝕣,Any,Function,NamedTuple,NamedTuple))}
+haslagrangian(eleobj::T) where{T} = Val{hasmethod(lagrangian,(T,NTuple,NTuple,NTuple,𝕣1,𝕣,Any,Function,NamedTuple,NamedTuple))}
+implemented(eleobj) = hasresidual(eleobj), haslagrangian(eleobj)
 
 function checkresidual(eleobj::AbstractElement,X,U,A,t,χ,χcv,SP,dbg,req...)
     res = residual(eleobj,X,U,A,t,χ,χcv,SP,dbg,req...)
@@ -452,7 +460,7 @@ getlagrangian(::Type{<:Val},::Type{True },eleobj::AbstractElement,Λ,X,U,A,t,χ,
 # want residual, lagrangian implemented
 function getresidual(::Type{False},::Type{True} ,eleobj::AbstractElement,X,U,A,t,χ,χcv,SP,dbg,req...)  
     P   = constants(∂0(X),∂0(U),A,t)
-    Nx  = length(∂0(X)) # TODO this does no generalize to dynamics
+    Nx  = length(∂0(X)) # TODO this does not generalize to dynamics
     Λ   = δ{P,Nx,𝕣}() 
     L,χn,FB,eleres... = checklagrangian(eleobj,Λ,X,U,A,t,χ,χcv,SP,dbg,req...)    
     return ∂{P,Nx}(L),χn,FB,eleres...
@@ -483,18 +491,19 @@ function zero!(out::AbstractSparseArray)
     end
 end
 
-#### extract value or derivatives from a SVector 'a' of adiffs, and add it directly into vector, full matrix or sparse matrix 'out'.
+#### extract value or derivatives from a SVector 'a' of adiffs, and add it directly into vector, full matrix or nzval of sparse matrix 'out'.
 function add_value!(out::𝕣1,asm,iele,a::SVector{M,∂ℝ{P,N,𝕣}},ias) where{P,N,M}
-    for (iasm,ia) ∈ enumerate(ias)
-        iout = asm[iasm,iele]
+    # asm[ientry,iel]
+    for (ientry,ia) ∈ enumerate(ias)
+        iout = asm[ientry,iele]
         if iout≠0
             out[iout]+=a[ia].x
         end
     end
 end   
 function add_value!(out::𝕣1,asm,iele,a::SVector{M,𝕣},ias) where{M}
-    for (iasm,ia) ∈ enumerate(ias)
-        iout = asm[iasm,iele]
+    for (ientry,ia) ∈ enumerate(ias)
+        iout = asm[ientry,iele]
         if iout≠0
             out[iout]+=a[ia]
         end
@@ -504,8 +513,8 @@ add_value!(out,asm,iele,a) = add_value!(out,asm,iele,a,eachindex(a))
 struct add_∂!{P} end 
 function add_∂!{P}(out::Array,asm,iele,a::SVector{M,∂ℝ{P,N,R}},i1as,i2as) where{P,N,R,M}
     for (i1asm,i1a) ∈ enumerate(i1as), (i2asm,i2a) ∈ enumerate(i2as)
-        iasm = i1asm+length(i1as)*(i2asm-1)
-        iout = asm[iasm,iele]
+        ientry = i1asm+length(i1as)*(i2asm-1)
+        iout = asm[ientry,iele]
         if iout≠0
             out[iout]+=a[i1a].dx[i2a]  
         end
