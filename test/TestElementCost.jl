@@ -17,10 +17,15 @@ Nz              = 2Nx+Nu+Na
 iλ,ix,iu,ia     = Muscade.gradientpartition(Nx,Nx,Nu,Na) 
 ΔZ              = δ{1,Nz,𝕣}()                 
 ΔΛ,ΔX,ΔU,ΔA     = view(ΔZ,iλ),view(ΔZ,ix),view(ΔZ,iu),view(ΔZ,ia) 
-Λ =  zeros(Nx)
-X = (ones(Nx),)
-U = (zeros(Nu),)
-A =  zeros(Na)
+# Λ =  SVector(0.,0.,0.)#zeros(Nx)
+# X = (SVector(1.,1.,1.),)#(ones(Nx),)
+# U = (SVector{0,𝕣}(),)#(zeros(Nu),)
+# A =  SVector(0.,0.)# zeros(Na)
+Λ =  SVector{Nx}(0. for i=1:Nx)
+X = (SVector{Nx}(1. for i=1:Nx),)
+U = (SVector{Nu,𝕣}(0. for i=1:Nu),)
+A =  SVector{Na}(0. for i=1:Na)
+
 
 L,χ,FB  = lagrangian(el, Λ+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A+ΔA, 0.,nothing,nothing,(testall=true,))                 
 

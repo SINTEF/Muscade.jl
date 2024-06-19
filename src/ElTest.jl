@@ -15,7 +15,7 @@ function gradient(eleobj,Λ,X,U,A,t,χ,SP,dbg)
     N            = 2nX+nU+nA
     iΛ,iX,iU,iA  = (1:nX) , (1:nX) .+ nX , (1:nU) .+ 2nX , (1:nA) .+ (2nX+nU)  
     ΔY           = δ{P,N,𝕣}()                        
-    L,χn,FB      = Muscade.getlagrangian(Muscade.implemented(eleobj)...,eleobj,Λ+ΔY[iΛ],(∂0(X)+ΔY[iX],),(∂0(U)+ΔY[iU],),A+ΔY[iA],t,χ,identity,SP,dbg)
+    L,χn,FB      = Muscade.getlagrangian(eleobj,Λ+ΔY[iΛ],(∂0(X)+ΔY[iX],),(∂0(U)+ΔY[iU],),A+ΔY[iA],t,χ,identity,SP,dbg)
     Ly           = ∂{P,N}(L)
     return (L=value{P}(L), Lλ=Ly[iΛ], Lx=Ly[iX], Lu=Ly[iU], La=Ly[iA],χn=χn)
 end
