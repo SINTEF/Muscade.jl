@@ -20,12 +20,12 @@ struct Turbine{Tsea,Tsky} <: AbstractElement
     sky     :: Tsky  # function
 end
 Turbine(nod::Vector{Node};seadrag,sea,skydrag,sky) = Turbine(SVector(coord(nod)[1][1],coord(nod)[1][2]),coord(nod)[1][3],seadrag,sea,skydrag,sky)  
-@espy function Muscade.residual(o::Turbine, X,U,A, t,χ,χcv,SP,dbg)
+@espy function Muscade.residual(o::Turbine, X,U,A, t,χ,SP,dbg)
     ☼x = ∂0(X)+o.xₘ  
     R  = -o.sea(t,x)*o.seadrag*(1+A[1]) - o.sky(t,x)*o.skydrag*(1+A[2])
     return R,noχ,noFB 
 end
-function Muscade.draw(axe,o::Turbine, Λ,X,U,A, t,χ,χcv,SP,dbg)
+function Muscade.draw(axe,o::Turbine, Λ,X,U,A, t,χ,SP,dbg)
     x    = ∂0(X)+o.xₘ  
     lines!(axe,SMatrix{2,3}(x[1],x[1],x[2],x[2],o.z-10,o.z+10)' ,color=:orange, linewidth=5)
 end
@@ -49,7 +49,7 @@ p = SVector(   2.82040487827,  -24.86027164695,   153.69500343165, -729.52107422
                 687.83550335374)
 
 
-@espy function Muscade.lagrangian(o::AnchorLine, Λ,X,U,A,t,χ,χcv,SP,dbg)
+@espy function Muscade.lagrangian(o::AnchorLine, Λ,X,U,A,t,χ,SP,dbg)
     xₘtop,Δxₘtop,xₘbot,L,buoyancy = o.xₘtop,o.Δxₘtop,o.xₘbot,o.L*(1+A[1]),o.buoyancy*(1+A[2])      # a for anchor, t for TDP, f for fairlead
     x        = ∂0(X)  
     ☼Xtop    = SVector(x[1],x[2],0.) + xₘtop
@@ -67,9 +67,9 @@ p = SVector(   2.82040487827,  -24.86027164695,   153.69500343165, -729.52107422
     L       += Λ[3  ] *  m3 
     return L,noχ,noFB
 end
-function Muscade.draw(axe,o::AnchorLine, Λ,X,U,A, t,χ,χcv,SP,dbg)
+function Muscade.draw(axe,o::AnchorLine, Λ,X,U,A, t,χ,SP,dbg)
     req   = @request (Xtop,ΔXtop,ΔXchain,cr,xaf,ltf)
-    L,χn,FB,out = Muscade.lagrangian(o, Λ,X,U,A, t,χ,χcv,SP,(dbg...,espy2draw=true),req)
+    L,χn,FB,out = Muscade.lagrangian(o, Λ,X,U,A, t,χ,SP,(dbg...,espy2draw=true),req)
     Laf,Xbot,Xtop,ΔXtop,ΔXchain,cr,xaf,Ltf = o.L, o.xₘbot, out.Xtop,out.ΔXtop,out.ΔXchain, out.cr, out.xaf, out.ltf
     n     = ΔXchain./xaf  # horizontal normal vector from anchor to fairlead
     xat   = Laf-Ltf
@@ -106,7 +106,7 @@ struct Spring{D} <: AbstractElement
     L      :: 𝕣
 end
 Spring{D}(nod::Vector{Node};EI) where{D}= Spring{D}(coord(nod)[1],coord(nod)[2],EI,norm(coord(nod)[1]-coord(nod)[2]))
-@espy function Muscade.residual(o::Spring{D}, X,U,A, t,χ,χcv,SP,dbg) where{D}
+@espy function Muscade.residual(o::Spring{D}, X,U,A, t,χ,SP,dbg) where{D}
     x₁       = ∂0(X)[SVector{D}(i   for i∈1:D)]+o.x₁
     x₂       = ∂0(X)[SVector{D}(i+D for i∈1:D)]+o.x₂
     ☼L₀      = o.L *exp10(A[1]) 

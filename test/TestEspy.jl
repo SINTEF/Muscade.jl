@@ -50,12 +50,12 @@ exbar = @macroexpand @espy function bar(x,y,z)
     return r,χ,nothing
 end
 
-exmerge = @macroexpand @espy function lagrangian(o::ElementConstraint{Teleobj,λinod,λfield,Nu}, Λ,X,U,A,t,χ,χcv,SP,dbg) where{Teleobj,λinod,λfield,Nu} 
+exmerge = @macroexpand @espy function lagrangian(o::ElementConstraint{Teleobj,λinod,λfield,Nu}, Λ,X,U,A,t,χ,SP,dbg) where{Teleobj,λinod,λfield,Nu} 
     req        = merge(o.req)
     γ          = default{:γ}(SP,0.)
     u          = getsomedofs(U,SVector{Nu}(1:Nu)) 
     ☼λ         = ∂0(U)[Nu+1]
-    L,χn,FB,☼eleres  = getlagrangian(implemented(o.eleobj)...,o.eleobj,Λ,X,u,A,t,χ,χcv,SP,(dbg...,via=ElementConstraint),req)
+    L,χn,FB,☼eleres  = getlagrangian(implemented(o.eleobj)...,o.eleobj,Λ,X,u,A,t,χ,SP,(dbg...,via=ElementConstraint),req)
     ☼gap       = o.gap(eleres,X,u,A,t,o.gargs...)
     if         o.mode(t)==:equal;    return L-gap*λ                  ,noχ,(α=∞                        ,)
     elseif     o.mode(t)==:positive; return L-KKT(λ,gap,γ,o.λₛ,o.gₛ)  ,noχ,(α=decided(λ/o.λₛ,gap/o.gₛ,γ),)
@@ -230,12 +230,12 @@ exbar_ = quote
 end
 
 exmerge_ = quote
-    function lagrangian(o::ElementConstraint{Teleobj, λinod, λfield, Nu}, Λ, X, U, A, t, χ, χcv, SP, dbg) where {Teleobj, λinod, λfield, Nu}
+    function lagrangian(o::ElementConstraint{Teleobj, λinod, λfield, Nu}, Λ, X, U, A, t, χ,  SP, dbg) where {Teleobj, λinod, λfield, Nu}
         req = merge(o.req)
         γ = default{:γ}(SP, 0.0)
         u = getsomedofs(U, SVector{Nu}(1:Nu))
         λ = (∂0(U))[Nu + 1]
-        (L, χn, FB, eleres) = getlagrangian(implemented(o.eleobj)..., o.eleobj, Λ, X, u, A, t, χ, χcv, SP, (dbg..., via = ElementConstraint), req)
+        (L, χn, FB, eleres) = getlagrangian(implemented(o.eleobj)..., o.eleobj, Λ, X, u, A, t, χ,  SP, (dbg..., via = ElementConstraint), req)
         gap = o.gap(eleres, X, u, A, t, o.gargs...)
         if o.mode(t) == :equal
             return (L - gap * λ, noχ, (α = ∞,))
@@ -245,7 +245,7 @@ exmerge_ = quote
             return (L - (o.gₛ / (2 * o.λₛ)) * λ ^ 2, noχ, (α = ∞,))
         end
     end
-    function lagrangian(o::ElementConstraint{Teleobj, λinod, λfield, Nu}, Λ, X, U, A, t, χ, χcv, SP, dbg, req_001; ) where {Teleobj, λinod, λfield, Nu}
+    function lagrangian(o::ElementConstraint{Teleobj, λinod, λfield, Nu}, Λ, X, U, A, t, χ,  SP, dbg, req_001; ) where {Teleobj, λinod, λfield, Nu}
         out_001 = (;)
         req = merge(req_001, o.req)
         γ = default{:γ}(SP, 0.0)
@@ -257,7 +257,7 @@ exmerge_ = quote
                 out_001
             end
         λ
-        (L, χn, FB, eleres) = getlagrangian(implemented(o.eleobj)..., o.eleobj, Λ, X, u, A, t, χ, χcv, SP, (dbg..., via = ElementConstraint), req)
+        (L, χn, FB, eleres) = getlagrangian(implemented(o.eleobj)..., o.eleobj, Λ, X, u, A, t, χ,  SP, (dbg..., via = ElementConstraint), req)
         out_003 = if haskey(req_001, :eleres)
                 (out_002..., eleres = eleres)
             else

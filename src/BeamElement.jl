@@ -126,7 +126,7 @@ function EulerBeam3D(nod::Vector{Node};mat::Mat,orient2::SVector{ndim,𝕣}=SVec
 end
 const saco = StaticArrays.sacollect
 const v3   = SVector{3}
-@espy function Muscade.residual(o::EulerBeam3D,   X,U,A,t,χo,χcv,SP,dbg) 
+@espy function Muscade.residual(o::EulerBeam3D,   X,U,A,t,χo,SP,dbg) 
     cₘ,rₘ,tgₘ,tgₑ     = o.cₘ,o.rₘ,o.tgₘ,o.tgₑ
     Nε,Nκ,Nu         = o.Nε,o.Nκ,o.Nu
     ζgp,ζnod,dL      = o.ζgp,o.ζnod,o.dL

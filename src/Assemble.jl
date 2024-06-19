@@ -438,36 +438,36 @@ hasresidual(  eleobj::T) where{T} = Val{hasmethod(residual  ,(T,       NTuple,NT
 haslagrangian(eleobj::T) where{T} = Val{hasmethod(lagrangian,(T,NTuple,NTuple,NTuple,𝕣1,𝕣,Any,Function,NamedTuple,NamedTuple))}
 implemented(eleobj) = hasresidual(eleobj), haslagrangian(eleobj)
 
-function checkresidual(eleobj::AbstractElement,X,U,A,t,χ,χcv,SP,dbg,req...)
-    res = residual(eleobj,X,U,A,t,χ,χcv,SP,dbg,req...)
+function checkresidual(eleobj::AbstractElement,X,U,A,t,χ,SP,dbg,req...)
+    res = residual(eleobj,X,U,A,t,χ,SP,dbg,req...)
     hasnan(res[1]) && muscadeerror((dbg...,t=t,SP=SP),
                                 "NaN in a residual or its partial derivatives")
     return res
 end
-function checklagrangian(eleobj::AbstractElement,Λ,X,U,A,t,χ,χcv,SP,dbg,req...)
-    res = lagrangian(eleobj,Λ,X,U,A,t,χ,χcv,SP,dbg,req...)
+function checklagrangian(eleobj::AbstractElement,Λ,X,U,A,t,χ,SP,dbg,req...)
+    res = lagrangian(eleobj,Λ,X,U,A,t,χ,SP,dbg,req...)
     hasnan(res[1]) && muscadeerror((dbg...,t=t,SP=SP),
                                 "NaN in a lagrangian or its partial derivatives")
     return res
 end
 
 #               has residual  has lagrangian
-getresidual(  ::Type{False},::Type{False},eleobj::AbstractElement,  X,U,A,t,χ,χcv,SP,dbg,req...) = muscadeerror(dbg,@sprintf("Element %s must have method 'Muscade.lagrangian' or/and 'Muscade.residual' with correct interface",typeof(eleobj)))
-getlagrangian(::Type{False},::Type{False},eleobj::AbstractElement,Λ,X,U,A,t,χ,χcv,SP,dbg,req...) = muscadeerror(dbg,@sprintf("Element %s must have method 'Muscade.lagrangian' or/and 'Muscade.residual' with correct interface",typeof(eleobj)))
-getresidual(  ::Type{True },::Type{<:Val},eleobj::AbstractElement,  X,U,A,t,χ,χcv,SP,dbg,req...) = checkresidual(  eleobj,  X,U,A,t,χ,χcv,SP,dbg,req...)
-getlagrangian(::Type{<:Val},::Type{True },eleobj::AbstractElement,Λ,X,U,A,t,χ,χcv,SP,dbg,req...) = checklagrangian(eleobj,Λ,X,U,A,t,χ,χcv,SP,dbg,req...)    
+getresidual(  ::Type{False},::Type{False},eleobj::AbstractElement,  X,U,A,t,χ,SP,dbg,req...) = muscadeerror(dbg,@sprintf("Element %s must have method 'Muscade.lagrangian' or/and 'Muscade.residual' with correct interface",typeof(eleobj)))
+getlagrangian(::Type{False},::Type{False},eleobj::AbstractElement,Λ,X,U,A,t,χ,SP,dbg,req...) = muscadeerror(dbg,@sprintf("Element %s must have method 'Muscade.lagrangian' or/and 'Muscade.residual' with correct interface",typeof(eleobj)))
+getresidual(  ::Type{True },::Type{<:Val},eleobj::AbstractElement,  X,U,A,t,χ,SP,dbg,req...) = checkresidual(  eleobj,  X,U,A,t,χ,SP,dbg,req...)
+getlagrangian(::Type{<:Val},::Type{True },eleobj::AbstractElement,Λ,X,U,A,t,χ,SP,dbg,req...) = checklagrangian(eleobj,Λ,X,U,A,t,χ,SP,dbg,req...)    
 
 # want residual, lagrangian implemented
-function getresidual(::Type{False},::Type{True} ,eleobj::AbstractElement,X,U,A,t,χ,χcv,SP,dbg,req...)  
+function getresidual(::Type{False},::Type{True} ,eleobj::AbstractElement,X,U,A,t,χ,SP,dbg,req...)  
     P   = constants(∂0(X),∂0(U),A,t)
     Nx  = length(∂0(X)) # TODO this does not generalize to dynamics
     Λ   = δ{P,Nx,𝕣}() 
-    L,χn,FB,eleres... = checklagrangian(eleobj,Λ,X,U,A,t,χ,χcv,SP,dbg,req...)    
+    L,χn,FB,eleres... = checklagrangian(eleobj,Λ,X,U,A,t,χ,SP,dbg,req...)    
     return ∂{P,Nx}(L),χn,FB,eleres...
 end
 # want lagrangian, residual implemented
-function getlagrangian(::Type{True} ,::Type{False},eleobj::AbstractElement,Λ,X,U,A,t,χ,χcv,SP,dbg,req...) 
-    R,χn,FB,eleres... = checkresidual(  eleobj,  X,U,A,t,χ,χcv,SP,dbg,req...)
+function getlagrangian(::Type{True} ,::Type{False},eleobj::AbstractElement,Λ,X,U,A,t,χ,SP,dbg,req...) 
+    R,χn,FB,eleres... = checkresidual(  eleobj,  X,U,A,t,χ,SP,dbg,req...)
     return Λ ∘₁ R ,χn,FB,eleres...
 end
 

@@ -15,8 +15,8 @@ X        = @SVector [1.,2.]
 U        = @SVector 𝕣[]
 A        = @SVector [0.,0.]  # [Δseadrag,Δskydrag]
 
-#                            eleobj, Λ, X,  U,  A, t, χ,      χcv,     SP,     dbg
-L,Lλ,Lx,Lu,La,χn  = gradient(turbine,Λ ,[X],[U],A, 0.,nothing,identity,nothing,(;))
+#                            eleobj, Λ, X,  U,  A, t, χ,      SP,     dbg
+L,Lλ,Lx,Lu,La,χn  = gradient(turbine,Λ ,[X],[U],A, 0.,nothing,nothing,(;))
 
 @testset "Turbine gradient" begin
     @test Lλ            ≈ [-2, -3]
@@ -42,8 +42,8 @@ anchorline      = AnchorLine(SVector(0.,0.,100.), SVector(0,2.,0), SVector(94.,0
 X        = @SVector [0.,0.,0.]
 U        = @SVector 𝕣[]
 A        = @SVector [0.,0.]  # [Δseadrag,Δskydrag]
-#                             eleobj, Λ, X,  U,  A, t, χ,      χcv,     SP,     dbg
-L,Lλ,Lx,Lu,La   = gradient(anchorline,Λ ,[X],[U],A, 0.,nothing,identity,nothing,(;))
+#                             eleobj, Λ, X,  U,  A, t, χ,      SP,     dbg
+L,Lλ,Lx,Lu,La   = gradient(anchorline,Λ ,[X],[U],A, 0.,nothing,nothing,(;))
 @testset "anchorline1" begin
     @test Lλ            ≈ [-12.25628901693551, 0.2607721067433087, 24.51257803387102]
     @test Lx            ≈ [-0.91509745608786, 0.14708204066349, 1.3086506986891027]

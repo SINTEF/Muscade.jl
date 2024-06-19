@@ -8,7 +8,7 @@ function draw_(axe,dis::EletypDisassembler,eleobj,iele,state,dbg;kwargs...)
         Ue    = Tuple(u[index.U] for u∈state.U)
         Ae    = state.A[index.A]
         eo    = eleobj[ie]
-        draw(axe, eo, Λe,Xe,Ue,Ae, state.time,nothing,nothing,state.SP,(dbg...,iele=ie);kwargs...)
+        draw(axe, eo, Λe,Xe,Ue,Ae, state.time,nothing,state.SP,(dbg...,iele=ie);kwargs...)
     end
     return
 end

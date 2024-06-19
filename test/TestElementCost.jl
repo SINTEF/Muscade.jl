@@ -22,7 +22,7 @@ X = (ones(Nx),)
 U = (zeros(Nu),)
 A =  zeros(Na)
 
-L,χ,FB  = lagrangian(el, Λ+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A+ΔA, 0.,nothing,identity,nothing,(testall=true,))                 
+L,χ,FB  = lagrangian(el, Λ+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A+ΔA, 0.,nothing,nothing,(testall=true,))                 
 
 @testset "ElementCost" begin
      @test d == (inod = (1, 1, 1, 2, 2), class = (:X, :X, :X, :A, :A), field = (:tx1, :tx2, :rx3, :ΔL, :Δbuoyancy))
@@ -47,7 +47,7 @@ X = (SVector{Nx}(1. for i=1:Nx),)
 U = (SVector{Nu}(1. for i=1:Nu),)
 A =  SVector{Na}(0. for i=1:Na)
 
-L,χ,FB  = lagrangian(el, Λ+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A+ΔA, 0.,nothing,identity,nothing,(testall=true,))                 
+L,χ,FB  = lagrangian(el, Λ+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A+ΔA, 0.,nothing,nothing,(testall=true,))                 
 
 @testset "ElementConstraint" begin
      @test d == (inod = (1, 1, 1, 2, 2, 1), class = (:X, :X, :X, :A, :A, :U), field = (:tx1, :tx2, :rx3,  :ΔL, :Δbuoyancy, :λ))
@@ -57,7 +57,7 @@ end
 
 req = @request λ,eleres(cr)
 
-L,χ,FB,eleres  = lagrangian(el, Λ+ΔΛ, X,U,A, 0.,nothing,identity,nothing,(testall=true,),req)                 
+L,χ,FB,eleres  = lagrangian(el, Λ+ΔΛ, X,U,A, 0.,nothing,nothing,(testall=true,),req)                 
 @testset "ElementConstraintResult" begin
      @test eleres.λ ≈ 1.
      @test eleres.eleres.cr ≈ 87.79184120068672
