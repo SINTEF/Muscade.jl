@@ -55,7 +55,7 @@ exmerge = @macroexpand @espy function lagrangian(o::ElementConstraint{Teleobj,λ
     γ          = default{:γ}(SP,0.)
     u          = getsomedofs(U,SVector{Nu}(1:Nu)) 
     ☼λ         = ∂0(U)[Nu+1]
-    L,χn,FB,☼eleres  = getlagrangian(o.eleobj,Λ,X,u,A,t,χ,identity,SP,(dbg...,via=ElementConstraint),req)
+    L,χn,FB,☼eleres  = getlagrangian(o.eleobj,Λ,X,u,A,t,χ,SP,(dbg...,via=ElementConstraint),req)
     ☼gap       = o.gap(eleres,X,u,A,t,o.gargs...)
     if         o.mode(t)==:equal;    return L-gap*λ                  ,noχ,(α=∞                        ,)
     elseif     o.mode(t)==:positive; return L-KKT(λ,gap,γ,o.λₛ,o.gₛ)  ,noχ,(α=decided(λ/o.λₛ,gap/o.gₛ,γ),)
@@ -235,7 +235,7 @@ exmerge_ = quote
         γ = default{:γ}(SP, 0.0)
         u = getsomedofs(U, SVector{Nu}(1:Nu))
         λ = (∂0(U))[Nu + 1]
-        (L, χn, FB, eleres) = getlagrangian(o.eleobj, Λ, X, u, A, t, χ,identity,  SP, (dbg..., via = ElementConstraint), req)
+        (L, χn, FB, eleres) = getlagrangian(o.eleobj, Λ, X, u, A, t, χ, SP, (dbg..., via = ElementConstraint), req)
         gap = o.gap(eleres, X, u, A, t, o.gargs...)
         if o.mode(t) == :equal
             return (L - gap * λ, noχ, (α = ∞,))
@@ -257,7 +257,7 @@ exmerge_ = quote
                 out_001
             end
         λ
-        (L, χn, FB, eleres) = getlagrangian( o.eleobj, Λ, X, u, A, t, χ, identity,  SP, (dbg..., via = ElementConstraint), req)
+        (L, χn, FB, eleres) = getlagrangian( o.eleobj, Λ, X, u, A, t, χ, SP, (dbg..., via = ElementConstraint), req)
         out_003 = if haskey(req_001, :eleres)
                 (out_002..., eleres = eleres)
             else

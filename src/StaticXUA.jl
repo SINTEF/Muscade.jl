@@ -47,7 +47,7 @@ function addin!(out::AssemblyStaticΛXU_A,asm,iele,scale,eleobj::E,Λ,X::NTuple{
     iλ,ix,iu,ia     = gradientpartition(Nx,Nx,Nu,Na) # index into element vectors ΔZ and Lz
     iy              = 1:Ny  
     ΔΛ,ΔX,ΔU,ΔA     = view(ΔZ,iλ),view(ΔZ,ix),view(ΔZ,iu),view(ΔZ,ia) # TODO Static?
-    L,χn,FB         = getlagrangian(eleobj, ∂0(Λ)+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A+ΔA,t,nothing,identity,SP,dbg)
+    L,χn,FB         = getlagrangian(eleobj, ∂0(Λ)+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A+ΔA,t,nothing,SP,dbg)
     ∇L              = ∂{2,Nz}(L)
     add_value!(out.Ly ,asm[1],iele,∇L,iy   )
     add_value!(out.La ,asm[2],iele,∇L,ia   )
@@ -101,7 +101,7 @@ function addin!(out::AssemblyStaticΛXU_Aline,asm,iele,scale,eleobj::E,Λ,X::NTu
     ΔZ              = δ{1,Nz,𝕣}(scaleZ)                 
     iλ,ix,iu,ia     = gradientpartition(Nx,Nx,Nu,Na) # index into element vectors ΔZ and Lz
     ΔΛ,ΔX,ΔU,ΔA     = view(ΔZ,iλ),view(ΔZ,ix),view(ΔZ,iu),view(ΔZ,ia) # TODO Static?
-    L,χn,FB         = getlagrangian(eleobj, ∂0(Λ)+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A+ΔA,t,nothing,identity,SP,dbg)
+    L,χn,FB         = getlagrangian(eleobj, ∂0(Λ)+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A+ΔA,t,nothing,SP,dbg)
     ∇L              = ∂{1,Nz}(L)
     add_value!(out.Ly ,asm[1],iele,∇L,1:Ny)
     add_value!(out.La ,asm[2],iele,∇L,ia  )

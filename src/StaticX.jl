@@ -27,7 +27,7 @@ end
 function addin!(out::AssemblyStaticX,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A,t,SP,dbg) where{E,Nxder,Nx}
     if Nx==0; return end # don't waste time on Acost elements...  
     ΔX         = δ{1,Nx,𝕣}(scale.X)                 # NB: precedence==1, input must not be Adiff 
-    Lλ,χ,FB    = getresidual(eleobj,(∂0(X)+ΔX,),U,A,t,nothing,identity,SP,dbg)
+    Lλ,χ,FB    = getresidual(eleobj,(∂0(X)+ΔX,),U,A,t,nothing,SP,dbg)
     Lλ         = Lλ .* scale.X
     add_value!(out.Lλ ,asm[1],iele,Lλ)
     add_∂!{1}( out.Lλx,asm[2],iele,Lλ)
@@ -66,7 +66,7 @@ function add!(out1::AssemblyStaticXline,out2::AssemblyStaticXline)
 end
 function addin!(out::AssemblyStaticXline,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A,t,SP,dbg) where{E,Nxder,Nx}
     if Nx==0; return end # don't waste time on Acost elements...  
-    Lλ,χ,FB    = getresidual(eleobj,X,U,A,t,nothing,identity,SP,dbg)
+    Lλ,χ,FB    = getresidual(eleobj,X,U,A,t,nothing,SP,dbg)
     Lλ         = Lλ .* scale.X
     add_value!(out.Lλ ,asm[1],iele,Lλ) 
     if hasfield(typeof(FB),:mode) && FB.mode==:positive

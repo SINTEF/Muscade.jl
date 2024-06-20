@@ -155,7 +155,7 @@ function addin!(out::AssemblyStudyScale,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nx
     ΔZ              = variate{2,Nz}(δ{1,Nz,𝕣}(scaleZ),scaleZ)                 
     iλ,ix,iu,ia     = gradientpartition(Nx,Nx,Nu,Na) # index into element vectors ΔZ and Lz
     ΔΛ,ΔX,ΔU,ΔA     = view(ΔZ,iλ),view(ΔZ,ix),view(ΔZ,iu),view(ΔZ,ia) # TODO Static?
-    L,χn,FB         = getlagrangian(eleobj, ∂0(Λ)+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A+ΔA,t,nothing,identity,SP,dbg)
+    L,χn,FB         = getlagrangian(eleobj, ∂0(Λ)+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A+ΔA,t,nothing,SP,dbg)
     ∇L              = ∂{2,Nz}(L)
     add_value!(out.Lz ,asm[1],iele,∇L)
     add_∂!{1}( out.Lzz,asm[2],iele,∇L)
