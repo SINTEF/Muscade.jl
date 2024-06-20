@@ -236,14 +236,13 @@ end
 ≗(a::∂ℝ,b::∂ℝ)               = (typeof(a)==typeof(b)) && (a.x ≗ b.x) && (a.dx ≗ b.dx)
 
 ## Find NaN in derivatives
-hasnan(a::∂ℝ   )             = hasnan(a.x) || hasnan(a.dx)
 hasnan(a::ℝ   )              = isnan(a)
-function hasnan(a::SV{N,R}) where{N,R<:ℝ} 
-    for el∈a
-        if hasnan(el)
-            return true
-        end
-    end
-    return false
-end 
+hasnan(a::∂ℝ   )             = hasnan(a.x) || hasnan(a.dx)
+hasnan(a::AbstractArray)     = any(hasnan.(a))
+hasnan(a::Tuple)             = any(hasnan.(a))
+hasnan(a::NamedTuple)        = any(hasnan.(values(a)))
+hasnan(a...;)                = any(hasnan.(a))
+hasnan(a)                    = false
+
+
 
