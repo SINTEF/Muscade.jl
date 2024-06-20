@@ -365,8 +365,7 @@ end
 # assemble!                   Muscade/Assemble.jl     loop over element types (barrier function)
 # assemble_!                  Muscade/Assemble.jl     loop over element within type (typestable)
 # addin!                      Muscade/SomeSolver.jl   do adiff and add-in, clean χ from adiff, specific to solver
-# getresidual                 Muscade/Assemble.jl     typechecking the call from addin! (or from element, if stacked elements), check for NaNs
-# getresidual_                Muscade/Assemble.jl     they want a residual, but what if only a Lagrangian is available?
+# getresidual                 Muscade/Assemble.jl     typechecking the call from addin! call residual or Lagrangian as available, check for NaNs
 # residual                    MyElement.jl            the element code 
 
 # reprise: simplify, let getresidual to NaNcheck and (squi)χclean, remove  NaNcheck_χclean_residual from the stack
@@ -437,66 +436,65 @@ function assemble_!(out::AbstractVector{A},asm,dis,eleobj,state::State{nΛder,nX
 end
 
 
-#######
 
+####### called by addin!, and nested elements to "get a Lagrangian" and "get a residual"
+# 1) comprehensive cheack of the types of argument, to help catch bugs in solvers and elements
+# 2) if a residual is wanted by the solver and only Lagrangian is implemented by the element (or the other way around), do some magic
+# 3) check for NaNs in the results 
+#
+# Note that getLagrangian receives Λ::SVector. addin! by contrast receives Λ::NTuple{SVector}, this is not a bug
 
-####### checking for NaN and clean adiff from χ if required
-recurse(f,x::ℝ)             = f(x)
-recurse(f,x::AbstractArray) = recurse.(f,x)
-recurse(f,x::Tuple)         = recurse.(f,x)
-recurse(f,x::NamedTuple)    = NamedTuple{keys(x)}(recurse(f,values(x)))
-recurse(f,x)                = x  
-
-####### Lagrangian from residual and residual from Lagrangian
-# getresidual and getlagrangian are called by addin! (from each solver) 
-# but also by some recursive elements (e.g. constraints, element costs...).  
-# For this reason, pedantic typechecking of the inputs (bug filter)
-# getresidual has 3 methods:
-# 1) neither residual nor Lagrangian implemented: error
-# 2) residual implemented: just call it
-# 3) only Lagrangian implemented: differentiate the Lagrangian to get the residual
-
-const True,False  = Val{true},Val{false}
-hasresidual(  eleobj::T) where{T} = Val{hasmethod(residual  ,(T,       NTuple,NTuple,𝕣1,𝕣,Any,Function,NamedTuple,NamedTuple))}
-haslagrangian(eleobj::T) where{T} = Val{hasmethod(lagrangian,(T,NTuple,NTuple,NTuple,𝕣1,𝕣,Any,Function,NamedTuple,NamedTuple))}
-
-getresidual_(  ::Type{False},::Type{False},eleobj::AbstractElement,  X,U,A,t,χ,SP,dbg,req...) = muscadeerror(dbg,@sprintf("Element %s must have method 'Muscade.lagrangian' or/and 'Muscade.residual' with correct interface",typeof(eleobj)))
-getresidual_(  ::Type{True },::Type{<:Val},eleobj::AbstractElement,  X,U,A,t,χ,SP,dbg,req...) = residual(  eleobj,  X,U,A,t,χ,SP,dbg,req...)
-function getresidual_(::Type{False},::Type{True} ,eleobj::AbstractElement,X,U,A,t,χ,SP,dbg,req...)  
-    P   = constants(∂0(X),∂0(U),A,t)
-    Nx  = length(∂0(X)) 
-    Λ   = δ{P,Nx,𝕣}() 
-    L,χn,FB,eleres... = lagrangian(eleobj,Λ,X,U,A,t,χ,SP,dbg,req...)    
-    return ∂{P,Nx}(L),χn,FB,eleres...
-end
-function getresidual(eleobj::AbstractElement,  
+function getresidual(eleobj::Eleobj,  
     X::NTuple{Ndx,SVector{Nx,Rx}},
     U::NTuple{Ndu,SVector{Nu,Ru}},
     A::           SVector{Na,Ra} ,
-    t::ℝ,χ,SP,dbg,req...) where{Ndx,Nx,Rx<:ℝ,Ndu,Nu,Ru<:ℝ,Na,Ra<:ℝ} 
-    R,χn,FB,eleres... = getresidual_(hasresidual(eleobj),haslagrangian(eleobj),eleobj,X,U,A,t,χ,SP,dbg,req...)  
-    hasnan(R) && hasresidual(eleobj) && muscadeerror((dbg...,t=t,SP=SP),"NaN in a residual or in its partial derivatives")
-    hasnan(R) &&                        muscadeerror((dbg...,t=t,SP=SP),"NaN in a residual from Lagrangian, or in its partial derivatives")
+    t::ℝ,χ,SP,dbg,req...)     where{Eleobj<:AbstractElement,Ndx,Nx,Rx<:ℝ,Ndu,Nu,Ru<:ℝ,Na,Ra<:ℝ} 
+
+    if hasmethod(residual  ,(Eleobj,       NTuple,NTuple,𝕣1,𝕣,Any,Function,NamedTuple,NamedTuple))
+        R,χn,FB,eleres... = residual(  eleobj,  X,U,A,t,χ,SP,dbg,req...)
+        hasnan(R) && muscadeerror((dbg...,t=t,SP=SP),"NaN in a residual or in its partial derivatives")  
+    elseif hasmethod(lagrangian,(Eleobj,NTuple,NTuple,NTuple,𝕣1,𝕣,Any,Function,NamedTuple,NamedTuple))
+        P   = constants(∂0(X),∂0(U),A,t)
+        Λ   = δ{P,Nx,𝕣}() 
+        L,χn,FB,eleres... = lagrangian(eleobj,Λ,X,U,A,t,χ,SP,dbg,req...)    
+        hasnan(L) && muscadeerror((dbg...,t=t,SP=SP),"NaN in a Lagrangian or in its partial derivatives")   
+        R = ∂{P,Nx}(L)
+    else 
+        muscadeerror(dbg,@sprintf("Element %s must have method 'Muscade.lagrangian' or/and 'Muscade.residual' with correct interface",typeof(eleobj)))
+    end
     return R,χn,FB,eleres...
 end
 
-getlagrangian_(::Type{False},::Type{False},eleobj::AbstractElement,Λ,X,U,A,t,χ,SP,dbg,req...) = muscadeerror(dbg,@sprintf("Element %s must have method 'Muscade.lagrangian' or/and 'Muscade.residual' with correct interface",typeof(eleobj)))
-getlagrangian_(::Type{<:Val},::Type{True },eleobj::AbstractElement,Λ,X,U,A,t,χ,SP,dbg,req...) = lagrangian(eleobj,Λ,X,U,A,t,χ,SP,dbg,req...)    
-function getlagrangian_(::Type{True} ,::Type{False},eleobj::AbstractElement,Λ,X,U,A,t,χ,SP,dbg,req...) 
-    R,χn,FB,eleres... = residual(  eleobj,  X,U,A,t,χ,SP,dbg,req...)
-    return Λ ∘₁ R ,χn,FB,eleres...
-end
-function getlagrangian(eleobj::AbstractElement,  
-    Λ::           SVector{Nx,Rλ} ,  # [sic.] addin! strips the tuple
+
+function getlagrangian(eleobj::Eleobj,  
+    Λ::           SVector{Nx,Rλ} ,  
     X::NTuple{Ndx,SVector{Nx,Rx}},
     U::NTuple{Ndu,SVector{Nu,Ru}},
     A::           SVector{Na,Ra} ,
-    t::ℝ,χ,SP,dbg,req...) where{Rλ<:ℝ,Ndx,Nx,Rx<:ℝ,Ndu,Nu,Ru<:ℝ,Na,Ra<:ℝ} 
-    L,χn,FB,eleres... = getlagrangian_(hasresidual(eleobj),haslagrangian(eleobj),eleobj,Λ,X,U,A,t,χ,SP,dbg,req...) 
-    hasnan(L) && haslagrangian(eleobj) && muscadeerror((dbg...,t=t,SP=SP),"NaN in a Lagrangian or in its partial derivatives")
-    hasnan(L) &&                          muscadeerror((dbg...,t=t,SP=SP),"NaN in a Lagrangian from residual, or in its partial derivatives")
+    t::ℝ,χ,SP,dbg,req...)     where{Eleobj<:AbstractElement,Rλ<:ℝ,Ndx,Nx,Rx<:ℝ,Ndu,Nu,Ru<:ℝ,Na,Ra<:ℝ} 
+
+    if     hasmethod(lagrangian,(Eleobj,NTuple,NTuple,NTuple,𝕣1,𝕣,Any,Function,NamedTuple,NamedTuple))
+        L,χn,FB,eleres... = lagrangian(eleobj,Λ,X,U,A,t,χ,SP,dbg,req...)
+        hasnan(L) && muscadeerror((dbg...,t=t,SP=SP),"NaN in a Lagrangian or in its partial derivatives")   
+    elseif hasmethod(residual  ,(Eleobj,       NTuple,NTuple,𝕣1,𝕣,Any,Function,NamedTuple,NamedTuple))
+        R,χn,FB,eleres... = residual(  eleobj,  X,U,A,t,χ,SP,dbg,req...)
+        hasnan(R) && muscadeerror((dbg...,t=t,SP=SP),"NaN in a residual or in its partial derivatives")  
+        L = Λ ∘₁ R
+    else
+        muscadeerror(dbg,@sprintf("Element %s must have method 'Muscade.lagrangian' or/and 'Muscade.residual' with correct interface",typeof(eleobj)))
+    end
     return L,χn,FB,eleres... 
 end
+
+
+############# Tools for addin!
+
+# recursively apply a χ-cleaning function f to a data structure χ
+recurse(f,χ::ℝ)             = f(χ)
+recurse(f,χ::AbstractArray) = recurse.(f,χ)
+recurse(f,χ::Tuple)         = recurse.(f,χ)
+recurse(f,χ::NamedTuple)    = NamedTuple{keys(χ)}(recurse(f,values(χ)))
+recurse(f,χ)                = χ  
 
 
 #### zero!

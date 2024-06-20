@@ -51,9 +51,9 @@ model           = Model(:Pipe)
 node            = addnode!(model,coords) 
 pipe            = [addelement!(model,Pipe,node[i:i+1];EI,w) for i=1:nel]
 floorctct       = [addelement!(model,Constraint,[node[i]];λₛ,gₛ,xinod=(1,),xfield=(:z,),
-                               λinod=1, λclass=:X, λfield=:λfloor, g=floorgap,gargs=(zfloor[i],), mode=inequal) for i=1:nel+1]
+                               λinod=1, λclass=:X, λfield=:λfloor, g=floorgap,gargs=(zfloor[i],), mode=positive) for i=1:nel+1]
 ceilctct        = [addelement!(model,Constraint,[node[i]];λₛ,gₛ,xinod=(1,),xfield=(:z,),
-                               λinod=1, λclass=:X, λfield=:λceil,  g=ceilgap,gargs=(zfloor[i]+Δz,), mode=inequal) for i=1:nel+1]
+                               λinod=1, λclass=:X, λfield=:λceil,  g=ceilgap,gargs=(zfloor[i]+Δz,), mode=positive) for i=1:nel+1]
 
 initialstate    = initialize!(model)
 mission = :profile
