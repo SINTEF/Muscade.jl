@@ -286,7 +286,7 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
         γ                     = max(Σλg/max(1,npos)*γfac, γ₀*γbot)
 
         if saveiter
-            statess[iter]     = deepcopy(states) # TODO this deepcopies the model...
+            statess[iter]     = deepcopy(states) # TODO this deepcopies the model!
         end
 
         if all(Δy².≤cΔy²)  && Δa²≤cΔa²  

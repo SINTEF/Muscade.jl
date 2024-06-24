@@ -103,12 +103,30 @@ In `Λ`, `X`, `U` and `A` handed by Muscade to `residual` or `lagrangian`,
 the dofs in the vectors will follow the order in the doflist. Element developers
 are free to number their dofs by node, by field, or in any other way.
 
-See also: [`lagrangian`](@ref), [`residual`](@ref)  
+See also: [`χinit`](@ref), [`lagrangian`](@ref), [`residual`](@ref)  
 """
 doflist(     ::Type{E}) where{E<:AbstractElement}  = muscadeerror(@sprintf("method 'Muscade.doflist' must be provided for elements of type '%s'\n",E))
 
 """
-    @espy function Muscade.lagrangian(eleobj::MyElement,Λ,X,U,A,t,χ,χcv,SP,dbg)
+    Muscade.χinit(eleobj::MyElement)
+
+Elements that handle internal states (χ) must implement χinit.  Other elements
+can abstain. The method must take the element object as only input, and return
+an initial value for the element's internal state `χ`.
+
+`χ` must be either `noχ` (if the element has no internal state) or a nested 
+structure of `NamedTuple`, `NTuple`, `StaticArray`, which ultimate
+element type can be a mix of `Boolean`, `Int`, `Real`, `Symbol`.
+
+Functions `residual` and `Lagrangian`, defined for the same element type must return
+a variable `χ` with the same nested structure.
+
+See also: [`doflist`](@ref), [`lagrangian`](@ref), [`residual`](@ref)  
+"""
+χinit(eleobj::AbstractElement) = noχ
+
+"""
+    @espy function Muscade.lagrangian(eleobj::MyElement,Λ,X,U,A,t,χ,SP,dbg)
         ...
         return L,χ,FB
     end
@@ -125,7 +143,6 @@ doflist(     ::Type{E}) where{E<:AbstractElement}  = muscadeerror(@sprintf("meth
 - `A` a `SVector{nAdof,R} where{R<:Real}`.
 - `t` a ``Real` containing the time.
 - `χ` the element memory
-- `χcv` a function used to built the updated element memory.
 - `SP` solver parameters (for example: the barrier parameter `γ` for 
   interior point methods).
 - `dbg` a `NamedTuple` to be used _only_ for debugging purposes.
@@ -136,12 +153,12 @@ doflist(     ::Type{E}) where{E<:AbstractElement}  = muscadeerror(@sprintf("meth
 - `FB` feedback from the element to the solver (for example: can `γ` be 
   reduced?). Return `noFB` of the element has no feedback to provide.
 
-See also: [`residual`](@ref), [`doflist`](@ref), [`@espy`](@ref), [`∂0`](@ref), [`∂1`](@ref), [`∂2`](@ref), [`noχ`](@ref), [`noFB`](@ref)
+See also: [`residual`](@ref), [`χinit`](@ref), [`doflist`](@ref), [`@espy`](@ref), [`∂0`](@ref), [`∂1`](@ref), [`∂2`](@ref), [`noχ`](@ref), [`noFB`](@ref)
 """
 lagrangian()=nothing
 
 """
-@espy function Muscade.residual(eleobj::MyElement,X,U,A,t,χ,χcv,SP,dbg)
+@espy function Muscade.residual(eleobj::MyElement,X,U,A,t,χ,SP,dbg)
     ...
     return R,χ,FB
 end
@@ -152,7 +169,7 @@ The inputs and outputs to `residual` are the same as for `lagrangian` with two e
  a `SVector{nXdof,R} where{R<:Real}`, containing the element's contribution 
  to the residual of the equations to be solved.     
 
-See [`lagrangian`](@ref) for the rest of the inputs and outputs. 
+See also: [`lagrangian`](@ref), [`χinit`](@ref), [`doflist`](@ref), [`@espy`](@ref), [`∂0`](@ref), [`∂1`](@ref), [`∂2`](@ref), [`noχ`](@ref), [`noFB`](@ref)
 """
 residual()=nothing
 

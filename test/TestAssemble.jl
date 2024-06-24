@@ -1,4 +1,4 @@
-#module TestAssemble
+module TestAssemble
 
 using Test,StaticArrays,SparseArrays
 using Muscade
@@ -59,8 +59,8 @@ sea(t,x)        = SVector(1.,0.)
 sky(t,x)        = SVector(0.,1.)
 e1              = addelement!(model,Turbine   ,[n1,n2], seadrag=2., sea=sea, skydrag=3., sky=sky)
 e2              = addelement!(model,AnchorLine,[n1,n3], Δxₘtop=SVector(5.,0.,0), xₘbot=SVector(150.,0.), L=180., buoyancy=-1e3)
-dis = Muscade.Disassembler(model)
-
+dis             = Muscade.Disassembler(model)
+χ               = Muscade.χinit(model)
 
 @testset "Disassembler" begin
     @test  dis.dis[1].index[1].X == [1,2]
@@ -155,7 +155,7 @@ end
     @test dofgr.scaleA == Float64[]
 end
 
-state = Muscade.State(model,dis)
+state = Muscade.State(model,dis,χ)
 Muscade.assemble!(out,asm,dis,model,state,(someunittest=true,))
 
 @testset "assemble" begin
@@ -163,4 +163,4 @@ Muscade.assemble!(out,asm,dis,model,state,(someunittest=true,))
     @test  Muscade.firstelement(out).Lλx ≈ sparse([1, 2, 3, 1, 2, 3, 1, 2, 3], [1, 1, 1, 2, 2, 2, 3, 3, 3], [10323.069597975566, 0.0, 0.0, 0.0, 1049.1635310247202, 5245.817655123601, 0.0, 5245.8176551236, 786872.6482685402], 3, 3)
 end
 
-#end
+end

@@ -98,27 +98,38 @@ function Disassembler(model::Model)
     return Disassembler(dis,scaleΛ,scaleX,scaleU,scaleA,fieldX,fieldU,fieldA)
 end
 
+χinit(model::Model)                           = χinit.(model.eleobj) # For each element type
+χinit(e::Vector{E}) where{E<:AbstractElement} = χinit.(e)            # For each element in a type
+
 ######## state and initstate
 # at each step, contains the complete, unscaled state of the system
 mutable struct State{nΛder,nXder,nUder,TSP}
+    time  :: 𝕣
     Λ     :: NTuple{nΛder,𝕣1}
     X     :: NTuple{nXder,𝕣1}
     U     :: NTuple{nUder,𝕣1}
     A     :: 𝕣1
-    time  :: 𝕣
+    χ     :: Vector
     SP    :: TSP # solver parameter
     model :: Model
     dis   :: Disassembler
 end
 # a constructor that provides an initial state
-State(model::Model,dis;time=-∞) = State((zeros(getndof(model,:X)),),(zeros(getndof(model,:X)),),(zeros(getndof(model,:U)),),zeros(getndof(model,:A)),time,nothing,model,dis)
+State(model::Model,dis,χ;time=-∞) = State(time,(zeros(getndof(model,:X)),),
+                                               (zeros(getndof(model,:X)),),
+                                               (zeros(getndof(model,:U)),),
+                                                zeros(getndof(model,:A))  ,
+                                               χ,nothing,model,dis)
 function State{nΛder,nXder,nUder}(s::State,SP::TSP) where{nΛder,nXder,nUder,TSP}
     Λ = ntuple(i->copy(∂n(s.Λ,i-1)),nΛder)
     X = ntuple(i->copy(∂n(s.X,i-1)),nXder)
     U = ntuple(i->copy(∂n(s.U,i-1)),nUder)
-    State{nΛder,nXder,nUder,TSP}(Λ,X,U,copy(s.A),s.time,SP,s.model,s.dis)
+    State{nΛder,nXder,nUder,TSP}(s.time,Λ,X,U,copy(s.A),deepcopy(s.χ),SP,s.model,s.dis)
 end 
 State{nΛder,nXder,nUder}(s::State) where{nΛder,nXder,nUder} = State{nΛder,nXder,nUder}(s,(;))
+
+
+
 
 #### DofGroup
 
@@ -359,19 +370,18 @@ end
 
 
 ######## Assembler methods
-# The call stack:             who dunnit              why
-#
-# MySolver                    Muscade/SomeSolver.jl   wants som matrices and vectors
-# assemble!                   Muscade/Assemble.jl     loop over element types (barrier function)
-# assemble_!                  Muscade/Assemble.jl     loop over element within type (typestable)
-# addin!                      Muscade/SomeSolver.jl   do adiff and add-in, clean χ from adiff, specific to solver
-# getresidual                 Muscade/Assemble.jl     typechecking the call from addin! call residual or Lagrangian as available, check for NaNs
-# residual                    MyElement.jl            the element code 
-
-# reprise: simplify, let getresidual to NaNcheck and (squi)χclean, remove  NaNcheck_χclean_residual from the stack
+# The call stack     who dunnit               why
+# 
+# MySolver           Muscade/SomeSolver.jl    wants some matrices and vectors
+# assemble!          Muscade/Assemble.jl      loop over element types (barrier function)
+# assemble_!         Muscade/Assemble.jl      loop over elements within type (typestable)
+# addin!             Muscade/SomeSolver.jl    do adiff and add-in, clean χ from adiff, solver-specific
+# getresidual        Muscade/Assemble.jl      typechecking the call from addin! call residual or Lagrangian as available, check for NaNs
+# residual           MyElement.jl             the element code 
 
 
 abstract type Assembly end # solver define concrete "assemblies" which is a collection of matrices and solvers wanted for a phase in the solution process
+
 
 # sequential, called by the solver
 function assemble!(out::Assembly,asm,dis,model,state,dbg) 
@@ -436,17 +446,16 @@ function assemble_!(out::AbstractVector{A},asm,dis,eleobj,state::State{nΛder,nX
 end
 
 
-
-
-
 ############# Tools for addin!
 
 # recursively apply a χ-cleaning function f to a data structure χ
-recurse(f,χ::ℝ)             = f(χ)
-recurse(f,χ::AbstractArray) = recurse.(f,χ)
-recurse(f,χ::Tuple)         = recurse.(f,χ)
-recurse(f,χ::NamedTuple)    = NamedTuple{keys(χ)}(recurse(f,values(χ)))
-recurse(f,χ)                = χ  
+χrecurse(f,χ::ℝ)             = f(χ)
+χrecurse(f,χ::AbstractArray) = χrecurse.(f,χ)
+χrecurse(f,χ::Tuple)         = χrecurse.(f,χ)
+χrecurse(f,χ::NamedTuple)    = NamedTuple{keys(χ)}(χrecurse(f,values(χ)))
+χrecurse(f,χ)                = χ  
+χrecurse(f,χ::ℤ)             = χ  
+χrecurse(f,χ::𝔹)             = χ  
 
 
 #### zero!

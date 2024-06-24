@@ -159,10 +159,10 @@ function solve(::Type{StaticX},pstate,verbose,dbg;
             end
 
             verbose && saveiter && @printf("        iteration %3d, γ= %7.1e\n",iiter,γ)
-            saveiter && (states[iiter]=State(state.Λ,deepcopy(state.X),state.U,state.A,state.time,state.SP,model,dis))
+            saveiter && (states[iiter]=State(state.time,state.Λ,deepcopy(state.X),state.U,state.A,deepcop(state.χ),state.SP,model,dis))
             if Δx²*s^2≤cΔx² && Lλ²≤cLλ² 
                 verbose && @printf "    step %3d converged in %3d iterations. |Δx|=%7.1e |Lλ|=%7.1e\n" step iiter √(Δx²) √(Lλ²)
-                ~saveiter && (states[step]=State(state.Λ,deepcopy(state.X),state.U,state.A,state.time,state.SP,model,dis))
+                ~saveiter && (states[step]=State(state.time,state.Λ,deepcopy(state.X),state.U,state.A,deepcopy(state.χ),state.SP,model,dis))
                 break#out of the iiter loop
             end
             iiter==maxiter && muscadeerror(@sprintf("no convergence at step=%3d, iiter=%3d, |Δx|=%7.1e / %7.1e, |Lλ|=%7.1e / %7.1e",step,iiter,√(Δx²),maxΔx,√(Lλ²)^2,maxresidual))

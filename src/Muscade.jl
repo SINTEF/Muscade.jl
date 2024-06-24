@@ -37,7 +37,7 @@ module Muscade
     include("ElementAPI.jl")
     export lagrangian,residual,espyable
     export coord,∂0,∂1,∂2,getsomedofs
-    export doflist
+    export doflist,χinit
     export noχ,noFB
 
     include("BasicElements.jl")

@@ -290,15 +290,20 @@ assert_unlocked(model::Model) = model.locked && muscadeerror(@sprintf("model %s 
 """
     initialstate = initialize!(model)
 
-Finalize a model (invoquing `addnode!` and `addelement!` after `initialize!` will result in an error) 
-and return an initial `State` (with all dofs set to zero, as starting point for an analysis.)
+Return an initial `State` for the model.
+    - with all dofs set to zero
+    - χ variables as defined by element χinit
+
+Modifying a model (invoquing `addnode!` and `addelement!` after `initialize!` will result in an error) 
 
 See also: [`addnode!`](@ref), [`addelement!`](@ref), [`solve`](@ref)
 """
 function initialize!(model::Model;kwargs...)
     assert_unlocked(model)
     model.locked = true
-    return State(model,Disassembler(model);kwargs...)
+    dis = Disassembler(model)
+    χ   = χinit(model)
+    return State(model,dis,χ;kwargs...)
 end
 function unlock(model::Model,ID::Symbol)
     ID == model.ID && muscadeerror("ID must be distinct from model.ID")

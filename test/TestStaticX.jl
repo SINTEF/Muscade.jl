@@ -18,6 +18,14 @@ e2              = [addelement!(model,AnchorLine,[n1,n3], Δxₘtop=vcat(5*α(i),
 initialstate    = initialize!(model)
 state           = solve(StaticX;initialstate,time=[0.,1.],verbose=false)
 step = 1
+@testset "initalstate" begin
+    @test initialstate.χ[1] == [nothing]
+    @test initialstate.χ[2][1].a[1] ≈ 3
+    @test initialstate.χ[2][1].a[2] ≈ 290
+    @test initialstate.χ[2][1].b   ==  :helloworld
+    @test initialstate.χ[2][1]  ==  initialstate.χ[2][2]
+end
+
 @testset "StaticX" begin
     @test  state[step].Λ[1] ≈ [0.0, 0.0, 0.0]
     @test  state[step].X[1] ≈ [-5.332268523655259, 21.09778288272267, 0.011304253608808651]

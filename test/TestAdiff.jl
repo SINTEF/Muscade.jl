@@ -52,6 +52,7 @@ oX = variate{1,3}(ox)
 using LinearAlgebra
 nrm = norm(oX)
 
+
 ##
 @testset "Adiff" begin
     @testset "Adiff construct and promote" begin
@@ -103,5 +104,17 @@ nrm = norm(oX)
     @testset " norm" begin
         @test nrm ≗ sqrt(sum(oX.^2))
     end
+
+    @testset "cast" begin
+        @test Muscade.cast.(𝕣,C[1]) ≗ 3.
+        @test Muscade.cast.(eltype(C1),3.) ≗ C1[1]
+        @test Muscade.cast.(eltype(C),C1[1]) ≗ C[1]
+        @test Muscade.cast.(eltype(C1),C[1]) ≗ C1[1]
+        @test Muscade.cast.(eltype(C1),C1[1]) ≗ C1[1]
+        @test Muscade.cast(∂ℝ{2,1,𝕣},∂ℝ{1,1,𝕣}(3.,SVector{1}(4.))) ≗ ∂ℝ{2, 1, Float64}(3.0, [0.0])
+        @test Muscade.cast(∂ℝ{1,1,𝕣},∂ℝ{2,1,𝕣}(3.,SVector{1}(4.))) ≗ ∂ℝ{1, 1, Float64}(3.0, [0.0])
+        @test Muscade.cast(𝕣,3.) ≈ 3.
+    end
+
 end # testset Adiff
 end

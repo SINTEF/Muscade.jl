@@ -244,5 +244,15 @@ hasnan(a::NamedTuple)        = any(hasnan.(values(a)))
 hasnan(a...;)                = any(hasnan.(a))
 hasnan(a)                    = false
 
-
+# cast: like `convert` but never throws an `inexact error` - and indeed willfully looses data if so asked
+cast( ::Type{T}        ,a::T) where{T    } = a
+cast(T::Type{∂ℝ{P,N,R}},a::𝕣) where{P,N,R} = ∂ℝ{P,N,R}(cast(R,a),SV{N,R}(zero(R) for j=1:N))
+cast(T::Type{𝕣}        ,a::ℝ)              = VALUE(a)
+function cast(T::Type{∂ℝ{PT,NT,RT}},a::∂ℝ{Pa,Na,Ra}) where{PT,NT,RT,Pa,Na,Ra}
+    R = promote_type(RT,Ra)
+    return if PT==Pa   ∂ℝ{Pa,Na}(cast(R ,a.x),cast.(R,a.dx)                 )
+    elseif    PT> Pa   ∂ℝ{PT,NT}(cast(RT,a  ),SV{NT,RT}(zero(RT) for j=1:NT))
+    else                         cast(T ,a.x)
+    end
+end
 
