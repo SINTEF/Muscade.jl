@@ -48,7 +48,7 @@ p = SVector(   2.82040487827,  -24.86027164695,   153.69500343165, -729.52107422
               -5856.85610233072, 9769.49700812681,-11141.12651712473, 8260.66447746395,-3582.36704093187,
                 687.83550335374)
 
-Muscade.χinit(o::AnchorLine) = (a = (3.,o.L),b = :helloworld) # nonsense, to test Muscade's χ-management
+Muscade.χinit(o::AnchorLine) = (a = (3,o.L),b = :helloworld) # nonsense, to test Muscade's χ-management
 @espy function Muscade.lagrangian(o::AnchorLine, Λ,X,U,A,t,χ,SP,dbg)
     xₘtop,Δxₘtop,xₘbot,L,buoyancy = o.xₘtop,o.Δxₘtop,o.xₘbot,o.L*(1+A[1]),o.buoyancy*(1+A[2])      # a for anchor, t for TDP, f for fairlead
     x        = ∂0(X)  
@@ -65,7 +65,7 @@ Muscade.χinit(o::AnchorLine) = (a = (3.,o.L),b = :helloworld) # nonsense, to te
     m3       = ΔXtop[1]*Fd[2]-ΔXtop[2]*Fd[1]
     L        = Λ[1:2] ∘₁ Fd
     L       += Λ[3  ] *  m3 
-    return L,noχ,noFB
+    return L,χ,noFB
 end
 function Muscade.draw(axe,o::AnchorLine, Λ,X,U,A, t,χ,SP,dbg)
     req   = @request (Xtop,ΔXtop,ΔXchain,cr,xaf,ltf)
