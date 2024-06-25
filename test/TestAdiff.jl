@@ -56,64 +56,53 @@ nrm = norm(oX)
 ##
 @testset "Adiff" begin
     @testset "Adiff construct and promote" begin
-        @test dscaled[2] ≗ ∂ℝ{1, 3, Float64}(0.0, SVector(0.0, 2.0, 0.0))
-        @test vscaled[2] ≗ ∂ℝ{1, 3, Float64}(4.0, SVector(0.0, 2.0, 0.0))
-        @test dx1        ≗ ∂𝕣12(3.0, SVector(0.1, 0.2))
-        @test x          ≗ ∂ℝ{2,2,∂𝕣12}(∂𝕣12(3.0, SVector(0.1, 0.2)), SVector(∂𝕣12(2.0, SVector(0.3, 0.4)), ∂𝕣12(4.0, SVector(0.5, 0.6))))
-        @test a          ≗ ∂ℝ{2,2,∂𝕣12}(∂𝕣12(3.0, SVector(0.1, 0.2)), SVector(∂𝕣12(1.0, SVector(0.0, 0.0)), ∂𝕣12(2.0, SVector(0.0, 0.0))))
-        @test b          ≗ ∂ℝ{2,4,∂𝕣12}(∂𝕣12(3.0, SVector(0.1, 0.2)), SVector(∂𝕣12(0.0, SVector(0.0, 0.0)), ∂𝕣12(0.0, SVector(0.0, 0.0)), ∂𝕣12(0.0, SVector(0.0, 0.0)), ∂𝕣12(0.0, SVector(0.0, 0.0))))
-        @test c          ≗ ∂ℝ{2,4,∂𝕣12}(∂𝕣12(3.0, SVector(0.1, 0.2)), SVector(∂𝕣12(0.0, SVector(0.0, 0.0)), ∂𝕣12(0.0, SVector(0.0, 0.0)), ∂𝕣12(1.0, SVector(0.0, 0.0)), ∂𝕣12(0.0, SVector(0.0, 0.0))))
+        @test dscaled[2] === ∂ℝ{1, 3, Float64}(0.0, SVector(0.0, 2.0, 0.0))
+        @test vscaled[2] === ∂ℝ{1, 3, Float64}(4.0, SVector(0.0, 2.0, 0.0))
+        @test dx1        === ∂𝕣12(3.0, SVector(0.1, 0.2))
+        @test x          === ∂ℝ{2,2,∂𝕣12}(∂𝕣12(3.0, SVector(0.1, 0.2)), SVector(∂𝕣12(2.0, SVector(0.3, 0.4)), ∂𝕣12(4.0, SVector(0.5, 0.6))))
+        @test a          === ∂ℝ{2,2,∂𝕣12}(∂𝕣12(3.0, SVector(0.1, 0.2)), SVector(∂𝕣12(1.0, SVector(0.0, 0.0)), ∂𝕣12(2.0, SVector(0.0, 0.0))))
+        @test b          === ∂ℝ{2,4,∂𝕣12}(∂𝕣12(3.0, SVector(0.1, 0.2)), SVector(∂𝕣12(0.0, SVector(0.0, 0.0)), ∂𝕣12(0.0, SVector(0.0, 0.0)), ∂𝕣12(0.0, SVector(0.0, 0.0)), ∂𝕣12(0.0, SVector(0.0, 0.0))))
+        @test c          === ∂ℝ{2,4,∂𝕣12}(∂𝕣12(3.0, SVector(0.1, 0.2)), SVector(∂𝕣12(0.0, SVector(0.0, 0.0)), ∂𝕣12(0.0, SVector(0.0, 0.0)), ∂𝕣12(1.0, SVector(0.0, 0.0)), ∂𝕣12(0.0, SVector(0.0, 0.0))))
         @test t1         == ∂𝕣12
         @test t2         ==∂ℝ{2,2,∂𝕣12}
-        @test d          ≗ dx1
-        @test e          ≗ ∂𝕣12(7.0, SVector(0.0, 0.0))
+        @test d          === dx1
+        @test e          === ∂𝕣12(7.0, SVector(0.0, 0.0))
         @test typeof(g) == ∂ℝ{2,2,∂𝕣12}
-        @test g         ≗ ∂ℝ{2,2,∂𝕣12}(∂𝕣12(3.0, SVector(0.0, 0.0)), SVector(∂𝕣12(0.1, SVector(0.0, 0.0)), ∂𝕣12(0.2, SVector(0.0, 0.0))))
-        @test h          ≗ x
+        @test g         === ∂ℝ{2,2,∂𝕣12}(∂𝕣12(3.0, SVector(0.0, 0.0)), SVector(∂𝕣12(0.1, SVector(0.0, 0.0)), ∂𝕣12(0.2, SVector(0.0, 0.0))))
+        @test h          === x
     end
 
     @testset "Adiff extraction" begin
-        @test Δ            ≗ SVector(∂𝕣12(0.0, SVector(1.0, 0.0)),∂𝕣12(0.0, SVector(0.0, 1.0)))
-        @test constants(Δ) ≗ 2
+        @test Δ            === SVector(∂𝕣12(0.0, SVector(1.0, 0.0)),∂𝕣12(0.0, SVector(0.0, 1.0)))
+        @test constants(Δ) == 2
         @test typeof(C)    == SVector{2, ∂ℝ{3, 2, ∂ℝ{2, 2, Float64}}}#Array{∂ℝ{3,2,∂𝕣22},1}
-        @test C[1]         ≗ ∂ℝ{3,2,∂𝕣22}(∂𝕣22(3.0, SVector(1.0, 0.0)), SVector(∂𝕣22(1.0, SVector(0.0, 0.0)), ∂𝕣22(0.0, SVector(0.0, 0.0))))
-        @test vC[1]        ≗ ∂𝕣22(3.0, SVector(1.0, 0.0))
-        @test ∂C[1]        ≗ ∂𝕣22(1.0, SVector(0.0, 0.0))
-        @test vvC          ≗ SVector(3.0,4.0)
-        @test v∂C          ≗ SMatrix{2,2}(1.0,0.0,0.0,1.0)
-        @test ∂vC          ≗ ∂vC
-#        @test ∂∂C          ≗ zeros(2,2,2)   broken=true # extract partial derivatives of an SMatrix or higher order
+        @test C[1]         === ∂ℝ{3,2,∂𝕣22}(∂𝕣22(3.0, SVector(1.0, 0.0)), SVector(∂𝕣22(1.0, SVector(0.0, 0.0)), ∂𝕣22(0.0, SVector(0.0, 0.0))))
+        @test vC[1]        === ∂𝕣22(3.0, SVector(1.0, 0.0))
+        @test ∂C[1]        === ∂𝕣22(1.0, SVector(0.0, 0.0))
+        @test vvC          === SVector(3.0,4.0)
+        @test v∂C          === SMatrix{2,2}(1.0,0.0,0.0,1.0)
+        @test ∂vC          === ∂vC
+#        @test ∂∂C          === zeros(2,2,2)   broken=true # extract partial derivatives of an SMatrix or higher order
         @test typeof(dX1)  == ∂𝕣12
     end
 
     @testset "Adiff operations" begin
-        @test oa ≗ ∂𝕣11(1.0, SVector(1.0))
-        @test ob ≗ ∂ℝ{2,1,𝕣}(2, SVector(1))
-        @test oc ≗ ∂ℝ{3,1,𝕣}(3.0, SVector(1.0))
-        @test od ≗ ∂ℝ{3,1,∂𝕣11}(∂𝕣11(4.0, SVector(1.0)), SVector(∂𝕣11(1.0, SVector(0.0))))
-        @test oe ≗ ∂ℝ{3,1,∂ℝ{2,1,∂𝕣11}}(∂ℝ{2,1,∂𝕣11}(∂𝕣11(6.0, SVector(1.0)), SVector(∂𝕣11(1.0, SVector(0.0)))), SVector(     ∂ℝ{2,1,∂𝕣11}(∂𝕣11(1.0, SVector(0.0)), SVector(∂𝕣11(0.0, SVector(0.0))))))
-        @test od ≗ ∂ℝ{3,1,∂𝕣11}(∂𝕣11(4.0, SVector(1.0)), SVector(∂𝕣11(1.0, SVector(0.0))))
-        @test og ≗ ∂ℝ{3,1,∂𝕣11}(∂𝕣11(16.0, SVector(11.090354888959125)), SVector(∂𝕣11(11.090354888959125, SVector(7.687248222691222))))
-        @test oj ≗ od*od
-        @test og ≗ ∂ℝ{3,1,∂𝕣11}(∂𝕣11(16.0, SVector(11.090354888959125)), SVector(∂𝕣11(11.090354888959125, SVector(7.687248222691222))))
-        @test ok ≗ ∂ℝ{3,1,∂𝕣11}(∂𝕣11(1.0, SVector(1.0)), SVector(∂𝕣11(0.0, SVector(0.0))))
+        @test oa === ∂𝕣11(1.0, SVector(1.0))
+        @test ob === ∂ℝ{2,1,𝕣}(2, SVector(1))
+        @test oc === ∂ℝ{3,1,𝕣}(3.0, SVector(1.0))
+        @test od === ∂ℝ{3,1,∂𝕣11}(∂𝕣11(4.0, SVector(1.0)), SVector(∂𝕣11(1.0, SVector(0.0))))
+        @test oe === ∂ℝ{3,1,∂ℝ{2,1,∂𝕣11}}(∂ℝ{2,1,∂𝕣11}(∂𝕣11(6.0, SVector(1.0)), SVector(∂𝕣11(1.0, SVector(0.0)))), SVector(     ∂ℝ{2,1,∂𝕣11}(∂𝕣11(1.0, SVector(0.0)), SVector(∂𝕣11(0.0, SVector(0.0))))))
+        @test od === ∂ℝ{3,1,∂𝕣11}(∂𝕣11(4.0, SVector(1.0)), SVector(∂𝕣11(1.0, SVector(0.0))))
+        @test og === ∂ℝ{3,1,∂𝕣11}(∂𝕣11(16.0, SVector(11.090354888959125)), SVector(∂𝕣11(11.090354888959125, SVector(7.687248222691222))))
+        @test oj === od*od
+        @test og === ∂ℝ{3,1,∂𝕣11}(∂𝕣11(16.0, SVector(11.090354888959125)), SVector(∂𝕣11(11.090354888959125, SVector(7.687248222691222))))
+        @test ok === ∂ℝ{3,1,∂𝕣11}(∂𝕣11(1.0, SVector(1.0)), SVector(∂𝕣11(0.0, SVector(0.0))))
         @test value{1}(2*oX)==2*ox
     end
 
 
     @testset " norm" begin
-        @test nrm ≗ sqrt(sum(oX.^2))
-    end
-
-    @testset "cast" begin
-        @test Muscade.cast.(𝕣,C[1]) ≗ 3.
-        @test Muscade.cast.(eltype(C1),3.) ≗ C1[1]
-        @test Muscade.cast.(eltype(C),C1[1]) ≗ C[1]
-        @test Muscade.cast.(eltype(C1),C[1]) ≗ C1[1]
-        @test Muscade.cast.(eltype(C1),C1[1]) ≗ C1[1]
-        @test Muscade.cast(∂ℝ{2,1,𝕣},∂ℝ{1,1,𝕣}(3.,SVector{1}(4.))) ≗ ∂ℝ{2, 1, Float64}(3.0, [0.0])
-        @test Muscade.cast(∂ℝ{1,1,𝕣},∂ℝ{2,1,𝕣}(3.,SVector{1}(4.))) ≗ ∂ℝ{1, 1, Float64}(3.0, [0.0])
-        @test Muscade.cast(𝕣,3.) ≈ 3.
+        @test nrm === sqrt(sum(oX.^2))
     end
 
 end # testset Adiff

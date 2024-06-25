@@ -13,7 +13,6 @@ module Muscade
     export  variate,δ,directional # \delta
     export  value,VALUE,∂,value_∂ # \partial, \nabla
     export  constants,precedence,npartial,norm
-    export  ≗ #\circeq
 
     include("Multiplex.jl")
     
@@ -51,6 +50,8 @@ module Muscade
      
     include("Assemble.jl")
     export Assembly
+
+    include("ChiTools.jl")
     
     include("Solve.jl")
     export solve

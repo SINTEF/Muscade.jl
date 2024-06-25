@@ -448,14 +448,6 @@ end
 
 ############# Tools for addin!
 
-# recursively apply a χ-cleaning function f to a data structure χ
-χrecurse(f,χ::ℝ)             = f(χ)
-χrecurse(f,χ::AbstractArray) = χrecurse.(f,χ)
-χrecurse(f,χ::Tuple)         = χrecurse.(f,χ)
-χrecurse(f,χ::NamedTuple)    = NamedTuple{keys(χ)}(χrecurse(f,values(χ)))
-χrecurse(f,χ)                = χ  
-χrecurse(f,χ::ℤ)             = χ  
-χrecurse(f,χ::𝔹)             = χ  
 
 
 #### zero!
