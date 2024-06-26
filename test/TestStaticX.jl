@@ -25,15 +25,7 @@ step = 1
     @test initialstate.χ[2][1].b   ==  :helloworld
     @test initialstate.χ[2][1]  ==  initialstate.χ[2][2]
 end
-T  = typeof(variate{1}(1.))
-χ2 = Muscade.χrecurse(x->Muscade.cast(T,x),initialstate.χ[2])
 
-@testset "χrecurse" begin
-    @test χ2[1].a[1] ≈ 3
-    @test χ2[1].a[2] ≈ variate{1}(290.)
-    @test χ2[1].b   ==  :helloworld
-    @test χ2[1]  ==  χ2[2]
-end
 
 @testset "StaticX" begin
     @test  state[step].Λ[1] ≈ [0.0, 0.0, 0.0]

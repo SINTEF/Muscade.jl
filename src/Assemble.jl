@@ -98,8 +98,6 @@ function Disassembler(model::Model)
     return Disassembler(dis,scaleΛ,scaleX,scaleU,scaleA,fieldX,fieldU,fieldA)
 end
 
-χinit(model::Model)                           = χinit.(model.eleobj) # For each element type
-χinit(e::Vector{E}) where{E<:AbstractElement} = χinit.(e)            # For each element in a type
 
 ######## state and initstate
 # at each step, contains the complete, unscaled state of the system

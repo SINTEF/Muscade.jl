@@ -5,7 +5,7 @@ mutable struct AssemblyStaticX{Tλ,Tλx} <:Assembly
     Lλ    :: Tλ
     Lλx   :: Tλx 
 end   
-function prepare(::Type{AssemblyStaticX},model,dis) 
+function prepare(::Type{AssemblyStaticX},model,dis,initialstate) 
     dofgr              = allXdofs(model,dis)
     ndof               = getndof(dofgr)
     narray,neletyp     = 2,getneletyp(model)
@@ -14,7 +14,8 @@ function prepare(::Type{AssemblyStaticX},model,dis)
     Lλx                = asmmat!(view(asm,2,:),view(asm,1,:),view(asm,1,:),ndof,ndof) 
 #    out                = one_for_each_thread(AssemblyStaticX(Lλ,Lλx,∞)) # KEEP - parallel
     out                = AssemblyStaticX(Lλ,Lλx) # sequential
-    return out,asm,dofgr
+    χ                  = χalloc(initialstate,𝕣)
+    return out,asm,dofgr,χ
 end
 function zero!(out::AssemblyStaticX)
     zero!(out.Lλ)
@@ -48,7 +49,7 @@ function prepare(::Type{AssemblyStaticXline},model,dis)
     Lλ                 = asmvec!(view(asm,1,:),dofgr,dis) 
 #    out                = one_for_each_thread(AssemblyStaticX(Lλ,Lλx,∞)) # KEEP - parallel
     out                = AssemblyStaticXline(Lλ,∞,∞,0.,0) # sequential
-    return out,asm,dofgr
+    return out,asm
 end
 function zero!(out::AssemblyStaticXline)
     zero!(out.Lλ)
@@ -122,8 +123,8 @@ function solve(::Type{StaticX},pstate,verbose,dbg;
                     maxLineIter::ℤ=50,α::𝕣=.1,β::𝕣=.5,γfac::𝕣=.5)
     # important: this code assumes that there is no χ in state.
     model,dis        = initialstate.model,initialstate.dis
-    out1,asm1,Xdofgr = prepare(AssemblyStaticX    ,model,dis)
-    out2,asm2,_      = prepare(AssemblyStaticXline,model,dis)
+    out1,asm1,Xdofgr,χ = prepare(AssemblyStaticX    ,model,dis,initialstate)
+    out2,asm2,_        = prepare(AssemblyStaticXline,model,dis)
     citer            = 0
     cΔx²,cLλ²        = maxΔx^2,maxresidual^2
     state            = State{1,1,1}(initialstate,(γ=0.,))
