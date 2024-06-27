@@ -382,14 +382,14 @@ abstract type Assembly end # solver define concrete "assemblies" which is a coll
 
 
 # sequential, called by the solver
-function assemble!(out::Assembly,asm,dis,model,state,dbg) 
+function assemble!(out::Assembly,χn,asm,dis,model,state,χo,dbg) 
     zero!(out)
     for ieletyp = 1:lastindex(model.eleobj)
         eleobj  = model.eleobj[ieletyp]
-        assemble_!(out,view(asm,:,ieletyp),dis.dis[ieletyp],eleobj,state,state.SP,(dbg...,ieletyp=ieletyp))
+        assemble_!(out,χn[ieletyp],view(asm,:,ieletyp),dis.dis[ieletyp],eleobj,state,state.SP,χo[ieletyp],(dbg...,ieletyp=ieletyp))
     end
 end
-function assemble_!(out::Assembly,asm,dis,eleobj,state::State{nΛder,nXder,nUder},SP,dbg) where{nΛder,nXder,nUder}
+function assemble_!(out::Assembly,χn,asm,dis,eleobj,state::State{nΛder,nXder,nUder},SP,χo,dbg) where{nΛder,nXder,nUder}
     scale     = dis.scale
     for iele  = 1:lastindex(eleobj)
         index = dis.index[iele]
@@ -397,51 +397,51 @@ function assemble_!(out::Assembly,asm,dis,eleobj,state::State{nΛder,nXder,nUder
         Xe    = NTuple{nXder}(x[index.X] for x∈state.X)
         Ue    = NTuple{nUder}(u[index.U] for u∈state.U)
         Ae    = state.A[index.A]
-        addin!(out,asm,iele,scale,eleobj[iele],Λe,Xe,Ue,Ae, state.time,SP,(dbg...,iele=iele)) # defined by solver.  Called for each element. But the asm that is passed
+        addin!(out,Ref(χn,iele),asm,iele,scale,eleobj[iele],Λe,Xe,Ue,Ae, state.time,SP,χo[iele],(dbg...,iele=iele)) # defined by solver.  Called for each element. But the asm that is passed
     end                                                                                       # is of the form asm[iarray][ientry,iele], because addin! will add to all arrays in one pass
 end
 
-# multithreaded
-using Base.Threads
-one_for_each_thread(x) = SVector{nthreads()}(deepcopy(x) for i=1:nthreads())
+# # multithreaded
+# using Base.Threads
+# one_for_each_thread(x) = SVector{nthreads()}(deepcopy(x) for i=1:nthreads())
 firstelement(x::AbstractVector) = x[1]
 firstelement(x                ) = x
 
-function add!(a::Array,b::Array)
-    for i∈eachindex(a)
-        a[i] += b[i]
-    end
-end
-function add!(a::SparseMatrixCSC,b::SparseMatrixCSC) # assumes identical sparsity structure
-    for i∈eachindex(a.nzval)
-        a.nzval[i] += b.nzval[i]
-    end
-end
+# function add!(a::Array,b::Array)
+#     for i∈eachindex(a)
+#         a[i] += b[i]
+#     end
+# end
+# function add!(a::SparseMatrixCSC,b::SparseMatrixCSC) # assumes identical sparsity structure
+#     for i∈eachindex(a.nzval)
+#         a.nzval[i] += b.nzval[i]
+#     end
+# end
 
-function assemble!(out::AbstractVector{A},asm,dis,model,state,dbg) where{A<:Assembly}
-    for i = 1:nthreads() 
-        zero!(out[i])
-    end
-    for ieletyp = 1:lastindex(model.eleobj)
-        eleobj  = model.eleobj[ieletyp]
-        assemble_!(out,view(asm,:,ieletyp),dis.dis[ieletyp], eleobj,state,state.SP,(dbg...,ieletyp=ieletyp))
-    end
-    for i = 2:nthreads() 
-        add!(out[1],out[i])
-    end
-end
+# function assemble!(out::AbstractVector{A},asm,dis,model,state,dbg) where{A<:Assembly}
+#     for i = 1:nthreads() 
+#         zero!(out[i])
+#     end
+#     for ieletyp = 1:lastindex(model.eleobj)
+#         eleobj  = model.eleobj[ieletyp]
+#         assemble_!(out,view(asm,:,ieletyp),dis.dis[ieletyp], eleobj,state,state.SP,(dbg...,ieletyp=ieletyp))
+#     end
+#     for i = 2:nthreads() 
+#         add!(out[1],out[i])
+#     end
+# end
 
-function assemble_!(out::AbstractVector{A},asm,dis,eleobj,state::State{nΛder,nXder,nUder},SP,dbg) where{nΛder,nXder,nUder,A<:Assembly}
-    scale     = dis.scale
-    @threads for iele  = 1:lastindex(eleobj)
-        index = dis.index[iele]
-        Λe    = NTuple{nΛder}(λ[index.X] for λ∈state.Λ)
-        Xe    = NTuple{nXder}(x[index.X] for x∈state.X)
-        Ue    = NTuple{nUder}(u[index.U] for u∈state.U)
-        Ae    = state.A[index.A]
-        addin!(out[threadid()],asm,iele,scale,eleobj[iele],Λe,Xe,Ue,Ae, state.time,SP,(dbg...,iele=iele))
-    end
-end
+# function assemble_!(out::AbstractVector{A},asm,dis,eleobj,state::State{nΛder,nXder,nUder},SP,dbg) where{nΛder,nXder,nUder,A<:Assembly}
+#     scale     = dis.scale
+#     @threads for iele  = 1:lastindex(eleobj)
+#         index = dis.index[iele]
+#         Λe    = NTuple{nΛder}(λ[index.X] for λ∈state.Λ)
+#         Xe    = NTuple{nXder}(x[index.X] for x∈state.X)
+#         Ue    = NTuple{nUder}(u[index.U] for u∈state.U)
+#         Ae    = state.A[index.A]
+#         addin!(out[threadid()],asm,iele,scale,eleobj[iele],Λe,Xe,Ue,Ae, state.time,SP,(dbg...,iele=iele))
+#     end
+# end
 
 
 ############# Tools for addin!
@@ -502,7 +502,7 @@ add_∂!{P}(out::Array,asm,iele,a::SVector{M,∂ℝ{P,N,R}}) where{P,N,R,M} = ad
 
 
 ####### called by addin!, and by nested elements to "get a Lagrangian" and "get a residual"
-# 1) comprehensive check of the types of arguments, to help catch bugs in solvers and elements
+# 1) comprehensive check of the types of arguments, to help catch bugs in solvers and elements at compile time
 # 2) if a residual is wanted by the solver and only Lagrangian is implemented by the element (or the other way around), do some magic
 # 3) check for NaNs in the results 
 #
@@ -512,16 +512,16 @@ function getresidual(eleobj::Eleobj,
     X::NTuple{Ndx,SVector{Nx,Rx}},
     U::NTuple{Ndu,SVector{Nu,Ru}},
     A::           SVector{Na,Ra} ,
-    t::ℝ,χ,SP,dbg,req...)     where{Eleobj<:AbstractElement,Ndx,Nx,Rx<:ℝ,Ndu,Nu,Ru<:ℝ,Na,Ra<:ℝ} 
+    t::ℝ,χo,SP,dbg,req...)     where{Eleobj<:AbstractElement,Ndx,Nx,Rx<:ℝ,Ndu,Nu,Ru<:ℝ,Na,Ra<:ℝ} 
 
     if hasmethod(residual  ,(Eleobj,       NTuple,NTuple,𝕣1,𝕣,Any,Function,NamedTuple,NamedTuple))
-        R,χn,FB,eleres... = residual(  eleobj,  X,U,A,t,χ,SP,dbg,req...)
+        R,χn,FB,eleres... = residual(  eleobj,  X,U,A,t,χo,SP,dbg,req...)
         hasnan(R,χn,FB) && muscadeerror((dbg...,t=t,SP=SP),@sprintf("residual(%s,...) returned NaN in R, χ, FB or derivatives",Eleobj))  
 
     elseif hasmethod(lagrangian,(Eleobj,NTuple,NTuple,NTuple,𝕣1,𝕣,Any,Function,NamedTuple,NamedTuple))
         P   = constants(∂0(X),∂0(U),A,t)
         Λ   = δ{P,Nx,𝕣}() 
-        L,χn,FB,eleres... = lagrangian(eleobj,Λ,X,U,A,t,χ,SP,dbg,req...)    
+        L,χn,FB,eleres... = lagrangian(eleobj,Λ,X,U,A,t,χo,SP,dbg,req...)    
         hasnan(L,χn,FB) && muscadeerror((dbg...,t=t,SP=SP),@sprintf("lagrangian(%s,...) returned NaN in L, χ, FB or derivatives",Eleobj))   
         R = ∂{P,Nx}(L)
     else 
@@ -536,13 +536,13 @@ function getlagrangian(eleobj::Eleobj,
     X::NTuple{Ndx,SVector{Nx,Rx}},
     U::NTuple{Ndu,SVector{Nu,Ru}},
     A::           SVector{Na,Ra} ,
-    t::ℝ,χ,SP,dbg,req...)     where{Eleobj<:AbstractElement,Rλ<:ℝ,Ndx,Nx,Rx<:ℝ,Ndu,Nu,Ru<:ℝ,Na,Ra<:ℝ} 
+    t::ℝ,χo,SP,dbg,req...)     where{Eleobj<:AbstractElement,Rλ<:ℝ,Ndx,Nx,Rx<:ℝ,Ndu,Nu,Ru<:ℝ,Na,Ra<:ℝ} 
 
     if     hasmethod(lagrangian,(Eleobj,NTuple,NTuple,NTuple,𝕣1,𝕣,Any,Function,NamedTuple,NamedTuple))
-        L,χn,FB,eleres... = lagrangian(eleobj,Λ,X,U,A,t,χ,SP,dbg,req...)
+        L,χn,FB,eleres... = lagrangian(eleobj,Λ,X,U,A,t,χo,SP,dbg,req...)
         hasnan(L,χn,FB) && muscadeerror((dbg...,t=t,SP=SP),@sprintf("lagrangian(%s,...) returned NaN in L, χ, FB or derivatives",Eleobj))     
     elseif hasmethod(residual  ,(Eleobj,       NTuple,NTuple,𝕣1,𝕣,Any,Function,NamedTuple,NamedTuple))
-        R,χn,FB,eleres... = residual(  eleobj,  X,U,A,t,χ,SP,dbg,req...)
+        R,χn,FB,eleres... = residual(  eleobj,  X,U,A,t,χo,SP,dbg,req...)
         hasnan(R,χn,FB) && muscadeerror((dbg...,t=t,SP=SP),@sprintf("residual(%s,...) returned NaN in R, χ, FB or derivatives",Eleobj)) 
         L = Λ ∘₁ R
     else

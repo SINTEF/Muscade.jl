@@ -16,7 +16,7 @@ n3              = addnode!(model,𝕣[])  # Anod for anchor
 e1              =  addelement!(model,Turbine   ,[n1,n2], seadrag=1e6, sea=sea, skydrag=1e5, sky=sky)
 e2              = [addelement!(model,AnchorLine,[n1,n3], Δxₘtop=vcat(5*α(i),[0.]), xₘbot=250*α(i), L=290., buoyancy=-5e3) for i∈0:2]
 initialstate    = initialize!(model)
-state           = solve(StaticX;initialstate,time=[0.,1.],verbose=false)
+state           = solve(StaticX;initialstate,time=[0.,1.],verbose=false,catcherror=true)
 step = 1
 @testset "initalstate" begin
     @test initialstate.χ[1] == [nothing]

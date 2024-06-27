@@ -17,18 +17,23 @@ This will call the method `solve` provided by the solver with
 
 See also: [`StaticX`](@ref), [`StaticXUA`](@ref), [`initialize!`](@ref) 
 """
-function solve(Solver::Type{<:AbstractSolver};dbg=NamedTuple(),verbose::𝕓=true,silenterror::𝕓=false,kwargs...) 
+function solve(Solver::Type{<:AbstractSolver};dbg=NamedTuple(),verbose::𝕓=true,silenterror::𝕓=false,catcherror::𝕓=true,kwargs...) 
     verbose && printstyled("\n\n\nMuscade:",bold=true,color=:cyan)
     verbose && printstyled(@sprintf(" %s solver\n\n",Symbol(Solver)),color=:cyan)
 
     pstate = Base.RefValue{Any}() # state is not a return argument of the solver, so that partial results are not lost on error
-    try
+    if catcherror
+        try
+            t = @elapsed solve(Solver,pstate,verbose,(dbg...,solver=Symbol(Solver));kwargs...)  
+            verbose && @printf("    %s time: %s\n",Symbol(Solver),showtime(t))
+        catch exn
+            silenterror || report(exn)
+            silenterror || printstyled("\nAborting the analysis.",color=:red)
+            silenterror || println(" Function 'solve' should still be returning results obtained so far.")
+        end
+    else
         t = @elapsed solve(Solver,pstate,verbose,(dbg...,solver=Symbol(Solver));kwargs...)  
         verbose && @printf("    %s time: %s\n",Symbol(Solver),showtime(t))
-    catch exn
-        silenterror || report(exn)
-        silenterror || printstyled("\nAborting the analysis.",color=:red)
-        silenterror || println(" Function 'solve' should still be returning results obtained so far.")
     end
     verbose && printstyled("Muscade done.\n\n\n",bold=true,color=:cyan)
     return pstate[]
