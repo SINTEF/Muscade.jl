@@ -5,8 +5,8 @@
 χinit(e::Vector{E}) where{E<:AbstractElement} = χinit.(e)            # For each element in a type
 
 # given χ (typicaly: as meshed), and a type (e.g. "store A-sensitivities), allocate memory for State.χ
-χalloc(T∂,χ::Vector{Vector})           = [χalloc(T∂,χᵢ) for χᵢ∈χ] 
-χalloc(T∂,χ::Vector{Tχ    }) where{Tχ} = Vector{χcasttype(T∂,Tχ)}(undef,length(χ))
+χalloc(T∂,χ)                         =  [χalloc_(T∂,χᵢ) for χᵢ∈χ] 
+χalloc_(T∂,χ::Vector{Tχ }) where{Tχ} = Vector{χcasttype(T∂,Tχ)}(undef,length(χ))
 
 # lossy conversion of ℝ to T∂ in a χ-structure (incl. in Arrays)
 χcast(  ::Type{T∂}       ,a::T∂) where{T∂   } = a

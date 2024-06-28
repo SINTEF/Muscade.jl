@@ -516,13 +516,17 @@ function getresidual(eleobj::Eleobj,
 
     if hasmethod(residual  ,(Eleobj,       NTuple,NTuple,𝕣1,𝕣,Any,Function,NamedTuple,NamedTuple))
         R,χn,FB,eleres... = residual(  eleobj,  X,U,A,t,χo,SP,dbg,req...)
-        hasnan(R,χn,FB) && muscadeerror((dbg...,t=t,SP=SP),@sprintf("residual(%s,...) returned NaN in R, χ, FB or derivatives",Eleobj))  
+        hasnan(R ) && muscadeerror((dbg...,t=t,R =R ),@sprintf("residual(%s,...) returned NaN in R or derivatives",Eleobj))  
+        hasnan(χn) && muscadeerror((dbg...,t=t,χn=χn),@sprintf("residual(%s,...) returned NaN in χ or derivatives",Eleobj))  
+        hasnan(FB) && muscadeerror((dbg...,t=t,FB=FB),@sprintf("residual(%s,...) returned NaN in FB or derivatives",Eleobj))  
 
     elseif hasmethod(lagrangian,(Eleobj,NTuple,NTuple,NTuple,𝕣1,𝕣,Any,Function,NamedTuple,NamedTuple))
         P   = constants(∂0(X),∂0(U),A,t)
         Λ   = δ{P,Nx,𝕣}() 
         L,χn,FB,eleres... = lagrangian(eleobj,Λ,X,U,A,t,χo,SP,dbg,req...)    
-        hasnan(L,χn,FB) && muscadeerror((dbg...,t=t,SP=SP),@sprintf("lagrangian(%s,...) returned NaN in L, χ, FB or derivatives",Eleobj))   
+        hasnan(L ) && muscadeerror((dbg...,t=t,R =R ),@sprintf("lagrangian(%s,...) returned NaN in L or derivatives",Eleobj))  
+        hasnan(χn) && muscadeerror((dbg...,t=t,χn=χn),@sprintf("lagrangian(%s,...) returned NaN in χ or derivatives",Eleobj))  
+        hasnan(FB) && muscadeerror((dbg...,t=t,FB=FB),@sprintf("lagrangian(%s,...) returned NaN in FB or derivatives",Eleobj))  
         R = ∂{P,Nx}(L)
     else 
         muscadeerror((dbg...,t=t,SP=SP),@sprintf("Element %s must have method 'Muscade.lagrangian' or/and 'Muscade.residual' with correct interface",Eleobj))

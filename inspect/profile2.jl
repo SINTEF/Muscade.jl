@@ -18,7 +18,7 @@ function Pipe(nod::Vector{Node};EI,w)
     return Pipe(K,W,SVector(x1,x2))
 end
 Muscade.doflist(::Type{Pipe}) =(inod=(1,1,2,2), class=(:X,:X,:X,:X), field=(:z,:r,:z,:r))
-@espy function Muscade.residual(o::Pipe, X,U,A, t,χ,χcv,SP,dbg) 
+@espy function Muscade.residual(o::Pipe, X,U,A, t,χ,SP,dbg) 
     return o.K*∂0(X)+o.W,nothing,nothing
 end
 function Muscade.draw(axe,key,out, o::Pipe, δX,X,U,A, t,χ,χcv,SP,dbg;kwargs...)
@@ -50,10 +50,21 @@ gₛ               = 0.1
 model           = Model(:Pipe)
 node            = addnode!(model,coords) 
 pipe            = [addelement!(model,Pipe,node[i:i+1];EI,w) for i=1:nel]
-floorctct       = [addelement!(model,Constraint,[node[i]];λₛ,gₛ,xinod=(1,),xfield=(:z,),
-                               λinod=1, λclass=:X, λfield=:λfloor, g=floorgap,gargs=(zfloor[i],), mode=positive) for i=1:nel+1]
-ceilctct        = [addelement!(model,Constraint,[node[i]];λₛ,gₛ,xinod=(1,),xfield=(:z,),
-                               λinod=1, λclass=:X, λfield=:λceil,  g=ceilgap,gargs=(zfloor[i]+Δz,), mode=positive) for i=1:nel+1]
+# floorctct       = [addelement!(model,DofConstraint,[node[i]];λₛ,gₛ,xinod=(1,),xfield=(:z,),
+#                                λinod=1, λclass=:X, λfield=:λfloor, gap=floorgap,gargs=(zfloor[i],), mode=positive) for i=1:nel+1]
+              floorctct       = [addelement!(model,DofConstraint,[node[i]];xinod=(1,),xfield=(:z,),
+                               λinod=1, λclass=:X, λfield=:λfloor, gap=floorgap,gargs=(zfloor[i],), mode=positive) for i=1:nel+1]
+
+                            #    addelement!(model,DofConstraint,[n1],xinod=(1,),xfield=(:t1,),
+                            #    λinod=1, λclass=:X, λfield=:λ1,gap=(x,t)->x[1]+.1,
+                            #    mode=positive)
+
+
+
+                            ceilctct        = [addelement!(model,DofConstraint,[node[i]];xinod=(1,),xfield=(:z,),
+                            λinod=1, λclass=:X, λfield=:λceil,  gap=ceilgap,gargs=(zfloor[i]+Δz,), mode=positive) for i=1:nel+1]
+                            # ceilctct        = [addelement!(model,DofConstraint,[node[i]];λₛ,gₛ,xinod=(1,),xfield=(:z,),
+                            # λinod=1, λclass=:X, λfield=:λceil,  gap=ceilgap,gargs=(zfloor[i]+Δz,), mode=positive) for i=1:nel+1]
 
 initialstate    = initialize!(model)
 mission = :profile
@@ -65,10 +76,13 @@ elseif mission == :time
 elseif mission == :profile
     Profile.clear()
     Profile.@profile for i=1:10
-        local state           = solve(StaticX;initialstate,time=[0.],maxiter=200,saveiter=true,γ0=10.,γfac1=.5,γfac2=10.,verbose=false)
+        local state           = solve(StaticX;initialstate,time=[0.],maxiter=200,saveiter=true,verbose=false)
+        local state           = solve(StaticX;initialstate,time=[0.,1.],verbose=false,catcherror=true)
     end
     ProfileView.view(fontsize=30);
 end
+# After clicking on a bar in the flame diagram, you can type warntype_last() and see the result of 
+# code_warntype for the call represented by that bar.
 
 
 if false # sandwich plot

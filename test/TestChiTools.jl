@@ -76,8 +76,7 @@ end
     @test Muscade.χcasttype(T∂,SMatrix{2,2,𝕣}) == SMatrix{2,2,T∂}
     @test Muscade.χcasttype(T∂,SArray{Tuple{2,2,3},𝕣}) == SArray{Tuple{2,2,3},T∂}
 end
-
-χmem = Muscade.χalloc(∂ℝ{1,2,𝕣},X)
+χmem = Muscade.χalloc_(∂ℝ{1,2,𝕣},X)
 @testset "χalloc" begin
     @test eltype(χmem) == @NamedTuple{a::Tuple{Int64, ∂ℝ{1, 2, Float64},Symbol}, b::Symbol}
     @test length(χmem) == 2
