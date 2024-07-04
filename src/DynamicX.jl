@@ -29,11 +29,6 @@ function zero!(out::AssemblyDynamicX)
     zero!(out.Lλx)
     out.α = ∞    
 end
-function add!(out1::AssemblyDynamicX,out2::AssemblyDynamicX) 
-    add!(out1.Lλ,out2.Lλ)
-    add!(out1.Lλx,out2.Lλx)
-    out1.α = min(out1.α,out2.α)
-end
 function addin!(out::AssemblyDynamicX,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A,t,SP,dbg) where{E,Nxder,Nx}
     # asm[iarray][ientry,iel]
     if Nx==0; return end # don't waste time on Acost elements...  
@@ -46,8 +41,7 @@ function addin!(out::AssemblyDynamicX,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxde
     b          = out.b₂*x′ + out.b₃*x″
     vx         = x  +        δk
     vx′        = x′ + out.a₁*δk - a*δr 
-    vx″        = x″ + out.b₁*δk - b*δr                                      # χo     ,χcv
-#    Lλ,χ,FB    = getresidual(implemented(eleobj)...,eleobj,(vx,vx′,vx″),U,A,t,nothing,nothing,SP,dbg)
+    vx″        = x″ + out.b₁*δk - b*δr 
     Lλ,FB      = getresidual(eleobj,(vx,vx′,vx″),U,A,t,SP,dbg)
     add_value!(out.Lλ ,asm[1],iele,Lλ             )
     add_∂!{1}( out.Lλ ,asm[1],iele,Lλ,1:Nx,(Nx+1,))
@@ -118,13 +112,13 @@ function solve(::Type{DynamicX},pstate,verbose,dbg;
             citer   += 1
             assemble!(out,asm,dis,model,s,(dbg...,solver=:DynamicX,step=step,iiter=iiter))
             try if step==1 && iiter==1
-                facLλx = lu(firstelement(out).Lλx) 
+                facLλx = lu(out.Lλx) 
             else
-                lu!(facLλx,firstelement(out).Lλx) 
+                lu!(facLλx,out.Lλx) 
             end catch; muscadeerror(@sprintf("matrix factorization failed at step=%i, iiter=%i",step,iiter)) end
-            Δx       = facLλx\firstelement(out).Lλ
-            Δx²,Lλ²  = sum(Δx.^2),sum(firstelement(out).Lλ.^2)
-            x′ ,x″   = Vector{𝕣}(undef,length(Δx)), Vector{𝕣}(undef,length(Δx))
+            Δx       = facLλx\out.Lλ
+            Δx²,Lλ²  = sum(Δx.^2),sum(out.Lλ.^2)
+            x′ ,x″   = Vector{𝕣}(undef,length(Δx)), Vector{𝕣}(undef,length(Δx))  # TODO take this out of he loops
             getdof!(s,1,x′,dofgr) 
             getdof!(s,2,x″,dofgr) 
             Δx′      = out.a₁*Δx+out.a₂*x′+out.a₃*x″ 
@@ -140,7 +134,7 @@ function solve(::Type{DynamicX},pstate,verbose,dbg;
                 break#out of the iiter loop
             end
             iiter==maxiter && muscadeerror(@sprintf("no convergence in step %3d after %3d iterations |Δx|=%g / %g, |Lλ|=%g / %g",step,iiter,√(Δx²),maxΔx,√(Lλ²)^2,maxresidual))
-            Δγ       = γfac1*exp(-(firstelement(out).α/γfac2)^2)
+            Δγ       = γfac1*exp(-(out.α/γfac2)^2)
             s.SP     = (γ=s.SP.γ*Δγ,)
         end
     end

@@ -129,8 +129,8 @@ end
 out,asm,dofgr = Muscade.prepare(Muscade.AssemblyStaticX,model,dis)
 Muscade.zero!(out)
 @testset "prepare" begin
-    @test  Muscade.firstelement(out).Lλ ≈ [0,0,0]
-    @test  Muscade.firstelement(out).Lλx ≈ sparse([1,2,3,2,3], [1,2,2,3,3], [0,0,0,0,0], 3, 3)
+    @test  out.Lλ ≈ [0,0,0]
+    @test  out.Lλx ≈ sparse([1,2,3,2,3], [1,2,2,3,3], [0,0,0,0,0], 3, 3)
     @test  asm[1,1] == [1; 2;;]
     @test  asm[1,2] == [1; 2; 3;;]
     @test  asm[2,1] == [1; 2; 4; 5;;]
@@ -158,8 +158,8 @@ state = Muscade.State(model,dis)
 Muscade.assemble!(out,asm,dis,model,state,(someunittest=true,))
 
 @testset "assemble" begin
-    @test  Muscade.firstelement(out).Lλ  ≈ [-152130.71199858442, -3.0, 0.0]
-    @test  Muscade.firstelement(out).Lλx ≈ sparse([1, 2, 3, 1, 2, 3, 1, 2, 3], [1, 1, 1, 2, 2, 2, 3, 3, 3], [10323.069597975566, 0.0, 0.0, 0.0, 1049.1635310247202, 5245.817655123601, 0.0, 5245.8176551236, 786872.6482685402], 3, 3)
+    @test  out.Lλ  ≈ [-152130.71199858442, -3.0, 0.0]
+    @test  out.Lλx ≈ sparse([1, 2, 3, 1, 2, 3, 1, 2, 3], [1, 1, 1, 2, 2, 2, 3, 3, 3], [10323.069597975566, 0.0, 0.0, 0.0, 1049.1635310247202, 5245.817655123601, 0.0, 5245.8176551236, 786872.6482685402], 3, 3)
 end
 
 end

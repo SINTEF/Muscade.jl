@@ -400,49 +400,6 @@ function assemble_!(out::Assembly,asm,dis,eleobj,state::State{nΛder,nXder,nUder
     end                                                                                       # is of the form asm[iarray][ientry,iele], because addin! will add to all arrays in one pass
 end
 
-# # multithreaded
-# using Base.Threads
-# one_for_each_thread(x) = SVector{nthreads()}(deepcopy(x) for i=1:nthreads())
-firstelement(x::AbstractVector) = x[1]
-firstelement(x                ) = x
-
-# function add!(a::Array,b::Array)
-#     for i∈eachindex(a)
-#         a[i] += b[i]
-#     end
-# end
-# function add!(a::SparseMatrixCSC,b::SparseMatrixCSC) # assumes identical sparsity structure
-#     for i∈eachindex(a.nzval)
-#         a.nzval[i] += b.nzval[i]
-#     end
-# end
-
-# function assemble!(out::AbstractVector{A},asm,dis,model,state,dbg) where{A<:Assembly}
-#     for i = 1:nthreads() 
-#         zero!(out[i])
-#     end
-#     for ieletyp = 1:lastindex(model.eleobj)
-#         eleobj  = model.eleobj[ieletyp]
-#         assemble_!(out,view(asm,:,ieletyp),dis.dis[ieletyp], eleobj,state,state.SP,(dbg...,ieletyp=ieletyp))
-#     end
-#     for i = 2:nthreads() 
-#         add!(out[1],out[i])
-#     end
-# end
-
-# function assemble_!(out::AbstractVector{A},asm,dis,eleobj,state::State{nΛder,nXder,nUder},SP,dbg) where{nΛder,nXder,nUder,A<:Assembly}
-#     scale     = dis.scale
-#     @threads for iele  = 1:lastindex(eleobj)
-#         index = dis.index[iele]
-#         Λe    = NTuple{nΛder}(λ[index.X] for λ∈state.Λ)
-#         Xe    = NTuple{nXder}(x[index.X] for x∈state.X)
-#         Ue    = NTuple{nUder}(u[index.U] for u∈state.U)
-#         Ae    = state.A[index.A]
-#         addin!(out[threadid()],asm,iele,scale,eleobj[iele],Λe,Xe,Ue,Ae, state.time,SP,(dbg...,iele=iele))
-#     end
-# end
-
-
 ############# Tools for addin!
 
 

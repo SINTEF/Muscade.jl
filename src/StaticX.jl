@@ -137,18 +137,18 @@ function solve(::Type{StaticX},pstate,verbose,dbg;
             citer   += 1
             assemble!(out1,asm1,dis,model,state,(dbg...,solver=:StaticX,phase=:direction,step=step,iiter=iiter))
             try if step==1 && iiter==1
-                facLλx = lu(firstelement(out1).Lλx) 
+                facLλx = lu(out1.Lλx) 
             else
-                lu!(facLλx,firstelement(out1).Lλx) 
+                lu!(facLλx,out1.Lλx) 
             end catch; muscadeerror(@sprintf("matrix factorization failed at step=%3d, iiter=%3d",step,iiter)) end
-            Δx       = facLλx\firstelement(out1).Lλ
-            Δx²,Lλ²  = sum(Δx.^2),sum(firstelement(out1).Lλ.^2)
+            Δx       = facLλx\out1.Lλ
+            Δx²,Lλ²  = sum(Δx.^2),sum(out1.Lλ.^2)
             decrement!(state,0,Δx,Xdofgr)
 
             s = 1.    
             for iline = 1:maxLineIter
                 assemble!(out2,asm2,dis,model,state,(dbg...,solver=:StaticX,phase=:linesearch,step=step,iiter=iiter,iline=iline))
-                out2.minλ > 0 && out2.ming > 0 && sum(firstelement(out2).Lλ.^2) ≤ Lλ²*(1-α*s)^2 && break
+                out2.minλ > 0 && out2.ming > 0 && sum(out2.Lλ.^2) ≤ Lλ²*(1-α*s)^2 && break
                 iline==maxLineIter && muscadeerror(@sprintf("Line search failed at step=%3d, iiter=%3d, iline=%3d, s=%7.1e",step,iiter,iline,s))
                 Δs = s*(β-1)
                 s += Δs
