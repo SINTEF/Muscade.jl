@@ -5,7 +5,7 @@ mutable struct AssemblyStaticX{Tλ,Tλx} <:Assembly
     Lλ    :: Tλ
     Lλx   :: Tλx 
 end   
-function prepare(::Type{AssemblyStaticX},model,dis,initialstate) 
+function prepare(::Type{AssemblyStaticX},model,dis) 
     dofgr              = allXdofs(model,dis)
     ndof               = getndof(dofgr)
     narray,neletyp     = 2,getneletyp(model)
@@ -24,10 +24,10 @@ function add!(out1::AssemblyStaticX,out2::AssemblyStaticX)
     add!(out1.Lλ,out2.Lλ)
     add!(out1.Lλx,out2.Lλx)
 end
-function addin!(out::AssemblyStaticX,χn,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A,t,SP,χo,dbg) where{E,Nxder,Nx}
+function addin!(out::AssemblyStaticX,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A,t,SP,dbg) where{E,Nxder,Nx}
     if Nx==0; return end # don't waste time on Acost elements...  
     ΔX         = δ{1,Nx,𝕣}(scale.X)                 # NB: precedence==1, input must not be Adiff 
-    Lλ,χ,FB    = getresidual(eleobj,(∂0(X)+ΔX,),U,A,t,χo,SP,dbg) # χ not passed back to solver, and no feedback FB
+    Lλ,FB    = getresidual(eleobj,(∂0(X)+ΔX,),U,A,t,SP,dbg) #  no feedback FB
     Lλ         = Lλ .* scale.X
     add_value!(out.Lλ ,asm[1],iele,Lλ)
     add_∂!{1}( out.Lλx,asm[2],iele,Lλ)
@@ -63,12 +63,11 @@ function add!(out1::AssemblyStaticXline,out2::AssemblyStaticXline)
     out1.Σλg += out2.Σλg
     out1.npos+= out2.npos
 end
-function addin!(out::AssemblyStaticXline,χn,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A,t,SP,χo,dbg) where{E,Nxder,Nx}
+function addin!(out::AssemblyStaticXline,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A,t,SP,dbg) where{E,Nxder,Nx}
     if Nx==0; return end # don't waste time on Acost elements...  
-    Lλ,χ,FB = getresidual(eleobj,X,U,A,t,χo,SP,dbg)
+    Lλ,FB = getresidual(eleobj,X,U,A,t,SP,dbg)
     Lλ      = Lλ .* scale.X
     add_value!(out.Lλ ,asm[1],iele,Lλ) 
-    χn[]    = χcast(𝕣,χ)
     if hasfield(typeof(FB),:mode) && FB.mode==:positive
         out.ming   = min(out.ming,VALUE(FB.g))
         out.minλ   = min(out.minλ,VALUE(FB.λ))
@@ -120,12 +119,9 @@ function solve(::Type{StaticX},pstate,verbose,dbg;
                     maxiter::ℤ=50,maxΔx::ℝ=1e-5,maxresidual::ℝ=∞,
                     saveiter::𝔹=false,
                     maxLineIter::ℤ=50,α::𝕣=.1,β::𝕣=.5,γfac::𝕣=.5)
-    # important: this code assumes that there is no χ in state.
     model,dis        = initialstate.model,initialstate.dis
-    out1,asm1,Xdofgr = prepare(AssemblyStaticX    ,model,dis,initialstate)
+    out1,asm1,Xdofgr = prepare(AssemblyStaticX    ,model,dis)
     out2,asm2        = prepare(AssemblyStaticXline,model,dis)
-    χn               = χalloc(𝕣,initialstate.χ)
-    χo               = χcast( 𝕣,initialstate.χ)
     citer            = 0
     cΔx²,cLλ²        = maxΔx^2,maxresidual^2
     state            = State{1,1,1}(initialstate,(γ=0.,))
@@ -133,13 +129,13 @@ function solve(::Type{StaticX},pstate,verbose,dbg;
     local facLλx 
     for (step,t)     ∈ enumerate(time)
         state.time   = t
-        assemble!(out2,χn,asm2,dis,model,state,χo,(dbg...,solver=:StaticX,phase=:preliminary,step=step))
+        assemble!(out2,asm2,dis,model,state,(dbg...,solver=:StaticX,phase=:preliminary,step=step))
         out2.ming ≤ 0 && muscadeerror(@sprintf("Initial point is not strictly primal-feasible at step=%3d",step))
         out2.minλ ≤ 0 && muscadeerror(@sprintf("Initial point is not strictly dual-feasible at step=%3d"  ,step))
         state.SP     = (γ=out2.Σλg/out2.npos * γfac,)
         for iiter    = 1:maxiter
             citer   += 1
-            assemble!(out1,χn,asm1,dis,model,state,χo,(dbg...,solver=:StaticX,phase=:direction,step=step,iiter=iiter))
+            assemble!(out1,asm1,dis,model,state,(dbg...,solver=:StaticX,phase=:direction,step=step,iiter=iiter))
             try if step==1 && iiter==1
                 facLλx = lu(firstelement(out1).Lλx) 
             else
@@ -151,7 +147,7 @@ function solve(::Type{StaticX},pstate,verbose,dbg;
 
             s = 1.    
             for iline = 1:maxLineIter
-                assemble!(out2,χn,asm2,dis,model,state,χo,(dbg...,solver=:StaticX,phase=:linesearch,step=step,iiter=iiter,iline=iline))
+                assemble!(out2,asm2,dis,model,state,(dbg...,solver=:StaticX,phase=:linesearch,step=step,iiter=iiter,iline=iline))
                 out2.minλ > 0 && out2.ming > 0 && sum(firstelement(out2).Lλ.^2) ≤ Lλ²*(1-α*s)^2 && break
                 iline==maxLineIter && muscadeerror(@sprintf("Line search failed at step=%3d, iiter=%3d, iline=%3d, s=%7.1e",step,iiter,iline,s))
                 Δs = s*(β-1)
@@ -160,11 +156,10 @@ function solve(::Type{StaticX},pstate,verbose,dbg;
             end
 
             verbose && saveiter && @printf("        iteration %3d, γ= %7.1e\n",iiter,γ)
-            saveiter && (states[iiter]=State(state.time,state.Λ,deepcopy(state.X),state.U,state.A,deepcopy(χo),state.SP,model,dis))
+            saveiter && (states[iiter]=State(state.time,state.Λ,deepcopy(state.X),state.U,state.A,state.SP,model,dis))
             if Δx²*s^2≤cΔx² && Lλ²≤cLλ² 
                 verbose && @printf "    step %3d converged in %3d iterations. |Δx|=%7.1e |Lλ|=%7.1e\n" step iiter √(Δx²) √(Lλ²)
-                ~saveiter && (states[step]=State(state.time,state.Λ,deepcopy(state.X),state.U,state.A,deepcopy(χo),state.SP,model,dis))
-                χo,χn = χn,χo
+                ~saveiter && (states[step]=State(state.time,state.Λ,deepcopy(state.X),state.U,state.A,state.SP,model,dis))
                 break#out of the iiter loop
             end
             iiter==maxiter && muscadeerror(@sprintf("no convergence at step=%3d, iiter=%3d, |Δx|=%7.1e / %7.1e, |Lλ|=%7.1e / %7.1e",step,iiter,√(Δx²),maxΔx,√(Lλ²)^2,maxresidual))

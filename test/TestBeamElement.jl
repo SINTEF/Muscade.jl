@@ -41,17 +41,16 @@ beam            = EulerBeam3D(elnod;mat,orient2=SVector(0.,1.,0.))
     @test beam.dL    ≈ [2.5, 2.5]
 end
 
-t,χo,SP,dbg  = 0.,(nothing,nothing),(;),(status=:testing,)
+t,SP,dbg  = 0.,(;),(status=:testing,)
 x = SVector(1.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.)
 X = (x,)
 U = (SVector{0,𝕣}(),)
 A = SVector{0,𝕣}()
 
-R,χ,FB=residual(beam,   X,U,A,t,χo,SP,dbg) 
+R,FB=residual(beam,   X,U,A,t,SP,dbg) 
 
 @testset "residual" begin
     @test R        ≈ [1.130806672255245, 1.0113289514757071, 0.0, 0.0, 0.0, -0.17921658116930614, -1.130806672255245, -1.0113289514757071, 0.0, 0.0, 0.0, -0.17921658116930617]
-    @test χ == (nothing,nothing)
     @test FB === nothing
 end
 

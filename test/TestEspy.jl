@@ -18,7 +18,7 @@ exresidual = @macroexpand @espy function residual(x::Vector{R},y) where{R<:Real}
         @named(s) 
     end
     r = sum(i->accum[i].s,ngp)
-    return r,nothing,nothing
+    return r,nothing
 end
 exmaterial = @macroexpand @espy function material(z)
     ☼a = z+1
@@ -26,7 +26,7 @@ exmaterial = @macroexpand @espy function material(z)
     return b,3.
 end
 
-exlagrangian = @macroexpand @espy lagrangian(o::Vector{R}, δX,X,U,A, t,γ,dbg) where{R} = o.cost(∂n(X,R)[1],t),nothing,nothing
+exlagrangian = @macroexpand @espy lagrangian(o::Vector{R}, δX,X,U,A, t,γ,dbg) where{R} = o.cost(∂n(X,R)[1],t),nothing
 
 exbar = @macroexpand @espy function bar(x,y,z)
     ngp = 4
@@ -41,25 +41,23 @@ exbar = @macroexpand @espy function bar(x,y,z)
         b = vec(1.,1.)
         ☼c = b*b'
         ♢square = c^2
-        χ = randn()
         r = vcat(a,reshape(c,4))
-        @named(χ,r)
+        @named(r)
     end
-    χ = ntuple(i->t[i].χ,ngp)
     r = sum(   i->t[i].r,ngp)
-    return r,χ,nothing
+    return r,nothing
 end
 
-exmerge = @macroexpand @espy function lagrangian(o::ElementConstraint{Teleobj,λinod,λfield,Nu}, Λ,X,U,A,t,χ,SP,dbg) where{Teleobj,λinod,λfield,Nu} 
+exmerge = @macroexpand @espy function lagrangian(o::ElementConstraint{Teleobj,λinod,λfield,Nu}, Λ,X,U,A,t,SP,dbg) where{Teleobj,λinod,λfield,Nu} 
     req        = merge(o.req)
     γ          = default{:γ}(SP,0.)
     u          = getsomedofs(U,SVector{Nu}(1:Nu)) 
     ☼λ         = ∂0(U)[Nu+1]
-    L,χn,FB,☼eleres  = getlagrangian(o.eleobj,Λ,X,u,A,t,χ,SP,(dbg...,via=ElementConstraint),req)
+    L,FB,☼eleres  = getlagrangian(o.eleobj,Λ,X,u,A,t,SP,(dbg...,via=ElementConstraint),req)
     ☼gap       = o.gap(eleres,X,u,A,t,o.gargs...)
-    if         o.mode(t)==:equal;    return L-gap*λ                  ,noχ,(α=∞                        ,)
-    elseif     o.mode(t)==:positive; return L-KKT(λ,gap,γ,o.λₛ,o.gₛ)  ,noχ,(α=decided(λ/o.λₛ,gap/o.gₛ,γ),)
-    elseif     o.mode(t)==:off;      return L-o.gₛ/(2o.λₛ)*λ^2        ,noχ,(α=∞                        ,)  
+    if         o.mode(t)==:equal;    return L-gap*λ                  ,(α=∞                        ,)
+    elseif     o.mode(t)==:positive; return L-KKT(λ,gap,γ,o.λₛ,o.gₛ)  ,(α=decided(λ/o.λₛ,gap/o.gₛ,γ),)
+    elseif     o.mode(t)==:off;      return L-o.gₛ/(2o.λₛ)*λ^2        ,(α=∞                        ,)  
     end
 end
 
@@ -75,7 +73,7 @@ exresidual_ = quote
                 (s = s,)
             end
         r = sum((i->(accum[i]).s), ngp)
-        return (r, nothing, nothing)
+        return (r, nothing)
     end
     function residual(x::Vector{R}, y, req_001; ) where R <: Real
         out_001 = (;)
@@ -120,7 +118,7 @@ exresidual_ = quote
                 out_001
             end
         r = sum((i->(accum[i]).s), ngp)
-        return (r, nothing, nothing, out_002)
+        return (r, nothing, out_002)
     end
 end
 
@@ -151,8 +149,8 @@ exmaterial_ = quote
 end 
 
 exlagrangian_ = quote
-    (lagrangian(o::Vector{R}, δX, X, U, A, t, γ, dbg) where R) = (o.cost((∂n(X, R))[1], t), nothing, nothing)
-    (lagrangian(o::Vector{R}, δX, X, U, A, t, γ, dbg, req) where R) = (o.cost((∂n(X, R))[1], t), nothing, nothing, nothing)
+    (lagrangian(o::Vector{R}, δX, X, U, A, t, γ, dbg     ) where R) = (o.cost((∂n(X, R))[1], t), nothing)
+    (lagrangian(o::Vector{R}, δX, X, U, A, t, γ, dbg, req) where R) = (o.cost((∂n(X, R))[1], t), nothing, nothing)
 end
 
 exbar_ = quote
@@ -169,13 +167,11 @@ exbar_ = quote
                 b = vec(1.0, 1.0)
                 c = b * b'
                 nothing
-                χ = randn()
                 r = vcat(a, reshape(c, 4))
-                (χ = χ, r = r)
+                (r = r,)
             end
-        χ = ntuple((i->(t[i]).χ), ngp)
         r = sum((i->(t[i]).r), ngp)
-        return (r, χ, nothing)
+        return (r, nothing)
     end
     function bar(x, y, z, req_001; )
         out_001 = (;)
@@ -214,38 +210,36 @@ exbar_ = quote
                 else
                     out_002_gp_002 = out_002_gp_001
                 end
-                χ = randn()
                 r = vcat(a, reshape(c, 4))
-                (χ = χ, r = r, out = out_002_gp_002)
+                (r = r, out = out_002_gp_002)
             end
         out_003 = if haskey(req_001, :gp)
                 (out_002..., gp = NTuple{ngp}(((t[igp]).out for igp = 1:ngp)))
             else
                 out_002
             end
-        χ = ntuple((i->(t[i]).χ), ngp)
         r = sum((i->(t[i]).r), ngp)
-        return (r, χ, nothing, out_003)
+        return (r, nothing, out_003)
     end
 end
 
 exmerge_ = quote
-    function lagrangian(o::ElementConstraint{Teleobj, λinod, λfield, Nu}, Λ, X, U, A, t, χ,  SP, dbg) where {Teleobj, λinod, λfield, Nu}
+    function lagrangian(o::ElementConstraint{Teleobj, λinod, λfield, Nu}, Λ, X, U, A, t, SP, dbg) where {Teleobj, λinod, λfield, Nu}
         req = merge(o.req)
         γ = default{:γ}(SP, 0.0)
         u = getsomedofs(U, SVector{Nu}(1:Nu))
         λ = (∂0(U))[Nu + 1]
-        (L, χn, FB, eleres) = getlagrangian(o.eleobj, Λ, X, u, A, t, χ, SP, (dbg..., via = ElementConstraint), req)
+        (L, FB, eleres) = getlagrangian(o.eleobj, Λ, X, u, A, t, SP, (dbg..., via = ElementConstraint), req)
         gap = o.gap(eleres, X, u, A, t, o.gargs...)
         if o.mode(t) == :equal
-            return (L - gap * λ, noχ, (α = ∞,))
+            return (L - gap * λ, (α = ∞,))
         elseif o.mode(t) == :positive
-            return (L - KKT(λ, gap, γ, o.λₛ, o.gₛ), noχ, (α = decided(λ / o.λₛ, gap / o.gₛ, γ),))
+            return (L - KKT(λ, gap, γ, o.λₛ, o.gₛ), (α = decided(λ / o.λₛ, gap / o.gₛ, γ),))
         elseif o.mode(t) == :off
-            return (L - (o.gₛ / (2 * o.λₛ)) * λ ^ 2, noχ, (α = ∞,))
+            return (L - (o.gₛ / (2 * o.λₛ)) * λ ^ 2, (α = ∞,))
         end
     end
-    function lagrangian(o::ElementConstraint{Teleobj, λinod, λfield, Nu}, Λ, X, U, A, t, χ,  SP, dbg, req_001; ) where {Teleobj, λinod, λfield, Nu}
+    function lagrangian(o::ElementConstraint{Teleobj, λinod, λfield, Nu}, Λ, X, U, A, t,  SP, dbg, req_001; ) where {Teleobj, λinod, λfield, Nu}
         out_001 = (;)
         req = merge(req_001, o.req)
         γ = default{:γ}(SP, 0.0)
@@ -257,13 +251,13 @@ exmerge_ = quote
                 out_001
             end
         λ
-        (L, χn, FB, eleres) = getlagrangian( o.eleobj, Λ, X, u, A, t, χ, SP, (dbg..., via = ElementConstraint), req)
+        (L, FB, eleres) = getlagrangian( o.eleobj, Λ, X, u, A, t, SP, (dbg..., via = ElementConstraint), req)
         out_003 = if haskey(req_001, :eleres)
                 (out_002..., eleres = eleres)
             else
                 out_002
             end
-        (L, χn, FB, eleres)
+        (L, FB, eleres)
         gap = o.gap(eleres, X, u, A, t, o.gargs...)
         out_004 = if haskey(req_001, :gap)
                 (out_003..., gap = gap)
@@ -272,11 +266,11 @@ exmerge_ = quote
             end
         gap
         if o.mode(t) == :equal
-            return (L - gap * λ, noχ, (α = ∞,), out_004)
+            return (L - gap * λ, (α = ∞,), out_004)
         elseif o.mode(t) == :positive
-            return (L - KKT(λ, gap, γ, o.λₛ, o.gₛ), noχ, (α = decided(λ / o.λₛ, gap / o.gₛ, γ),), out_004)
+            return (L - KKT(λ, gap, γ, o.λₛ, o.gₛ),  (α = decided(λ / o.λₛ, gap / o.gₛ, γ),), out_004)
         elseif o.mode(t) == :off
-            return (L - (o.gₛ / (2 * o.λₛ)) * λ ^ 2, noχ, (α = ∞,), out_004)
+            return (L - (o.gₛ / (2 * o.λₛ)) * λ ^ 2, (α = ∞,), out_004)
         end
     end
 end
@@ -286,7 +280,7 @@ end
     @test prettify(exmaterial)   == prettify(exmaterial_)
     @test prettify(exlagrangian) == prettify(exlagrangian_)
     @test prettify(exbar)        == prettify(exbar_)
-    @test prettify(exmerge)        == prettify(exmerge_)
+    @test prettify(exmerge)      == prettify(exmerge_)
 end
 
 r1 = @request (a,b,c)
@@ -310,7 +304,7 @@ eval(exlagrangian)
 eval(exbar)
 
 req         = @request gp(z,s,t,material(a,b))
-r,χ,SFB,out = residual([1.,2.],[3.,4.],req)
+r,FB,out = residual([1.,2.],[3.,4.],req)
 
 @testset "Get output" begin
     @test out ==  (gp = ((z = 4.0, material = (a = 5.0, b = 20.0), s = 20.0, t = 3.0), (z = 6.0, material = (a = 7.0, b = 42.0), s = 42.0, t = 3.0)),)

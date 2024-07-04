@@ -46,13 +46,13 @@ doflist(::Type{<:DofCost{Class,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield}}
    (inod =(xinod...           ,uinod...           ,ainod...           ), 
     class=(ntuple(i->:X,Nx)...,ntuple(i->:U,Nu)...,ntuple(i->:A,Na)...), 
     field=(xfield...          ,ufield...          ,afield...          ) )
-@espy function lagrangian(o::DofCost{:I,Nx,Nu,Na},Λ,X,U,A,t,χ,SP,dbg) where{Nx,Nu,Na} 
+@espy function lagrangian(o::DofCost{:I,Nx,Nu,Na},Λ,X,U,A,t,SP,dbg) where{Nx,Nu,Na} 
     ☼cost = o.cost(X,U,A,t,o.costargs...)
-    return cost,noχ,noFB
+    return cost,noFB
 end
-@espy function lagrangian(o::DofCost{:A,Nx,Nu,Na},Λ,X,U,A,t,χ,SP,dbg) where{Nx,Nu,Na} 
+@espy function lagrangian(o::DofCost{:A,Nx,Nu,Na},Λ,X,U,A,t,SP,dbg) where{Nx,Nu,Na} 
     ☼cost = o.cost(    A  ,o.costargs...)
-    return cost,noχ,noFB
+    return cost,noFB
 end
 
 """
@@ -106,11 +106,11 @@ function ElementCost(nod::Vector{Node};req,cost,costargs=(;),ElementType,element
     return ElementCost(eleobj,(eleres=req,),cost,costargs)
 end
 doflist( ::Type{<:ElementCost{Teleobj}}) where{Teleobj} = doflist(Teleobj)
-@espy function lagrangian(o::ElementCost, Λ,X,U,A,t,χ,SP,dbg)
+@espy function lagrangian(o::ElementCost, Λ,X,U,A,t,SP,dbg)
     req        = merge(o.req)
-    L,χ,FB,☼eleres = getlagrangian(o.eleobj,Λ,X,U,A,t,χ,SP,(dbg...,via=ElementCost),req.eleres)
+    L,FB,☼eleres = getlagrangian(o.eleobj,Λ,X,U,A,t,SP,(dbg...,via=ElementCost),req.eleres)
     ☼cost          = o.cost(eleres,X,U,A,t,o.costargs...) 
-    return L+cost,χ,FB
+    return L+cost,FB
 end    
 
 """
@@ -180,9 +180,9 @@ struct DofLoad{Field,Tvalue,Targs} <: AbstractElement
 end
 DofLoad(nod::Vector{Node};field::Symbol,value::Tvalue,args...) where{Tvalue<:Function} = DofLoad{field,Tvalue,typeof(args)}(value,args)
 doflist(::Type{<:DofLoad{Field}}) where{Field}=(inod=(1,), class=(:X,), field=(Field,))
-@espy function residual(o::DofLoad, X,U,A,t,χ,SP,dbg) 
+@espy function residual(o::DofLoad, X,U,A,t,SP,dbg) 
     ☼F = o.value(t,o.args...)
-    return SVector{1}(-F),noχ,noFB
+    return SVector{1}(-F),noFB
 end
 #-------------------------------------------------
 
@@ -320,7 +320,7 @@ doflist(::Type{<:DofConstraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,
    (inod =(xinod...           ,uinod...           ,ainod...           ,λinod ), 
     class=(ntuple(i->:X,Nx)...,ntuple(i->:U,Nu)...,ntuple(i->:A,Na)...,λclass), 
     field=(xfield...          ,ufield...          ,afield...          ,λfield)) 
-@espy function residual(o::DofConstraint{:X,Nx}, X,U,A,t,χ,SP,dbg) where{Nx}
+@espy function residual(o::DofConstraint{:X,Nx}, X,U,A,t,SP,dbg) where{Nx}
     γ          = default{:γ}(SP,0.)
     P          = constants(∂0(X))
     m          = o.mode(t)
@@ -331,9 +331,9 @@ doflist(::Type{<:DofConstraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,
     elseif     m==:positive; SVector{Nx+1}((       -g∂x*λ)...,-S(λ,gap,γ)) 
     elseif     m==:off;      SVector{Nx+1}(ntuple(i->0,Nx)...,-λ         ) 
     end
-    return R,noχ,(λ=λ,g=gap,mode=m)
+    return R,(λ=λ,g=gap,mode=m)
 end
-@espy function lagrangian(o::DofConstraint{:U,Nx,Nu,Na}, Λ,X,U,A,t,χ,SP,dbg) where{Nx,Nu,Na}
+@espy function lagrangian(o::DofConstraint{:U,Nx,Nu,Na}, Λ,X,U,A,t,SP,dbg) where{Nx,Nu,Na}
     γ          = default{:γ}(SP,0.)
     m          = o.mode(t)
     x,u,a,☼λ   = ∂0(X),∂0(U)[SVector{Nu}(1:Nu)],A,∂0(U)[Nu+1]
@@ -342,9 +342,9 @@ end
     elseif     m==:positive; -KKT(λ,gap,γ)  
     elseif     m==:off;      -0.5λ^2         
     end
-    return L,noχ,(λ=λ,g=gap,mode=m)
+    return L,(λ=λ,g=gap,mode=m)
 end
-@espy function lagrangian(o::DofConstraint{:A,Nx,Nu,Na}, Λ,X,U,A,t,χ,SP,dbg) where{Nx,Nu,Na}
+@espy function lagrangian(o::DofConstraint{:A,Nx,Nu,Na}, Λ,X,U,A,t,SP,dbg) where{Nx,Nu,Na}
     γ          = default{:γ}(SP,0.)
     m          = o.mode(t)
     a,☼λ       = A[SVector{Na}(1:Na)],A[    Na+1] 
@@ -353,7 +353,7 @@ end
     elseif     m==:positive; -KKT(λ,gap,γ)  
     elseif     m==:off;      -0.5λ^2           
     end
-    return L,noχ,(λ=λ,g=gap,mode=m)
+    return L,(λ=λ,g=gap,mode=m)
 end
 
 
@@ -459,19 +459,19 @@ doflist( ::Type{<:ElementConstraint{Teleobj,λinod,λfield}}) where{Teleobj,λin
     (inod =(doflist(Teleobj).inod... ,λinod),
      class=(doflist(Teleobj).class...,:U),
      field=(doflist(Teleobj).field...,λfield))
-@espy function lagrangian(o::ElementConstraint{Teleobj,λinod,λfield,Nu}, Λ,X,U,A,t,χ,SP,dbg) where{Teleobj,λinod,λfield,Nu} 
+@espy function lagrangian(o::ElementConstraint{Teleobj,λinod,λfield,Nu}, Λ,X,U,A,t,SP,dbg) where{Teleobj,λinod,λfield,Nu} 
     req        = merge(o.req)
     γ          = default{:γ}(SP,0.)
     m          = o.mode(t)
     u          = getsomedofs(U,SVector{Nu}(1:Nu)) 
     ☼λ         = ∂0(U)[Nu+1]
-    L,χn,FB,☼eleres = getlagrangian(o.eleobj,Λ,X,u,A,t,χ,SP,(dbg...,via=ElementConstraint),req.eleres)
+    L,FB,☼eleres = getlagrangian(o.eleobj,Λ,X,u,A,t,SP,(dbg...,via=ElementConstraint),req.eleres)
     ☼gap       = o.gap(eleres,X,u,A,t,o.gargs...)
     L += if    m==:equal;    -gap*λ   
     elseif     m==:positive; -KKT(λ,gap,γ) 
     elseif     m==:off;      -0.5λ^2 
     end
-    return L,noχ,(λ=λ,g=gap,mode=m)
+    return L,(λ=λ,g=gap,mode=m)
 end
 
 #-------------------------------------------------
@@ -512,9 +512,9 @@ struct QuickFix{Nx,inod,field,Tres} <: AbstractElement
 end
 QuickFix(nod::Vector{Node};inod::NTuple{Nx,𝕫},field::NTuple{Nx,Symbol},res::Function) where{Nx} = QuickFix{Nx,inod,field,typeof(res)}(res)
 doflist(::Type{<:QuickFix{Nx,inod,field}}) where{Nx,inod,field} = (inod =inod,class=ntuple(i->:X,Nx),field=(field)) 
-@espy function residual(o::QuickFix, X,U,A, t,χ,SP,dbg) 
+@espy function residual(o::QuickFix, X,U,A, t,SP,dbg) 
     ☼R = o.res(∂0(X),∂1(X),∂2(X),t)
-    return R,noχ,noFB
+    return R,noFB
 end
 
 #-------------------------------------------------
@@ -545,12 +545,11 @@ function Monitor(nod::Vector{Node};ElementType,trigger::Function,elementkwargs)
     return Monitor(eleobj,trigger)
 end
 doflist( ::Type{<:Monitor{Teleobj}}) where{Teleobj} = doflist(Teleobj)
-@espy function lagrangian(o::Monitor{Teleobj}, Λ,X,U,A,t,χ,SP,dbg)  where{Teleobj}
-    L,χn,FB = getlagrangian(o.eleobj,Λ,X,U,A,t,χ,SP,(dbg...,via=Monitor))
+@espy function lagrangian(o::Monitor{Teleobj}, Λ,X,U,A,t,SP,dbg)  where{Teleobj}
+    L,FB = getlagrangian(o.eleobj,Λ,X,U,A,t,SP,(dbg...,via=Monitor))
     if o.trigger(dbg)
         @show dbg
         @show SP
-        @show VALUE(χ)
         @show VALUE(Λ)
         @show VALUE(X[1])
         @show VALUE(U[1])
@@ -559,5 +558,5 @@ doflist( ::Type{<:Monitor{Teleobj}}) where{Teleobj} = doflist(Teleobj)
         @show doflist(Teleobj)
         @show L
     end
-    return L,χn,FB
+    return L,FB
 end

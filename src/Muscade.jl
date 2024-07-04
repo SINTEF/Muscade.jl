@@ -36,8 +36,8 @@ module Muscade
     include("ElementAPI.jl")
     export lagrangian,residual,espyable
     export coord,∂0,∂1,∂2,getsomedofs
-    export doflist,χinit
-    export noχ,noFB
+    export doflist
+    export noFB
 
     include("BasicElements.jl")
     export off,equal,positive
@@ -51,8 +51,6 @@ module Muscade
     include("Assemble.jl")
     export Assembly
 
-    include("ChiTools.jl")
-    
     include("Solve.jl")
     export solve
 

@@ -5,7 +5,7 @@ struct XUA{T,nX,nU,nA}
     U::SVector{nU,T}
     A::SVector{nA,T}
 end
-struct ΛXUA{T,nX,nU,nA} 
+struct ΛXUA{T,nX,nU,nA}  
     Λ::SVector{nX,T}
     X::SVector{nX,T}
     U::SVector{nU,T}
@@ -107,22 +107,21 @@ mutable struct State{nΛder,nXder,nUder,TSP}
     X     :: NTuple{nXder,𝕣1}
     U     :: NTuple{nUder,𝕣1}
     A     :: 𝕣1
-    χ     :: Vector
     SP    :: TSP # solver parameter
     model :: Model
     dis   :: Disassembler
 end
 # a constructor that provides an initial state
-State(model::Model,dis,χ;time=-∞) = State(time,(zeros(getndof(model,:X)),),
+State(model::Model,dis;time=-∞) = State(time,(zeros(getndof(model,:X)),),
                                                (zeros(getndof(model,:X)),),
                                                (zeros(getndof(model,:U)),),
                                                 zeros(getndof(model,:A))  ,
-                                               χ,nothing,model,dis)
+                                               nothing,model,dis)
 function State{nΛder,nXder,nUder}(s::State,SP::TSP) where{nΛder,nXder,nUder,TSP}
     Λ = ntuple(i->copy(∂n(s.Λ,i-1)),nΛder)
     X = ntuple(i->copy(∂n(s.X,i-1)),nXder)
     U = ntuple(i->copy(∂n(s.U,i-1)),nUder)
-    State{nΛder,nXder,nUder,TSP}(s.time,Λ,X,U,copy(s.A),deepcopy(s.χ),SP,s.model,s.dis)
+    State{nΛder,nXder,nUder,TSP}(s.time,Λ,X,U,copy(s.A),SP,s.model,s.dis)
 end 
 State{nΛder,nXder,nUder}(s::State) where{nΛder,nXder,nUder} = State{nΛder,nXder,nUder}(s,(;))
 
@@ -373,7 +372,7 @@ end
 # MySolver           Muscade/SomeSolver.jl    wants some matrices and vectors
 # assemble!          Muscade/Assemble.jl      loop over element types (barrier function)
 # assemble_!         Muscade/Assemble.jl      loop over elements within type (typestable)
-# addin!             Muscade/SomeSolver.jl    do adiff and add-in, clean χ from adiff, solver-specific
+# addin!             Muscade/SomeSolver.jl    do adiff and add-in, solver-specific
 # getresidual        Muscade/Assemble.jl      typechecking the call from addin! call residual or Lagrangian as available, check for NaNs
 # residual           MyElement.jl             the element code 
 
@@ -382,14 +381,14 @@ abstract type Assembly end # solver define concrete "assemblies" which is a coll
 
 
 # sequential, called by the solver
-function assemble!(out::Assembly,χn,asm,dis,model,state,χo,dbg) 
+function assemble!(out::Assembly,asm,dis,model,state,dbg) 
     zero!(out)
     for ieletyp = 1:lastindex(model.eleobj)
         eleobj  = model.eleobj[ieletyp]
-        assemble_!(out,χn[ieletyp],view(asm,:,ieletyp),dis.dis[ieletyp],eleobj,state,state.SP,χo[ieletyp],(dbg...,ieletyp=ieletyp))
+        assemble_!(out,view(asm,:,ieletyp),dis.dis[ieletyp],eleobj,state,state.SP,(dbg...,ieletyp=ieletyp))
     end
 end
-function assemble_!(out::Assembly,χn,asm,dis,eleobj,state::State{nΛder,nXder,nUder},SP,χo,dbg) where{nΛder,nXder,nUder}
+function assemble_!(out::Assembly,asm,dis,eleobj,state::State{nΛder,nXder,nUder},SP,dbg) where{nΛder,nXder,nUder}
     scale     = dis.scale
     for iele  = 1:lastindex(eleobj)
         index = dis.index[iele]
@@ -397,7 +396,7 @@ function assemble_!(out::Assembly,χn,asm,dis,eleobj,state::State{nΛder,nXder,n
         Xe    = NTuple{nXder}(x[index.X] for x∈state.X)
         Ue    = NTuple{nUder}(u[index.U] for u∈state.U)
         Ae    = state.A[index.A]
-        addin!(out,Ref(χn,iele),asm,iele,scale,eleobj[iele],Λe,Xe,Ue,Ae, state.time,SP,χo[iele],(dbg...,iele=iele)) # defined by solver.  Called for each element. But the asm that is passed
+        addin!(out,asm,iele,scale,eleobj[iele],Λe,Xe,Ue,Ae, state.time,SP,(dbg...,iele=iele)) # defined by solver.  Called for each element. But the asm that is passed
     end                                                                                       # is of the form asm[iarray][ientry,iele], because addin! will add to all arrays in one pass
 end
 
@@ -512,45 +511,43 @@ function getresidual(eleobj::Eleobj,
     X::NTuple{Ndx,SVector{Nx,Rx}},
     U::NTuple{Ndu,SVector{Nu,Ru}},
     A::           SVector{Na,Ra} ,
-    t::ℝ,χo,SP,dbg,req...)     where{Eleobj<:AbstractElement,Ndx,Nx,Rx<:ℝ,Ndu,Nu,Ru<:ℝ,Na,Ra<:ℝ} 
+    t::ℝ,SP,dbg,req...)     where{Eleobj<:AbstractElement,Ndx,Nx,Rx<:ℝ,Ndu,Nu,Ru<:ℝ,Na,Ra<:ℝ} 
 
-    if hasmethod(residual  ,(Eleobj,       NTuple,NTuple,𝕣1,𝕣,Any,Function,NamedTuple,NamedTuple))
-        R,χn,FB,eleres... = residual(  eleobj,  X,U,A,t,χo,SP,dbg,req...)
+    if hasmethod(residual  ,(Eleobj,       NTuple,NTuple,𝕣1,𝕣,NamedTuple,NamedTuple))
+        R,FB,eleres... = residual(  eleobj,  X,U,A,t,SP,dbg,req...)
         hasnan(R ) && muscadeerror((dbg...,t=t,R =R ),@sprintf("residual(%s,...) returned NaN in R or derivatives",Eleobj))  
-        hasnan(χn) && muscadeerror((dbg...,t=t,χn=χn),@sprintf("residual(%s,...) returned NaN in χ or derivatives",Eleobj))  
         hasnan(FB) && muscadeerror((dbg...,t=t,FB=FB),@sprintf("residual(%s,...) returned NaN in FB or derivatives",Eleobj))  
 
-    elseif hasmethod(lagrangian,(Eleobj,NTuple,NTuple,NTuple,𝕣1,𝕣,Any,Function,NamedTuple,NamedTuple))
+    elseif hasmethod(lagrangian,(Eleobj,NTuple,NTuple,NTuple,𝕣1,𝕣,NamedTuple,NamedTuple))
         P   = constants(∂0(X),∂0(U),A,t)
         Λ   = δ{P,Nx,𝕣}() 
-        L,χn,FB,eleres... = lagrangian(eleobj,Λ,X,U,A,t,χo,SP,dbg,req...)    
+        L,FB,eleres... = lagrangian(eleobj,Λ,X,U,A,t,SP,dbg,req...)    
         hasnan(L ) && muscadeerror((dbg...,t=t,R =R ),@sprintf("lagrangian(%s,...) returned NaN in L or derivatives",Eleobj))  
-        hasnan(χn) && muscadeerror((dbg...,t=t,χn=χn),@sprintf("lagrangian(%s,...) returned NaN in χ or derivatives",Eleobj))  
         hasnan(FB) && muscadeerror((dbg...,t=t,FB=FB),@sprintf("lagrangian(%s,...) returned NaN in FB or derivatives",Eleobj))  
         R = ∂{P,Nx}(L)
     else 
         muscadeerror((dbg...,t=t,SP=SP),@sprintf("Element %s must have method 'Muscade.lagrangian' or/and 'Muscade.residual' with correct interface",Eleobj))
     end
-    return R,χn,FB,eleres...
+    return R,FB,eleres...
 end
-
 
 function getlagrangian(eleobj::Eleobj,  
     Λ::           SVector{Nx,Rλ} ,  
     X::NTuple{Ndx,SVector{Nx,Rx}},
     U::NTuple{Ndu,SVector{Nu,Ru}},
     A::           SVector{Na,Ra} ,
-    t::ℝ,χo,SP,dbg,req...)     where{Eleobj<:AbstractElement,Rλ<:ℝ,Ndx,Nx,Rx<:ℝ,Ndu,Nu,Ru<:ℝ,Na,Ra<:ℝ} 
-
-    if     hasmethod(lagrangian,(Eleobj,NTuple,NTuple,NTuple,𝕣1,𝕣,Any,Function,NamedTuple,NamedTuple))
-        L,χn,FB,eleres... = lagrangian(eleobj,Λ,X,U,A,t,χo,SP,dbg,req...)
-        hasnan(L,χn,FB) && muscadeerror((dbg...,t=t,SP=SP),@sprintf("lagrangian(%s,...) returned NaN in L, χ, FB or derivatives",Eleobj))     
-    elseif hasmethod(residual  ,(Eleobj,       NTuple,NTuple,𝕣1,𝕣,Any,Function,NamedTuple,NamedTuple))
-        R,χn,FB,eleres... = residual(  eleobj,  X,U,A,t,χo,SP,dbg,req...)
-        hasnan(R,χn,FB) && muscadeerror((dbg...,t=t,SP=SP),@sprintf("residual(%s,...) returned NaN in R, χ, FB or derivatives",Eleobj)) 
+    t::ℝ,SP,dbg,req...)     where{Eleobj<:AbstractElement,Rλ<:ℝ,Ndx,Nx,Rx<:ℝ,Ndu,Nu,Ru<:ℝ,Na,Ra<:ℝ} 
+    #                            eleobj,Λ,     X,     U,     A, t,SP,        dbg
+    if     hasmethod(lagrangian,(Eleobj,NTuple,NTuple,NTuple,𝕣1,𝕣,NamedTuple,NamedTuple))
+        L,FB,eleres... = lagrangian(eleobj,Λ,X,U,A,t,SP,dbg,req...)
+        hasnan(L,FB) && muscadeerror((dbg...,t=t,SP=SP),@sprintf("lagrangian(%s,...) returned NaN in L, FB or derivatives",Eleobj))   
+    #                           eleobj,       X,     U,     A, t,SP,        dbg  
+    elseif hasmethod(residual  ,(Eleobj,       NTuple,NTuple,𝕣1,𝕣,NamedTuple,NamedTuple))
+        R,FB,eleres... = residual(  eleobj,  X,U,A,t,SP,dbg,req...)
+        hasnan(R,FB) && muscadeerror((dbg...,t=t,SP=SP),@sprintf("residual(%s,...) returned NaN in R, FB or derivatives",Eleobj)) 
         L = Λ ∘₁ R
     else
         muscadeerror((dbg...,t=t,SP=SP),@sprintf("Element %s must have method 'Muscade.lagrangian' or/and 'Muscade.residual' with correct interface",Eleobj))
     end
-    return L,χn,FB,eleres... 
+    return L,FB,eleres... 
 end

@@ -15,8 +15,8 @@ X        = @SVector [1.,2.]
 U        = @SVector 𝕣[]
 A        = @SVector [0.,0.]  # [Δseadrag,Δskydrag]
 
-#                            eleobj, Λ, X,  U,  A, t, χ,      SP,     dbg
-L,Lλ,Lx,Lu,La,χn  = gradient(turbine,Λ ,[X],[U],A, 0.,nothing,nothing,(;))
+#                         eleobj, Λ, X,  U,  A, t, SP,     dbg
+L,Lλ,Lx,Lu,La  = gradient(turbine,Λ ,[X],[U],A, 0.,nothing,(;))
 
 @testset "Turbine gradient" begin
     @test Lλ            ≈ [-2, -3]
@@ -25,7 +25,7 @@ L,Lλ,Lx,Lu,La,χn  = gradient(turbine,Λ ,[X],[U],A, 0.,nothing,nothing,(;))
     @test La            ≈ [-2, -3]
 end
 
-Lλ,Lx,Lu,La,χn   = test_static_element(turbine;Λ,X,U,A,verbose=false)
+Lλ,Lx,Lu,La   = test_static_element(turbine;Λ,X,U,A,verbose=false)
 
 @testset "test_static_element" begin
     @test Lλ            ≈ [-2, -3]
@@ -42,8 +42,8 @@ anchorline      = AnchorLine(SVector(0.,0.,100.), SVector(0,2.,0), SVector(94.,0
 X        = @SVector [0.,0.,0.]
 U        = @SVector 𝕣[]
 A        = @SVector [0.,0.]  # [Δseadrag,Δskydrag]
-#                             eleobj, Λ, X,  U,  A, t, χ,      SP,     dbg
-L,Lλ,Lx,Lu,La   = gradient(anchorline,Λ ,[X],[U],A, 0.,nothing,nothing,(;))
+#                             eleobj, Λ, X,  U,  A, t, SP,     dbg
+L,Lλ,Lx,Lu,La   = gradient(anchorline,Λ ,[X],[U],A, 0.,nothing,(;))
 @testset "anchorline1" begin
     @test Lλ            ≈ [-12.25628901693551, 0.2607721067433087, 24.51257803387102]
     @test Lx            ≈ [-0.91509745608786, 0.14708204066349, 1.3086506986891027]
@@ -60,7 +60,6 @@ sky(t,x)        = SVector(0.,1.)
 e1              = addelement!(model,Turbine   ,[n1,n2], seadrag=2., sea=sea, skydrag=3., sky=sky)
 e2              = addelement!(model,AnchorLine,[n1,n3], Δxₘtop=SVector(5.,0.,0), xₘbot=SVector(150.,0.), L=180., buoyancy=-1e3)
 dis             = Muscade.Disassembler(model)
-χ               = Muscade.χinit(model)
 
 @testset "Disassembler" begin
     @test  dis.dis[1].index[1].X == [1,2]
@@ -155,7 +154,7 @@ end
     @test dofgr.scaleA == Float64[]
 end
 
-state = Muscade.State(model,dis,χ)
+state = Muscade.State(model,dis)
 Muscade.assemble!(out,asm,dis,model,state,(someunittest=true,))
 
 @testset "assemble" begin

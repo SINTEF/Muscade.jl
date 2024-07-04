@@ -105,7 +105,7 @@ differentiation. Because of this, it is important not to over-specify the inputs
 implementing a function header with
 
 ```julia
-@espy function Muscade.lagrangian(o::MyElement,Λ::Vector{Float64},X,U,A,t,χ,χcv,SP,dbg)
+@espy function Muscade.lagrangian(o::MyElement,Λ::Vector{Float64},X,U,A,t,SP,dbg)
 #                                               ____bad_idea____
 ```
 
@@ -139,9 +139,9 @@ The interface is mostly the same as for `lagrangian` with the differences that
 - there is no argument `Λ`
 
 ```julia
-@espy function Muscade.residual(o::MyElement,X,U,A,t,χ,χcv,SP,dbg) 
+@espy function Muscade.residual(o::MyElement,X,U,A,t,SP,dbg) 
     ...
-    return R,noχ,noFB
+    return R,noFB
 end
 ```
 
@@ -176,16 +176,14 @@ shows that `R` is mutated. A pseudocode in immutable style would be
         ☼F = ...
         ☼Σ = ...
         r = F ∘ Σ ∘ ∇N * dV
-        @named(χ,r)
+        @named(r)
     end
-    χ = ntuple(igp->t[igp].χ,ngp)
     R = sum(   igp->t[igp].r,ngp)
-    return R,χ
+    return R,...
 end
 ```
 
-`r` are the contributions to `R` at each quadrature point.  The operation `t = ntuple ...` returns a datastructure `t` such that `t[igp].χ` are the memory
-variable and ``t[igp].r` the contribution to the residual from the `igp`-th quadrature point. This is because
+`r` are the contributions to `R` at each quadrature point.  The operation `t = ntuple ...` returns a datastructure `t` such that  ``t[igp].r` are the contribution to the residual from the `igp`-th quadrature point. This is because
 
 ```julia
     t = ntuple(ngp) do igp
@@ -205,16 +203,16 @@ which returns
     t = (expr(1),expr(2),...,expr(ngp))
 ```
 
-where the value of `expr` is that of its last line `@named(χ,r)` which is a macro provided by `Muscade` that inserts the code `(χ=χ,r=r)`.
+where the value of `expr` is that of its last line `@named(r,a,b,c)` which is a macro provided by `Muscade` that inserts the code `(r=r,a=a,b=b,c=c)`.
 
 The code 
 
 ```julia
-    χ = ntuple(igp->t[igp].χ,ngp)
+    a = ntuple(igp->t[igp].a,ngp)
     R = sum(   igp->t[igp].r,ngp)
 ```
 
-gathers the memories of all quadrature points into a `Tuple` and adds together the contributions `r` into the residual `R`.
+gathers the hypothetic `a` of all quadrature points into a `Tuple` and adds together the contributions `r` into the residual `R`.  Variables behaving like `a` *might* come into play if solver feedback is provided from each Gauss point
 
 See [`residual`](@ref).
 

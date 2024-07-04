@@ -48,12 +48,11 @@ struct BeamCrossSection
 end
 BeamCrossSection(;EA=EA,EI=EI,GJ=GJ) = BeamCrossSection(EA,EI,GJ)
 
-@espy function resultants(o::BeamCrossSection,ε,κ,xᵧ,χ,rot)
+@espy function resultants(o::BeamCrossSection,ε,κ,xᵧ,rot)
     ☼f₁ = o.EA*ε
     ☼m  = SVector(o.GJ*κ[1],o.EI*κ[2],o.EI*κ[3])
     ☼fₑ = SVector(0.,0.,0.)
-    ☼χ  = noχ
-    return f₁,m,fₑ,χ
+    return f₁,m,fₑ
 end
 
 # Static Euler beam element
@@ -126,11 +125,11 @@ function EulerBeam3D(nod::Vector{Node};mat::Mat,orient2::SVector{ndim,𝕣}=SVec
 end
 const saco = StaticArrays.sacollect
 const v3   = SVector{3}
-@espy function Muscade.residual(o::EulerBeam3D,   X,U,A,t,χo,SP,dbg) 
+@espy function Muscade.residual(o::EulerBeam3D,   X,U,A,t,SP,dbg) 
     cₘ,rₘ,tgₘ,tgₑ     = o.cₘ,o.rₘ,o.tgₘ,o.tgₑ
     Nε,Nκ,Nu         = o.Nε,o.Nκ,o.Nu
     ζgp,ζnod,dL      = o.ζgp,o.ζnod,o.dL
-    P                = constants(X,U,A,t,χo)  
+    P                = constants(X,U,A,t)  
     ΔX               = variate{P,ndof}(∂0(X))
     uᵧ₁,vᵧ₁,uᵧ₂,vᵧ₂  = SVector{3}(ΔX[i] for i∈1:3), SVector{3}(ΔX[i] for i∈4:6),SVector{3}(ΔX[i] for i∈7:9),SVector{3}(ΔX[i] for i∈10:12)
     cₛ               = (uᵧ₁+uᵧ₂)/2
@@ -145,12 +144,11 @@ const v3   = SVector{3}
     gp              = ntuple(ngp) do igp
         ☼ε,☼κ,☼uₗ    = Nε[igp]∘δXₗ, Nκ[igp]∘δXₗ, Nu[igp]∘δXₗ   # axial strain, curvatures, displacement - all local
         ☼x          = rₛₘ∘(tgₑ*ζgp[igp]+uₗ)+cₛ+cₘ             # [ndim], global coordinates
-        f₁,m,fₑ,χgp = ☼resultants(o.mat,ε,κ,x,χo[igp],rₛₘ)  # NB: fₑ is in local coordinates
+        f₁,m,fₑ     = ☼resultants(o.mat,ε,κ,x,rₛₘ)  # NB: fₑ is in local coordinates
         Rₗ           = (f₁ ∘₀ Nε[igp] + m∘Nκ[igp] + fₑ∘Nu[igp])*dL[igp]     # [ndof] = scalar*[ndof] + [ndim]⋅[ndim,ndof] + [ndim]⋅[ndim,ndof]
-        @named(Rₗ,χgp)
+        @named(Rₗ)
     end
-    χ  = ntuple(igp->gp[igp].χgp ,ngp)
     R  = sum(gpᵢ.Rₗ for gpᵢ∈gp) ∘ T
-    return R,χ,noFB
+    return R,noFB
 end
 

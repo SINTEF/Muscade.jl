@@ -154,8 +154,8 @@ function addin!(out::AssemblyStudyScale,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nx
     scaleZ          = SVector(scale.Λ...,scale.X...,scale.U...,scale.A...)
     ΔZ              = variate{2,Nz}(δ{1,Nz,𝕣}(scaleZ),scaleZ)                 
     iλ,ix,iu,ia     = gradientpartition(Nx,Nx,Nu,Na) # index into element vectors ΔZ and Lz
-    ΔΛ,ΔX,ΔU,ΔA     = view(ΔZ,iλ),view(ΔZ,ix),view(ΔZ,iu),view(ΔZ,ia) # TODO Static?
-    L,χn,FB         = getlagrangian(eleobj, ∂0(Λ)+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A+ΔA,t,nothing,SP,dbg)
+    ΔΛ,ΔX,ΔU,ΔA     = view(ΔZ,iλ),view(ΔZ,ix),view(ΔZ,iu),view(ΔZ,ia) 
+    L,FB         = getlagrangian(eleobj, ∂0(Λ)+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A+ΔA,t,SP,dbg)
     ∇L              = ∂{2,Nz}(L)
     add_value!(out.Lz ,asm[1],iele,∇L)
     add_∂!{1}( out.Lzz,asm[2],iele,∇L)
@@ -334,7 +334,7 @@ function addin!(out::AssemblyStudySingular,asm,iele,scale,eleobj::E,Λ,X::NTuple
     ΔZ              = variate{2,Nz}(δ{1,Nz,𝕣}(scaleZ),scaleZ)                 
     iλ,ix,iu,ia     = gradientpartition(Nx,Nx,Nu,Na) # index into element vectors ΔZ and Lz
     ΔΛ,ΔX,ΔU,ΔA     = view(ΔZ,iλ),view(ΔZ,ix),view(ΔZ,iu),view(ΔZ,ia)
-    L,χn,FB         = getlagrangian(eleobj, ∂0(Λ)+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A+ΔA,t,nothing,nothing,SP,dbg)
+    L,FB            = getlagrangian(eleobj, ∂0(Λ)+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A+ΔA,t,nothing,SP,dbg)
     ∇L              = ∂{2,Nz}(L)
     i               = vcat(:Λ∈out.iclasses ? iλ : 𝕫[],:X∈out.iclasses ? ix : 𝕫[],:U∈out.iclasses ? iu : 𝕫[],:A∈out.iclasses ? ia : 𝕫[])
     j               = vcat(:Λ∈out.jclasses ? iλ : 𝕫[],:X∈out.jclasses ? ix : 𝕫[],:U∈out.jclasses ? iu : 𝕫[],:A∈out.jclasses ? ia : 𝕫[])

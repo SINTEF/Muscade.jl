@@ -20,9 +20,6 @@ module Runtest
         @testset "TestAssemble" begin
             include("TestAssemble.jl")
         end
-        @testset "TestChiTools" begin
-            include("TestChiTools.jl")
-        end
         @testset "TestStaticX" begin
             include("TestStaticX.jl")
         end
