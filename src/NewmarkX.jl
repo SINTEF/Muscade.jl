@@ -1,6 +1,6 @@
 # standard Newmark-β solver
 
-mutable struct AssemblyDynamicX{Tλ,Tλx} <:Assembly
+mutable struct AssemblyNewmarkX{Tλ,Tλx} <:Assembly
     # from model to solver
     Lλ      :: Tλ                # Newmark-β rhs
     Lλx     :: Tλx               # Newmark-β incremental matrix  
@@ -13,23 +13,22 @@ mutable struct AssemblyDynamicX{Tλ,Tλx} <:Assembly
     b₂      :: 𝕣
     b₃      :: 𝕣
 end   
-function prepare(::Type{AssemblyDynamicX},model,dis,β,γ) 
+function prepare(::Type{AssemblyNewmarkX},model,dis,β,γ) 
     dofgr              = allXdofs(model,dis)  # dis: the model's disassembler
     ndof               = getndof(dofgr)
     narray,neletyp     = 2,getneletyp(model)
     asm                = Matrix{𝕫2}(undef,narray,neletyp)  # asm[iarray,ieletyp][ieledof,iele]
     Lλ                 = asmvec!(view(asm,1,:),dofgr,dis) 
     Lλx                = asmmat!(view(asm,2,:),view(asm,1,:),view(asm,1,:),ndof,ndof) 
-#    out                = one_for_each_thread(AssemblyDynamicX(Lλ,Lλx,∞)) # KEEP - parallel 
-    out                = AssemblyDynamicX(Lλ,Lλx,∞,0.,0.,0.,0.,0.,0.) # sequential
+    out                = AssemblyNewmarkX(Lλ,Lλx,∞,0.,0.,0.,0.,0.,0.) # sequential
     return out,asm,dofgr
 end
-function zero!(out::AssemblyDynamicX)
+function zero!(out::AssemblyNewmarkX)
     zero!(out.Lλ)
     zero!(out.Lλx)
     out.α = ∞    
 end
-function addin!(out::AssemblyDynamicX,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A,t,SP,dbg) where{E,Nxder,Nx}
+function addin!(out::AssemblyNewmarkX,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A,t,SP,dbg) where{E,Nxder,Nx}
     # asm[iarray][ientry,iel]
     if Nx==0; return end # don't waste time on Acost elements...  
     i          = SVector{Nx}(1:Nx)
@@ -50,7 +49,7 @@ function addin!(out::AssemblyDynamicX,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxde
 end
 
 """
-	DynamicX
+	NewmarkX
 
 A non-linear dynamic time domain solver.
 The algorutm is Newmark-β
@@ -61,7 +60,7 @@ An analysis is carried out by a call with the following syntax:
 ```
 initialstate    = initialize!(model)
 setdof!(initialstate,1.;class=:U,field=:λcsr)
-state           = solve(DynamicX  ;initialstate=initialstate,time=0:10)
+state           = solve(NewmarkX  ;initialstate=initialstate,time=0:10)
 ```
 
 # Named arguments to `solve`:
@@ -81,16 +80,17 @@ A vector of length equal to that of the named input argument `time` containing t
 
 See also: [`solve`](@ref), [`StaticX`](@ref), [`setdof!`](@ref) 
 """
-struct DynamicX <: AbstractSolver end
-function solve(::Type{DynamicX},pstate,verbose,dbg;
+struct NewmarkX <: AbstractSolver end
+function solve(::Type{NewmarkX},pstate,verbose,dbg;
                     time::AbstractVector{𝕣},
                     initialstate::State,
                     β::ℝ=1/4,γ::ℝ=1/2,
                     maxiter::ℤ=50,maxΔx::ℝ=1e-5,maxresidual::ℝ=∞,
                     saveiter::𝔹=false,γ0::𝕣=1.,γfac1::𝕣=.5,γfac2::𝕣=100.)
-    # important: this code assumes that there is no χ in state.
     model,dis        = initialstate.model,initialstate.dis
-    out,asm,dofgr    = prepare(AssemblyDynamicX,model,dis,β,γ)
+    out,asm,dofgr    = prepare(AssemblyNewmarkX,model,dis,β,γ)
+    ndof             = getndof(dofgr)
+    x′ ,x″   = Vector{𝕣}(undef,ndof), Vector{𝕣}(undef,ndof) 
     citer            = 0
     cΔx²,cLλ²        = maxΔx^2,maxresidual^2
     s                = State{1,3,1}(initialstate,(γ=0.,))
@@ -110,7 +110,7 @@ function solve(::Type{DynamicX},pstate,verbose,dbg;
                 out.b₂,out.b₃        = 0., 0.
             end
             citer   += 1
-            assemble!(out,asm,dis,model,s,(dbg...,solver=:DynamicX,step=step,iiter=iiter))
+            assemble!(out,asm,dis,model,s,(dbg...,solver=:NewmarkX,step=step,iiter=iiter))
             try if step==1 && iiter==1
                 facLλx = lu(out.Lλx) 
             else
@@ -118,7 +118,6 @@ function solve(::Type{DynamicX},pstate,verbose,dbg;
             end catch; muscadeerror(@sprintf("matrix factorization failed at step=%i, iiter=%i",step,iiter)) end
             Δx       = facLλx\out.Lλ
             Δx²,Lλ²  = sum(Δx.^2),sum(out.Lλ.^2)
-            x′ ,x″   = Vector{𝕣}(undef,length(Δx)), Vector{𝕣}(undef,length(Δx))  # TODO take this out of he loops
             getdof!(s,1,x′,dofgr) 
             getdof!(s,2,x″,dofgr) 
             Δx′      = out.a₁*Δx+out.a₂*x′+out.a₃*x″ 

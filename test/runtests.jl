@@ -20,8 +20,8 @@ module Runtest
         @testset "TestAssemble" begin
             include("TestAssemble.jl")
         end
-        @testset "TestDynamicX" begin
-            include("TestDynamicX.jl")
+        @testset "TestNewmarkX" begin
+            include("TestNewmarkX.jl")
         end
         @testset "TestStaticX" begin
             include("TestStaticX.jl")

@@ -1,4 +1,4 @@
-module TestDynamicX
+module TestNewmarkX
 using Test
 using Muscade
 
@@ -10,7 +10,7 @@ ele             = addelement!(model,SdofOscillator,[node], K₁=1.,K₂=.3,C₁=
 
 initialstate    = Muscade.State{1,3,1}(initialize!(model;time=0.))
 initialstate.X[2][1] = 1.
-state           = solve(DynamicX;  initialstate,time= 0.4 *(1:100),verbose=false,catcherror=true)#,maxiter=2)#,maxΔx=Muscade.∞)
+state           = solve(NewmarkX;  initialstate,time= 0.4 *(1:100),verbose=false,catcherror=true)#,maxiter=2)#,maxΔx=Muscade.∞)
 
 X  = [s.X[1][1] for s∈state]
 X′ = [s.X[2][1] for s∈state]
