@@ -30,14 +30,14 @@ function zero!(out::AssemblyStaticΛXU_A)
     zero!(out.Lay)
     zero!(out.Laa)
 end
-function add!(out1::AssemblyStaticΛXU_A,out2::AssemblyStaticΛXU_A) 
-    add!(out1.Ly,out2.Ly)
-    add!(out1.La,out2.La)
-    add!(out1.Lyy,out2.Lyy)
-    add!(out1.Lya,out2.Lya)
-    add!(out1.Lay,out2.Lay)
-    add!(out1.Laa,out2.Laa)
-end
+# function add!(out1::AssemblyStaticΛXU_A,out2::AssemblyStaticΛXU_A) 
+#     add!(out1.Ly,out2.Ly)
+#     add!(out1.La,out2.La)
+#     add!(out1.Lyy,out2.Lyy)
+#     add!(out1.Lya,out2.Lya)
+#     add!(out1.Lay,out2.Lay)
+#     add!(out1.Laa,out2.Laa)
+# end
 function addin!(out::AssemblyStaticΛXU_A,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxder,<:SVector{Nx}},
                                          U::NTuple{Nuder,<:SVector{Nu}},A::SVector{Na},t,SP,dbg) where{E,Nxder,Nx,Nuder,Nu,Na} # TODO make Nx,Nu,Na types
     Ny              = 2Nx+Nu                           # Y=[Λ;X;U]   
@@ -85,14 +85,14 @@ function zero!(out::AssemblyStaticΛXU_Aline)
     out.Σλg  = 0.
     out.npos = 0    
 end
-function add!(out1::AssemblyStaticΛXU_Aline,out2::AssemblyStaticΛXU_Aline) 
-    add!(out1.Ly,out2.Ly)
-    add!(out1.La,out2.La)
-    out1.ming = min(out1.ming,out2.ming)
-    out1.minλ = min(out1.minλ,out2.minλ)
-    out1.Σλg += out2.Σλg
-    out1.npos+= out2.npos
-end
+# function add!(out1::AssemblyStaticΛXU_Aline,out2::AssemblyStaticΛXU_Aline) 
+#     add!(out1.Ly,out2.Ly)
+#     add!(out1.La,out2.La)
+#     out1.ming = min(out1.ming,out2.ming)
+#     out1.minλ = min(out1.minλ,out2.minλ)
+#     out1.Σλg += out2.Σλg
+#     out1.npos+= out2.npos
+# end
 function addin!(out::AssemblyStaticΛXU_Aline,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxder,<:SVector{Nx}},
                                               U::NTuple{Nuder,<:SVector{Nu}},A::SVector{Na},t,SP,dbg) where{E,Nxder,Nx,Nuder,Nu,Na}
     Ny              = 2Nx+Nu                           # Y=[Λ;X;U]   

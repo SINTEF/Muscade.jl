@@ -57,6 +57,9 @@ module Muscade
     include("BlockSparse.jl")
     export prepare,cat!,addin!,zero!,getblock
 
+    include("DynamicX.jl")
+    export DynamicX
+
     include("StaticX.jl")
     export StaticX
     

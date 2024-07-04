@@ -123,7 +123,22 @@ Muscade.doflist(     ::Type{Spring{D}}) where{D}=(
     field = ((Symbol(:tx,i) for i=1: D)...,(Symbol(:tx,i) for i=1: D)...,:ΞL₀,:ΞEI)) # \Xi
 
 
+### SdofOscillator
 
-
+struct SdofOscillator <: AbstractElement
+    K₁ :: 𝕣
+    K₂ :: 𝕣
+    C₁ :: 𝕣
+    C₂ :: 𝕣
+    M₁ :: 𝕣
+    M₂ :: 𝕣
+end
+SdofOscillator(nod::Vector{Node};K₁::𝕣,K₂::𝕣=0.,C₁::𝕣,C₂::𝕣=0.,M₁::𝕣,M₂::𝕣=0.) = SdofOscillator(K₁,K₂,C₁,C₂,M₁,M₂)
+@espy function Muscade.residual(o::SdofOscillator, X,U,A, t,SP,dbg) 
+    x,x′,x″,u = ∂0(X)[1], ∂1(X)[1], ∂2(X)[1], ∂0(U)[1]
+    R         = -u +o.K₁*x +o.K₂*x^2  +o.C₁*x′ +o.C₂*x′^2 +o.M₁*x″ +o.M₂*x″^2
+    return SVector(R),noFB
+end
+Muscade.doflist( ::Type{<:SdofOscillator})  = (inod =(1 ,1 ), class=(:X,:U), field=(:x,:u))
 
 

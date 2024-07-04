@@ -20,10 +20,10 @@ function zero!(out::AssemblyStaticX)
     zero!(out.Lλ)
     zero!(out.Lλx)
 end
-function add!(out1::AssemblyStaticX,out2::AssemblyStaticX) 
-    add!(out1.Lλ,out2.Lλ)
-    add!(out1.Lλx,out2.Lλx)
-end
+# function add!(out1::AssemblyStaticX,out2::AssemblyStaticX) 
+#     add!(out1.Lλ,out2.Lλ)
+#     add!(out1.Lλx,out2.Lλx)
+# end
 function addin!(out::AssemblyStaticX,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A,t,SP,dbg) where{E,Nxder,Nx}
     if Nx==0; return end # don't waste time on Acost elements...  
     ΔX         = δ{1,Nx,𝕣}(scale.X)                 # NB: precedence==1, input must not be Adiff 
@@ -56,13 +56,13 @@ function zero!(out::AssemblyStaticXline)
     out.Σλg  = 0.
     out.npos = 0    
 end
-function add!(out1::AssemblyStaticXline,out2::AssemblyStaticXline) 
-    add!(out1.Lλ,out2.Lλ)
-    out1.ming = min(out1.ming,out2.ming)
-    out1.minλ = min(out1.minλ,out2.minλ)
-    out1.Σλg += out2.Σλg
-    out1.npos+= out2.npos
-end
+# function add!(out1::AssemblyStaticXline,out2::AssemblyStaticXline) 
+#     add!(out1.Lλ,out2.Lλ)
+#     out1.ming = min(out1.ming,out2.ming)
+#     out1.minλ = min(out1.minλ,out2.minλ)
+#     out1.Σλg += out2.Σλg
+#     out1.npos+= out2.npos
+# end
 function addin!(out::AssemblyStaticXline,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A,t,SP,dbg) where{E,Nxder,Nx}
     if Nx==0; return end # don't waste time on Acost elements...  
     Lλ,FB = getresidual(eleobj,X,U,A,t,SP,dbg)
