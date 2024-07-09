@@ -1,8 +1,8 @@
 using  Muscade
 using  StaticArrays,LinearAlgebra #,GLMakie 
 
-function horner(p::AbstractVector,x::Number) # avoiding to use e.g. Polynomials.jl just for test code
-    y = zero(x) # not typestable if eltype(p)≠typeof(x)
+function horner(p::AbstractVector{R},x::R) where{R<:ℝ} # avoiding to use e.g. Polynomials.jl just for test code
+    y = zero(R) 
     for i ∈ reverse(p) 
         y = i + x*y
     end
@@ -122,7 +122,6 @@ Muscade.doflist(     ::Type{Spring{D}}) where{D}=(
     class = ((:X for i=1:2D)...,:A,:A),
     field = ((Symbol(:tx,i) for i=1: D)...,(Symbol(:tx,i) for i=1: D)...,:ΞL₀,:ΞEI)) # \Xi
 
-
 ### SdofOscillator
 
 struct SdofOscillator <: AbstractElement
@@ -136,9 +135,68 @@ end
 SdofOscillator(nod::Vector{Node};K₁::𝕣,K₂::𝕣=0.,C₁::𝕣,C₂::𝕣=0.,M₁::𝕣,M₂::𝕣=0.) = SdofOscillator(K₁,K₂,C₁,C₂,M₁,M₂)
 @espy function Muscade.residual(o::SdofOscillator, X,U,A, t,SP,dbg) 
     x,x′,x″,u = ∂0(X)[1], ∂1(X)[1], ∂2(X)[1], ∂0(U)[1]
-    R         = -u +o.K₁*x +o.K₂*x^2  +o.C₁*x′ +o.C₂*x′^2 +o.M₁*x″ +o.M₂*x″^2
-    return SVector(R),noFB
+    R         = SVector(-u +o.K₁*x +o.K₂*x^2  +o.C₁*x′ +o.C₂*x′^2 +o.M₁*x″ +o.M₂*x″^2)
+    return R,noFB
 end
-Muscade.doflist( ::Type{<:SdofOscillator})  = (inod =(1 ,1 ), class=(:X,:U), field=(:x,:u))
+Muscade.doflist( ::Type{SdofOscillator})  = (inod =(1 ,1 ), class=(:X,:U), field=(:x,:u))
 
+
+
+### DryFriction
+
+struct DryFriction{Field} <: AbstractElement
+    drag  :: 𝕣
+    tscale:: 𝕣
+end
+DryFriction(nod::Vector{Node};drag::𝕣,field::Symbol,tscale::𝕣=1.) = DryFriction{field}(drag,tscale)
+using Printf
+# @espy function Muscade.residual(o::DryFriction, X,U,A, t,SP,dbg) 
+#     x,x′,f,f′ = ∂0(X)[1],∂1(X)[1], ∂0(X)[2], ∂1(X)[2]         # f: nod-on-el
+#     ☼slipup   =  f-o.drag                                     # 0 if slip to increasing x
+#     ☼slipdown = -f-o.drag                                     # 0 if slip to decreasing x
+#     ☼stick    = x′*o.tscale                                   # 0 if stick
+#     istick,islipup,islipdown = 1,2,3
+#     condition = (stick,slipup,slipdown)
+#     _,iwas    = findmin(abs.(condition))
+#     inow = if iwas==istick 
+#         if f>o.drag 
+#             islipup
+#         elseif f<-o.drag  
+#             islipdown
+#         else 
+#             istick
+#         end
+#     elseif iwas==islipup
+#         if x′<0
+#             istick
+#         else
+#             islipup
+#         end
+#     else #if iwas==islipdown
+#         if x′>0
+#             istick
+#         else
+#             islipdown
+#         end
+#     end
+#     return SVector(f,condition[inow]), noFB
+# end
+@espy function Muscade.residual(o::DryFriction, X,U,A, t,SP,dbg) 
+    x,x′,f,f′ = ∂0(X)[1],∂1(X)[1], ∂0(X)[2], ∂1(X)[2]         # f: nod-on-el
+    ☼slipup   =  f-o.drag                                     # 0 if slip to increasing x
+    ☼slipdown = -f-o.drag                                     # 0 if slip to decreasing x
+    ☼stick    = x′*o.tscale                                   # 0 if stick
+    _,iwas    = findmin(abs.((stick,slipup,slipdown)))
+    now = if iwas==1                       # was stick 
+        if     f> o.drag   slipup
+        elseif f<-o.drag   slipdown
+        else               stick
+        end
+    elseif iwas==2 x′<0 ? stick : slipup   # was slipup
+    elseif iwas==3 x′>0 ? stick : slipdown # was slipdown
+    end
+
+    return SVector(f,now), noFB
+end
+Muscade.doflist( ::Type{DryFriction{F}}) where{F} = (inod =(1 ,1 ), class=(:X,:X), field=(F,:dragme)) # dof1: whatever the user wants.  dof2: the memory" to be dragged 
 
