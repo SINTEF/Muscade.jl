@@ -148,20 +148,34 @@ struct DryFriction{Field} <: AbstractElement
 end
 DryFriction(nod::Vector{Node};drag::𝕣,field::Symbol,x′scale::𝕣=1.) = DryFriction{field}(drag,x′scale)
 @espy function Muscade.residual(o::DryFriction, X,U,A, t,SP,dbg) 
+    # x,x′,f,f′ = ∂0(X)[1],∂1(X)[1], ∂0(X)[2], ∂1(X)[2]   # f: nod-on-el
+    # ☼slipup   =  f /o.drag -1                           # 0 if slip to increasing x
+    # ☼slipdown = -f /o.drag -1                           # 0 if slip to decreasing x
+    # ☼stick    =  x′/o.x′scale                           # 0 if stick
+    # istick,islipup,islipdown = 1,2,3
+    # conds     = (stick,slipup,slipdown)
+    # ☼iold     = argmin(abs.(conds))    
+    # ☼inew = if iold==istick    && f> o.drag  islipup
+    # elseif     iold==istick    && f<-o.drag  islipdown    
+    # elseif     iold==islipup   && x′<0       istick                    
+    # elseif     iold==islipdown && x′>0       istick  
+    # else                                     iold
+    # end                  
+    # return SVector(f,conds[inew]), noFB
     x,x′,f,f′ = ∂0(X)[1],∂1(X)[1], ∂0(X)[2], ∂1(X)[2]   # f: nod-on-el
-    ☼slipup   =  f/o.drag -1                            # 0 if slip to increasing x
-    ☼slipdown = -f/o.drag -1                            # 0 if slip to decreasing x
-    ☼stick    = x′/o.x′scale                            # 0 if stick
-    _,iwas    = findmin(abs.((stick,slipup,slipdown)))  # first output discarded: we want "stick", not "abs(stick)" etc. 
-    now = if iwas==1                                    # was stick 
-        if     f> o.drag   slipup
-        elseif f<-o.drag   slipdown
-        else               stick
-        end
-    elseif iwas==2 x′<0 ? stick : slipup                # was slipup
-    elseif iwas==3 x′>0 ? stick : slipdown              # was slipdown
-    end
-    return SVector(f,now), noFB
+    conds     = (stick=x′/o.x′scale,  slipup=f/o.drag -1,  slipdown=-f/o.drag -1)  # each condition is matched if expression evals to 0.
+    aconds    = (stick=abs(conds.stick),slipup=abs(conds.slipup),slipdown=abs(conds.slipdown)) # and not abs.(conds), because: ERROR: broadcasting over `NamedTuple`s is reserved 
+#    aconds    = map(abs, collect(pairs(conds)))    
+    ☼old      = argmin(aconds)   
+    ☼new = if old==:stick && f> o.drag  
+        :slipup  
+    elseif    old==:stick && f<-o.drag  
+        :slipdown    
+    elseif    (old==:slipup && x′<0) || (old==:slipdown && x′>0)    
+        :stick  
+    else      old
+    end                  
+    return SVector(f,conds[new]), noFB
 end
-Muscade.doflist( ::Type{DryFriction{F}}) where{F} = (inod =(1 ,1 ), class=(:X,:X), field=(F,:dragme)) # dof1: whatever the user wants.  dof2: the memory" to be dragged 
+Muscade.doflist( ::Type{DryFriction{F}}) where{F} = (inod =(1 ,1 ), class=(:X,:X), field=(F,:dragforce)) 
 
