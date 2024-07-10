@@ -35,7 +35,7 @@ end
 model           = Model(:TestModel)
 node            = addnode!(model,𝕣[])
 ele             = addelement!(model,SdofOscillator,[node], K₁=1.,K₂=.3,C₁=1.,C₂=2.,M₁=3.)
-drag            = addelement!(model,DryFriction,[node], drag=0.1,field=:x)
+drag            = addelement!(model,DryFriction,[node], field=:x,drag=0.1)
 initialstate    = Muscade.State{1,3,1}(initialize!(model;time=0.))  # recast to force the state to have 2nd derivatives, 
 initialstate.X[2][1] = 1.                                           # so we can set initial velocity
 T               = 0.15 *(1:100)
@@ -45,11 +45,34 @@ X  = [s.X[1][1] for s∈state]
 X′ = [s.X[2][1] for s∈state]
 X″ = [s.X[3][1] for s∈state]
 
-@testset "DryFriction oscillator output" begin
+@testset "DryFriction oscillator output, Δx=0" begin
     @test X[ 1:10:end] ≈ [0.14456443480393982,  0.7975704237766761,  0.5807448605308462,  0.025592798296295478, -0.4191499109805254, -0.47980495035837123, -0.327180958763213, -0.14250971878268207, -0.02302664416796214,  0.0049513031770612665]
     @test X′[1:10:end] ≈ [  0.9275257973858644,  0.06890381030669016,   -0.3051199796365325,   -0.38287482503031733,   -0.17497655979555798,    0.05871470543387,    0.12727994128778658,    0.10817353690164826,    0.04828950336575319,    0.0]
     @test X″[1:10:end] ≈ [ -0.9663227015218087,    -0.38893509283263966,    -0.15433355292283862,     0.05463308919551511,     0.19339562928015905,     0.08171052489330786,     0.011795478883263008,    -0.0317198507523637,    -0.043361893119507146,    -0.029111361795204654]
 end
+
+########
+
+model           = Model(:TestModel)
+node            = addnode!(model,𝕣[])
+ele             = addelement!(model,SdofOscillator,[node], K₁=1.,K₂=.3,C₁=1.,C₂=2.,M₁=3.)
+drag            = addelement!(model,DryFriction,[node], field=:x,drag=0.1,Δx=0.3)
+initialstate    = Muscade.State{1,3,1}(initialize!(model;time=0.))  # recast to force the state to have 2nd derivatives, 
+initialstate.X[2][1] = 1.                                           # so we can set initial velocity
+T               = 0.15 *(1:100)
+state           = solve(NewmarkX;  initialstate,time= T,verbose=false,catcherror=true)
+
+X  = [s.X[1][1] for s∈state]
+X′ = [s.X[2][1] for s∈state]
+X″ = [s.X[3][1] for s∈state]
+
+@testset "DryFriction oscillator output, Δx=0.3" begin
+    @test X[ 1:10:end] ≈ [0.14469296858597538,    0.8008980273267399,    0.5415497021192464,   -0.09635105317563947,   -0.5596719823602733,   -0.5665780815035283,   -0.28989109303335375,   -0.028124724913396883,    0.07731217827508936,    0.04100891968258263]
+    @test X′[1:10:end] ≈ [0.9292395811463382,    0.0693102861285251,   -0.362977355522562,   -0.42183677927675134,   -0.16079100719211595,    0.12680704937085094,    0.20617807686338632,    0.1271272660824127,    0.016424801988853523,   -0.05507494559856239]
+    @test X″[1:10:end] ≈ [-0.9434722513821608,    -0.3907491466781534,    -0.17587190387027593,     0.08650341365728759,     0.22492856089769642,     0.1294376784731921,    -0.013913519287633938,    -0.07718750825920974,    -0.06535656010969325,    -0.026317647770282403]
+end
+
+
 
 # using GLMakie
 # fig      = Figure(size = (2000,1500))
