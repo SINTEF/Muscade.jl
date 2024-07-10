@@ -149,15 +149,13 @@ struct DryFriction{Field} <: AbstractElement
 end
 DryFriction(nod::Vector{Node};field::Symbol,drag::𝕣,Δx::𝕣=0.,x′scale::𝕣=1.) = DryFriction{field}(drag,x′scale,Δx/drag)
 @espy function Muscade.residual(o::DryFriction, X,U,A, t,SP,dbg) 
-    x,x′,f,f′ = ∂0(X)[1],∂1(X)[1], ∂0(X)[2], ∂1(X)[2]                              # f: nod-on-el
-    conds     = (stick    = (x′-o.k⁻¹*f′)*o.x′scale,                               # each condition is matched if expression evals to 0.
-                 slipup   =  f/o.drag -1           ,  
-                 slipdown = -f/o.drag -1           )                                          
-    ☼old      = argmin(map(abs,conds))                                             # Symbol-index of the "most matched" condition
-    if        old==:stick && f> o.drag                            ☼new = :slipup   # aaargh, slipping!
-    elseif    old==:stick && f<-o.drag                            ☼new = :slipdown # ibid.   
-    elseif   (old==:slipup && x′<0) || (old==:slipdown && x′>0)   ☼new = :stick    # reversal!
-    else                                                          ☼new = old       # boring
+    x,x′,f,f′ = ∂0(X)[1],∂1(X)[1], ∂0(X)[2], ∂1(X)[2]       # f: nod-on-el
+    conds     = (stick    = (x′-o.k⁻¹*f′)*o.x′scale,        # each condition is matched if expression evals to 0.
+                 slip     =  abs(f)/o.drag -1     )                   
+    ☼old      = argmin(map(abs,conds))                      # Symbol-index of the "most matched" condition
+    if        old==:stick && abs(f)>o.drag   ☼new = :slip   # aaargh, slipping!
+    elseif    old==:slip  && f*x′<0          ☼new = :stick  # reversal!
+    else                                     ☼new = old     # boring
     end                  
     return SVector(f,conds[new]), noFB
 end
