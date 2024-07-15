@@ -2,7 +2,7 @@ module TestAssemble
 
 using Test,StaticArrays,SparseArrays
 using Muscade
-using Muscade.ElTest
+using Muscade.ElementTestTools
 
 include("SomeElements.jl")
 

@@ -78,10 +78,10 @@ module Muscade
         export unit,←,→,convert
     end
 
-    export ElTest
-    module ElTest
+    export ElementTestTools
+    module ElementTestTools
         using Muscade
-        include("ElTest.jl")
+        include("ElementTestTools.jl")
         export test_static_element,gradient
     end
 
