@@ -22,12 +22,12 @@ end
 function addin!(out::AssemblyStaticX,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A,t,SP,dbg) where{E,Nxder,Nx}
     if Nx==0; return end # don't waste time on Acost elements...  
     ΔX         = δ{1,Nx,𝕣}(scale.X)                 # NB: precedence==1, input must not be Adiff 
-    Lλ,FB    = getresidual(eleobj,(∂0(X)+ΔX,),U,A,t,SP,dbg) #  no feedback FB
+    Lλ,FB      = getresidual(eleobj,(∂0(X)+ΔX,),U,A,t,SP,dbg) #  no feedback FB
     Lλ         = Lλ .* scale.X
     add_value!(out.Lλ ,asm[1],iele,Lλ)
     add_∂!{1}( out.Lλx,asm[2],iele,Lλ)
 end
-###--------------------- ASMstaticXline: for line search
+###--------------------- for line search
 
 mutable struct AssemblyStaticXline{Tλ} <:Assembly
     Lλ    :: Tλ
@@ -106,10 +106,10 @@ function solve(::Type{StaticX},pstate,verbose,dbg;
                     initialstate::State,
                     maxiter::ℤ=50,maxΔx::ℝ=1e-5,maxresidual::ℝ=∞,
                     saveiter::𝔹=false,
-                    maxLineIter::ℤ=50,α::𝕣=.1,β::𝕣=.5,γfac::𝕣=.5)
+                    maxLineIter::ℤ=50,line1::𝕣=.1,line2::𝕣=.5,γfac::𝕣=.5)
     model,dis        = initialstate.model,initialstate.dis
-    out1,asm1,Xdofgr = prepare(AssemblyStaticX    ,model,dis)
-    out2,asm2        = prepare(AssemblyStaticXline,model,dis)
+    out1,asm1,Xdofgr = prepare(AssemblyStaticX ,model,dis)
+    out2,asm2        = prepare(AssemblyStaticXline   ,model,dis)
     citer            = 0
     cΔx²,cLλ²        = maxΔx^2,maxresidual^2
     state            = State{1,1,1}(initialstate,(γ=0.,))
@@ -136,9 +136,9 @@ function solve(::Type{StaticX},pstate,verbose,dbg;
             s = 1.    
             for iline = 1:maxLineIter
                 assemble!(out2,asm2,dis,model,state,(dbg...,solver=:StaticX,phase=:linesearch,step=step,iiter=iiter,iline=iline))
-                out2.minλ > 0 && out2.ming > 0 && sum(out2.Lλ.^2) ≤ Lλ²*(1-α*s)^2 && break
+                out2.minλ > 0 && out2.ming > 0 && sum(out2.Lλ.^2) ≤ Lλ²*(1-line1*s)^2 && break
                 iline==maxLineIter && muscadeerror(@sprintf("Line search failed at step=%3d, iiter=%3d, iline=%3d, s=%7.1e",step,iiter,iline,s))
-                Δs = s*(β-1)
+                Δs = s*(line2-1)
                 s += Δs
                 decrement!(state,0,Δs*Δx,Xdofgr)
             end

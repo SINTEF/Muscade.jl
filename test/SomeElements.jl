@@ -1,7 +1,8 @@
 using  Muscade
 using  StaticArrays,LinearAlgebra #,GLMakie 
 
-function horner(p::AbstractVector{R},x::R) where{R<:ℝ} # avoiding to use e.g. Polynomials.jl just for test code
+function horner(p::AbstractVector{Rp},x::Rx) where{Rp<:ℝ,Rx<:ℝ} # avoiding to use e.g. Polynomials.jl just for test code
+    R = promote_type(Rp,Rx)
     y = zero(R) 
     for i ∈ reverse(p) 
         y = i + x*y
@@ -150,12 +151,12 @@ end
 DryFriction(nod::Vector{Node};field::Symbol,drag::𝕣,Δx::𝕣=0.,x′scale::𝕣=1.) = DryFriction{field}(drag,x′scale,Δx/drag)
 @espy function Muscade.residual(o::DryFriction, X,U,A, t,SP,dbg) 
     x,x′,f,f′ = ∂0(X)[1],∂1(X)[1], ∂0(X)[2], ∂1(X)[2]       # f: nod-on-el
-    conds     = (stick    = (x′-o.k⁻¹*f′)*o.x′scale,        # each condition is matched if expression evals to 0.
-                 slip     =  abs(f)/o.drag -1     )                   
+    conds     = (stick = (x′-o.k⁻¹*f′)*o.x′scale,           # each condition is matched if expression evals to 0.
+                 slip  =  abs(f)/o.drag -1      )                   
     ☼old      = argmin(map(abs,conds))                      # Symbol-index of the "most matched" condition
     if        old==:stick && abs(f)>o.drag   ☼new = :slip   # aaargh, slipping!
     elseif    old==:slip  && f*x′<0          ☼new = :stick  # reversal!
-    else                                     ☼new = old     # boring
+    else                                     ☼new =  old    # boring
     end                  
     return SVector(f,conds[new]), noFB
 end

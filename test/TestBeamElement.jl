@@ -3,13 +3,13 @@ module TestEulerBeam3D
 using Test, Muscade, StaticArrays
 
 v = SA[.1,.2,.3]
-M = Muscade.Rodrigues(v)
-w = Muscade.Rodrigues⁻¹(M)
+M = Elements.Rodrigues(v)
+w = Elements.Rodrigues⁻¹(M)
 
 a = SA[1,0,0]
 b = SA[0,1,1]
-r = Muscade.adjust(a,b)
-R = Muscade.Rodrigues(r)
+r = Elements.adjust(a,b)
+R = Elements.Rodrigues(r)
 u = R*a
 @testset "rotations" begin
     @test v ≈ w
@@ -23,9 +23,9 @@ model           = Model(:TestModel)
 node1           = addnode!(model,𝕣[0,0,0])
 node2           = addnode!(model,𝕣[4,3,0])
 elnod           = [model.nod[n.inod] for n∈[node1,node2]]
-mat             = Muscade.BeamCrossSection(EA=10.,EI=3.,GJ=4.)
+mat             = Elements.BeamCrossSection(EA=10.,EI=3.,GJ=4.)
 
-beam            = EulerBeam3D(elnod;mat,orient2=SVector(0.,1.,0.))
+beam            = Elements.EulerBeam3D(elnod;mat,orient2=SVector(0.,1.,0.))
 
 @testset "constructor" begin
     @test beam.cₘ    ≈ [2.0, 1.5, 0.0]

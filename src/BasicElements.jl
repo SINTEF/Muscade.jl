@@ -321,13 +321,13 @@ doflist(::Type{<:DofConstraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,
     class=(ntuple(i->:X,Nx)...,ntuple(i->:U,Nu)...,ntuple(i->:A,Na)...,λclass), 
     field=(xfield...          ,ufield...          ,afield...          ,λfield)) 
 @espy function residual(o::DofConstraint{:X,Nx}, X,U,A,t,SP,dbg) where{Nx}
-    γ          = default{:γ}(SP,0.)
-    P          = constants(∂0(X))
+    γ          = default{:γ}(SP,0.) # γ=SP.γ - default 0
+    P          = constants(∂0(X),t)
     m          = o.mode(t)
     x,☼λ       = ∂0(X)[SVector{Nx}(1:Nx)], ∂0(X)[Nx+1]   
     x∂         = variate{P,Nx}(x) 
     ☼gap,g∂x   = value_∂{P,Nx}(o.gap(x∂,t,o.gargs...)) 
-    R = if     m==:equal;    SVector{Nx+1}((       -g∂x*λ)...,-gap       ) 
+    R = if     m==:equal;    SVector{Nx+1}((       -g∂x*λ)...,-gap       ) # - sign: λ interpreted as an external force on generalised dof g∂x
     elseif     m==:positive; SVector{Nx+1}((       -g∂x*λ)...,-S(λ,gap,γ)) 
     elseif     m==:off;      SVector{Nx+1}(ntuple(i->0,Nx)...,-λ         ) 
     end
@@ -481,8 +481,6 @@ end
 
 An element for creating simple elements with "one line" of code.  
 Elements thus created have several limitations:
-- no internal state.
-- no initialisation.
 - physical elements with only X-dofs.
 - only `R` can be espied.
 The element is intended for testing.  Muscade-based applications should not include this in their API. 

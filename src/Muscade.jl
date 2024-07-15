@@ -45,9 +45,6 @@ module Muscade
     export DofConstraint,Hold,ElementConstraint
     export QuickFix,DofLoad
 
-    include("BeamElement.jl")
-    export EulerBeam3D
-     
     include("Assemble.jl")
     export Assembly
 
@@ -75,14 +72,22 @@ module Muscade
     include("SelfDraw.jl")
     export draw,request2draw
 
-    
-    module Unit
+    export Unit
+    module Unit  # using Muscade.Unit
         include("Unit.jl")
         export unit,←,→,convert
     end
+
+    export ElTest
     module ElTest
         using Muscade
         include("ElTest.jl")
         export test_static_element,gradient
+    end
+
+    export Elements
+    module Elements  # using Muscade.Elements: EulerBeam3D
+        using Muscade
+        include("BeamElement.jl")
     end
 end
