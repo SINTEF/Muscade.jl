@@ -30,14 +30,6 @@ function zero!(out::AssemblyStaticΛXU_A)
     zero!(out.Lay)
     zero!(out.Laa)
 end
-# function add!(out1::AssemblyStaticΛXU_A,out2::AssemblyStaticΛXU_A) 
-#     add!(out1.Ly,out2.Ly)
-#     add!(out1.La,out2.La)
-#     add!(out1.Lyy,out2.Lyy)
-#     add!(out1.Lya,out2.Lya)
-#     add!(out1.Lay,out2.Lay)
-#     add!(out1.Laa,out2.Laa)
-# end
 function addin!(out::AssemblyStaticΛXU_A,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxder,<:SVector{Nx}},
                                          U::NTuple{Nuder,<:SVector{Nu}},A::SVector{Na},t,SP,dbg) where{E,Nxder,Nx,Nuder,Nu,Na} # TODO make Nx,Nu,Na types
     Ny              = 2Nx+Nu                           # Y=[Λ;X;U]   
@@ -85,14 +77,6 @@ function zero!(out::AssemblyStaticΛXU_Aline)
     out.Σλg  = 0.
     out.npos = 0    
 end
-# function add!(out1::AssemblyStaticΛXU_Aline,out2::AssemblyStaticΛXU_Aline) 
-#     add!(out1.Ly,out2.Ly)
-#     add!(out1.La,out2.La)
-#     out1.ming = min(out1.ming,out2.ming)
-#     out1.minλ = min(out1.minλ,out2.minλ)
-#     out1.Σλg += out2.Σλg
-#     out1.npos+= out2.npos
-# end
 function addin!(out::AssemblyStaticΛXU_Aline,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxder,<:SVector{Nx}},
                                               U::NTuple{Nuder,<:SVector{Nu}},A::SVector{Na},t,SP,dbg) where{E,Nxder,Nx,Nuder,Nu,Na}
     Ny              = 2Nx+Nu                           # Y=[Λ;X;U]   
@@ -149,10 +133,6 @@ above to ensure dual feasibility.
                       vectors (over the steps) of `State`s of the model (for debugging 
                       non-convergence). 
 - `maxLineIter=50`    maximum number of iterations in the linear search that ensure interior points   
-- `α=0.1`             α∈[0,1]. Besides primal and dual feasibility, the line search ensures that
-                      `|Lvline|≤|Lv|*(1-α*s)` where `|Lv|` and `|Lvline|` are the gradients of the 
-                      Lagrangian, repsectively at the Newton step and the line search. `s∈]0,1]`
-                      is the step reduction factor in the line search. `α→0` is lenient, `α→1` stringent.
 - `β=0.5`             `β∈]0,1[`. In the line search, if conditions are not met, then a new line-iteration is done
                       with `s *= β` where  `β→0` is a hasty backtracking, while `β→1` stands its ground.            
 - `γfac=0.5`          `γfac∈[0,1[`. At each iteration, the barrier parameter γ is taken as `γ = (∑ⁿᵢ₌₁ λᵢ gᵢ)/n*γfac` where
@@ -170,7 +150,7 @@ struct StaticXUA <: AbstractSolver end
 function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<:State},
     maxiter::ℤ=50,maxΔy::ℝ=1e-5,maxΔa::ℝ=1e-5,
     saveiter::𝔹=false,
-    maxLineIter::ℤ=50,α::𝕣=.1,β::𝕣=.5,γfac::𝕣=.5,γbot::𝕣=1e-8)
+    maxLineIter::ℤ=50,β::𝕣=.5,γfac::𝕣=.5,γbot::𝕣=1e-8)
 
     model,dis             = initialstate[begin].model,initialstate[begin].dis
     out,asm,Ydofgr,Adofgr = prepare(AssemblyStaticΛXU_A    ,model,dis)
@@ -259,19 +239,17 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
         local  Σλg,npos 
         for iline = 1:maxLineIter
             ΣLa              .= 0   
-            Lv²line,minλ,ming = 0.,∞,∞
+            minλ,ming         = ∞,∞
             Σλg,npos          = 0.,0
             for (step,state)  ∈ enumerate(states)
                 assemble!(out2,asm2,dis,model,state,(dbg...,solver=:StaticXUAstepwise,phase=:linesearch,iter=iter,iline=iline,step=step))
-                ΣLa         .+= out2.La    
-                Lv²line      += sum(out2.Ly.^2) 
+                ΣLa         .+= out2.La 
                 minλ          = min(minλ,out2.minλ)
                 ming          = min(ming,out2.ming)
                 Σλg          += out2.Σλg
                 npos         += out2.npos
             end
-            Lv²line          += sum(ΣLa.^2)
-            if minλ>0 && ming>0 && Lv²line≤sum(Lv.^2)*(1-α*s)^2   
+            if minλ>0 && ming>0 
                 verbose && @printf("    %3d line-iterations\n",iline)
                 break#out of line search
             end

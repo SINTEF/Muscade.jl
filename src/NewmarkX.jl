@@ -148,7 +148,7 @@ function solve(::Type{NewmarkX},pstate,verbose,dbg;
     local facLλx 
     for (step,t)     ∈ enumerate(time)
         oldt         = state.time
-        state.time       = t
+        state.time   = t
         Δt           = t-oldt
         for iiter    = 1:maxiter
             if iiter == 1
@@ -185,12 +185,14 @@ function solve(::Type{NewmarkX},pstate,verbose,dbg;
             for iline = 1:maxLineIter
                 assemble!(out2,asm2,dis,model,state,(dbg...,solver=:NewmarkX,phase=:linesearch,step=step,iiter=iiter,iline=iline))
                 # TODO
-                # The requirement       sum(out2.Lλ.^2) ≤ Lλ²*(1-line1*s)^2      leads to failure. 
+                #
+                # The requirement       sum(out2.Lλ.^2) ≤ Lλ²*(1-line1*s)^2      leads to failure, also in the absence of any contraint. 
                 # 1) Does this imply a bug in update "decrement(...δx...)
                 # 2) Is that because requiring Lλ² to always decrease is a bad idea for non-convex problems?
+                #
                 # @show step,iiter,iline, s, sum(out2.Lλ.^2), Lλ²*(1-line1*s)^2
                 # out2.minλ > 0 && out2.ming > 0 && sum(out2.Lλ.^2) ≤ Lλ²*(1-line1*s)^2 && break
-                 out2.minλ > 0 && out2.ming > 0 &&  break
+                out2.minλ > 0 && out2.ming > 0 &&  break
                 iline==maxLineIter && muscadeerror(@sprintf("Line search failed at step=%3d, iiter=%3d, iline=%3d, s=%7.1e",step,iiter,iline,s))
                 Δs    = s*(line2-1)
                 s    += Δs

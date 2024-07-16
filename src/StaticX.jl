@@ -136,7 +136,7 @@ function solve(::Type{StaticX},pstate,verbose,dbg;
             s = 1.    
             for iline = 1:maxLineIter
                 assemble!(out2,asm2,dis,model,state,(dbg...,solver=:StaticX,phase=:linesearch,step=step,iiter=iiter,iline=iline))
-                out2.minλ > 0 && out2.ming > 0 && sum(out2.Lλ.^2) ≤ Lλ²*(1-line1*s)^2 && break
+                out2.minλ > 0 && out2.ming > 0  && break
                 iline==maxLineIter && muscadeerror(@sprintf("Line search failed at step=%3d, iiter=%3d, iline=%3d, s=%7.1e",step,iiter,iline,s))
                 Δs = s*(line2-1)
                 s += Δs
