@@ -79,7 +79,7 @@ module Muscade
     end
 
     export ElementTestTools
-    module ElementTestTools
+    module ElementTestTools # using Muscade.ElementTestTools
         using Muscade
         include("ElementTestTools.jl")
         export test_static_element,gradient
