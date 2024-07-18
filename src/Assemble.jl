@@ -465,11 +465,11 @@ add_∂!{P}(out::Array,asm,iele,a::SVector{M,∂ℝ{P,N,R}}) where{P,N,R,M} = ad
 # Note that getLagrangian receives Λ::SVector. addin! by contrast receives Λ::NTuple{SVector}, this is not a bug
 
 function getresidual(eleobj::Eleobj,  
-    X::NTuple{Ndx,SVector{Nx,Rx}},
-    U::NTuple{Ndu,SVector{Nu,Ru}},
-    A::           SVector{Na,Ra} ,
-    t::ℝ,SP,dbg,req...)     where{Eleobj<:AbstractElement,Ndx,Nx,Rx<:ℝ,Ndu,Nu,Ru<:ℝ,Na,Ra<:ℝ} 
-
+    X::NTuple{Ndx,SVector{Nx}},
+    U::NTuple{Ndu,SVector{Nu}},
+    A::           SVector{Na} ,
+    t::ℝ,SP,dbg,req...)     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
+    
     if hasmethod(residual  ,(Eleobj,       NTuple,NTuple,𝕣1,𝕣,NamedTuple,NamedTuple))
         R,FB,eleres... = residual(  eleobj,  X,U,A,t,SP,dbg,req...)
         hasnan(R ) && muscadeerror((dbg...,t=t,R =R ),@sprintf("residual(%s,...) returned NaN in R or derivatives",Eleobj))  
@@ -489,11 +489,11 @@ function getresidual(eleobj::Eleobj,
 end
 
 function getlagrangian(eleobj::Eleobj,  
-    Λ::           SVector{Nx,Rλ} ,  
-    X::NTuple{Ndx,SVector{Nx,Rx}},
-    U::NTuple{Ndu,SVector{Nu,Ru}},
-    A::           SVector{Na,Ra} ,
-    t::ℝ,SP,dbg,req...)     where{Eleobj<:AbstractElement,Rλ<:ℝ,Ndx,Nx,Rx<:ℝ,Ndu,Nu,Ru<:ℝ,Na,Ra<:ℝ} 
+    Λ::           SVector{Nx} ,  
+    X::NTuple{Ndx,SVector{Nx}},
+    U::NTuple{Ndu,SVector{Nu}},
+    A::           SVector{Na} ,
+    t::ℝ,SP,dbg,req...)     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
     #                            eleobj,Λ,     X,     U,     A, t,SP,        dbg
     if     hasmethod(lagrangian,(Eleobj,NTuple,NTuple,NTuple,𝕣1,𝕣,NamedTuple,NamedTuple))
         L,FB,eleres... = lagrangian(eleobj,Λ,X,U,A,t,SP,dbg,req...)

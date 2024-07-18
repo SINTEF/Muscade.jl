@@ -288,7 +288,7 @@ e2              = addelement!(model,QuickFix  ,[n1],inod=(1,),field=(:t1,),
                               res=(x,u,a,t)->0.4x.+.08+.5x.^2)
 initialstate    = initialize!(model)
 setdof!(initialstate,1.;field=:λ1)
-state           = solve(StaticX;initialstate,time=[0.],verbose=false) 
+state           = solve(Sweep{0};initialstate,time=[0.],verbose=false) 
 X               = state[1].X[1]
 
 # output

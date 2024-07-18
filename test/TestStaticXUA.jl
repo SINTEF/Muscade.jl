@@ -25,12 +25,12 @@ e10             = addelement!(model,SingleDofCost ,class=:A, field=:ΞL₀,[n4] 
 e11             = addelement!(model,SingleDofCost ,class=:A, field=:ΞEI,[n4]      ,cost=f3)
 initialstate    = initialize!(model)
 @testset "StaticX" begin
-    stateX           = solve(StaticX;initialstate,time=[0.,1.],verbose=false)
+    stateX           = solve(SweepX{0};initialstate,time=[0.,1.],verbose=false)
     @test stateX[2].X[1] ≈ [1.0008305423582147, 0.056562064402881376, 0.0, 0.0, 0.0, 0.0, 
     -1.0006330261310146, 0.006289232571302629, 
     0.0006330261310144907, -0.006289232571302629]
 end
-stateX             = solve(StaticX;  initialstate,time=[.5,1.],verbose=false)
+stateX             = solve(SweepX{0};  initialstate,time=[.5,1.],verbose=false)
 stateXUA           = solve(StaticXUA;initialstate=stateX,verbose=false)
 @testset "StaticXUA" begin
     @test stateXUA[2].X[1] ≈ [  0.16947517267111387,    -0.09872147216175686,     0.0,     0.0,     0.0,     0.0,    -0.9998314994105624,    -0.01004064780561606,    -0.00016850058943765545,     0.01004064780561606]

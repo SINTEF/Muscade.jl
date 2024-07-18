@@ -3,12 +3,12 @@ module TestConstraints
 using Test,StaticArrays
 using Muscade
 
-Muscade.DofConstraint{:X,    Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield                       }(g,mode) where
-                         {Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield} =
-    Muscade.DofConstraint{:X,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,typeof(g),typeof(()),typeof(mode)}(g,(),mode)
-Muscade.DofConstraint{:U,    Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield                       }(g,mode) where
-                         {Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield} =
-    Muscade.DofConstraint{:U,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,typeof(g),typeof(()),typeof(mode)}(g,(),mode)
+Muscade.DofConstraint{:X,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield                       }(g,mode) where
+                        {Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield} =
+Muscade.DofConstraint{:X,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,typeof(g),typeof(()),typeof(mode)}(g,(),mode)
+Muscade.DofConstraint{:U,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield                       }(g,mode) where
+                        {Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield} =
+Muscade.DofConstraint{:U,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,typeof(g),typeof(()),typeof(mode)}(g,(),mode)
 
 t,dbg  = 0.,(status=:testing,)
 SP1 = (γ=1.,)
@@ -175,7 +175,7 @@ e3              = addelement!(model,DofLoad      ,[n1],field=:t2,value=gravity)
 initialstate    = initialize!(model)
 setdof!(initialstate,1.;field=:λ1)
 setdof!(initialstate,1.;field=:λ2)
-state           = solve(StaticX;initialstate,time=[0.],verbose=false,silenterror=false) # because there is zero physical stiffness in this model, setting γ0=0 gives singularity if one or more constraint is inactive
+state           = solve(SweepX{0};initialstate,time=[0.],verbose=false,silenterror=false) # because there is zero physical stiffness in this model, setting γ0=0 gives singularity if one or more constraint is inactive
 
 @testset "interior point" begin
     X = state[findlastassigned(state)].X[1][1:2]

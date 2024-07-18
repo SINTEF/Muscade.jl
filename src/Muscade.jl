@@ -54,12 +54,9 @@ module Muscade
     include("BlockSparse.jl")
     export prepare,cat!,addin!,zero!,getblock
 
-    include("NewmarkX.jl")
-    export NewmarkX
+    include("SweepX.jl")
+    export SweepX
 
-    include("StaticX.jl")
-    export StaticX
-    
     include("StaticXUA.jl")
     export StaticXUA
 

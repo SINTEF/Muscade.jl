@@ -1,18 +1,19 @@
 # Built-in solvers
 
-## `StaticX` solver
+## `SweepX{O}` solver
 
-!!! warning
+`SweepX{O}` is a non-linear solver for differential equations or order `O` in time.  `SweepX{1}` is a static solver, `SweepX{1}` an implicit-Euler solver and `SweepX{2}` a Newmark-β solver. 
 
-    At this time, the handling of element-memory (see [Creating an element](@ref)) is not implemented.
+IMPORTANT NOTE: Muscade does not allow elements to have state variables, for example, plastic strain,
+or shear-free position for dry friction.  Where the element implements such physics, this 
+is implemented by introducing the state as a degree of freedom of the element, and solving
+for its evolution, *even in a static problem*, requires the use of `ORDER≥1`
 
-`StaticX` is a non-linear, static, explicit solver for "normal" FEM (not optimisation-FEM):  At a succession of times ``t``, it will solve ``R(X(t),t)=0`` (see [Theory](@ref)).
+`SweepX` solves "normal" FEM (not optimisation-FEM) (see [Theory](@ref)).  However, `SweepX` can be applied to models that have U and A-dofs. This is handled as follows: One input to `SweepX` is a `State`, which can come from [`initialize!`](@ref) or from the output of another solver. `SweepX` will keep the U- and A-dofs to the value in the input `State`. `initialize!` sets all dofs to zero, so when `SweepX` is given a `State` produced by `initialize!` the analysis starts with X-dofs equal to zero, and U- and A-dofs are kept zero throughout the analysis. 
 
-`StaticX` can be applied to models that have U and A-dofs. This is handled as follows: One input to `StaticX` is a `State`, which can come from [`initialize!`](@ref) or from the output of another solver. `StaticX` will keep the U- and A-dofs to the value in the input `State`. `initialize!` sets all dofs to zero, so when `StaticX` is given a `State` produced by `initialize!` the analysis starts with X-dofs equal to zero, and U- and A-dofs are kept zero throughout the analysis. 
+`SweepX` handles inequality constraints using a simplified interior point method. This works (reasonnably) well in concert with the built-in [`DofConstraint`](@ref) element.
 
-`StaticX` handles inequality constraints using a simplified interior point method, without a feasibility step. This works (reasonnably) well in concert with the built-in [`DofConstraint`](@ref) element.
-
-See [`StaticX`](@ref).
+See [`SweepX`](@ref).
 
 ## `StaticXUA` solver
 
