@@ -119,7 +119,7 @@ states           = solve(SweepX{2};initialstate=initialstate,time=0:10)
 - `dbg=(;)`           a named tuple to trace the call tree (for debugging)
 - `verbose=true`      set to false to suppress printed output (for testing)
 - `silenterror=false` set to true to suppress print out of error (for testing) 
-- `initialstate`      a `State`, obtain from `ìnitialize!` or `StaticX`.
+- `initialstate`      a `State`, obtain from `ìnitialize!` or `SweepX`.
 - `time`              maximum number of Newton-Raphson iterations 
 - `β=1/4`,`γ=1/2`     parameters to the Newmark-β algorithm. Dummy if `ORDER<2`
 - `maxiter=50`        maximum number of equilibrium iterations at each step.
@@ -143,7 +143,7 @@ states           = solve(SweepX{2};initialstate=initialstate,time=0:10)
 
 A vector of length equal to that of the named input argument `time` containing the states at the time steps.                       
 
-See also: [`solve`](@ref), [`StaticX`](@ref), [`EulerX`](@ref), [`initialize!`](@ref) 
+See also: [`solve`](@ref), [`initialize!`](@ref) 
 """
 struct        SweepX{ORDER} <: AbstractSolver end
 function solve(SX::Type{SweepX{ORDER}},pstate,verbose,dbg;

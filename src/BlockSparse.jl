@@ -18,7 +18,7 @@
 # irow   = ilr[ilv]  
 
 struct BlockSparseAssembler
-    pigr::Vector{𝕫2}   # pigr[ibc][ibr,ilc] → igv   Variable built up as "asm" in "blocksparse".  Given, index into global column, index into block row and index into local colum, get index into gobal nz
+    pigr::Vector{𝕫2}   # pigr[ibc][ibr,ilc] → igv   Variable built up as "asm" in "prepare".  Given, index into global column, index into block row and index into local colum, get index into gobal nz
     pgc ::𝕫1           # pgc[ibc]     →  Given index of block column, get index of first global column of the block 
 end
 
@@ -47,7 +47,7 @@ Where some blocks share the same sparsity structure, `blocks` can have `===` ele
 `blocks` can be a `Matrix{<:SparseMatrixCSC}`, where empty blocks are unassigned.
 `blocks` can be a `SparseBlocks{<:SparseMatrixCSC}`.
 
-See also: [`addin!`](@ref),[`cat!`](@ref)
+See also: [`addin!`](@ref)
 """ 
 function prepare(B::AbstractMatrix{SparseMatrixCSC{Tv,𝕫}}) where{Tv} 
     nbr,nbc                 = size(B)  
@@ -147,9 +147,9 @@ end
 """
     addin!(bigvec,block::Vector,asm,ibr,ibc)
 
-Add a vector into one of the blocks of a large full vector.  Use [`blocksparse`](@ref) to create `asm`.
+Add a vector into one of the blocks of a large full vector.  Use [`prepare`](@ref) to create `asm`.
 
-See also: [`blocksparse`](@ref),[`cat!`](@ref)
+See also: [`prepare`](@ref)
 """ 
 function addin!(out::Vector{Tv},B::Vector{Tv},asm::BlockSparseAssembler,ibc::𝕫) where{Tv}
     for ilc         = 1:length(B)

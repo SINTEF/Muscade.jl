@@ -110,7 +110,7 @@ An analysis is carried out by a call with the following syntax:
 ```
 initialstate    = initialize!(model)
 setdof!(initialstate,1.;class=:U,field=:λcsr)
-stateX          = solve(StaticX  ;initialstate=initialstate,time=[0.,1.])
+stateX          = solve(SweepX{0}  ;initialstate=initialstate,time=[0.,1.])
 stateXUA        = solve(StaticXUA;initialstate=stateX)
 ```
 
@@ -125,7 +125,7 @@ above to ensure dual feasibility.
 - `verbose=true`      set to false to suppress printed output (for testing)
 - `silenterror=false` set to true to suppress print out of error (for testing) 
 - `initialstate`      a vector of `state`s, one for each load case in the optimization problem, 
-                      obtained from one or several previous `StaticX` analyses
+                      obtained from one or several previous `SweepX` analyses
 - `maxiter=50`        maximum number of Newton-Raphson iterations 
 - `maxΔa=1e-5`        "outer" convergence criteria: a norm on the scaled `A` increment 
 - `maxΔy=1e-5`        "inner" convergence criteria: a norm on the scaled `Y=[ΛXU]` increment 
@@ -144,7 +144,7 @@ above to ensure dual feasibility.
 
 A vector of length equal to that of `initialstate` containing the state of the optimized model at each of these steps.                       
 
-See also: [`solve`](@ref), [`StaticX`](@ref), [`setdof!`](@ref) 
+See also: [`solve`](@ref), [`SweepX`](@ref), [`setdof!`](@ref) 
 """
 struct StaticXUA <: AbstractSolver end 
 function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<:State},
