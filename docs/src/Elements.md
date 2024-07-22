@@ -222,7 +222,7 @@ See [`residual`](@ref).
 
 - Element constructors can use function [`coord`](@ref) to extract the coordinates fron the `Vector{Node}` they get as first argument.
 - `residual` and `lagrangian` **must** use [`∂0`](@ref), [`∂1`](@ref) and [`∂2`](@ref) when extracting the zeroth, first and second time derivatives from arguments `X` and `U`.
-- Constants [`noχ`](@ref) and [`noFB`](@ref) (which have value `nothing`) can be used by elements that do not have memory or no feedback to the solving procedure.
+- Constant [`noFB`](@ref) (which have value `nothing`) can be used by elements that do not have memory or no feedback to the solving procedure.
 
 ## Performance
 

@@ -129,10 +129,8 @@ end
     addin!(bigsparse,block::SparseMatrixCSC,asm,ibr,ibc)
 
 Add a sparse into one of the blocks of a large sparse matrix.  Will fail silently or throw an error unless
-`bigsparse` has the correct sparsity structure for the given `blocks`. Use [`blocksparse`](@ref) to
+`bigsparse` has the correct sparsity structure for the given `blocks`. Use [`prepare`](@ref) to
     create `bigsparse` and `asm`.
-
-See also: [`blocksparse`](@ref),[`cat!`](@ref)
 """ 
 function addin!(out::SparseMatrixCSC{Tv,Ti},B::SparseMatrixCSC{Tv,Ti},asm::BlockSparseAssembler,ibr::𝕫,ibc::𝕫) where{Tv,Ti<:Integer}
     gv              = out.nzval

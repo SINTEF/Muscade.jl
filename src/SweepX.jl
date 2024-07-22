@@ -121,7 +121,7 @@ states           = solve(SweepX{2};initialstate=initialstate,time=0:10)
 - `silenterror=false` set to true to suppress print out of error (for testing) 
 - `initialstate`      a `State`, obtain from `ìnitialize!` or `StaticX`.
 - `time`              maximum number of Newton-Raphson iterations 
-- `β=1/5`,`γ=1/2`     parameters to the Newmark-β algorithm. Dummy if `ORDER<2`
+- `β=1/4`,`γ=1/2`     parameters to the Newmark-β algorithm. Dummy if `ORDER<2`
 - `maxiter=50`        maximum number of equilibrium iterations at each step.
 - `maxΔx=1e-5`        convergence criteria: norm of `X`. D
 - `maxLλ=∞`           convergence criteria: norm of the residual. 

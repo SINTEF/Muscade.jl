@@ -26,7 +26,7 @@ e3              = addelement!(model,QuickFix,[n1,n2];inod=(1,2),field=(:tx1,:tx1
                               res=(X,X′,X″,t)->12SVector(X[1]-X[2],X[2]-X[1]))
 
 initialstate    = initialize!(model)
-state           = solve(StaticX;initialstate,time=[0.,1.],verbose=false)
+state           = solve(SweepX{0};initialstate,time=[0.,1.],verbose=false)
 
 tx1,_           = getdof(state[2],field=:tx1,nodID=[n2])
 req             = @request F
@@ -51,7 +51,7 @@ One can actually add nodes to the model after elements have been added.  One can
 
 `initialize!` is used to create an as-meshed state of the system. Typicaly (but this depends on the app), all dofs are set to zero. The resulting variable, here called `initialstate` contains a pointer to the model.  Once a model is thus initialized, one can no longer add nodes or elements to it.  This is to ensure that a model can not be modified during a sequence of analyses.
 
-`solve` is then called with the name of the solver to be used (here `StaticX`), and any named parameters required by the solver. The return value `state` is *for this solver* a vector (over the time steps) of `State`s.
+`solve` is then called with the name of the solver to be used (here `SweepX{0}`), and any named parameters required by the solver. The return value `state` is *for this solver* a vector (over the time steps) of `State`s.
 
 ## Extracting results
 

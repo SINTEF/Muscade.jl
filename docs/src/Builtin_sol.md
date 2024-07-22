@@ -21,8 +21,8 @@ See [`SweepX`](@ref).
 
     At this time, the handling of element-memory (see [Creating an element](@ref)) is not implemented.
 
-`StaticXUA` is a non-linear, static, optimisation-FEM solver, with load and model parameter identification. Given a vector of static equilibrium configurations, obtained for example using `StaticX`, on a model with costs (and possibly constraints) on U- and A-dofs, the solver will determine response (X-dofs) and unknown loads for each step (Udofs) as well as model parameters for the whole history (Adofs).
+`StaticXUA` is a non-linear, static, optimisation-FEM solver, with load and model parameter identification. Given a vector of static equilibrium configurations, obtained for example using `SweepX{0}`, on a model with costs (and possibly constraints) on U- and A-dofs, the solver will determine response (X-dofs) and unknown loads for each step (Udofs) as well as model parameters for the whole history (Adofs).
 
-The solvers handles inequality constraints in the same way as `StaticX`.
+The solvers handles inequality constraints in the same way as `SweepX{0}`.
 
 See [`StaticXUA`](@ref).
