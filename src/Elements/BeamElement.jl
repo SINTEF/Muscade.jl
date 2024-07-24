@@ -70,7 +70,7 @@ struct EulerBeam3D{Mat} <: AbstractElement
 end
 Muscade.doflist(::Type{<:EulerBeam3D}) = (inod = (1,1,1,1,1,1, 2,2,2,2,2,2), class= ntuple(i->:X,ndof), field= (:t1,:t2,:t3,:r1,:r2,:r3, :t1,:t2,:t3,:r1,:r2,:r3) )
 
-function EulerBeam3D(nod::Vector{Node};mat::Mat,orient2::SVector{ndim,𝕣}=SVector(0.,1.,0.)) where{Mat} 
+function EulerBeam3D(nod::Vector{Node};mat,orient2::SVector{ndim,𝕣}=SVector(0.,1.,0.)) 
     c       = coord(nod)
     cₘ      = SVector{ndim}((c[1]+c[2])/2)
     tgₘ     = SVector{ndim}( c[2]-c[1]   )
