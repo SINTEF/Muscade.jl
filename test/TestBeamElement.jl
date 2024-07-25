@@ -41,7 +41,6 @@ node1           = addnode!(model,𝕣[0,0,0])
 node2           = addnode!(model,𝕣[4,3,0])
 elnod           = [model.nod[n.inod] for n∈[node1,node2]]
 mat             = Elements.BeamCrossSection(EA=10.,EI=3.,GJ=4.)
-
 beam            = Elements.EulerBeam3D(elnod;mat,orient2=SVector(0.,1.,0.))
 
 @testset "constructor" begin
@@ -63,13 +62,11 @@ x = SVector(1.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.)
 X = (x,)
 U = (SVector{0,𝕣}(),)
 A = SVector{0,𝕣}()
-
-# R,FB=residual(beam,   X,U,A,t,SP,dbg) 
-
-# @testset "residual" begin
-#     @test R        ≈ [1.130806672255245, 1.0113289514757071, 0.0, 0.0, 0.0, -0.17921658116930614, -1.130806672255245, -1.0113289514757071, 0.0, 0.0, 0.0, -0.17921658116930617]
-#     @test FB === nothing
-# end
+R,FB=residual(beam,   X,U,A,t,SP,dbg) 
+@testset "residual flex" begin
+    @test R        ≈ [1.1323673394544749, 1.0097682842764775, 0.0, 0.0, 0.0, -0.18389858276699608, -1.1323673394544749, -1.0097682842764775, 0.0, 0.0, 0.0, -0.1838985827669961]
+    @test FB === nothing
+end
 
 ###
 
@@ -85,7 +82,7 @@ X = (x,)
 U = (SVector{0,𝕣}(),)
 A = SVector{0,𝕣}()
 R,FB=residual(beam,   X,U,A,t,SP,dbg) 
-@testset "residual" begin
+@testset "residual torsion" begin
     @test R        ≈ [0.0, 0.0, 0.0, 4.0, 0.0, 0.0, 0.0, 0.0, 0.0, -4.0, 0.0, 0.0]
     @test FB === nothing
 end
