@@ -26,8 +26,14 @@ function Rodrigues(v::Vec3)
     return I + sinc1(θ)*S + sinc1(θ/2)^2/2*S*S  
 end
 function Rodrigues⁻¹(m)
-    θ = acos((trace(m)-1)/2) 
-    return spin⁻¹(m)/sinc1(θ)
+    c = (trace(m)-1)/2
+    if c<0.99999
+        θ = acos((trace(m)-1)/2)
+        v = spin⁻¹(m)/sinc1(θ)    #sinc1(acos(x))≈x for x≈1
+    else
+        v = spin⁻¹(m)
+    end
+    return v
 end
 # create a rotation vector that acts on u to make it colinear with v.  Fails if |u|=0, |v|=0 or θ=π
 function adjust(u,v)
