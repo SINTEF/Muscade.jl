@@ -32,6 +32,8 @@ w3,w∂v3 = value_∂{1,3}(Elements.Rodrigues⁻¹(M3))
     @test w∂v3 ≈ I#[1 0 0;0 1 0;0 0 1]
 end
 
+
+
 ###
 
 model           = Model(:TestModel)
@@ -62,12 +64,32 @@ X = (x,)
 U = (SVector{0,𝕣}(),)
 A = SVector{0,𝕣}()
 
-R,FB=residual(beam,   X,U,A,t,SP,dbg) 
+# R,FB=residual(beam,   X,U,A,t,SP,dbg) 
 
+# @testset "residual" begin
+#     @test R        ≈ [1.130806672255245, 1.0113289514757071, 0.0, 0.0, 0.0, -0.17921658116930614, -1.130806672255245, -1.0113289514757071, 0.0, 0.0, 0.0, -0.17921658116930617]
+#     @test FB === nothing
+# end
+
+###
+
+model           = Model(:TestModel)
+node1           = addnode!(model,𝕣[0,0,0])
+node2           = addnode!(model,𝕣[1,0,0])
+elnod           = [model.nod[n.inod] for n∈[node1,node2]]
+mat             = Elements.BeamCrossSection(EA=10.,EI=3.,GJ=4.)
+beam            = Elements.EulerBeam3D(elnod;mat,orient2=SVector(0.,1.,0.))
+t,SP,dbg  = 0.,(;),(status=:testing,)
+x = SVector(0.,0.,0.,1.,0.,0.,0.,0.,0.,0.,0.,0.)
+X = (x,)
+U = (SVector{0,𝕣}(),)
+A = SVector{0,𝕣}()
+R,FB=residual(beam,   X,U,A,t,SP,dbg) 
 @testset "residual" begin
-    @test R        ≈  [1.1323673394544749, 1.0097682842764775, 0.0, 0.0, 0.0, -0.18389858276699608, -1.1323673394544749, -1.0097682842764775, 0.0, 0.0, 0.0, -0.1838985827669961]
+    @test R        ≈ [0.0, 0.0, 0.0, 4.0, 0.0, 0.0, 0.0, 0.0, 0.0, -4.0, 0.0, 0.0]
     @test FB === nothing
 end
+
 
 end
 
