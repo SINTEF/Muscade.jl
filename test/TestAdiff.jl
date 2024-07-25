@@ -1,4 +1,4 @@
-module TestAdiff
+#module TestAdiff
 using Muscade
 using Test,StaticArrays
 
@@ -52,6 +52,11 @@ oX = variate{1,3}(ox)
 using LinearAlgebra
 nrm = norm(oX)
 
+## atan(s,c)
+
+x3 = variate{1}(1.6455)
+s3,c3=sin(x3),cos(x3)
+y3 = atan(s3,c3)
 
 ##
 @testset "Adiff" begin
@@ -105,5 +110,9 @@ nrm = norm(oX)
         @test nrm === sqrt(sum(oX.^2))
     end
 
+    @testset "atan" begin
+        y3 === ∂ℝ{1, 1, 𝕣}(1.6455, [1.0])
+    end
+
 end # testset Adiff
-end
+#end

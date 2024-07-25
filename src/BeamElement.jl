@@ -16,7 +16,6 @@ using Muscade
 const Mat33{R}   = SMatrix{3,3,R,9}
 const Vec3{R}    = SVector{3,R}
 
-sinx(θ)          = sinc(θ/π) # sinx(θ) = sin(θ)/θ
 normalize(v)     = v/norm(v)
 spin(  v::Vec3 ) = SMatrix{3,3}(0,v[3],-v[2],-v[3],0,v[1],v[2],-v[1],0)
 spin⁻¹(m::Mat33) = SVector{3}(m[3,2]-m[2,3],m[1,3]-m[3,1],m[2,1]-m[1,2])/2
@@ -24,11 +23,11 @@ trace( m::Mat33) = sum(m[i,i] for i∈(1,2,3))
 function Rodrigues(v::Vec3) 
     S = spin(v)
     θ = norm(v)
-    return I + sinx(θ)*S + sinx(θ/2)^2/2*S*S  
+    return I + sinc1(θ)*S + sinc1(θ/2)^2/2*S*S  
 end
 function Rodrigues⁻¹(m)
     θ = acos((trace(m)-1)/2) 
-    return spin⁻¹(m)/sinx(θ)
+    return spin⁻¹(m)/sinc1(θ)
 end
 # create a rotation vector that acts on u to make it colinear with v.  Fails if |u|=0, |v|=0 or θ=π
 function adjust(u::Vec3{R},v::Vec3{R}) where{R}
@@ -36,7 +35,7 @@ function adjust(u::Vec3{R},v::Vec3{R}) where{R}
     c,w = dot(u,v), cross(u,v) 
     s   = norm(w)
     θ   = atan(s,c)
-    return w/sinx(θ)
+    return w/sinc1(θ)
 end
 
 # Cross section "material"

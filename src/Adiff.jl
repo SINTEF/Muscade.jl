@@ -1,3 +1,10 @@
+# TODO
+# implement sincos
+# optimize and unit test sinc1
+
+
+
+
 using   StaticArrays
 using   SpecialFunctions
 using   Printf
@@ -148,7 +155,7 @@ macro Op2(OP,AB,A,B)
     end)
 end
 
-@Op2(Base.atan,  (a.dx*b.x+b.dx*a.x)/(a.x^2+b.x^2),          (a.dx*b)/(a.x^2+b^2),  (b.dx*a)/(a^2+b.x^2) )   
+@Op2(Base.atan,  (a.dx*b.x-b.dx*a.x)/(a.x^2+b.x^2),          (a.dx*b)/(a.x^2+b^2), -(b.dx*a)/(a^2+b.x^2) )   
 @Op2(Base.hypot, (a.dx*a.x+b.dx*b.x)/hypot(a.x,b.x),         a.dx*a.x/hypot(a.x,b), b.dx*b.x/hypot(a,b.x))   
 @Op2(Base.:(+),  a.dx+b.dx,                                  a.dx,                  b.dx                 )
 @Op2(Base.:(-),  a.dx-b.dx,                                  a.dx,                  -b.dx                )
@@ -230,6 +237,53 @@ end
 @Op1(SpecialFunctions.besselj1,   (besselj0(a.x) - besselj(2., a.x))/2. * a.dx )
 @Op1(SpecialFunctions.bessely0,   -bessely1(a.x) * a.dx                        )
 @Op1(SpecialFunctions.bessely1,   (bessely0(a.x) - bessely(2., a.x))/2. * a.dx )
+
+# sinc1 and derivatives
+export sinc1
+sinc1(x) = sinc(x/π) # sinc1(x) = sin(x)/x, while Julia defines sinc(x) = sin(πx)/πx
+function sinc1′(x)
+    if abs(x)>1e-6
+        s,c=sin(x),cos(x)
+        c/x -s/x^2
+    else
+#        -2/factorial(3)*x+4/factorial(5)*x^3-6/factorial(7)*x^5+8/factorial(9)*x^7-10/factorial(11)*x^9
+        -x/3 +x^3/30 -x^5/840 +x^7/45360 -x^9/399168
+    end
+end
+function sinc1″(x)
+    if abs(x)>1e-6
+        s,c=sin(x),cos(x)
+        -s/x -2c/x^2 +2s/x^3
+    else
+        -1/3 +x^2/10 -x^4/168 +x^6/6480 -x^8/443520
+    end
+end
+function sinc1‴(x)
+    if abs(x)>1e-6
+        s,c=sin(x),cos(x)
+        -c/x +3s/x^2 +6c/x^3 -6s/x^4
+    else
+#        24/factorial(5)*x-120/factorial(7)*x^3+336/factorial(9)*x^5-720/factorial(11)*x^7
+        x/5 -x^3/42 +x^5/1080 -x^7/55440
+    end
+end
+function sinc1⁗(x)
+    if abs(x)>1e-6
+        s,c=sin(x),cos(x)
+        s/x +4c/x^2 -12s/x^3 -18c/x^4 +24s/x^5
+    else
+        1/5 -x^2/14 +x^4/216 -x^6/7920
+    end
+end
+sinc1⁗′(x) = x*NaN
+
+
+@Op1(sinc1 ,      sinc1′( a.x)*a.dx                                    )
+@Op1(sinc1′,      sinc1″( a.x)*a.dx                                    )
+@Op1(sinc1″,      sinc1‴( a.x)*a.dx                                    )
+@Op1(sinc1‴,      sinc1⁗( a.x)*a.dx                                    )
+@Op1(sinc1⁗,      sinc1⁗′(a.x)*a.dx                                    )
+
 
 
 ## Find NaN in derivatives
