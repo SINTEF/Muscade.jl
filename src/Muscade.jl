@@ -85,6 +85,6 @@ module Muscade
     export Elements
     module Elements  # using Muscade.Elements: EulerBeam3D
         using Muscade
-        include("BeamElement.jl")
+        include("Elements/BeamElement.jl")
     end
 end
