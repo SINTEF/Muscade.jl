@@ -1,38 +1,7 @@
 module TestEulerBeam3D
 
-using Test, Muscade, StaticArrays, LinearAlgebra
+using Test, Muscade, StaticArrays
 
-a = SA[1,0,0]
-b = SA[0,1,1]
-r = Elements.adjust(a,b)
-R = Elements.Rodrigues(r)
-u = R*a
-
-v1      = variate{1,3}(SA[.1,.2,.3])
-M1      = Elements.Rodrigues(v1)
-w1,w∂v1 = value_∂{1,3}(Elements.Rodrigues⁻¹(M1))
-
-v2      = variate{1,3}(SA[1e-7,2e-7,1e-8])
-M2      = Elements.Rodrigues(v2)
-w2,w∂v2 = value_∂{1,3}(Elements.Rodrigues⁻¹(M2))
-
-v3      = variate{1,3}(SA[1e-7,2e-7,1e-8])
-M3      = Elements.Rodrigues(v3)
-w3,w∂v3 = value_∂{1,3}(Elements.Rodrigues⁻¹(M3))
-
-
-@testset "rotations" begin
-    @test r ≈ [0.0, -1.1107207345395913, 1.1107207345395913]
-    @test u ≈ [2.220446049250313e-16, 0.7071067811865476, 0.7071067811865476]
-    @test v1 ≈ w1
-    @test w∂v1 ≈ I#[1 0 0;0 1 0;0 0 1]
-    @test v2 ≈ w2
-    @test w∂v2 ≈ I#[1 0 0;0 1 0;0 0 1]
-    @test v3 ≈ w3
-    @test w∂v3 ≈ I#[1 0 0;0 1 0;0 0 1]
-end
-
-###
 
 model           = Model(:TestModel)
 node1           = addnode!(model,𝕣[0,0,0])

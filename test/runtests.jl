@@ -44,6 +44,9 @@ module Runtest
         @testset "BeamElement" begin
             include("TestBeamElement.jl")
         end
+        @testset "Rotations" begin
+            include("TestRotations.jl")
+        end
         @testset "TestUnit" begin
             include("TestUnit.jl")
         end
