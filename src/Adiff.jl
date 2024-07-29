@@ -155,7 +155,7 @@ end
 @DiffRule2(Base.:(*),  a.dx*b.x+a.x*b.dx,                          a.dx*b,                a*b.dx               )
 @DiffRule2(Base.:(/),  a.dx/b.x-a.x/b.x^2*b.dx,                    a.dx/b,                -a/b.x^2*b.dx        ) 
 @DiffRule2(Base.:(^),  a.dx*b.x*a.x^(b.x-1)+log(a.x)*a.x^b.x*b.dx, a.dx*b*a.x^(b  -1),    log(a)*a ^b.x*b.dx   )  # for exponents ∈ ℝ
-@inline Base.:(^)(a::∂ℝ{P,N,R},b::ℤ) where{P,N,R<:ℝ} = b==0 ? zero(a) : ∂ℝ{P,N,R}(a.x^b ,a.dx*b*a.x^(b-1) )
+@inline Base.:(^)(a::∂ℝ{P,N,R},b::ℤ) where{P,N,R<:ℝ} = b==0 ? zero(a) : ∂ℝ{P,N,R}(a.x^b ,a.dx*b*a.x^(b-1) )      # for exponents ∈ ℤ
 
 ## Functions
 macro DiffRule1(OP,A)
