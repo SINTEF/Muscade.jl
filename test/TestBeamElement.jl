@@ -1,6 +1,6 @@
 module TestEulerBeam3D
 
-using Test, Muscade, StaticArrays, LinearAlgebra
+using Test, Muscade, StaticArrays
 
 a = SA[1,0,0]
 b = SA[0,1,1]

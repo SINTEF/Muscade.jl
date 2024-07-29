@@ -1,6 +1,6 @@
 # TODO
 # implement sincos
-# optimize and unit test sinc1
+# differentiate x^0 at x=0
 
 
 
@@ -8,7 +8,6 @@
 using   StaticArrays
 using   SpecialFunctions
 using   Printf
-
 
 ## Type and construction
 const SV = SVector  
@@ -90,14 +89,9 @@ struct directional{P,N}        end
 δ{P,N,R}(               δa::SV{N,𝕣}) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,N,R}}(∂ℝ{P,N,R}(zero(R),SV{N,R}(i==j ? δa[i]  : zero(R) for i=1:N)) for j=1:N)
 δ{P    }(                          ) where{P       } =                 ∂ℝ{P,1,𝕣}(0.     ,SV{1,𝕣}(1.                               ))
 
-
-#variate{P,N}(a::SV{N,R}            ) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,N,R}}(∂ℝ{P,N  }(a[i]   ,i                                         ) for i=1:N)
 variate{P,N}(a::SV{N,R}            ) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,N,R}}(∂ℝ{P,N  }(a[i],i) for i=1:N)
-
-
 variate{P,N}(a::SV{N,R},δa::SV{N,𝕣}) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,N,R}}(∂ℝ{P,N,R}(a[j]   ,SV{N,R}(i==j ? R(δa[i])  : zero(R) for i=1:N)) for j=1:N)
-
-variate{P}(a::R) where{P,R<:ℝ} =  ∂ℝ{P,1}(a,SV{1,R}(one(R)))
+variate{P  }(a::R                  ) where{P,R<:ℝ}   =  ∂ℝ{P,1}(a,SV{1,R}(one(R)))
 directional{P}(a::SV{N,R},δa::SV{N,R}) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,1,R}}(∂ℝ{P,1}(a[i],SV{1,R}(δa[i])) for i=1:N)
 
 # Analyse
@@ -135,7 +129,7 @@ for OP∈(:(>),:(<),:(==),:(>=),:(<=),:(!=))
     @eval Base.$OP(a::∂ℝ,b:: ℝ)  = $OP(VALUE(a),      b )
 end
 
-macro Op2(OP,AB,A,B)
+macro DiffRule2(OP,AB,A,B)
     return esc(quote
         @inline $OP(a::∂ℝ{P,N,R},b::∂ℝ{P,N,R}) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}($OP(a.x,b.x),$AB)
         @inline $OP(a::∂ℝ{P,N,R},b::ℝ        ) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}($OP(a.x,b  ),$A )
@@ -154,135 +148,88 @@ macro Op2(OP,AB,A,B)
         end
     end)
 end
-
-@Op2(Base.atan,  (a.dx*b.x-b.dx*a.x)/(a.x^2+b.x^2),          (a.dx*b)/(a.x^2+b^2), -(b.dx*a)/(a^2+b.x^2) )   
-@Op2(Base.hypot, (a.dx*a.x+b.dx*b.x)/hypot(a.x,b.x),         a.dx*a.x/hypot(a.x,b), b.dx*b.x/hypot(a,b.x))   
-@Op2(Base.:(+),  a.dx+b.dx,                                  a.dx,                  b.dx                 )
-@Op2(Base.:(-),  a.dx-b.dx,                                  a.dx,                  -b.dx                )
-@Op2(Base.:(*),  a.dx*b.x+a.x*b.dx,                          a.dx*b,                a*b.dx               )
-@Op2(Base.:(/),  a.dx/b.x-a.x/b.x^2*b.dx,                    a.dx/b,                -a/b.x^2*b.dx        ) 
-@Op2(Base.:(^),  a.dx*b.x*a.x^(b.x-1)+log(a.x)*a.x^b.x*b.dx, a.dx*b*a.x^(b  -1),    log(a)*a ^b.x*b.dx   )
-@inline Base.:(^)(a::∂ℝ{P,N,R},b::Integer) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(a.x^b ,a.dx*b*a.x^(b-1) )
+@DiffRule2(Base.atan,  (a.dx*b.x-b.dx*a.x)/(a.x^2+b.x^2),          (a.dx*b)/(a.x^2+b^2), -(b.dx*a)/(a^2+b.x^2) )   
+@DiffRule2(Base.hypot, (a.dx*a.x+b.dx*b.x)/hypot(a.x,b.x),         a.dx*a.x/hypot(a.x,b), b.dx*b.x/hypot(a,b.x))   
+@DiffRule2(Base.:(+),  a.dx+b.dx,                                  a.dx,                  b.dx                 )
+@DiffRule2(Base.:(-),  a.dx-b.dx,                                  a.dx,                  -b.dx                )
+@DiffRule2(Base.:(*),  a.dx*b.x+a.x*b.dx,                          a.dx*b,                a*b.dx               )
+@DiffRule2(Base.:(/),  a.dx/b.x-a.x/b.x^2*b.dx,                    a.dx/b,                -a/b.x^2*b.dx        ) 
+@DiffRule2(Base.:(^),  a.dx*b.x*a.x^(b.x-1)+log(a.x)*a.x^b.x*b.dx, a.dx*b*a.x^(b  -1),    log(a)*a ^b.x*b.dx   )  # for exponents ∈ ℝ
+@inline Base.:(^)(a::∂ℝ{P,N,R},b::ℤ) where{P,N,R<:ℝ} = b==0 ? zero(a) : ∂ℝ{P,N,R}(a.x^b ,a.dx*b*a.x^(b-1) )      # for exponents ∈ ℤ
 
 ## Functions
-macro Op1(OP,A)
+macro DiffRule1(OP,A)
     return esc(:(@inline $OP(a::∂ℝ{P,N}) where{P,N} = ∂ℝ{P,N}($OP(a.x),$A)))
 end
-@Op1(Base.:(+),       a.dx                                                     )
-@Op1(Base.:(-),      -a.dx                                                     )
-@Op1(Base.abs  ,a.x==0.0 ? zero(a.dx) : (a.x>0.0 ? a.dx : -a.dx)               )
-@Op1(Base.conj ,      a.dx                                                     )
-@Op1(Base.sqrt,       a.dx / 2. / sqrt(a.x)                                    )
-@Op1(Base.cbrt,       a.dx / 3. / cbrt(a.x)^2                                  )
-@Op1(Base.abs2,       a.dx*2. * a.x                                            )
-@Op1(Base.inv,       -a.dx * abs2(inv(a.x))                                    )
-@Op1(Base.log,        a.dx / a.x                                               )
-@Op1(Base.log10,      a.dx / a.x / log(10.)                                    )
-@Op1(Base.log2,       a.dx / a.x / log(2.)                                     )
-@Op1(Base.log1p,      a.dx / (a.x + 1.)                                        )
-@Op1(Base.exp,         exp(a.x) * a.dx                                         )
-@Op1(Base.exp2,        log(2. ) * exp2( a.x) * a.dx                            )
-@Op1(Base.exp10,       log(10.) * exp10(a.x) * a.dx                            )
-@Op1(Base.expm1,       exp(a.x) * a.dx                                         )
-@Op1(Base.sin,         cos(a.x) * a.dx                                         )
-@Op1(Base.cos,        -sin(a.x) * a.dx                                         )
-@Op1(Base.tan,         (1. + tan(a.x)^2) * a.dx                                )
-@Op1(Base.sinpi,       π*cos(a.x) * a.dx                                       )
-@Op1(Base.cospi,      -π*sin(a.x) * a.dx                                       )
-@Op1(Base.sec,         sec(a.x) * tan(a.x) * a.dx                              )
-@Op1(Base.csc,        -csc(a.x) * cot(a.x) * a.dx                              )
-@Op1(Base.cot,        -(1. + cot(a.x)^2) * a.dx                                )
-@Op1(Base.sind,        π / 180. * cosd(a.x) * a.dx                             )
-@Op1(Base.cosd,       -π / 180. * sind(a.x) * a.dx                             )
-@Op1(Base.tand,        π / 180. * (1. + tand(a.x)^2) * a.dx                    )
-@Op1(Base.secd,        π / 180. * secd(a.x) * tand(a.x) * a.dx                 )
-@Op1(Base.cscd,       -π / 180. * cscd(a.x) * cotd(a.x) * a.dx                 )
-@Op1(Base.cotd,       -π / 180. * (1. + cotd(a.x)^2)  * a.dx                   )
-@Op1(Base.asin,        a.dx / sqrt(1. - a.x^2)                                 )
-@Op1(Base.acos,       -a.dx / sqrt(1. - a.x^2)                                 )
-@Op1(Base.atan,        a.dx / (1. + a.x^2)                                     )
-@Op1(Base.asec,        a.dx / abs(a.x) / sqrt(a.x^2 - 1.)                      )
-@Op1(Base.acsc,       -a.dx / abs(a.x) / sqrt(a.x^2 - 1.)                      )
-@Op1(Base.acot,       -a.dx / (1. + a.x^2)                                     )
-@Op1(Base.asind,       180. / π / sqrt(1. - a.x^2) * a.dx                      )
-@Op1(Base.acosd,      -180. / π / sqrt(1. - a.x^2) * a.dx                      )
-@Op1(Base.atand,       180. / π / (1. + a.x^2) * a.dx                          )
-@Op1(Base.asecd,       180. / π / abs(a.x) / sqrt(a.x^2- 1.) * a.dx            )
-@Op1(Base.acscd,      -180. / π / abs(a.x) / sqrt(a.x^2- 1.) * a.dx            )
-@Op1(Base.acotd,      -180. / π / (1. + a.x^2) * a.dx                          )
-@Op1(Base.sinh,        cosh(a.x) * a.dx                                        )
-@Op1(Base.cosh,        sinh(a.x) * a.dx                                        )
-@Op1(Base.tanh,        sech(a.x)^2 * a.dx                                      )
-@Op1(Base.sech,       -tanh(a.x) * sech(a.x) * a.dx                            )
-@Op1(Base.csch,       -coth(a.x) * csch(a.x) * a.dx                            )
-@Op1(Base.coth,       -csch(a.x)^2                                             )
-@Op1(Base.asinh,       a.dx / sqrt(a.x^2 + 1.)                                 )
-@Op1(Base.acosh,       a.dx / sqrt(a.x^2 - 1.)                                 )
-@Op1(Base.atanh,       a.dx / (1. - a.x^2)                                     )
-@Op1(Base.asech,      -a.dx / a.x / sqrt(1. - a.x^2)                           )
-@Op1(Base.acsch,      -a.dx / abs(a.x) / sqrt(1. + a.x^2)                      )
-@Op1(Base.acoth,       a.dx / (1. - a.x^2)                                     )
-@Op1(SpecialFunctions.erf,         2. * exp(-a.x^2) / sqrt(π) * a.dx           )
-@Op1(SpecialFunctions.erfc,       -2. * exp(-a.x^2) / sqrt(π) * a.dx           )
-@Op1(SpecialFunctions.erfi,        2. * exp( a.x^2) / sqrt(π) * a.dx           )
-@Op1(SpecialFunctions.gamma,       digamma(a.x) * gamma(a.x) * a.dx            )
-@Op1(SpecialFunctions.lgamma,      digamma(a.x) * a.dx                         )
-@Op1(SpecialFunctions.airy,        airyprime(a.x) * a.dx                       )  # note: only covers the 1-arg version
-@Op1(SpecialFunctions.airyprime,   airy(2., a.x) * a.dx                        )
-@Op1(SpecialFunctions.airyai,      airyaiprime(a.x) * a.dx                     )
-@Op1(SpecialFunctions.airybi,      airybiprime(a.x) * a.dx                     )
-@Op1(SpecialFunctions.airyaiprime, a.x * airyai(a.x) * a.dx                    )
-@Op1(SpecialFunctions.airybiprime, a.x * airybi(a.x) * a.dx                    )
-@Op1(SpecialFunctions.besselj0,   -besselj1(a.x) * a.dx                        )
-@Op1(SpecialFunctions.besselj1,   (besselj0(a.x) - besselj(2., a.x))/2. * a.dx )
-@Op1(SpecialFunctions.bessely0,   -bessely1(a.x) * a.dx                        )
-@Op1(SpecialFunctions.bessely1,   (bessely0(a.x) - bessely(2., a.x))/2. * a.dx )
-
-# sinc1 and derivatives
-export sinc1
-sinc1(x) = sinc(x/π) # sinc1(x) = sin(x)/x, while Julia defines sinc(x) = sin(πx)/πx
-function sinc1′(x)
-    if abs(x)>1e-6
-        s,c=sin(x),cos(x)
-        c/x -s/x^2
-    else
-#        -2/factorial(3)*x+4/factorial(5)*x^3-6/factorial(7)*x^5+8/factorial(9)*x^7-10/factorial(11)*x^9
-        -x/3 +x^3/30 -x^5/840 +x^7/45360 -x^9/399168
-    end
-end
-function sinc1″(x)
-    if abs(x)>1e-6
-        s,c=sin(x),cos(x)
-        -s/x -2c/x^2 +2s/x^3
-    else
-        -1/3 +x^2/10 -x^4/168 +x^6/6480 -x^8/443520
-    end
-end
-function sinc1‴(x)
-    if abs(x)>1e-6
-        s,c=sin(x),cos(x)
-        -c/x +3s/x^2 +6c/x^3 -6s/x^4
-    else
-#        24/factorial(5)*x-120/factorial(7)*x^3+336/factorial(9)*x^5-720/factorial(11)*x^7
-        x/5 -x^3/42 +x^5/1080 -x^7/55440
-    end
-end
-function sinc1⁗(x)
-    if abs(x)>1e-6
-        s,c=sin(x),cos(x)
-        s/x +4c/x^2 -12s/x^3 -18c/x^4 +24s/x^5
-    else
-        1/5 -x^2/14 +x^4/216 -x^6/7920
-    end
-end
-sinc1⁗′(x) = x*NaN
-
-
-@Op1(sinc1 ,      sinc1′( a.x)*a.dx                                    )
-@Op1(sinc1′,      sinc1″( a.x)*a.dx                                    )
-@Op1(sinc1″,      sinc1‴( a.x)*a.dx                                    )
-@Op1(sinc1‴,      sinc1⁗( a.x)*a.dx                                    )
-@Op1(sinc1⁗,      sinc1⁗′(a.x)*a.dx                                    )
+@DiffRule1(Base.:(+),       a.dx                                                     )
+@DiffRule1(Base.:(-),      -a.dx                                                     )
+@DiffRule1(Base.abs  ,a.x==0.0 ? zero(a.dx) : (a.x>0.0 ? a.dx : -a.dx)               )
+@DiffRule1(Base.conj ,      a.dx                                                     )
+@DiffRule1(Base.sqrt,       a.dx / 2. / sqrt(a.x)                                    )
+@DiffRule1(Base.cbrt,       a.dx / 3. / cbrt(a.x)^2                                  )
+@DiffRule1(Base.abs2,       a.dx*2. * a.x                                            )
+@DiffRule1(Base.inv,       -a.dx * abs2(inv(a.x))                                    )
+@DiffRule1(Base.log,        a.dx / a.x                                               )
+@DiffRule1(Base.log10,      a.dx / a.x / log(10.)                                    )
+@DiffRule1(Base.log2,       a.dx / a.x / log(2.)                                     )
+@DiffRule1(Base.log1p,      a.dx / (a.x + 1.)                                        )
+@DiffRule1(Base.exp,         exp(a.x) * a.dx                                         )
+@DiffRule1(Base.exp2,        log(2. ) * exp2( a.x) * a.dx                            )
+@DiffRule1(Base.exp10,       log(10.) * exp10(a.x) * a.dx                            )
+@DiffRule1(Base.expm1,       exp(a.x) * a.dx                                         )
+@DiffRule1(Base.sin,         cos(a.x) * a.dx                                         )
+@DiffRule1(Base.cos,        -sin(a.x) * a.dx                                         )
+@DiffRule1(Base.tan,         (1. + tan(a.x)^2) * a.dx                                )
+@DiffRule1(Base.sinpi,       π*cos(a.x) * a.dx                                       )
+@DiffRule1(Base.cospi,      -π*sin(a.x) * a.dx                                       )
+@DiffRule1(Base.sec,         sec(a.x) * tan(a.x) * a.dx                              )
+@DiffRule1(Base.csc,        -csc(a.x) * cot(a.x) * a.dx                              )
+@DiffRule1(Base.cot,        -(1. + cot(a.x)^2) * a.dx                                )
+@DiffRule1(Base.sind,        π / 180. * cosd(a.x) * a.dx                             )
+@DiffRule1(Base.cosd,       -π / 180. * sind(a.x) * a.dx                             )
+@DiffRule1(Base.tand,        π / 180. * (1. + tand(a.x)^2) * a.dx                    )
+@DiffRule1(Base.secd,        π / 180. * secd(a.x) * tand(a.x) * a.dx                 )
+@DiffRule1(Base.cscd,       -π / 180. * cscd(a.x) * cotd(a.x) * a.dx                 )
+@DiffRule1(Base.cotd,       -π / 180. * (1. + cotd(a.x)^2)  * a.dx                   )
+@DiffRule1(Base.asin,        a.dx / sqrt(1. - a.x^2)                                 )
+@DiffRule1(Base.acos,       -a.dx / sqrt(1. - a.x^2)                                 )
+@DiffRule1(Base.atan,        a.dx / (1. + a.x^2)                                     )
+@DiffRule1(Base.asec,        a.dx / abs(a.x) / sqrt(a.x^2 - 1.)                      )
+@DiffRule1(Base.acsc,       -a.dx / abs(a.x) / sqrt(a.x^2 - 1.)                      )
+@DiffRule1(Base.acot,       -a.dx / (1. + a.x^2)                                     )
+@DiffRule1(Base.asind,       180. / π / sqrt(1. - a.x^2) * a.dx                      )
+@DiffRule1(Base.acosd,      -180. / π / sqrt(1. - a.x^2) * a.dx                      )
+@DiffRule1(Base.atand,       180. / π / (1. + a.x^2) * a.dx                          )
+@DiffRule1(Base.asecd,       180. / π / abs(a.x) / sqrt(a.x^2- 1.) * a.dx            )
+@DiffRule1(Base.acscd,      -180. / π / abs(a.x) / sqrt(a.x^2- 1.) * a.dx            )
+@DiffRule1(Base.acotd,      -180. / π / (1. + a.x^2) * a.dx                          )
+@DiffRule1(Base.sinh,        cosh(a.x) * a.dx                                        )
+@DiffRule1(Base.cosh,        sinh(a.x) * a.dx                                        )
+@DiffRule1(Base.tanh,        sech(a.x)^2 * a.dx                                      )
+@DiffRule1(Base.sech,       -tanh(a.x) * sech(a.x) * a.dx                            )
+@DiffRule1(Base.csch,       -coth(a.x) * csch(a.x) * a.dx                            )
+@DiffRule1(Base.coth,       -csch(a.x)^2                                             )
+@DiffRule1(Base.asinh,       a.dx / sqrt(a.x^2 + 1.)                                 )
+@DiffRule1(Base.acosh,       a.dx / sqrt(a.x^2 - 1.)                                 )
+@DiffRule1(Base.atanh,       a.dx / (1. - a.x^2)                                     )
+@DiffRule1(Base.asech,      -a.dx / a.x / sqrt(1. - a.x^2)                           )
+@DiffRule1(Base.acsch,      -a.dx / abs(a.x) / sqrt(1. + a.x^2)                      )
+@DiffRule1(Base.acoth,       a.dx / (1. - a.x^2)                                     )
+@DiffRule1(SpecialFunctions.erf,         2. * exp(-a.x^2) / sqrt(π) * a.dx           )
+@DiffRule1(SpecialFunctions.erfc,       -2. * exp(-a.x^2) / sqrt(π) * a.dx           )
+@DiffRule1(SpecialFunctions.erfi,        2. * exp( a.x^2) / sqrt(π) * a.dx           )
+@DiffRule1(SpecialFunctions.gamma,       digamma(a.x) * gamma(a.x) * a.dx            )
+@DiffRule1(SpecialFunctions.lgamma,      digamma(a.x) * a.dx                         )
+@DiffRule1(SpecialFunctions.airy,        airyprime(a.x) * a.dx                       )  # note: only covers the 1-arg version
+@DiffRule1(SpecialFunctions.airyprime,   airy(2., a.x) * a.dx                        )
+@DiffRule1(SpecialFunctions.airyai,      airyaiprime(a.x) * a.dx                     )
+@DiffRule1(SpecialFunctions.airybi,      airybiprime(a.x) * a.dx                     )
+@DiffRule1(SpecialFunctions.airyaiprime, a.x * airyai(a.x) * a.dx                    )
+@DiffRule1(SpecialFunctions.airybiprime, a.x * airybi(a.x) * a.dx                    )
+@DiffRule1(SpecialFunctions.besselj0,   -besselj1(a.x) * a.dx                        )
+@DiffRule1(SpecialFunctions.besselj1,   (besselj0(a.x) - besselj(2., a.x))/2. * a.dx )
+@DiffRule1(SpecialFunctions.bessely0,   -bessely1(a.x) * a.dx                        )
+@DiffRule1(SpecialFunctions.bessely1,   (bessely0(a.x) - bessely(2., a.x))/2. * a.dx )
 
 
 
