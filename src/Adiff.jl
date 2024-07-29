@@ -148,15 +148,14 @@ macro DiffRule2(OP,AB,A,B)
         end
     end)
 end
-
 @DiffRule2(Base.atan,  (a.dx*b.x-b.dx*a.x)/(a.x^2+b.x^2),          (a.dx*b)/(a.x^2+b^2), -(b.dx*a)/(a^2+b.x^2) )   
 @DiffRule2(Base.hypot, (a.dx*a.x+b.dx*b.x)/hypot(a.x,b.x),         a.dx*a.x/hypot(a.x,b), b.dx*b.x/hypot(a,b.x))   
 @DiffRule2(Base.:(+),  a.dx+b.dx,                                  a.dx,                  b.dx                 )
 @DiffRule2(Base.:(-),  a.dx-b.dx,                                  a.dx,                  -b.dx                )
 @DiffRule2(Base.:(*),  a.dx*b.x+a.x*b.dx,                          a.dx*b,                a*b.dx               )
 @DiffRule2(Base.:(/),  a.dx/b.x-a.x/b.x^2*b.dx,                    a.dx/b,                -a/b.x^2*b.dx        ) 
-@DiffRule2(Base.:(^),  a.dx*b.x*a.x^(b.x-1)+log(a.x)*a.x^b.x*b.dx, a.dx*b*a.x^(b  -1),    log(a)*a ^b.x*b.dx   )  # BUG d x^0 / dx = 0*x^-1.  At x=0, is 0/0=NaN
-@inline Base.:(^)(a::∂ℝ{P,N,R},b::Integer) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(a.x^b ,a.dx*b*a.x^(b-1) )
+@DiffRule2(Base.:(^),  a.dx*b.x*a.x^(b.x-1)+log(a.x)*a.x^b.x*b.dx, a.dx*b*a.x^(b  -1),    log(a)*a ^b.x*b.dx   )  # for exponents ∈ ℝ
+@inline Base.:(^)(a::∂ℝ{P,N,R},b::ℤ) where{P,N,R<:ℝ} = b==0 ? zero(a) : ∂ℝ{P,N,R}(a.x^b ,a.dx*b*a.x^(b-1) )
 
 ## Functions
 macro DiffRule1(OP,A)
