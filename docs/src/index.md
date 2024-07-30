@@ -10,41 +10,42 @@ CurrentModule = Muscade
 
 # [Purpose](@id purpose)
 
-**[Muscade.jl](https://github.com/SINTEF/Muscade.jl): Create and solve optimization-FEM models.**
+**[Muscade.jl](https://github.com/SINTEF/Muscade.jl): Framework for the description and solution of optimization-FEM models.**
 
-**Framework**: `Muscade` provides an API to create new elements and new solvers.  It also provides the "piping" - facilities to create models, assemble matrices and vectors and extract and export results. As a framework, `Muscade` does not provide finite element types modeling any specific domain of physics.  It does however provide some domain-agnostic element types for doing things like introducing boundary conditions and introducing costs. 
+`Muscade` allows to describe and solve optimization problems constrained by equilibrium of a FEM model.  For example, we can have a FEM model of a structure subjected to forces that are to be estimated, based on partial and imperfect measurements of its response.  In addition, the stiffness of the structure can also be adjusted.
 
-The API to create new elements is quite classic (given degrees of freedom, compute their duals, aka. residuals): as such Muscade is not a *modelling language* like for example UFL which provides a formalism in which a "well posed problem" can be defined with domain, differential equations and boundary conditions.
+FEM-optimization problems have more degrees of freedom (in the following: "dofs") than classical FEM problems. They are separated into three `classes`:
 
-In order to obtain high performance, elements have to be implemented using a specific programming style: functional programming, using immutables.
+- `X`-dofs: duals of the FEM equations. `X`-dofs are the classical dofs of a finite element model.
+- `U`-dofs: not dual of the FEM equations and varying with time. Typicaly, `U`-dofs represent unknown external loads activing on the system.
+- `A`-dofs: not dual of the FEM equations and constant over time. Typicaly, `A`-dofs represent unknown model parameters.
 
-**Rapid development**: `Muscade` lets application developer focus on the interesting parts: formulating new element types and creating new solvers.  `Muscade` takes care of the tedious parts.
+Several types of problems fall under this description of "FEM-optimisation problems":
 
-It further accelerates the rapid development of new element types by using automatic differentiation and automatic extraction of element-results (think of stresses and strains, in an element that given nodal displacements computes nodal forces).  This results in shorter and more readable element code.
+**Reliability analysis**: Finding a design point. What is the most probable combination of external loads `U` and strength of the structure `A` that may cause the response `X` to exceed, in one of many ways, the acceptable? Here the target function describes the probability density (or rather, it's logarithm) describing unknown load and strength parameters.
 
-The idea is thus to be able to produce specialised FEM applications, at low cost, to create highly efficient solution to niche problems.  It is also hope that `Muscade` will help students of the finite element method to put theory into practice.
+**Design optimization**: What is the cheapest way to engineer a system (for example a structure) that will survive a set of loading conditions?  The target function describes a monetary cost.
 
-**Multiphysics**: When creating a new element, one must define a function `doflist` to describe the `class` (see below) `field` and `node` of each degree of freedom (dof). Element developers can introduce new `field`s (node rotation, hydrogen concentration, temperature, components of the magnetic field...).  The user can then associate a `scale` to each field stating that "displacements are the order of `10^-3 m`" or "potentials are of the order of `kV`.  This is used to improve the conditioning of the problem.
+**Load identification and monitoring**: Given incomplete and noisy measurements of the response of a system, what are the loads that are most likely to cause a response close to what has been measured?  The target function describes prior knowledge of the load processes, and the type, value and precision of the measurements. 
 
-**Optimization**: Muscade handles optimization-FEM problems, that is, optimization problems constrained by equilibrium of the FEM model.
+**Model identification**: given enough measurements on the response of a system responding to at least partly unknown load, is it possible to adjust the model of the system (model calibration, damage detection)? As in load identification problems, the target function describes prior knowledge of the load processes, and the measurements.  In addition, it expresses prior knowledge of the state of the structure. 
 
-Optimization-FEM consists in optimising a target function (here called the cost function) under the constraint that a FEM model be exactly verified. This in turn implies that the problem has more unknowns than the model has equation (or at least: more unknowns than linearly independent equations, as would be the case with “insufficient” boundary conditions).
+**Optimal control**: how to steer a system with many dofs into a wanted behaviour? The target function describes the cost of actuation and the cost of deviation from a target behaviour.
 
-The unknowns that are dual to the FEM equations are noted X-dofs, and sometimes refered to as “response dofs”. The rest of the unknowns can be separated into U-dofs (varying with time, generaly unknown loads) and A-dofs (comstant over time, generaly unknown model parameters). The conditions for such a constrained optimization problem to be well-posed are the Babushka-Brezzi conditions, which say, in essence “if you do not restrain, then at least measure”.
+`Muscade` provides an API to create new elements. While `Muscade` comes with a few elements for testing and demonstration purpose, the idea is to support users in developing their own element formulation and implementation.  `Muscade` supports the developement of multiphysics model:  ELements can introduce new types of degrees of freedim
 
-## Applications of optimization-FEM
+Elements are used to implement, for example measurements: given degrees of freedom, such an element return the logarithm of the probability of this combination of degrees of freedom, given the measured data.  Elements for this purpose are provided by `Muscade`, but new elements of this type can be added.
 
-Besides solving well-posed FEM problems (obtaining the repsonse of a system, given adequate boundary conditions and known loading terms), many applications can be, or should be possible within `Muscade`.
+Elements that model the physics of a problem require a function that, given degrees of freedom, return the element's contribution to the residual of the discretized equations to be solved.  The formulation of such elements will typicaly involve the discretization of differential equation by introducing shape functions. `Muscade` is thus not a *modelling language* like for example UFL which provides a formalism in which a "well posed problem" can be defined with domain, differential equations and boundary conditions.
 
-**Reliability analysis**: Finding a design point. What is the most probable combination of external loads `U` and strength of the structure `A` that may cause the response `X` to exceed, in one of many ways, the acceptable?
+``Muscade` makes it easier to develop new element types by applying several techniques:
 
-**Design optimization**: What is the cheapest way to engineer a system (for example a structure) that will survive a set of loading conditions?
+**Automatic differentiation**: elements describing a physical phenomena need only return the contribution of the element to the residual of the equations.  Elements describing a contribution to the target function do not need to provide gradient or Hessian.
 
-**Load identification and monitoring**: Given incomplete and noisy measurements of the response of a system, what are the loads that are most likely to cause a response close to what has been measured?
+**Automatic extraction of element-results**: "Element-results" are intermediate results in the process of computing contributions to the residual from degrees of freedom. An example is stresses and strains, in an element that given nodal displacements computes nodal forces. To make an element-result available, the only requirement is to prefix it with a special character `☼`.  For example: `☼σ = E*ε`.  This automatic result extraction also makes it possible to describe measurements taken on element-results (for example a strain).
 
-**Optimal control**: how to steer a system with many dofs into a wanted behaviour?
+**Element constructor for modeling**: Models in `Muscade` are created by writing Julia code that among other things, constructs new element instances.  Thanks to this, an element constructor is all that is required of the element programmer to facilitate model creation by the model user.
 
-**Model identification**: given enough measurements on the response of a system responding to at least partly unknown load, is it possible to adjust the model of the system (model calibration, damage detection)?
 
-**Sensor array optimization**: how best to place sensors in a system in order to support the above applications?
+
 

@@ -107,37 +107,6 @@ Q^*(X,U^*,A^*) &= Q(X,U,A) +  g_u(X,U,A) \cdot U_\lambda + g_a(A) \cdot A_λ \\
 \end{aligned}
 ```
 
-## Element state variables
 
-Element state variables are commonly used in forward finite element analysis, to represent things like plastic strain or dry friction. By design, `Muscade` does *not* provide facility to implement elements with state variables.
-
-Considering the integration of a problem in time, the introduction of internal states transforms the problem from *differential* to *integral*: the solution at one time steps depends on the solution at *all* preceeding time steps.  This is not an issue in standard finite elements, where time-stepping methods work perfectly well.  By constrast, problems with `U` as unknowns are not causal: a forward sweep in time is no longer possible, and all time steps have to be solved simultaneously. The integral natre of the problem results in the incremental problem being full.
-
-Phenomena traditionaly handled by state variables can still be modeled in `Muscade`: what would have been a state variable `χ` (greek letter chi) must become an explicit degree of freedom of class `:X`.  The corresponding residual is the equation of *evolution* of `χ`.  If we note `y` degrees of freedom that are not an internal state, the residual corresponding to `χ` is of the form
-```math
-    f(\chi,\dot{\chi},y,\dot{y})
-```
-As a consequence there are no static solvers in `Muscade`, all solvers handle least first derivatives in time.  
-
-## Solvers
-
-Solvers in `Muscade` solve problems of different forms including forward ``X`` problems
-
-```math
-R(X,0,0)=0
-```
-
-optimisation ``XUA`` problems
-
-```math
-\begin{aligned}
-\nabla_\Lambda L(\Lambda,X,U,A) &= 0 \\
-\nabla_X       L(\Lambda,X,U,A) &= 0 \\
-\nabla_U       L(\Lambda,X,U,A) &= 0 \\
-\nabla_A       L(\Lambda,X,U,A) &= 0
-\end{aligned}
-```
-
-as well as corresponding ``XU`` and `XA` problems.
 
 

@@ -109,8 +109,6 @@ w3,w∂v3 = value_∂{1,3}(Elements.Rodrigues⁻¹(M3))
     @test w∂v3 ≈ I
 end
 
-
-;
 end
 
 

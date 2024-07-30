@@ -86,5 +86,6 @@ module Muscade
     module Elements  # using Muscade.Elements: EulerBeam3D
         using Muscade
         include("Elements/BeamElement.jl")
+        include("Elements/DryFriction.jl")
     end
 end

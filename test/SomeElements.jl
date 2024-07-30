@@ -141,24 +141,3 @@ SdofOscillator(nod::Vector{Node};K₁::𝕣,K₂::𝕣=0.,C₁::𝕣,C₂::𝕣=
 end
 Muscade.doflist( ::Type{SdofOscillator})  = (inod =(1 ,1 ), class=(:X,:U), field=(:x,:u))
 
-### DryFriction
-
-struct DryFriction{Field} <: AbstractElement
-    drag    :: 𝕣
-    x′scale :: 𝕣  
-    k⁻¹     :: 𝕣   # ∈ [0,∞[, so k ∈ ]0,∞]
-end
-DryFriction(nod::Vector{Node};field::Symbol,drag::𝕣,Δx::𝕣=0.,x′scale::𝕣=1.) = DryFriction{field}(drag,x′scale,Δx/drag)
-@espy function Muscade.residual(o::DryFriction, X,U,A, t,SP,dbg) 
-    x,x′,f,f′ = ∂0(X)[1],∂1(X)[1], ∂0(X)[2], ∂1(X)[2]       # f: nod-on-el
-    conds     = (stick = (x′-o.k⁻¹*f′)*o.x′scale,           # each condition is matched if expression evals to 0.
-                 slip  =  abs(f)/o.drag -1      )                   
-    ☼old      = argmin(map(abs,conds))                      # Symbol-index of the "most matched" condition
-    if        old==:stick && abs(f)>o.drag   ☼new = :slip   # aaargh, slipping!
-    elseif    old==:slip  && f*x′<0          ☼new = :stick  # reversal!
-    else                                     ☼new =  old    # boring
-    end                  
-    return SVector(f,conds[new]), noFB
-end
-Muscade.doflist( ::Type{DryFriction{F}}) where{F} = (inod =(1 ,1 ), class=(:X,:X), field=(F,:dragforce)) 
-
