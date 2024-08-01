@@ -35,11 +35,11 @@ function sinc1⁗(x)
     1/5 +x²*(-1/14 +x²*(1/216 +x²*(-1/7920 +x²*(1/524160 +x²*(-1/54432000 +x²*(1/54432000 +x²*(-1/8143027200 +x²*(1/1656387532800))))))))
 end
 sinc1⁗′(x) = x*NaN
-Muscade.@DiffRule1(Elements.sinc1,               Elements.sinc1′( a.x)                * a.dx )
-Muscade.@DiffRule1(Elements.sinc1′,              Elements.sinc1″( a.x)                * a.dx )
-Muscade.@DiffRule1(Elements.sinc1″,              Elements.sinc1‴( a.x)                * a.dx )
-Muscade.@DiffRule1(Elements.sinc1‴,              Elements.sinc1⁗( a.x)                * a.dx )
-Muscade.@DiffRule1(Elements.sinc1⁗,              Elements.sinc1⁗′(a.x)                * a.dx )
+Muscade.@DiffRule1(sinc1,               sinc1′( a.x)                * a.dx )
+Muscade.@DiffRule1(sinc1′,              sinc1″( a.x)                * a.dx )
+Muscade.@DiffRule1(sinc1″,              sinc1‴( a.x)                * a.dx )
+Muscade.@DiffRule1(sinc1‴,              sinc1⁗( a.x)                * a.dx )
+Muscade.@DiffRule1(sinc1⁗,              sinc1⁗′(a.x)                * a.dx )
 
 
 # sinc1(acos(x)), differentiable to fourth order over ]-1,1] 

@@ -2,7 +2,7 @@
 
 ## Script as input
 
-`Muscade` being a framework for the development of optimization-FEM applications, it only provides a limited number of generic modeling capabilities, like fixing degrees of freedom (dofs) to describe boundary conditions, introducing holonomic constraints or costs on either dofs, or element-results (see [Built-in elements](@ref)). `Muscade` does not provide the elements needed to treat any specific application.  Hence to create a model, one will typicaly be `using` both `Muscade` and another package that provide a `Muscade`-based application (app).  The app provides specific elements for domains like continuum mechanics, marine structures, hydrogen diffusion etc.
+`Muscade` being a framework for the development of optimization-FEM applications, it only provides a limited number of generic modeling capabilities, like fixing degrees of freedom (dofs) to describe boundary conditions, introducing holonomic constraints or costs on either dofs, or element-results (see [Built-in elements](@ref)). `Muscade` does not provide the elements needed to treat any specific application.  Hence to create a model, one will typicaly be `using` both `Muscade` and another package that provides a `Muscade`-based application (app).  The app provides specific elements for domains like continuum mechanics, marine structures, hydrogen diffusion etc.
 
 Input to such an app is provided in the form of a Julia script containing instructions (calls to `Muscade`, using elements and possibly solvers provided by the app) to define the model, execute analyses, and extract and process analysis results.  This has two advantages: 
 
@@ -39,26 +39,78 @@ force           = eleres[iele,istep].F
 
 The definition of a model is done in three phases:
 
-1. Creating a blank model.
-2. Adding nodes.
-3. Adding elements.
+1. Creating a blank model, with [`Model`](@ref).
+2. Adding nodes and elements, with [`addnode!`](@ref) and [`addelement!`](@ref). One can however add an element to the model *after* all the nodes of the element have been added to the model.
+3. Initialising the model with [`initialize!`](@ref).  Once this is done, one can no longer add nodes or elements to the model. [`initialize!`](@ref) hashes some tables and generates an initial "as meshed" state of the system. Typicaly (but this depends on the app), all dofs are set to zero. The resulting variable, here called `initialstate` contains a pointer to the model: passing a state to a solver makes the model available to the solver. 
+[`setdof!`](@ref) can be used to set the value of specific dofs for more specific initial conditions.
 
-One can actually add nodes to the model after elements have been added.  One can however only add an element to the model *after* all the nodes of the element have been added to the model.
+`Muscade` does not provide a mesher. There are some general purposes meshers with Julia API, which outputs could be used to generate calls to [`addnode!`](@ref) and [`addelement!`](@ref).
 
-`Muscade` does not provide a mesher. There are some general purposes meshers with Julia API that could be used.
+The model - either finitialized or under construction, can be examined using [`describe`](@ref) and [`getndof`](@ref).  
+
+Optionaly, one can also use [`setscale!`](@ref) (with the help of [`studyscale`](@ref)) to scale the variables and thus improve the conditioning of the problem. 
+
+## Built-in elements
+
+With a few [exceptions](@ref ellib) for testing and demonstration, `Muscade` does not provide physical elements.  However, it provides several general purpose elements  to introduce loads, costs or  constraints.
+
+[`DofLoad`](@ref) adds a time-varying load on a single X-dof.  Elements for more general loads, in particular, consistent loads on element boundaries or domain, or follower loads, need to be implemented if required.
+
+[`DofCost`](@ref) adds a cost as a function of either X-dofs ,U-dofs (and/or their derivatives), A-dofs and time, or as a function of A-dofs alone. Elements for costs on unknwn distributed load *fields* (over boundary or domain) must be provided by apps if required.
+
+[`SingleDofCost`](@ref) provides a simplified syntax for costs on a single dof.
+
+[`ElementCost`](@ref) adds a cost on a combination of one element's dofs and element-results.
+
+[`DofConstraint`](@ref) adds a constraint to a combination of *values* (no time derivatives) of dofs. The constraints can switch over time between equality, inequality and "off". Inequality constraints are handled using a modified interior point method.
+
+[`ElementConstraint`](@ref) adds a constraint to a function of internal results from one element. The constraints can switch over time between equality, inequality and "off". Inequality constraints are handled using a modified interior point method.
+
+[`Hold`](@ref) provides a simplified syntax to set a single X-dof to zero.
+
+[`QuickFix`](@ref) allows to rapidly create a simple element, with limitations in functionality. 
 
 ## Running the analysis
 
-`initialize!` is used to create an as-meshed state of the system. Typicaly (but this depends on the app), all dofs are set to zero. The resulting variable, here called `initialstate` contains a pointer to the model.  Once a model is thus initialized, one can no longer add nodes or elements to it.  This is to ensure that a model can not be modified during a sequence of analyses.
+[`solve`](@ref) is then called with the name of the solver to be used (here [`SweepX{0}`](@ref)), and any named parameters required by the solver. The return value `state` can have different structures, depending on the solver.  For [`SweepX{0}`](@ref), `state` is a vector (over the time steps) of `State`s.
 
-`solve` is then called with the name of the solver to be used (here `SweepX{0}`), and any named parameters required by the solver. The return value `state` is *for this solver* a vector (over the time steps) of `State`s.
+[`describe`](@ref) can also be used to inspect `State`s.
+
+Analyses may fail due to singular matrix.  The source of the singularity can be challenging to diagnose. [`studysingular`](@ref) can help determine the null-space of an incremental matrix, for small problems.
 
 ## Extracting results
 
-`State`s (returned by `initialize!` and `solve`). are variables which contents are private (not part of the API, and subject to change), but can be accessed using functions like `getdof` and `getresult`.
+`State`s (returned by [`initialize!`](@ref) and [`solve`](@ref)). are variables which contents are private (not part of the API, and subject to change), but can be accessed using functions like [`getdof`](@ref) and [`getresult`](@ref).
 
-`getdof` allows to obtain dofs which are directly stored in `state`, by specifying class, field and node.
+ [`getdof`](@ref) allows to obtain dofs which are directly stored in `state`, by specifying class, field and node.
 
-`getresult` (used in combination with `@request`) allows to obtain element-results which have been marked as requestable inside the function `lagrangian` or `residual` of an element. These element-results are not stored in the `State`: `getresult` will call a modified version of `lagrangian` or `residual` to obtain the `@request`ed results.
+[`getresult`](@ref) (used in combination with [`@request`](@ref)) allows to obtain element-results which have been marked as requestable inside the function [`lagrangian`](@ref) or [`residual`](@ref) of an element. These element-results are not stored in the `State`: [`getresult`](@ref) will call a modified version of [`lagrangian`](@ref) or [`residual`](@ref) to obtain the [`@request`](@ref)ed results.
 
-TODO Plotting results
+## Units
+
+`Muscade` provides functionality to transform quantities to and from basic SI units.
+
+```julia
+using Muscade
+using Muscade: m, kg, pound, foot
+rho          = 3←(pound/foot^3)                      # convert to SI
+vieuxquintal = 1000*pound                            # define new unit
+printf("Density [pound/foot^3] %f",rho→pound/foot^3) # convert from SI
+```
+
+Arrays can be converted in the same way: `[200,300,24]←mm`.
+
+A guideline for handling units without [problems](https://en.wikipedia.org/wiki/Mars_Climate_Orbiter) is:
+
+- **Element developers** assume inputs with consistent units, and thus never make unit conversions.
+- **Element developers** do not assume that the input are expressed in base SI units, and thus require all necessary dimensional constants (acceleration of gravity, gas constant...) as user input.
+- **Users** convert all their input values as they define them in the input `rho = 3 ← pound/foot^3`.
+- **Users** convert Muscade outputs just before printing them out `printf("stress [MPa] %f",stress → MPa)`.
+
+Excellent packages exist for the handling of units ([`Unitful.jl`](https://painterqubits.github.io/Unitful.jl/stable/) ).  These packages have zero
+runtime overhead, and allow to verify code for unit consistency (`Muscade` does not provide this). However, it is arguably not possible to make these packages work with `Muscade`: In `Muscade`, `3←(pound/foot^3)` is of type `Float64`.  A comparable operation in [`Unitful.jl`](https://painterqubits.github.io/Unitful.jl/stable/)  
+would output a variable with a *type* containing data about dimensionality. `Muscade` handles various arrays of quantities with different dimensionality: such a solution would result in arrays of heterogeneous types. `Muscade` does not allow this, as this would result in catastrophic loss of performance due to [type instability](@ref typestab).
+
+## Drawing
+
+TODO 

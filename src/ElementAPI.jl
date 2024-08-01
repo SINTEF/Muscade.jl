@@ -130,11 +130,25 @@ lagrangian()=nothing
     return R,FB
 end
 
-The inputs and outputs to `residual` are the same as for `lagrangian` with two exceptions:
-- `residual` does no have input `Λ`.
-- the first output argument of `residual` is not a Lagrangian `L` but `R`,
- a `SVector{nXdof,R} where{R<:Real}`, containing the element's contribution 
- to the residual of the equations to be solved.     
+
+# Inputs
+- `eleobj` an element object
+- `X` a `NTuple` of `SVector{nXdof,R} where{R<:Real}`, containing the Xdofs and, depending on the solver,
+   their time derivatives. Use `x=∂0(X)`, `v=∂1(X)` and `a=∂2(X)` to safely obtain vectors of zeros
+   where the solver leaves time derivatives undefined.
+- `U` a `NTuple` of `SVector{nUdof,R} where{R<:Real}`, containing the Udofs and, depending on the solver,
+   their time derivatives. Use `u=∂0(U)`, `̇u=∂1(U)` and `̈u=∂2(U)` to safely obtain vectors of zeros
+   where the solver leaves time derivatives undefined.
+- `A` a `SVector{nAdof,R} where{R<:Real}`.
+- `t` a ``Real` containing the time.
+- `SP` solver parameters (for example: the barrier parameter `γ` for 
+  interior point methods).
+- `dbg` a `NamedTuple` to be used _only_ for debugging purposes.
+
+# Outputs
+- `R` the residual
+- `FB` feedback from the element to the solver (for example: can `γ` be 
+  reduced?). Return `noFB` of the element has no feedback to provide.
 
 See also: [`lagrangian`](@ref), [`doflist`](@ref), [`@espy`](@ref), [`∂0`](@ref), [`∂1`](@ref), [`∂2`](@ref), [`noFB`](@ref)
 """

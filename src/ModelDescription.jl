@@ -294,7 +294,7 @@ Return an initial `State` for the model with all dofs set to zero
 
 Modifying a model (invoquing `addnode!` and `addelement!` after `initialize!` will result in an error) 
 
-See also: [`addnode!`](@ref), [`addelement!`](@ref), [`solve`](@ref)
+See also: [`setdof!`](@ref), [`addnode!`](@ref), [`addelement!`](@ref), [`solve`](@ref)
 """
 function initialize!(model::Model;kwargs...)
     assert_unlocked(model)

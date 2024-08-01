@@ -1,4 +1,4 @@
-# Type-stability
+# [Type-stability](@id typestab)
 
 ## Introduction
 

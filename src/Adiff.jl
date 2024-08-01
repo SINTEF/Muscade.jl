@@ -76,6 +76,13 @@ precedence(a::SA)     = precedence(eltype(a))
 npartial(  a::SA)     = npartial(eltype(a))
 precedence(a::ℝ)      = precedence(typeof(a))
 npartial(  a::ℝ)      = npartial(typeof(a))
+"""
+    P = constants(a,b,c)
+
+Generate a precedence `P` that is higher than the precedence of the arguments.   
+
+See also: [`variate`](@ref), [`δ`](@ref), [`value`](@ref), [`∂`](@ref), [`VALUE`](@ref), [`value_∂`](@ref)
+"""
 constants(tup::Tuple) = constants(tup...) 
 constants( a,args...) = max(constants(a),constants(args...))
 constants( a)         = 1+precedence(a) 
@@ -85,16 +92,45 @@ constants( ::Nothing) = 0
 struct δ{P,N,R}                end # need dum, because syntax δ{P,N,R}() collides with default constructor
 struct variate{P,N}            end
 struct directional{P,N}        end 
+"""
+    X = δ{P,N}()
+
+create a `SVector` of automatic differentiation objects of precedence `P` and value `zero`.    
+
+    X = δ{P}()
+
+Create automatic differentiation objects of precedence `P` and value `zero`.  
+
+See also: [`constants`](@ref), [`variate`](@ref), [`value`](@ref), [`∂`](@ref), [`VALUE`](@ref), [`value_∂`](@ref)
+"""
 δ{P,N,R}(                          ) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,N,R}}(∂ℝ{P,N  }(zero(R),i                                         ) for i=1:N)
 δ{P,N,R}(               δa::SV{N,𝕣}) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,N,R}}(∂ℝ{P,N,R}(zero(R),SV{N,R}(i==j ? δa[i]  : zero(R) for i=1:N)) for j=1:N)
 δ{P    }(                          ) where{P       } =                 ∂ℝ{P,1,𝕣}(0.     ,SV{1,𝕣}(1.                               ))
 
+"""
+    X = variate{P,N}(x)
+
+where `typeof(x)<:SVector{N}`, create a `SVector` of automatic differentiation objects of precedence `P`.    
+
+    X = variate{P}(x)
+
+where `typeof(x)<:Real`, create an object of precedence `P`.    
+
+See also: [`constants`](@ref), [`δ`](@ref), [`value`](@ref), [`∂`](@ref), [`VALUE`](@ref), [`value_∂`](@ref)
+"""
 variate{P,N}(a::SV{N,R}            ) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,N,R}}(∂ℝ{P,N  }(a[i],i) for i=1:N)
 variate{P,N}(a::SV{N,R},δa::SV{N,𝕣}) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,N,R}}(∂ℝ{P,N,R}(a[j]   ,SV{N,R}(i==j ? R(δa[i])  : zero(R) for i=1:N)) for j=1:N)
 variate{P  }(a::R                  ) where{P,R<:ℝ}   =  ∂ℝ{P,1}(a,SV{1,R}(one(R)))
 directional{P}(a::SV{N,R},δa::SV{N,R}) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,1,R}}(∂ℝ{P,1}(a[i],SV{1,R}(δa[i])) for i=1:N)
 
 # Analyse
+"""
+    @show VALUE(Y)
+
+Completely strip `Y` of partial derivatives.  Use only for debugging purpose.    
+
+See also: [`constants`](@ref), [`variate`](@ref), [`δ`](@ref), [`value`](@ref), [`∂`](@ref), [`value_∂`](@ref)
+"""
 VALUE(a::Nothing )                     =        nothing
 VALUE(a::ℝ )                           =        a
 VALUE(a::∂ℝ)                           = VALUE( a.x)
@@ -104,11 +140,31 @@ struct ∂{P,N}                  end
 struct value{P,N}              end
 struct value_∂{P,N}            end
 
+"""
+    y = value{P}(Y)
+
+Extract the value of an automatic differentiation object, or `SArray` of such objects.    
+
+See also: [`constants`](@ref), [`variate`](@ref), [`δ`](@ref), [`∂`](@ref), [`VALUE`](@ref), [`value_∂`](@ref)
+"""
 value{P}(a::∂ℝ{P,N,R}) where{P,N,R   } = a.x
 value{P}(a::R        ) where{P  ,R<:ℝ} = a
 value{P}(a::SA       ) where{P       } = value{P}.(a)
 
 # ∂{P}(a) is handled as ∂{P,1}(a) and returns a scalar 
+"""
+    yₓ = ∂{P,N}(Y)
+
+Extract the gradient of an automatic differentiation object.  If `Y` is a `SArray`, 
+the index of the partial derivative is appended to the indices of `Y`.   
+
+    y′ = ∂{P}(Y)
+
+Extract the derivative of an automatic differentiation object (or `SArray` of such), where the variation
+was created by the syntax `variate{P}`.
+
+See also: [`constants`](@ref), [`variate`](@ref), [`δ`](@ref), [`value`](@ref), [`VALUE`](@ref), [`value_∂`](@ref)
+"""
 ∂{P,N}(a::     ∂ℝ{P,N,R} ) where{  P,N,R   } = a.dx
 ∂{P,N}(a::            R  ) where{  P,N,R<:ℝ} = SV{  N,R}(zero(R)    for i=1:N      )
 ∂{P,N}(a::SV{M,∂ℝ{P,N,R}}) where{M,P,N,R   } = SM{M,N,R}(a[i].dx[j] for i=1:M,j∈1:N) # ∂(a,x)[i,j] = ∂a[i]/∂x[j]
@@ -118,7 +174,14 @@ value{P}(a::SA       ) where{P       } = value{P}.(a)
 ∂{P  }(a::SV{N,∂ℝ{P,1,R}}) where{  P,N,R   } = SV{  N,R}(a[i].dx[1] for i=1:N     ) # ∂(a,x)[i]    = ∂a[i]/∂x
 #∂{P,N}(a::SA{M,∂ℝ{P,N,R}}) where{M,P,N,R}  = SA{(M...,N),R}(a[i].dx[j] for i∈eachindex(a),j∈1:N) # ∂(a,x)[i,...,j] = ∂a[i,...]/∂x[j]
 #∂{P,N}(a::SA{M,       R }) where{M,P,N,R}  = SA{(M...,N),R}(zero(R)    for i∈eachindex(a),j∈1:N)
+"""
+    y,yₓ = value_∂{P,N}(Y)
+    y,y′ = value_∂{P  }(Y)
+    
+Get value and derivative in one operation.    
 
+See also: [`constants`](@ref), [`variate`](@ref), [`δ`](@ref), [`value`](@ref), [`∂`](@ref), [`VALUE`](@ref)
+"""
 value_∂{P,N}(a) where{  P,N}= value{P}(a),∂{P,N}(a)
 value_∂{P  }(a) where{  P  }= value{P}(a),∂{P  }(a)
 

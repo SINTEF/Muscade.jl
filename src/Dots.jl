@@ -2,9 +2,31 @@ using Base.Cartesian
  #\circ \otimes
 
 ∘₀(a,b) = dots(a,b,Val(0))
+"""
+    c = a∘₁b
+
+Compute the single-dot product of two arrays, so that cᵢⱼ=Σₖ aᵢₖ bₖⱼ where i and j can be multiple indices.
+
+See also: [`⊗`](@ref),[`∘₂`](@ref)
+"""     
 ∘₁(a,b) = dots(a,b,Val(1))
+"""
+    c = a∘₂b
+
+Compute the double-dot product of two arrays, so that cᵢⱼ=Σₖₗ aᵢₖₗ bₖₗⱼ where i and j can be multiple indices.
+
+See also: [`∘₁`](@ref),[`⊗`](@ref)
+"""     
 ∘₂(a,b) = dots(a,b,Val(2))
 Base. ∘(a::AbstractArray,b::AbstractArray) = dots(a,b,Val(1))
+
+"""
+    c = a⊗b
+
+Compute external product of two arrays, so that cᵢⱼ=aᵢ bⱼ where i and j can be multiple indices.
+
+See also: [`∘₁`](@ref),[`∘₂`](@ref)
+"""     
 ⊗(a,b) = dots(a,b,Val(0))
 
 @generated function dots(a::AbstractArray{Ta,Na},b::AbstractArray{Tb,Nb},::Val{ndot}) where {Ta,Tb,Na,Nb,ndot}

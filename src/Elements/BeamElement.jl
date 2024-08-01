@@ -54,7 +54,6 @@ Bᵤ₁(ζ) =   72ζ   /4
 Bᵤ₂(ζ) =  -72ζ   /4
 Bᵥ₁(ζ) = ( 72ζ-8)/4
 Bᵥ₂(ζ) = ( 72ζ+8)/4
-
 struct EulerBeam3D{Mat} <: AbstractElement
     cₘ       :: SVector{3,𝕣} 
     rₘ       :: Mat33{𝕣}  
@@ -69,7 +68,11 @@ struct EulerBeam3D{Mat} <: AbstractElement
     mat      :: Mat
 end
 Muscade.doflist(::Type{<:EulerBeam3D}) = (inod = (1,1,1,1,1,1, 2,2,2,2,2,2), class= ntuple(i->:X,ndof), field= (:t1,:t2,:t3,:r1,:r2,:r3, :t1,:t2,:t3,:r1,:r2,:r3) )
+"""
+    EulerBeam3D
 
+TODO: document EulerBeam3D
+"""
 function EulerBeam3D(nod::Vector{Node};mat::Mat,orient2::SVector{ndim,𝕣}=SVector(0.,1.,0.)) where{Mat} 
     c       = coord(nod)
     cₘ      = SVector{ndim}((c[1]+c[2])/2)

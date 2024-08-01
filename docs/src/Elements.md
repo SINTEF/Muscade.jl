@@ -1,28 +1,6 @@
-# Elements
+# [Implementing new elements](@id implementelement)
 
-## Built-in elements
-
-With a few exceptions for testing and demonstration, `Muscade` does not provide physical elements.  However, it provides several general purpose elements  to introduce loads, costs or  constraints.
-
-[`DofLoad`](@ref) adds a time-varying load on a single X-dof.  Elements for more general loads, in particular, consistent loads on element boundaries or domain, or follower loads, need to be implemented if required.
-
-[`DofCost`](@ref) adds a cost as a function of either X-dofs ,U-dofs (and/or their derivatives), A-dofs and time, or as a function of A-dofs alone. Elements for costs on unknwn distributed load *fields* (over boundary or domain) must be provided by apps if required.
-
-[`SingleDofCost`](@ref) provides a simplified syntax for costs on a single dof.
-
-[`ElementCost`](@ref) adds a cost on a combination of one element's dofs and element-results.
-
-[`DofConstraint`](@ref) adds a constraint to a combination of *values* (no time derivatives) of dofs. The constraints can switch over time between equality, inequality and "off". Inequality constraints are handled using a modified interior point method.
-
-[`ElementConstraint`](@ref) adds a constraint to a function of internal results from one element. The constraints can switch over time between equality, inequality and "off". Inequality constraints are handled using a modified interior point method.
-
-[`Hold`](@ref) provides a simplified syntax to set a single X-dof to zero.
-
-[`QuickFix`](@ref) allows to rapidly create a simple element, with limitations in functionality. 
-
-## [Implementing new elements](@id implementelement)
-
-### Introduction
+## Introduction
 
 The implementation of a element requires 
 
@@ -35,7 +13,7 @@ The implementation of a element requires
 
 Each element must implement *either* `Muscade.lagrangian` *or* `Muscade.residual`, depending on what is more natural: a beam element will implement `Muscade.residual` (element reaction forces as a function of nodal displacements), while an element representing a strain sensor will implement `Muscade.lagrangian` (log-of the probability density of the strain, given an uncertain measurement).
 
-### No internal variables
+## No internal variables
 
 In classical finite element formulations, plastic strain is implemented by letting an element have plastic strain and a hardening parameter as an *internal variable* at each quadrature point of the element.  Internal variables are not degrees of freedom.  Instead, they are a memory of the converged state of the element at the previous load or time step, used to affect the residual computed at the present time step.  Internal variables are also used when modeling friction and damage processes.
 
@@ -47,7 +25,7 @@ To model phenomena usualy treated using internal variable, it is necessary in `M
     Because the equations of evolution involves first order time derivative, one can not use a static solver in combination with such elements.
 
 
-### DataType
+## DataType
 
 For a new element type `MyELement`, the datatype is defined as
 
@@ -57,9 +35,9 @@ struct MyElement <: AbstractElement
 end
 ```
 
-`MyElement` *must* be a subtype of `AbstractElement`.
+`MyElement` *must* be declared a subtype of [`AbstractElement`](@ref).
 
-### Constructor
+## Constructor
 
 The element must provide a constructor of the form
 
@@ -95,7 +73,7 @@ e1 = addelement!(model,MyElement,nodid,kwargs...)
 
 See [`addelement!`](@ref).
 
-### `Muscade.doflist`
+## `Muscade.doflist`
 
 The element must provide a method of the form
 
@@ -129,11 +107,11 @@ Muscade.doflist( ::Type{Turbine}) = (inod =(1   ,1   ,2        ,2        ),
 
 See [`doflist`](@ref).
 
-### `Muscade.lagrangian` or `Muscade.residual`
+## `Muscade.lagrangian` or `Muscade.residual`
 
 An element must implement at least one of `Muscade.lagrangian` or `Muscade.residual`.
 
-#### `Muscade.lagrangian`
+### `Muscade.lagrangian`
 
 Elements that implement a contribution to a target function must implement `Muscade.lagrangian`.
 
@@ -146,7 +124,7 @@ end
 
 See [`lagrangian`](@ref) for the list of arguments and outputs.
 
-#### `Muscade.residual`
+### `Muscade.residual`
 
 Elements that implement "physics" will typicaly implement `Muscade.residual` (they could implement the same using `lagrangian`, but the resulting code would be less performant).
 
@@ -164,7 +142,7 @@ end
 
 See [`residual`](@ref) for the list of arguments and outputs.
 
-#### Automatic differentiation
+### Automatic differentiation
 
 The gradients and Hessians of `R` or `L` do not need to be implemented, because `Muscade` uses automatic 
 differentiation. Because of this, it is important not to over-specify the inputs.  For example, 
@@ -178,7 +156,7 @@ implementing a function header with
 would cause a `MethodError`, because `Muscade` will attempt to call with a `SVector` instead of `Vector`, and a special
 datatype supporting automatic diffeentiation instead of `Float64`.
 
-#### Extraction of element-results
+### Extraction of element-results
 
 The function definitions of `Muscade.lagrangian` and `Muscade.residual` must be anotated with the macro call `@espy`.  
 Variables within the body of `Muscade.lagrangian` and `Muscade.residual`, which
@@ -196,7 +174,7 @@ of the function to extract results wanted by the user.
 
 See [`@espy`](@ref) for a complete guide on code anotations. 
 
-#### Immutables and Gauss quadrature
+### Immutables and Gauss quadrature
 
 `Muscade.residual` and `Muscade.lagrangian` must be written in a specific style in order maximize performance
 and to facilitate automatic differentiation. 
@@ -269,7 +247,7 @@ gathers the hypothetic `a` of all quadrature points into a `Tuple` and adds toge
 
 See [`residual`](@ref).
 
-#### Performance
+### Performance
 
 For a given element formulation, the performance of `residual` and `lagrangian` can vary with a factor up to 100 between a good and a bad implementation.
 
@@ -277,24 +255,29 @@ For a given element formulation, the performance of `residual` and `lagrangian` 
 
 **Allocation**, and the corresponding deallocation of memory *on the heap* takes time. By contrast, allocation and deallocation *on the stack* is fast.  In Julia, only immutable variables can be allocated on the stack. See the page on [memory management](Memory.md)
 
-**Automatic differentiation** generaly does not affect how `residual` and `lagrangian` are writen.  There are two performance-related exceptions to this:
+**Automatic differentiation** generaly does not affect how `residual` and `lagrangian` are written.  There are two performance-related exceptions to this:
 
-1. If a complex sub function in `residual` and `lagrangian` (typicaly a material model or other closure) operates on an array (for example, the strain) that is smaller than the number of degrees of freedom of the system, computing time can be saved by computing the derivative of the output (in the example, the stress) with respect to the input to the subfunction, and then compose the derivatives.
+1. If a complicated sub-function in `residual` and `lagrangian` (typicaly a material model or other closure) operates on an array (for example, the strain) that is smaller than the number of degrees of freedom of the system, computing time can be saved by computing the derivative of the output (in the example, the stress) with respect to the input to the subfunction, and then compose the derivatives.
 2. Iterative precedures are sometimes used within `residual` and `lagrangian`, a typical example being in plastic material formulations.  There is no need to propagate automatic differentiation through all the iterations - doing so with the result of the iteration provides the same result.
+3. Elements with corotated reference system (e.g. [`Muscade.EulerBeam3D`](@ref)) can use automatic differentiation to transform the residual back to the global reference system.
 
 See the page on [automatic differentiation](Adiff.md)
 
-
-### Help functions
+## Help functions
 
 `Muscade` provides functions and constants to make it easier to comply with the API:
 
-- Element constructors can use function [`coord`](@ref) to extract the coordinates fron the `Vector{Node}` they get as first argument.
-- `residual` and `lagrangian` **must** use [`∂0`](@ref), [`∂1`](@ref) and [`∂2`](@ref) when extracting the zeroth, first and second time derivatives from arguments `X` and `U`.
-- Constant [`noFB`](@ref) (which have value `nothing`) can be used by elements that do not have memory or no feedback to the solving procedure.
+Element constructors can use function [`coord`](@ref) to extract the coordinates fron the `Vector{Node}` they get as first argument.
 
+`residual` and `lagrangian` **must** use [`∂0`](@ref), [`∂1`](@ref) and [`∂2`](@ref) when extracting the zeroth, first and second time derivatives from arguments `X` and `U`.
 
+Constant [`noFB`](@ref) (which have value `nothing`) can be used by elements that do not have feedback to the solving procedure.
 
+It is sometimes convenient to handle time derivatives using automatic differentiation: elements with corotated reference systems can thus handle a moving corotated system, and thus centripetal and Coriolis forces.  See [`Muscade.EulerBeam3D`](@ref) for an example. Helper functions [`Muscade.motion`](@ref), [`Muscade.position`](@ref), [`Muscade.velocity`](@ref) and [`Muscade.acceleration`](@ref) are provided. These helper functions are not exported by `Muscade`, so their invocation must be qualified with `Muscade.`.
+
+See [`Muscade.test_static_element`](@ref) (not exported) to compute the gradient of a lagrangian. 
+
+For those prefering to think in terms of Cartesian tensor algebra, rather than matrix algebra, operators [`⊗`](@ref), [`∘₁`](@ref) and [`∘₂`](@ref) provide the exterior product, the single dot product and the double dot product respectively.
 
 
 

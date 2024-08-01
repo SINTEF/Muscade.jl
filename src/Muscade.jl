@@ -34,7 +34,7 @@ module Muscade
     export getndof
 
     include("ElementAPI.jl")
-    export lagrangian,residual,espyable
+    export lagrangian,residual
     export coord,∂0,∂1,∂2,getsomedofs
     export doflist
     export noFB
@@ -69,23 +69,11 @@ module Muscade
     include("SelfDraw.jl")
     export draw,request2draw
 
-    export Unit
-    module Unit  # using Muscade.Unit
-        include("Unit.jl")
-        export unit,←,→,convert
-    end
+    include("Unit.jl")
+#    export unit,←,→,convert
+    export ←,→
 
-    export ElementTestTools
-    module ElementTestTools # using Muscade.ElementTestTools
-        using Muscade
-        include("ElementTestTools.jl")
-        export test_static_element,gradient
-    end
-
-    export Elements
-    module Elements  # using Muscade.Elements: EulerBeam3D
-        using Muscade
-        include("Elements/BeamElement.jl")
-        include("Elements/DryFriction.jl")
-    end
+    include("ElementTestTools.jl")
+    include("Elements/BeamElement.jl")
+    include("Elements/DryFriction.jl")
 end
