@@ -5,7 +5,7 @@ using Base.Cartesian
 """
     c = a∘₁b
 
-Compute the single-dot product of two arrays, so that cᵢⱼ=Σₖ aᵢₖ bₖⱼ where i and j can be multiple indices.
+Compute the single-dot product of two arrays, so that `cᵢⱼ=Σₖ aᵢₖ bₖⱼ` where `i` and `j` can be multiple indices.
 
 See also: [`⊗`](@ref),[`∘₂`](@ref)
 """     
@@ -13,7 +13,7 @@ See also: [`⊗`](@ref),[`∘₂`](@ref)
 """
     c = a∘₂b
 
-Compute the double-dot product of two arrays, so that cᵢⱼ=Σₖₗ aᵢₖₗ bₖₗⱼ where i and j can be multiple indices.
+Compute the double-dot product of two arrays, so that `cᵢⱼ=Σₖₗ aᵢₖₗ bₖₗⱼ` where `i` and `j` can be multiple indices.
 
 See also: [`∘₁`](@ref),[`⊗`](@ref)
 """     
@@ -23,7 +23,7 @@ Base. ∘(a::AbstractArray,b::AbstractArray) = dots(a,b,Val(1))
 """
     c = a⊗b
 
-Compute external product of two arrays, so that cᵢⱼ=aᵢ bⱼ where i and j can be multiple indices.
+Compute the exterior product of two arrays, so that `cᵢⱼ=aᵢ bⱼ` where `i` and `j` can be multiple indices.
 
 See also: [`∘₁`](@ref),[`∘₂`](@ref)
 """     

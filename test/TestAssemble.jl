@@ -2,7 +2,6 @@ module TestAssemble
 
 using Test,StaticArrays,SparseArrays
 using Muscade
-using Muscade.ElementTestTools
 
 include("SomeElements.jl")
 
@@ -16,7 +15,7 @@ U        = @SVector 𝕣[]
 A        = @SVector [0.,0.]  # [Δseadrag,Δskydrag]
 
 #                         eleobj, Λ, X,  U,  A, t, SP,     dbg
-L,Lλ,Lx,Lu,La  = gradient(turbine,Λ ,[X],[U],A, 0.,nothing,(;))
+L,Lλ,Lx,Lu,La  = Muscade.gradient(turbine,Λ ,[X],[U],A, 0.,nothing,(;))
 
 @testset "Turbine gradient" begin
     @test Lλ            ≈ [-2, -3]
@@ -25,7 +24,7 @@ L,Lλ,Lx,Lu,La  = gradient(turbine,Λ ,[X],[U],A, 0.,nothing,(;))
     @test La            ≈ [-2, -3]
 end
 
-Lλ,Lx,Lu,La   = test_static_element(turbine;Λ,X,U,A,verbose=false)
+Lλ,Lx,Lu,La   = Muscade.test_static_element(turbine;Λ,X,U,A,verbose=false)
 
 @testset "test_static_element" begin
     @test Lλ            ≈ [-2, -3]
@@ -43,7 +42,7 @@ X        = @SVector [0.,0.,0.]
 U        = @SVector 𝕣[]
 A        = @SVector [0.,0.]  # [Δseadrag,Δskydrag]
 #                             eleobj, Λ, X,  U,  A, t, SP,     dbg
-L,Lλ,Lx,Lu,La   = gradient(anchorline,Λ ,[X],[U],A, 0.,nothing,(;))
+L,Lλ,Lx,Lu,La   = Muscade.gradient(anchorline,Λ ,[X],[U],A, 0.,nothing,(;))
 @testset "anchorline1" begin
     @test Lλ            ≈ [-12.25628901693551, 0.2607721067433087, 24.51257803387102]
     @test Lx            ≈ [-0.91509745608786, 0.14708204066349, 1.3086506986891027]

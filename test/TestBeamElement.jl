@@ -7,9 +7,9 @@ model           = Model(:TestModel)
 node1           = addnode!(model,𝕣[0,0,0])
 node2           = addnode!(model,𝕣[4,3,0])
 elnod           = [model.nod[n.inod] for n∈[node1,node2]]
-mat             = Elements.BeamCrossSection(EA=10.,EI=3.,GJ=4.)
+mat             = Muscade.BeamCrossSection(EA=10.,EI=3.,GJ=4.)
 
-beam            = Elements.EulerBeam3D(elnod;mat,orient2=SVector(0.,1.,0.))
+beam            = Muscade.EulerBeam3D(elnod;mat,orient2=SVector(0.,1.,0.))
 
 @testset "constructor" begin
     @test beam.cₘ    ≈ [2.0, 1.5, 0.0]

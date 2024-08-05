@@ -181,7 +181,7 @@ and to facilitate automatic differentiation.
 
 For performance, no allocation on the heap must occur.  This implies in particular that no `Array`s, and only 
 (stack allocated) `StaticArray`s must be used.  For example. the code `a=zeros(n)`, creates an `Array` 
-(allocated on the heap), and should be replaced with `a =SVector{N}(0. for i=1:N)` where `N` must be known 
+(allocated on the heap), and should be replaced with `a = SVector{N}(0. for i=1:N)` where `N` must be known 
 at compile time to ensure type stability.
 
 To facilitate automatic differentiation, no mutation must occur. `StaticArray`s are anyway not mutable.
@@ -243,9 +243,22 @@ The code
     R = sum(   igp->t[igp].r,ngp)
 ```
 
-gathers the hypothetic `a` of all quadrature points into a `Tuple` and adds together the contributions `r` into the residual `R`.  Variables behaving like `a` *might* come into play if solver feedback is provided from each Gauss point
+gathers the hypothetic `a` of all quadrature points into a `Tuple` and adds together the contributions `r` into the residual `R`.  Variables behaving like `a` *might* come into play if solver feedback is provided from each Gauss point.
 
-See [`residual`](@ref).
+If the loop over the Gauss points only accumulates `R` (or `L`, in `Muscade.lagrangian`), then a simpler pattern can be used:
+
+```julia
+@espy function residual(x,χ)
+    R = sum(1:ngp) do igp
+        ☼F = ...
+        ☼Σ = ...
+        F ∘ Σ ∘ ∇N * dV
+    end
+    return R,...
+end
+```
+
+See [`residual`](@ref), [`lagrangian`](@ref).
 
 ### Performance
 
@@ -278,6 +291,8 @@ It is sometimes convenient to handle time derivatives using automatic differenti
 See [`Muscade.test_static_element`](@ref) (not exported) to compute the gradient of a lagrangian. 
 
 For those prefering to think in terms of Cartesian tensor algebra, rather than matrix algebra, operators [`⊗`](@ref), [`∘₁`](@ref) and [`∘₂`](@ref) provide the exterior product, the single dot product and the double dot product respectively.
+
+For elements with a corotated reference system, functions [`Muscade.Rodrigues`](@ref) and [`Muscade.adjust`](@ref) provide functionality to handle rotations in ℝ³.  See [`Muscade.EulerBeam3D`](@ref) for an example.
 
 
 
