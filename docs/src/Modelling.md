@@ -90,7 +90,7 @@ using Muscade
 using Muscade: m, kg, pound, foot
 rho          = 3←(pound/foot^3)                      # convert to SI
 vieuxquintal = 1000*pound                            # define new unit
-printf("Density [pound/foot^3] %f",rho→pound/foot^3) # convert from SI
+@printf("Density [pound/foot^3] %f",rho→pound/foot^3) # convert from SI
 ```
 
 Arrays can be converted in the same way: `[200,300,24]←mm`.
