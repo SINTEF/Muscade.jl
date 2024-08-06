@@ -84,7 +84,7 @@ Analyses may fail due to singular matrix.  The source of the singularity can be 
 
  [`getdof`](@ref) allows to obtain dofs which are directly stored in `state`, by specifying class, field and node.
 
-[`getresult`](@ref) (used in combination with [`@request`](@ref)) allows to obtain element-results which have been marked as requestable inside the function [`lagrangian`](@ref) or [`residual`](@ref) of an element. These element-results are not stored in the `State`: [`getresult`](@ref) will call a modified version of [`lagrangian`](@ref) or [`residual`](@ref) to obtain the [`@request`](@ref)ed results.
+[`getresult`](@ref) (used in combination with [`Muscade.@request`](@ref)) allows to obtain element-results which have been marked as requestable inside the function [`lagrangian`](@ref) or [`residual`](@ref) of an element. These element-results are not stored in the `State`: [`getresult`](@ref) will call a modified version of [`lagrangian`](@ref) or [`residual`](@ref) to obtain the [`Muscade.@request`](@ref)ed results.
 
 ## Units
 

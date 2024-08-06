@@ -28,34 +28,24 @@ step = 1
     @test model.locked == true
 end
 
-dis         = initialstate.dis #Muscade.Disassembler(model)
-dofgr       = Muscade.allXdofs(model,dis)
-s           = deepcopy(state[step])
-Muscade.decrement!(s,0,[1.,1.,-1.],dofgr)
-#s[dofgr]    = [1.,1.,1.]
-# @testset "AllXdofs construction" begin
-# #    @test  dofgr.scale ≈ [1., 1., 1.]
-# #    @test  state[step][dofgr] ≈ [-5.332268523655259, 21.09778288272267, 0.011304253608808651]
-# #    @test  s[dofgr] ≈ [-6.332268523655259, 20.09778288272267, 1.011304253608808651]
-# end
 
-#using GLMakie
-#fig      = Figure(resolution = (2000,1500))
-#display(fig) # open interactive window (gets closed down by "save")
-#axe      = Axis3(fig[1,1],title="Muscade made this drawing",xlabel="X",ylabel="Y",zlabel="Z",aspect=:data,viewmode=:fit,perspectiveness=.5)
-#draw(axe,state[step])
-#save("C:\\Users\\philippem\\C home\\GIT\\Muscade.jl\\test\\first_light.jpg",fig)
+# using GLMakie
+# fig      = Figure(size = (1500,1000))
+# display(fig) # open interactive window (gets closed down by "save")
+# axe      = Axis3(fig[1,1],title="Muscade made this drawing",xlabel="X",ylabel="Y",zlabel="Z",aspect=:data,viewmode=:fit,perspectiveness=.5)
+# draw(axe,state[step])
+# save("C:\\Users\\philippem\\C home\\GIT\\Muscade.jl\\test\\first_light.jpg",fig)
 
 include("GLMakieTester.jl")
 axe = SpyAxe()
 draw(axe,state[step],ieletyp=[1,2])
 @testset "drawing" begin
     @test  axe.call[1].fun == :lines!
-    @test  axe.call[1].args[1] ≈ [-5.332268523655259 -5.332268523655259; 21.09778288272267 21.09778288272267; 90.0 110.0]
+    @test  axe.call[1].args[1][:,1:2] ≈ [-5.332268523655259 -5.332268523655259; 21.09778288272267 21.09778288272267; 90.0 110.0]
     @test  axe.call[1].kwargs[:color] == :orange
     @test  axe.call[1].kwargs[:linewidth] == 5
     @test  axe.call[2].fun == :lines!
-    @test  axe.call[2].args[1][1:5]≈[144.05988106384137, 129.6206341588945, 115.1813872539476, 100.74214034900072, 86.30289344405384]
+    @test  axe.call[2].args[1][1:5]≈[144.05988106384137, 8.952447574846222, 0.0, 129.6206341588945, 10.17263311206178]
     @test  axe.call[2].kwargs[:color] == :blue
     @test  axe.call[2].kwargs[:linewidth] == 2
 end

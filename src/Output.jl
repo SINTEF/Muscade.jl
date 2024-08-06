@@ -1,3 +1,12 @@
+
+
+"""
+    et = eletyp(model)
+
+Return a vector of the concrete types of elements in the model. 
+"""
+eletyp(model::Model) = eltype.(model.eleobj)
+
 ## Nodal results
 """
     dofres,dofID = getdof(state;[class=:X],field=:somefield,nodID=[nodids...],[iders=0|1|2])
@@ -77,28 +86,28 @@ function extractkernel!(iele::AbstractVector{𝕫},eleobj::Vector{E},dis::Eletyp
     return [begin
         index = dis.index[i]
         Λ     = s.Λ[1][index.X]                 
-        X     = Tuple(x[index.X] for x∈s.X)
-        U     = Tuple(u[index.U] for u∈s.U)
+        X     = Tuple(Xᵢ[index.X] for Xᵢ∈s.X)
+        U     = Tuple(Uᵢ[index.U] for Uᵢ∈s.U)
         A     = s.A[index.A]
         L,FB,e = getlagrangian(eleobj[i],Λ,X,U,A,s.time,s.SP,(dbg...,istep=istep,iele=i),req)
         e
     end for i∈iele, (istep,s)∈enumerate(state)]
 end
 """
-    eleres = getresult(state,req,eleids)
+    eleres = getresult(state,req,els)
 
-Obtain an array of nested NamedTuples and NTuples of element results.
+Obtain an array of nested `NamedTuples` and `NTuples` of element results.
 `req` is a request defined using `@request`.
 `state` a vector of `State`s or a single `State`.
-`eleids` can be either
+`els` can be either
 - a vector of `EleID`s (obtained from `addelement!`) all corresponding
   to the same concrete element type
-- a concrete element type.
+- a concrete element type (see [`eletyp`](@ref)).
 
 If `state` is a vector, the output `dofres` has size `(nele,nstate)`.
 If `state` is a scalar, the output `dofres` has size `(nele)`.
 
-See also: [`getdof`](@ref), [`@request`](@ref), [`@espy`](@ref), [`addelement!`](@ref), [`solve`](@ref)
+See also: [`getdof`](@ref), [`@request`](@ref), [`@espy`](@ref), [`addelement!`](@ref), [`solve`](@ref), [`eletyp`](@ref)
 """
 function getresult(state::Vector{S},req,eleID::Vector{EleID})where {S<:State}
     # Some elements all of same type, multisteps
@@ -115,7 +124,7 @@ function getresult(state::Vector{S},req,::Type{E}) where{S<:State,E<:AbstractEle
     # All elements within the type, multisteps
     # eleres[iele,istep].gp[3].σ
     ieletyp = findfirst(E.==eletyp(state[begin].model))
-    isnothing(ieletyp) && muscadeerror("This type of element is not in the model. See 'eletyp(model)'")
+    isnothing(ieletyp) && muscadeerror("This type of element is not in the model.")
     eleobj              = state[begin].model.eleobj[ieletyp]
     dis                 = state[begin].dis.dis[ieletyp]
     iele                = eachindex(eleobj)

@@ -172,7 +172,7 @@ The macro will generate two versions of `Muscade.lagrangian` and/or `Muscade.res
 solve the numerical problem.  Another with additional input and output variables, and code inserted into the body
 of the function to extract results wanted by the user.
 
-See [`@espy`](@ref) for a complete guide on code anotations. 
+See [`Muscade.@espy`](@ref) for a complete guide on code anotations. 
 
 ### Immutables and Gauss quadrature
 
@@ -199,7 +199,7 @@ for igp = 1:ngp
 end
 ```
 
-shows that `R` is mutated. A pseudocode in immutable style would be
+shows that `R` is mutated. For the extraction of results from a loop, the following patterm **must** be used:
 
 ```julia
 @espy function residual(x,χ)
@@ -245,7 +245,7 @@ The code
 
 gathers the hypothetic `a` of all quadrature points into a `Tuple` and adds together the contributions `r` into the residual `R`.  Variables behaving like `a` *might* come into play if solver feedback is provided from each Gauss point.
 
-If the loop over the Gauss points only accumulates `R` (or `L`, in `Muscade.lagrangian`), then a simpler pattern can be used:
+The macro `@named` is peculiar in that neither Julia nor `Muscade` defines a `macro named`.  Instead, it is a syntactic token identified and transformed by `@espy`.  This has one important implication: if the loop over the Gauss points only accumulates `R` (or `L`, in `Muscade.lagrangian`), it would be tempting to use a simpler pattern:
 
 ```julia
 @espy function residual(x,χ)
@@ -257,6 +257,8 @@ If the loop over the Gauss points only accumulates `R` (or `L`, in `Muscade.lagr
     return R,...
 end
 ```
+
+However, result extraction from inside the loop will not work: `@espy` only supports "`ntuple...do...@named` for the purpose.
 
 See [`residual`](@ref), [`lagrangian`](@ref).
 

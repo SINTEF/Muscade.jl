@@ -26,9 +26,22 @@ Turbine(nod::Vector{Node};seadrag,sea,skydrag,sky) = Turbine(SVector(coord(nod)[
     R  = -o.sea(t,x)*o.seadrag*(1+A[1]) - o.sky(t,x)*o.skydrag*(1+A[2])
     return R,noFB 
 end
-function Muscade.draw(axe,o::Turbine, Λ,X,U,A, t,SP,dbg)
-    x    = ∂0(X)+o.xₘ  
-    lines!(axe,SMatrix{2,3}(x[1],x[1],x[2],x[2],o.z-10,o.z+10)' ,color=:orange, linewidth=5)
+function Muscade.draw(::Type{<:Turbine},axe,o, Λ,X,U,A, t,SP,dbg;kwargs...)
+    nel        = length(o)
+    a          = 𝕣2(undef,3,3*nel)
+    Δz         = default{:height   }(kwargs,20     )/2
+    c          = default{:color    }(kwargs,:orange)
+    w          = default{:linewidth}(kwargs,5      )
+    for iel    = 1:nel
+        i      = 3*(iel-1)
+        x      = ∂0(X)[:,iel]+o[iel].xₘ
+        a[1,i+1] = a[1,i+2] = x[1] 
+        a[2,i+1] = a[2,i+2] = x[2] 
+        a[3,i+1] = o[iel].z-Δz
+        a[3,i+2] = o[iel].z+Δz
+        a[:,i+3].= NaN
+    end
+    lines!(axe,a ,color=c, linewidth=w)
 end
 Muscade.doflist( ::Type{<:Turbine}) = (inod =(1   ,1   ,2        ,2        ),
                                        class=(:X  ,:X  ,:A       ,:A       ),
@@ -67,32 +80,68 @@ p = SVector(   2.82040487827,  -24.86027164695,   153.69500343165, -729.52107422
     L       += Λ[3  ] *  m3 
     return L,noFB
 end
-function Muscade.draw(axe,o::AnchorLine, Λ,X,U,A, t,SP,dbg)
+
+function Muscade.draw(::Type{<:AnchorLine},axe,o, Λ,X,U,A, t,SP,dbg;kwargs...)
+    nel           = length(o)
+    blue          = default{:blue         }(kwargs,:blue )
+    red           = default{:red          }(kwargs,:red  )
+    green         = default{:green        }(kwargs,:green)
+    linewidth     = default{:linewidth    }(kwargs,2     )
+    tdpmarkersize = default{:tdpmarkersize}(kwargs,10    )
+    botmarkersize = default{:botmarkersize}(kwargs,20    )
+    ncat          = default{:cat          }(kwargs,11    )
+
     req   = @request (Xtop,ΔXtop,ΔXchain,cr,xaf,ltf)
-    L,FB,out = Muscade.lagrangian(o, Λ,X,U,A, t,SP,(dbg...,espy2draw=true),req)
-    Laf,Xbot,Xtop,ΔXtop,ΔXchain,cr,xaf,Ltf = o.L, o.xₘbot, out.Xtop,out.ΔXtop,out.ΔXchain, out.cr, out.xaf, out.ltf
-    n     = ΔXchain./xaf  # horizontal normal vector from anchor to fairlead
-    xat   = Laf-Ltf
-    xtf   = xaf-xat
-    Xtdp  = Xbot + n*xat
-    x     = range(max(0,-xat),xtf,11)
-    X     = n[1].*x.+Xtdp[1]
-    Y     = n[2].*x.+Xtdp[2]
-    Z     = cr.*(cosh.(x./cr).-1)
-    lines!(axe,hcat(X,Y,Z)     ,color=:blue,  linewidth=2) # line
-    scatter!(axe,Xtdp          ,markersize=10,color=:blue)
-    scatter!(axe,Xbot          ,markersize=20,color=:red)
-    if xat>0
-        lines!(axe,hcat(Xbot,Xtdp)       ,color=:green, linewidth=2) # seafloor
-    else
-        x    = range(0,-xat,11)
-        X    = n[1].*x.+Xtdp[1]
-        Y    = n[2].*x.+Xtdp[2]
-        Z    = cr.*(cosh.(x./cr).-1)
-        lines!(axe,hcat(X,Y,Z)           ,color=:red,  linewidth=5) # line
+    Xbot  = 𝕣2(undef,3,nel)
+    Xtdp  = 𝕣2(undef,3,nel)
+    Xtop  = 𝕣2(undef,3,nel)
+    ΔXtop = 𝕣2(undef,3,nel)
+    Xline = 𝕣2(undef,3,nel*(ncat+1))
+    Xexc  = 𝕣2(undef,3,nel*3)
+    Xfloor = 𝕣2(undef,3,nel*3)
+    for iel = 1:nel
+        iline = (ncat+1)*(iel-1)
+        iexc  = (2   +1)*(iel-1)
+        Λᵢ = Λ[    :,iel]
+        Xᵢ = ∂0(X)[:,iel]
+        Uᵢ = ∂0(U)[:,iel]
+        Aᵢ = A[    :,iel]
+        L,FB,out = Muscade.lagrangian(o[iel], Λᵢ,(Xᵢ,),(Uᵢ,),Aᵢ, t,SP,(dbg...,espy2draw=true),req)
+        Laf,Xbot[1:2,iel],Xtop[:,iel],ΔXtop[:,iel],ΔXchain,cr,xaf,Ltf = o[iel].L, o[iel].xₘbot, out.Xtop,out.ΔXtop,out.ΔXchain, out.cr, out.xaf, out.ltf
+        Xbot[3,iel] = 0.
+        n     = ΔXchain./xaf  # horizontal normal vector from anchor to fairlead
+        xat   = Laf-Ltf
+        xtf   = xaf-xat
+        Xtdp[1:2,iel]  = Xbot[1:2,iel] + n*xat
+        Xtdp[3  ,iel]  = 0.
+        ζ                     = range(max(0,-xat),xtf,ncat)
+        Xline[1,iline.+(1:ncat)] = n[1].*ζ.+Xtdp[1,iel]
+        Xline[2,iline.+(1:ncat)] = n[2].*ζ.+Xtdp[2,iel]
+        Xline[3,iline.+(1:ncat)] = cr.*(cosh.(ζ./cr).-1)
+        Xline[:,iline +1+ncat  ].= NaN
+        Xexc[  :,iexc+1]         = Xtop[:,iel]
+        Xexc[  :,iexc+2]         = Xtop[:,iel] + ΔXtop[:,iel]
+        Xexc[  :,iexc+3]        .= NaN
+        Xfloor[:,iexc+1]         = Xbot[:,iel]
+        Xfloor[:,iexc+2]         = Xtdp[:,iel] 
+        Xfloor[:,iexc+3]        .= NaN
     end
-    lines!(axe,hcat(Xtop,Xtop+ΔXtop) ,color=:red , linewidth=2) # excentricity
+    lines!(axe,Xline  ,color=blue , linewidth=linewidth) # line
+    lines!(axe,Xexc   ,color=red  , linewidth=linewidth) # excentricity
+    lines!(axe,Xfloor ,color=green, linewidth=linewidth) # seafloor
+    scatter!(axe,Xtdp ,color=blue , markersize=tdpmarkersize)
+    scatter!(axe,Xbot ,color=red  , markersize=botmarkersize)
+    # if xat<0
+    #     ζ    = range(0,-xat,11)
+    #     X    = n[1].*ζ.+Xtdp[1]
+    #     Y    = n[2].*ζ.+Xtdp[2]
+    #     Z    = cr.*(cosh.(ζ./cr).-1)
+    #     lines!(axe,hcat(X,Y,Z)           ,color=red,  linewidth=linewidth) # line
+    # end
 end
+
+
+
 Muscade.doflist(     ::Type{<:AnchorLine}) = (inod =(1   ,1   ,1   ,2  ,2         ),
                                               class=(:X  ,:X  ,:X  ,:A ,:A        ),
                                               field=(:tx1,:tx2,:rx3,:ΔL,:Δbuoyancy))
