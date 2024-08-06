@@ -3,10 +3,7 @@ CurrentModule = Muscade
 ```
 
 !!! info
-    `Muscade.jl` is under development.
-    - New versions may introduce breaking changes in user and element APIs.
-    - Graphics generation will be revised.
-    - New solvers will be added.
+    `Muscade.jl` is under development. New solvers will be added.
 
 # [Purpose](@id purpose)
 
