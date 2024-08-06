@@ -12,9 +12,9 @@ CurrentModule = Muscade
 
 **[Muscade.jl](https://github.com/SINTEF/Muscade.jl): Framework for the description and solution of optimization-FEM models.**
 
-`Muscade` allows to describe and solve optimization problems constrained by equilibrium of a FEM model.  For example, we can have a FEM model of a structure subjected to forces that are to be estimated, based on partial and imperfect measurements of its response.  In addition, the stiffness of the structure can also be adjusted.
+`Muscade` allows to describe and solve optimization problems constrained by equilibrium of a FEM model.
 
-FEM-optimization problems have more degrees of freedom (in the following: "dofs") than classical FEM problems. They are separated into three `classes`:
+FEM-optimization problems have more `degrees of freedom` (refered to "dofs" in the following) than classical FEM problems. They are separated into three `classes`:
 
 - `X`-dofs: duals of the FEM equations. `X`-dofs are the classical dofs of a finite element model.
 - `U`-dofs: not dual of the FEM equations and varying with time. Typicaly, `U`-dofs represent unknown external loads activing on the system.
