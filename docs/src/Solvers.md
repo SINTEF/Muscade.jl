@@ -1,6 +1,6 @@
 # Solvers
 
-## `SweepX{O}` solver
+## `SweepX` solver
 
 `SweepX{O}` is a non-linear solver for differential equations or order `O` in time.  `SweepX{1}` is a static solver, `SweepX{1}` an implicit-Euler solver and `SweepX{2}` a Newmark-β solver. 
 
@@ -9,9 +9,9 @@ or shear-free position for dry friction.  Where the element implements such phys
 is implemented by introducing the state as a degree of freedom of the element, and solving
 for its evolution, *even in a static problem*, requires the use of `ORDER≥1`
 
-`SweepX` solves "normal" FEM (not optimisation-FEM) (see [Theory](@ref)).  However, `SweepX` can be applied to models that have U and A-dofs. This is handled as follows: One input to `SweepX` is a `State`, which can come from [`initialize!`](@ref) or from the output of another solver. `SweepX` will keep the U- and A-dofs to the value in the input `State`. `initialize!` sets all dofs to zero, so when `SweepX` is given a `State` produced by `initialize!` the analysis starts with X-dofs equal to zero, and U- and A-dofs are kept zero throughout the analysis. 
+`SweepX` solves forward FEM problems (not optimisation-FEM) (see [Theory](@ref)).  However, `SweepX` can be applied to models that have U and A-dofs. This is handled as follows: One input to `SweepX` is a `State`, which can come from [`initialize!`](@ref) or from the output of another solver. `SweepX` will keep the U- and A-dofs to the value in the input `State`. `initialize!` sets all dofs to zero, so when `SweepX` is given a `State` produced by `initialize!` the analysis starts with X-dofs equal to zero, and U- and A-dofs are kept zero throughout the analysis. 
 
-`SweepX` handles inequality constraints using a simplified interior point method. This works (reasonnably) well in concert with the built-in [`DofConstraint`](@ref) element.
+`SweepX` handles inequality constraints (for example defined with the built-in [`DofConstraint`](@ref) element) using a simplified interior point method.
 
 See [`SweepX`](@ref).
 

@@ -45,6 +45,25 @@ The model - either finitialized or under construction, can be examined using [`d
 
 Optionaly, one can also use [`setscale!`](@ref) (with the help of [`studyscale`](@ref)) to scale the variables and thus improve the conditioning of the problem. 
 
+More information about a Muscade command can be obtained from the help mode in the REPL (activated when pressing `?`). 
+
+```julia
+help?> QuickFix
+
+  QuickFix <: AbstractElement
+
+  An element for creating simple elements with "one line" of code.
+  Elements thus created have several limitations:
+
+    •  physical elements with only X-dofs.
+
+    •  only R can be espied.
+
+  The element is intended for testing. Muscade-based applications   
+  should not include this in their API.
+  (...)
+```
+
 ## Built-in elements
 
 With a few [exceptions](@ref ellib) for testing and demonstration, `Muscade` does not provide physical elements.  However, it provides several general purpose elements  to introduce loads, costs or  constraints.
