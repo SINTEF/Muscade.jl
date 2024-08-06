@@ -226,11 +226,6 @@ residual()=nothing
 """
     Muscade.draw(ElementType,axe,o, Λ,X,U,A,t,SP,dbg;kwargs...)
 
-Elements *can* implement a `draw` method. While the API may remind that of `lagrangian`,
-there is one significant difference: because it is more efficient to create few graphical object
-(few calls to `lines!`, `scatter!`) etc., `draw` will be called once to draw several elements of the
-same type. Multiple lines can be drawn in one call to `lines!` by using `NaN`s to "lift the pen".
-
 Inputs are:
 - `ElementType`, the method must dispatch on this `DataType`.
 - `axe`, a `GLMakie` axe
@@ -242,7 +237,7 @@ Inputs are:
 - `t` time
 - `SP` solver parameters
 - `dbg` debuging information
-- `kwargs` a `NamedTuple` containing the keyword arguments provided by the user. See [`default`](@ref)
+- `kwargs` a `NamedTuple` containing the keyword arguments provided by the user. See [`default`](@ref).
 
 See also: [`lagrangian`](@ref), [`residual`](@ref), [`doflist`](@ref)
 """

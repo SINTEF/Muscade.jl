@@ -6,12 +6,12 @@ The implementation of a element requires
 
 - A `struct` defining the element. 
 - A **constructor** which is called when the user adds an element to the model, and constructs the above `struct`.
-- **`Muscade.doflist`** specifies the degrees of freedom (dofs) of the element.
-- **`Muscade.residual`** (either this of `Muscade.lagrangian`) takes element dofs as input and returns the element's additive contribution to the residual of a non-linear system of equations,
-- **`Muscade.lagrangian`** (either this of `Muscade.residual`) takes element dofs as input and returns the element's additive contribution to a target function,
-- **`Muscade.draw`** (optional) which draws all the elements of the same element type.
+- **[`Muscade.doflist`](@ref)** specifies the degrees of freedom (dofs) of the element.
+- **[`Muscade.residual`](@ref)** (either this of [`Muscade.lagrangian`](@ref)) takes element dofs as input and returns the element's additive contribution to the residual of a non-linear system of equations,
+- **[`Muscade.lagrangian`](@ref)** (either this of [`Muscade.residual`](@ref)) takes element dofs as input and returns the element's additive contribution to a target function,
+- **[`Muscade.draw`](@ref)** (optional) which draws all the elements of the same element type.
 
-Each element must implement *either* `Muscade.lagrangian` *or* `Muscade.residual`, depending on what is more natural: a beam element will implement `Muscade.residual` (element reaction forces as a function of nodal displacements), while an element representing a strain sensor will implement `Muscade.lagrangian` (log-of the probability density of the strain, given an uncertain measurement).
+Each element must implement *either* [`Muscade.lagrangian`](@ref) *or* [`Muscade.residual`](@ref), depending on what is more natural: a beam element will implement [`Muscade.residual`](@ref) (element reaction forces as a function of nodal displacements), while an element representing a strain sensor will implement [`Muscade.lagrangian`](@ref) (log-of the probability density of the strain, given an uncertain measurement).
 
 ## No internal variables
 
@@ -20,7 +20,7 @@ In classical finite element formulations, plastic strain is implemented by letti
 `Muscade` does not allow elements to have internal variables. The reason is that problem involing dofs of class `U` are not causal: our estimation of the state of a system a step `i` also depends on on measurements taken at steps `j` with `j>i`.  Hence "sweep" procedures, that is, procedures that solve a problem one load or time step at a time, are not applicable.  Solvers must hence solve for all steps at the same time.  When using Newton-Raphson iterations to solve problems of this class, internal variables make the Jacobian matrix full: the value of a stress at a given stress depends (through the internal variable) on the strain at all preceding steps. Or more formaly: Internal variables transforms the problem from *differential* to *integral*.
 A full matrix quickly leads to impossibly heavy computations.
 
-To model phenomena usualy treated using internal variable, it is necessary in `Muscade` to make the "internal" variable into a degree of freedom, and describe the equation of evolution of this degree of freedom. The element `Elements.DryFriction` provides an example of implementation.  
+To model phenomena usualy treated using internal variable, it is necessary in `Muscade` to make the "internal" variable into a degree of freedom, and describe the equation of evolution of this degree of freedom. The element [`Muscade.DryFriction`](@ref) provides an example of implementation.  
 !!! warning
     Because the equations of evolution involves first order time derivative, one can not use a static solver in combination with such elements.
 
@@ -73,7 +73,7 @@ e1 = addelement!(model,MyElement,nodid,kwargs...)
 
 See [`addelement!`](@ref).
 
-## `Muscade.doflist`
+## Method for `Muscade.doflist`
 
 The element must provide a method of the form
 
@@ -111,7 +111,7 @@ See [`doflist`](@ref).
 
 An element must implement at least one of `Muscade.lagrangian` or `Muscade.residual`.
 
-### `Muscade.lagrangian`
+### Method for `Muscade.lagrangian`
 
 Elements that implement a contribution to a target function must implement `Muscade.lagrangian`.
 
@@ -124,7 +124,7 @@ end
 
 See [`lagrangian`](@ref) for the list of arguments and outputs.
 
-### `Muscade.residual`
+### Method for `Muscade.residual`
 
 Elements that implement "physics" will typicaly implement `Muscade.residual` (they could implement the same using `lagrangian`, but the resulting code would be less performant).
 
@@ -277,6 +277,34 @@ For a given element formulation, the performance of `residual` and `lagrangian` 
 3. Elements with corotated reference system (e.g. [`Muscade.EulerBeam3D`](@ref)) can use automatic differentiation to transform the residual back to the global reference system.
 
 See the page on [automatic differentiation](Adiff.md)
+
+## Method for `Muscade.draw`
+
+Elements *can* implement a [`Muscade.draw`](@ref) method. If no method is implemented, the element will be invisible if the user requests a drawing of the element.
+
+While the API may remind that of [`Muscade.lagrangian`](@ref), there is one significant difference: 
+because it is more efficient to create few graphical object (few calls to `lines!`, `scatter!`) etc., the element's method for `draw` 
+will be called once to draw several elements of the same type. Multiple lines can be drawn in one call to `lines!` by using `NaN`s to "lift the pen".
+
+When requesting a drawing of all or part of the model, the user can provide specifications (line thickness, line colors, what quantity to visualise as colored patches and so forth).  
+The user can for example require
+
+```julia
+draw(model;linewidth=2)
+```
+
+The element's `draw` method *must* accept an arbitrary list of keyword arguments.  Keywords arguments not used by the method are automaticaly ignored.  In order not to fail if a *used*
+keyword argument is not provided by the user, the following syntax can be used in the element's `draw` method
+
+```julia
+linewith = default{:linewidth}(kwargs,2.)
+```
+
+which can be read: if `kwargs.linewidth` exists, the set `linewidth` to its value, otherwise, set it to `2.`.
+
+The user has facilities to draw only selected element types or selected elements, so the element's `draw` method does not need to implement a switch on *wether* to draw.
+
+See [`Muscade.EulerBeam3D`](@ref) for an example of implementation.
 
 ## Help functions
 
