@@ -103,7 +103,6 @@ end
 end
 
 # using Muscade, StaticArrays, GLMakie
-# using Muscade.Elements: EulerBeam3D, BeamCrossSection
 
 # L = 10.0;  # Beam length [m]
 # q = 10.0;  # Uniform lateral load [N/m]
@@ -136,7 +135,7 @@ end
 # model       = Model(:TestModel)
 # nodid       = addnode!(model,nodeCoord)
 # mesh        = hcat(nodid[1:nnod-1],nodid[2:nnod])
-# eleid       = addelement!(model,EulerBeam3D,mesh;mat=mat,orient2=SVector(0.,1.,0.))
+# eleid       = addelement!(model,Muscade.EulerBeam3D,mesh;mat=mat,orient2=SVector(0.,1.,0.))
 
 # [addelement!(model,Hold,[nodid[1]]  ;field) for field∈[:t1,:t2,:t3,:r1,:r2,:r3]]                                # Clamp end 1
 # [addelement!(model,Hold,[nodid[end]];field) for field∈[:t1,:t2,:t3,:r1,:r2,:r3]]                                # Clamp end 2
