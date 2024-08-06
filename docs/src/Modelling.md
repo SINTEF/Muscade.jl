@@ -2,14 +2,11 @@
 
 ## Script as input
 
-`Muscade` being a framework for the development of optimization-FEM applications, it only provides a limited number of generic modeling capabilities, like fixing degrees of freedom (dofs) to describe boundary conditions, introducing holonomic constraints or costs on either dofs, or element-results (see [Built-in elements](@ref)). `Muscade` does not provide the elements needed to treat any specific application.  Hence to create a model, one will typicaly be `using` both `Muscade` and another package that provides a `Muscade`-based application (app).  The app provides specific elements for domains like continuum mechanics, marine structures, hydrogen diffusion etc.
+`Muscade` being a framework for the development of optimization-FEM applications, it does not provide the elements needed to treat any specific application. It only provides a limited number of generic modeling capabilities, like fixing degrees of freedom (dofs) to describe boundary conditions, introducing holonomic constraints or costs on either dofs, or element-results (see [Built-in elements](@ref)).
 
-Input to such an app is provided in the form of a Julia script containing instructions (calls to `Muscade`, using elements and possibly solvers provided by the app) to define the model, execute analyses, and extract and process analysis results.  This has two advantages: 
+Hence to create a model, one will typicaly be `using` both `Muscade` and another package that provides a `Muscade`-based application (app).  The app provides specific elements for domains like continuum mechanics, marine structures, hydrogen diffusion etc.
 
-1. Scripting a series of analyses, or some specific pre or postprocessing is simply done in the same script.  
-2. App developpers do not need to write code pertaining to a user interface.
-
-That said, an app could introduce a GUI that would itself do the calls to `Muscade`.
+Input to such an app is provided in the form of a Julia script containing instructions (calls to `Muscade`, using elements and possibly solvers provided by the app) to define the model, execute analyses, and extract and process analysis results.  In other words, scripting a series of analyses, or some specific pre or postprocessing is simply done in the same script, and app developpers do not have to write code pertaining to a user interface. That being said, an app could introduce a GUI that would itself do the calls to `Muscade`.
 
 Here is a simple example of analysis:
 
@@ -20,19 +17,17 @@ using StaticArrays
 model           = Model(:TestModel)
 n1              = addnode!(model,[0.]) 
 n2              = addnode!(model,[1.])
-e1              = addelement!(model,Hold,[n1];field=:tx1)
-e2              = addelement!(model,DofLoad,[n2];field=:tx1,value=t->3t)
+e1              = addelement!(model,Hold,[n1];field=:tx1)                       # Hold first node
+e2              = addelement!(model,DofLoad,[n2];field=:tx1,value=t->3t)        # Increase load on second node
 e3              = addelement!(model,QuickFix,[n1,n2];inod=(1,2),field=(:tx1,:tx1),
-                              res=(X,X′,X″,t)->12SVector(X[1]-X[2],X[2]-X[1]))
-
+                              res=(X,X′,X″,t)->12SVector(X[1]-X[2],X[2]-X[1]))  # Linear elastic spring with stiffness 12
 initialstate    = initialize!(model)
-state           = solve(SweepX{0};initialstate,time=[0.,1.],verbose=false)
-
-tx1,_           = getdof(state[2],field=:tx1,nodID=[n2])
-req             = @request F
+state           = solve(SweepX{0};initialstate,time=[0.,1.],verbose=false)      # Solve the problem
+tx1,_           = getdof(state[2],field=:tx1,nodID=[n2]); @show tx1             # Extract the displacement of the free node
+req             = @request F                                                    # Extract internal results from the spring element
 eleres          = getresult(state,req,[e2]) 
 iele,istep      = 1,2
-force           = eleres[iele,istep].F
+force           = eleres[iele,istep].F; @show force;
 ```
 
 ## Model definition
