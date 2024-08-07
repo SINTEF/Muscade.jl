@@ -106,6 +106,9 @@ Q^*(X,U^*,A^*) &= Q(X,U,A) +  g_u(X,U,A) \cdot U_\lambda + g_a(A) \cdot A_λ \\
 \end{aligned}
 ```
 
+## Literature
+
+For more details on the theory and example of applications, see [maincon04a](@cite), [maincon04b](@cite), [maree04](@cite), [barnardo04](@cite), [hauser06](@cite), [wu07](@cite), [maincon08](@cite), [hauser08](@cite), [wu08](@cite), [wu09](@cite), [maincon13](@cite). 
 
 
 

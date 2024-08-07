@@ -96,7 +96,7 @@ function addin!(out::AssemblyStaticΛXU_Aline,asm,iele,scale,eleobj::E,Λ,X::NTu
         out.npos  += 1
     end
 end
-
+ 
 
 
 """
