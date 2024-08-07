@@ -309,9 +309,7 @@ function unlock(model::Model,ID::Symbol)
     newmodel.ID     = ID
     return newmodel
 end    
-
-### extracting data from the model
-eletyp(model::Model) = eltype.(model.eleobj) 
+ 
 
 
  

@@ -62,7 +62,7 @@ module Muscade
     export studyscale,studysingular,describe
 
     include("Output.jl")
-    export setdof!,getdof,getresult,findlastassigned
+    export setdof!,getdof,getresult,findlastassigned,eletyp
 
     include("SelfDraw.jl")
     export draw,request2draw

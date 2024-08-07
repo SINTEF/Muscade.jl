@@ -73,87 +73,8 @@ See also: [`addnode!`](@ref), [`addelement!`](@ref), [`describe`](@ref), [`solve
 """
 coord(nod::AbstractVector{Node}) = [n.coord for n∈nod]
 
-
-"""
-    Muscade.doflist(::Type{E<:AbstractElement})
-
-Elements must overload Muscade's `doflist` function.  
-The method must take the element type as only input, and return
-a `NamedTuple` with fieldnames `inod`,`class` and `field`.  The tuple-fields
-are `NTuple`s of the same length.  For example
-```
-Muscade.doflist( ::Type{<:Turbine}) = (inod =(1   ,1   ,2        ,2        ),
-                                       class=(:X  ,:X  ,:A       ,:A       ),
-                                       field=(:tx1,:tx2,:Δseadrag,:Δskydrag))
-```                                       
-In `Λ`, `X`, `U` and `A` handed by Muscade to `residual` or `lagrangian`,
-the dofs in the vectors will follow the order in the doflist. Element developers
-are free to number their dofs by node, by field, or in any other way.
-
-See also: [`lagrangian`](@ref), [`residual`](@ref)  
-"""
-doflist(     ::Type{E}) where{E<:AbstractElement}  = muscadeerror(@sprintf("method 'Muscade.doflist' must be provided for elements of type '%s'\n",E))
-
-"""
-    @espy function Muscade.lagrangian(eleobj::MyElement,Λ,X,U,A,t,SP,dbg)
-        ...
-        return L,FB
-    end
-
-# Inputs
-- `eleobj` an element object
-- `Λ` a `SVector{nXdof,R} where{R<:Real}`, Lagrange multipliers (aka `δX` virtual displacements).
-- `X` a `NTuple` of `SVector{nXdof,R} where{R<:Real}`, containing the Xdofs and, depending on the solver,
-   their time derivatives. Use `x=∂0(X)`, `v=∂1(X)` and `a=∂2(X)` to safely obtain vectors of zeros
-   where the solver leaves time derivatives undefined.
-- `U` a `NTuple` of `SVector{nUdof,R} where{R<:Real}`, containing the Udofs and, depending on the solver,
-   their time derivatives. Use `u=∂0(U)`, `̇u=∂1(U)` and `̈u=∂2(U)` to safely obtain vectors of zeros
-   where the solver leaves time derivatives undefined.
-- `A` a `SVector{nAdof,R} where{R<:Real}`.
-- `t` a ``Real` containing the time.
-- `SP` solver parameters (for example: the barrier parameter `γ` for 
-  interior point methods).
-- `dbg` a `NamedTuple` to be used _only_ for debugging purposes.
-
-# Outputs
-- `L` the lagrangian
-- `FB` feedback from the element to the solver (for example: can `γ` be 
-  reduced?). Return `noFB` of the element has no feedback to provide.
-
-See also: [`residual`](@ref), [`doflist`](@ref), [`@espy`](@ref), [`∂0`](@ref), [`∂1`](@ref), [`∂2`](@ref), [`noFB`](@ref)
-"""
-lagrangian()=nothing
-
-"""
-@espy function Muscade.residual(eleobj::MyElement,X,U,A,t,SP,dbg)
-    ...
-    return R,FB
-end
-
-
-# Inputs
-- `eleobj` an element object
-- `X` a `NTuple` of `SVector{nXdof,R} where{R<:Real}`, containing the Xdofs and, depending on the solver,
-   their time derivatives. Use `x=∂0(X)`, `v=∂1(X)` and `a=∂2(X)` to safely obtain vectors of zeros
-   where the solver leaves time derivatives undefined.
-- `U` a `NTuple` of `SVector{nUdof,R} where{R<:Real}`, containing the Udofs and, depending on the solver,
-   their time derivatives. Use `u=∂0(U)`, `̇u=∂1(U)` and `̈u=∂2(U)` to safely obtain vectors of zeros
-   where the solver leaves time derivatives undefined.
-- `A` a `SVector{nAdof,R} where{R<:Real}`.
-- `t` a ``Real` containing the time.
-- `SP` solver parameters (for example: the barrier parameter `γ` for 
-  interior point methods).
-- `dbg` a `NamedTuple` to be used _only_ for debugging purposes.
-
-# Outputs
-- `R` the residual
-- `FB` feedback from the element to the solver (for example: can `γ` be 
-  reduced?). Return `noFB` of the element has no feedback to provide.
-
-See also: [`lagrangian`](@ref), [`doflist`](@ref), [`@espy`](@ref), [`∂0`](@ref), [`∂1`](@ref), [`∂2`](@ref), [`noFB`](@ref)
-"""
-residual()=nothing
-
+struct motion{P,D}      end 
+struct motion_{P,Q}     end 
 """
     P = constants(X,U,A,t)
     x = Muscade.motion{P}(X)
@@ -174,8 +95,6 @@ Some principles of safe automatic differentiation must be adhered to:
 
 See [`Muscade.position`](@ref), [`Muscade.velocity`](@ref), [`Muscade.acceleration`](@ref)
 """
-struct motion{P,D}      end 
-struct motion_{P,Q}     end 
 motion{ P,D}(  a::NTuple{D,SV{N,R}}) where{D,P,N,R        } = SV{N}(motion_{P,P+D-1}(ntuple(j->a[j][i],D)) for i=1:N)
 motion_{P,Q  }(a::NTuple{D,     R }) where{D,P  ,R<:Real,Q} = ∂ℝ{Q,1}(motion_{P,Q-1}(a),SV(motion_{P,Q-1}(a[2:D]))) 
 motion_{P,P  }(a::NTuple{D,     R }) where{D,P  ,R<:Real  } = a[1]
@@ -243,4 +162,106 @@ end
 position{P,Q}(    a::AbstractVector) where{P,Q} = position{P,Q}.(a)
 velocity{P,Q}(    a::AbstractVector) where{P,Q} = velocity{P,Q}.(a)
 acceleration{P,Q}(a::AbstractVector) where{P,Q} = acceleration{P,Q}.(a)
+
+
+"""
+    Muscade.doflist(::Type{E<:AbstractElement})
+
+Elements must overload Muscade's `doflist` function.  
+The method must take the element type as only input, and return
+a `NamedTuple` with fieldnames `inod`,`class` and `field`.  The tuple-fields
+are `NTuple`s of the same length.  For example
+```
+Muscade.doflist( ::Type{<:Turbine}) = (inod =(1   ,1   ,2        ,2        ),
+                                       class=(:X  ,:X  ,:A       ,:A       ),
+                                       field=(:tx1,:tx2,:Δseadrag,:Δskydrag))
+```                                       
+In `Λ`, `X`, `U` and `A` handed by Muscade to `residual` or `lagrangian`,
+the dofs in the vectors will follow the order in the doflist. Element developers
+are free to number their dofs by node, by field, or in any other way.
+
+See also: [`lagrangian`](@ref), [`residual`](@ref)  ∂
+"""
+doflist(     ::Type{E}) where{E<:AbstractElement}  = muscadeerror(@sprintf("method 'Muscade.doflist' must be provided for elements of type '%s'\n",E))
+
+"""
+    @espy function Muscade.lagrangian(eleobj::MyElement,Λ,X,U,A,t,SP,dbg)
+        ...
+        return L,FB
+    end
+
+# Inputs
+- `eleobj` an element object
+- `Λ` a `SVector{nXdof,R} where{R<:Real}`, Lagrange multipliers (aka `δX` virtual displacements).
+- `X` a `NTuple` of `SVector{nXdof,R} where{R<:Real}`, containing the Xdofs and, depending on the solver,
+   their time derivatives. Use `x=∂0(X)`, `v=∂1(X)` and `a=∂2(X)` to safely obtain vectors of zeros
+   where the solver leaves time derivatives undefined.
+- `U` a `NTuple` of `SVector{nUdof,R} where{R<:Real}`, containing the Udofs and, depending on the solver,
+   their time derivatives. Use `u=∂0(U)`, `̇u=∂1(U)` and `̈u=∂2(U)` to safely obtain vectors of zeros
+   where the solver leaves time derivatives undefined.
+- `A` a `SVector{nAdof,R} where{R<:Real}`.
+- `t` a ``Real` containing the time.
+- `SP` solver parameters (for example: the barrier parameter `γ` for 
+  interior point methods).
+- `dbg` a `NamedTuple` to be used _only_ for debugging purposes.
+
+# Outputs
+- `L` the lagrangian
+- `FB` feedback from the element to the solver (for example: can `γ` be 
+  reduced?). Return `noFB` of the element has no feedback to provide.
+
+See also: [`residual`](@ref), [`doflist`](@ref), [`@espy`](@ref), [`∂0`](@ref), [`∂1`](@ref), [`∂2`](@ref), [`noFB`](@ref)
+"""
+lagrangian()=nothing
+
+"""
+@espy function Muscade.residual(eleobj::MyElement,X,U,A,t,SP,dbg)
+    ...
+    return R,FB
+end
+
+
+# Inputs
+- `eleobj` an element object
+- `X` a `NTuple` of `SVector{nXdof,R} where{R<:Real}`, containing the Xdofs and, depending on the solver,
+   their time derivatives. Use `x=∂0(X)`, `v=∂1(X)` and `a=∂2(X)` to safely obtain vectors of zeros
+   where the solver leaves time derivatives undefined.
+- `U` a `NTuple` of `SVector{nUdof,R} where{R<:Real}`, containing the Udofs and, depending on the solver,
+   their time derivatives. Use `u=∂0(U)`, `̇u=∂1(U)` and `̈u=∂2(U)` to safely obtain vectors of zeros
+   where the solver leaves time derivatives undefined.
+- `A` a `SVector{nAdof,R} where{R<:Real}`.
+- `t` a ``Real` containing the time.
+- `SP` solver parameters (for example: the barrier parameter `γ` for 
+  interior point methods).
+- `dbg` a `NamedTuple` to be used _only_ for debugging purposes.
+
+# Outputs
+- `R` the residual
+- `FB` feedback from the element to the solver (for example: can `γ` be 
+  reduced?). Return `noFB` of the element has no feedback to provide.
+
+See also: [`lagrangian`](@ref), [`doflist`](@ref), [`@espy`](@ref), [`∂0`](@ref), [`∂1`](@ref), [`∂2`](@ref), [`noFB`](@ref)
+"""
+residual()=nothing
+"""
+    Muscade.draw(ElementType,axe,o, Λ,X,U,A,t,SP,dbg;kwargs...)
+
+Inputs are:
+- `ElementType`, the method must dispatch on this `DataType`.
+- `axe`, a `GLMakie` axe
+- `o` a `AbstractVector` of element objects, of length `nel`.
+- `Λ` a matrix of size `(nXdof,nel)`
+- `X` a `NTuple` of matrices of size `(nXdof,nel)`
+- `U` a `NTuple` of matrices of size `(nUdof,nel)`
+- `A` a matrix of size `(nAdof,nel)`
+- `t` time
+- `SP` solver parameters
+- `dbg` debuging information
+- `kwargs` a `NamedTuple` containing the keyword arguments provided by the user. See [`default`](@ref).
+
+See also: [`lagrangian`](@ref), [`residual`](@ref), [`doflist`](@ref)
+"""
+draw(axe,::AbstractElement,args...;kwargs...) = nothing # by default, an element draws nothing
+
+
 
