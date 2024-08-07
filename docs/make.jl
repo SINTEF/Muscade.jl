@@ -4,6 +4,7 @@ repo = normpath((@__DIR__)*"/..")
 push!(LOAD_PATH,joinpath(repo,"src"))
 cp(joinpath(repo,"LICENSE.md"),joinpath(repo,"docs/src/LICENSE.md"),force=true)
 makedocs(sitename ="Muscade.jl",
+        # modules = [Elements],
         format    = Documenter.HTML(prettyurls = false,sidebar_sitename = false),
         pages     = ["index.md",
                      "Theory.md",
@@ -17,7 +18,7 @@ makedocs(sitename ="Muscade.jl",
                      "reference.md",
                      "LICENSE.md"],
                      source  = "src",
-                     build   = "build"   
+                     build   = "build"                 
         )
 
 #deploydocs(repo = "github.com/SINTEF/Muscade.jl.git",target="build",devbranch="philippe")
