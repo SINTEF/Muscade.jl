@@ -6,7 +6,7 @@
 
 Hence to create a model, one will typicaly be `using` both `Muscade` and another package that provides a `Muscade`-based application (app).  The app provides specific elements for domains like continuum mechanics, marine structures, hydrogen diffusion etc.
 
-Input to such an app is provided in the form of a Julia script containing instructions (calls to `Muscade`, using elements and possibly solvers provided by the app) to define the model, execute analyses, and extract and process analysis results.  In other words, scripting a series of analyses, or some specific pre or postprocessing is simply done in the same script, and app developpers do not have to write code pertaining to a user interface. That being said, an app could introduce a GUI that would itself do the calls to `Muscade`.
+Input to such an app is provided in the form of a Julia script containing instructions (calls to `Muscade`, using elements provided by the app) to define the model, execute analyses, and extract and process analysis results.  In other words, scripting a series of analyses, or some specific pre or postprocessing is simply done in the same script, and app developpers do not have to write code pertaining to a user interface. That being said, an app could introduce a GUI that would itself do the calls to `Muscade`.
 
 Here is a simple example of analysis:
 
@@ -23,11 +23,13 @@ e3              = addelement!(model,QuickFix,[n1,n2];inod=(1,2),field=(:tx1,:tx1
                               res=(X,X′,X″,t)->12SVector(X[1]-X[2],X[2]-X[1]))  # Linear elastic spring with stiffness 12
 initialstate    = initialize!(model)
 state           = solve(SweepX{0};initialstate,time=[0.,1.],verbose=false)      # Solve the problem
-tx1,_           = getdof(state[2],field=:tx1,nodID=[n2]); @show tx1             # Extract the displacement of the free node
+tx1,_           = getdof(state[2],field=:tx1,nodID=[n2])                        # Extract the displacement of the free node
 req             = @request F                                                    # Extract internal results from the spring element
 eleres          = getresult(state,req,[e2]) 
 iele,istep      = 1,2
-force           = eleres[iele,istep].F; @show force;
+force           = eleres[iele,istep].F
+@show tx1
+@show force
 ```
 
 ## Model definition
@@ -45,23 +47,23 @@ The model - either finitialized or under construction, can be examined using [`d
 
 Optionaly, one can also use [`setscale!`](@ref) (with the help of [`studyscale`](@ref)) to scale the variables and thus improve the conditioning of the problem. 
 
-More information about a Muscade command can be obtained from the help mode in the REPL (activated when pressing `?`). 
+Information on commands provided by Julia and packages (including ``Muscade``) can be obtained from the help mode in the REPL.  Make sure the command is available by `using Muscade`, then activate the help mode by pressing `?`. 
 
 ```julia
-help?> QuickFix
+help?> Hold
 
-  QuickFix <: AbstractElement
+  Hold <: AbstractElement
 
-  An element for creating simple elements with "one line" of code.
-  Elements thus created have several limitations:
 
-    •  physical elements with only X-dofs.
+  An element to set a single X-dof to zero.
 
-    •  only R can be espied.
+  Named arguments to the constructor
+  ≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡
 
-  The element is intended for testing. Muscade-based applications   
-  should not include this in their API.
-  (...)
+    •  field::Symbol. The field of the X-dof to constraint.
+
+    •  λfield::Symbol=Symbol(:λ,field). The field of the Lagrange multiplier.  
+(...)
 ```
 
 ## Built-in elements
@@ -105,7 +107,7 @@ Analyses may fail due to singular matrix.  The source of the singularity can be 
 `Muscade` provides functionality to transform quantities to and from basic SI units.
 
 ```julia
-using Muscade
+using Muscade, Printf
 using Muscade: m, kg, pound, foot
 rho          = 3←(pound/foot^3)                      # convert to SI
 vieuxquintal = 1000*pound                            # define new unit

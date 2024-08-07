@@ -44,7 +44,7 @@ where ``Λ`` are Lagrange multipliers.
 
 There is a one-to-one correspondance between Lagrange multipliers ``Λ``dofs and residuals, and hence between ``Λ``dofs and ``X``dofs.  One result of this correspondance is that when implmenting a new element, the method `doflist` does not list the ``Λ``dofs (this would otherwise just have been a compulsory repetition of the list of ``X``dofs). 
 
-For evolution problems (involving a time-dependency), the dot product ``R(X,U,A) \cdot \Lambda`` includes an integral over time: the Lagrangian is a *functional*, and the gradients of ``L`` are ordinary (or integral) differential equations (in time), found using Frechet derivatives.
+For evolution problems (involving a time-dependency), the dot product ``R(X,U,A) \cdot \Lambda`` includes an integral over time: the Lagrangian is a *functional*, and the gradients of ``L`` are ordinary differential equations in time, found using [functional derivatives](https://en.wikipedia.org/wiki/Functional_derivative).
 
 
 ## Elements
