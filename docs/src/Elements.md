@@ -280,11 +280,15 @@ See the page on [automatic differentiation](Adiff.md)
 
 ## Method for `Muscade.draw`
 
+### Vectorization
+
 Elements *can* implement a [`Muscade.draw`](@ref) method. If no method is implemented, the element will be invisible if the user requests a drawing of the element.
 
 While the API may remind that of [`Muscade.lagrangian`](@ref), there is one significant difference: 
 because it is more efficient to create few graphical object (few calls to `lines!`, `scatter!`) etc., the element's method for `draw` 
 will be called once to draw several elements of the same type. Multiple lines can be drawn in one call to `lines!` by using `NaN`s to "lift the pen".
+
+### Keyword arguments
 
 When requesting a drawing of all or part of the model, the user can provide specifications (line thickness, line colors, what quantity to visualise as colored patches and so forth).  
 The user can for example require
@@ -305,6 +309,10 @@ which can be read: if `kwargs.linewidth` exists, the set `linewidth` to its valu
 The user has facilities to draw only selected element types or selected elements, so the element's `draw` method does not need to implement a switch on *wether* to draw.
 
 See [`Muscade.EulerBeam3D`](@ref) for an example of implementation.
+
+### Getting element results
+
+In many cases, drawing provides a graphical representation of element-results (see [Extracting results](@ref)).  A pattern is that `draw` creates a request and calls `residual` or `lagrangian` (which ever the element implements), with an additional last input argument `req` (the request created using [`@request`](@ref)), and an additional last output argument `out` (containing the element-results).
 
 ## Help functions
 
