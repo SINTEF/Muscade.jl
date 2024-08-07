@@ -11,7 +11,7 @@ n3              = addnode!(model,𝕣[])  # Anod for anchor
 @once cost(eleres,X,U,A,t) = eleres.Fh^2
 el = ElementCost(model.nod;req=@request(Fh),cost,ElementType=AnchorLine, 
                  elementkwargs=(Δxₘtop=[5.,0,0], xₘbot=[250.,0], L=290., buoyancy=-5e3))
-d  = doflist(typeof(el))
+d  = Muscade.doflist(typeof(el))
 Nx,Nu,Na        = 3,0,2   
 Nz              = 2Nx+Nu+Na     
 iλ,ix,iu,ia     = Muscade.gradientpartition(Nx,Nx,Nu,Na) 
@@ -27,7 +27,7 @@ U = (SVector{Nu,𝕣}(0. for i=1:Nu),)
 A =  SVector{Na}(0. for i=1:Na)
 
 
-L,FB  = lagrangian(el, Λ+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A+ΔA, 0.,nothing,(testall=true,))                 
+L,FB  = Muscade.lagrangian(el, Λ+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A+ΔA, 0.,nothing,(testall=true,))                 
 
 @testset "ElementCost" begin
      @test d == (inod = (1, 1, 1, 2, 2), class = (:X, :X, :X, :A, :A), field = (:tx1, :tx2, :rx3, :ΔL, :Δbuoyancy))
@@ -41,7 +41,7 @@ end
 el = ElementConstraint(model.nod;req=@request(Fh),gap,ElementType=AnchorLine,λinod=1,λfield=:λ,mode=equal, 
                  elementkwargs=(Δxₘtop=[5.,0,0], xₘbot=[250.,0], L=290., buoyancy=-5e3))
 
-d               = doflist(typeof(el))
+d               = Muscade.doflist(typeof(el))
 Nx,Nu,Na        = 3,0+1,2   
 Nz              = 2Nx+Nu+Na     
 iλ,ix,iu,ia     = Muscade.gradientpartition(Nx,Nx,Nu,Na) 
@@ -52,7 +52,7 @@ X = (SVector{Nx}(1. for i=1:Nx),)
 U = (SVector{Nu}(1. for i=1:Nu),)
 A =  SVector{Na}(0. for i=1:Na)
 
-L,FB  = lagrangian(el, Λ+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A+ΔA, 0.,nothing,(testall=true,))                 
+L,FB  = Muscade.lagrangian(el, Λ+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A+ΔA, 0.,nothing,(testall=true,))                 
 
 @testset "ElementConstraint" begin
      @test d == (inod = (1, 1, 1, 2, 2, 1), class = (:X, :X, :X, :A, :A, :U), field = (:tx1, :tx2, :rx3,  :ΔL, :Δbuoyancy, :λ))
@@ -62,7 +62,7 @@ end
 
 req = @request λ,eleres(cr)
 
-L,FB,eleres  = lagrangian(el, Λ+ΔΛ, X,U,A, 0.,nothing,(testall=true,),req)                 
+L,FB,eleres  = Muscade.lagrangian(el, Λ+ΔΛ, X,U,A, 0.,nothing,(testall=true,),req)                 
 @testset "ElementConstraintResult" begin
      @test eleres.λ ≈ 1.
      @test eleres.eleres.cr ≈ 87.79184120068672

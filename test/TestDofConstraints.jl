@@ -26,9 +26,9 @@ C          = Muscade.DofConstraint{:X,    2 ,0 ,0 ,(1,1),(:t1,:t2),()   ,()    ,
 
 @testset "X equal contact" begin
     c     = C(g,equal)
-    r,FB  = residual(c, (Xctc,),(U,),A, t,SP1,dbg)
+    r,FB  = Muscade.residual(c, (Xctc,),(U,),A, t,SP1,dbg)
     R,R∂X = Muscade.value_∂{1,3}(r)
-    @test doflist(typeof(c)) == (inod=(1,1,1),class=(:X,:X,:X),field=(:t1,:t2,:λ))
+    @test Muscade.doflist(typeof(c)) == (inod=(1,1,1),class=(:X,:X,:X),field=(:t1,:t2,:λ))
     @test R   ≈ [-3,-4,0]
     @test R∂X ≈ [0   0   -.3; 
                  0   0   -.4; 
@@ -37,7 +37,7 @@ end
 
 @testset "X equal gap" begin
     c     = C(g,equal)
-    r,FB  = residual(c, (Xgap,),(U,),A, t,SP1,dbg)
+    r,FB  = Muscade.residual(c, (Xgap,),(U,),A, t,SP1,dbg)
     R,R∂X = Muscade.value_∂{1,3}(r)
     @test R   ≈ [-3, -4, -2.4]
     @test R∂X ≈ [0   0   -.3; 
@@ -47,7 +47,7 @@ end
 
 @testset "X off" begin
     c     = C(g,off)
-    r,FB  = residual(c, (Xctc,),(U,),A, t,SP1,dbg)
+    r,FB  = Muscade.residual(c, (Xctc,),(U,),A, t,SP1,dbg)
     R,R∂X = Muscade.value_∂{1,3}(r)
     @test R   ≈ [0,0,-10]
     @test R∂X ≈ [0 0 0; 0 0 0; 0 0 -1]
@@ -55,7 +55,7 @@ end
 
 @testset "X positive contact" begin
     c     = C(g,positive)
-    r,FB  = residual(c, (Xctc,),(U,),A, t,SP1,dbg)
+    r,FB  = Muscade.residual(c, (Xctc,),(U,),A, t,SP1,dbg)
     R,R∂X = Muscade.value_∂{1,3}(r)
     @test R   ≈ [-3.0, -4.0, 1.] 
     @test R∂X ≈ [-0.0 -0.0 -0.3; -0.0 -0.0 -0.4; -3.0 -4.0 0] 
@@ -63,7 +63,7 @@ end
 
 @testset "X positive gap" begin
     c     = C(g,positive)
-    r,FB  = residual(c, (Xgap,),(U,),A, t,SP1,dbg)
+    r,FB  = Muscade.residual(c, (Xgap,),(U,),A, t,SP1,dbg)
     R,R∂X = Muscade.value_∂{1,3}(r)
     @test R   ≈ [-3.0, -4.0, -23.]
     @test R∂X ≈ [-0.0 -0.0 -0.3; -0.0 -0.0 -0.4; -3.0 -4.0 -2.4]
@@ -71,7 +71,7 @@ end
 
 @testset "X positive contact γ==0" begin
     c     = C(g,positive)
-    r,FB = residual(c, (Xctc,),(U,),A, t,SP0,dbg)
+    r,FB = Muscade.residual(c, (Xctc,),(U,),A, t,SP0,dbg)
     R,R∂X = Muscade.value_∂{1,3}(r)
     @test R   ≈ [-3,-4,0]
     @test R∂X ≈ [-0.0 -0.0 -0.3; -0.0 -0.0 -0.4; -3.0 -4.0 0.]
@@ -79,7 +79,7 @@ end
 
 @testset "X positive gap  γ==0" begin
     c     = C(g,positive)
-    r,FB  = residual(c, (Xgap,),(U,),A, t,SP0,dbg)
+    r,FB  = Muscade.residual(c, (Xgap,),(U,),A, t,SP0,dbg)
     R,R∂X = Muscade.value_∂{1,3}(r)
     @test R   ≈ [-3.0, -4.0, -24.]
     @test R∂X ≈  [-0.0 -0.0 -0.3; -0.0 -0.0 -0.4; -3.0 -4.0 -2.4]
@@ -99,9 +99,9 @@ C          = Muscade.DofConstraint{:U,    0 ,2 ,0 ,()   ,()       ,(1,1),(:t1,:t
 
 @testset "U equal contact" begin
     c     = C(g,equal)
-    r,FB  = lagrangian(c, Λ,(X,),(Uctc,),A, t,SP1,dbg)
+    r,FB  = Muscade.lagrangian(c, Λ,(X,),(Uctc,),A, t,SP1,dbg)
     R,R∂U = Muscade.value_∂{1,3}(Muscade.∂{2,3}(r))
-    @test doflist(typeof(c)) == (inod=(1,1,1),class=(:U,:U,:U),field=(:t1,:t2,:λ))
+    @test Muscade.doflist(typeof(c)) == (inod=(1,1,1),class=(:U,:U,:U),field=(:t1,:t2,:λ))
     @test R   ≈ [-3,-4,0]
     @test R∂U ≈ [0   0   -.3; 
                  0   0   -.4; 
@@ -110,7 +110,7 @@ end
 
 @testset "U equal gap" begin
     c     = C(g,equal)
-    r,FB  = lagrangian(c, Λ,(X,),(Ugap,),A, t,SP1,dbg)
+    r,FB  = Muscade.lagrangian(c, Λ,(X,),(Ugap,),A, t,SP1,dbg)
     R,R∂U = Muscade.value_∂{1,3}(Muscade.∂{2,3}(r))
     @test R   ≈ [-3, -4, -2.4]
     @test R∂U ≈ [0   0   -.3; 
@@ -120,7 +120,7 @@ end
 
 @testset "U off" begin
     c     = C(g,off)
-    r,FB  = lagrangian(c, Λ,(X,),(Uctc,),A, t,SP1,dbg)
+    r,FB  = Muscade.lagrangian(c, Λ,(X,),(Uctc,),A, t,SP1,dbg)
     R,R∂U = Muscade.value_∂{1,3}(Muscade.∂{2,3}(r))
     @test R   ≈ [0,0,-10]
     @test R∂U ≈ [0 0 0; 0 0 0; 0 0 -1]
@@ -128,7 +128,7 @@ end
 
 @testset "U positive contact" begin
     c     = C(g,positive)
-    r,FB  = lagrangian(c, Λ,(X,),(Uctc,),A, t,SP1,dbg)
+    r,FB  = Muscade.lagrangian(c, Λ,(X,),(Uctc,),A, t,SP1,dbg)
     R,R∂U = Muscade.value_∂{1,3}(Muscade.∂{2,3}(r))
     @test R   ≈ [-3.0, -4.0, 1.]
     @test R∂U ≈ [-0.0 -0.0 -0.3; -0.0 -0.0 -0.4; -3.0 -4.0 0]
@@ -136,7 +136,7 @@ end
 
 @testset "U positive gap" begin
     c     = C(g,positive)
-    r,FB  = lagrangian(c, Λ,(X,),(Ugap,),A, t,SP1,dbg)
+    r,FB  = Muscade.lagrangian(c, Λ,(X,),(Ugap,),A, t,SP1,dbg)
     R,R∂U = Muscade.value_∂{1,3}(Muscade.∂{2,3}(r))
     @test R   ≈ [-3.0, -4.0, -23.]
     @test R∂U ≈ [-0.0 -0.0 -0.3; -0.0 -0.0 -0.4; -3.0 -4.0 -2.4]
@@ -144,7 +144,7 @@ end
 
 @testset "U positive contact γ==0" begin
     c     = C(g,positive)
-    r,FB  = lagrangian(c, Λ,(X,),(Uctc,),A, t,SP0,dbg)
+    r,FB  = Muscade.lagrangian(c, Λ,(X,),(Uctc,),A, t,SP0,dbg)
     R,R∂U = Muscade.value_∂{1,3}(Muscade.∂{2,3}(r))
     @test R   ≈ [-3,-4,0]
     @test R∂U ≈ [-0.0 -0.0 -0.3; -0.0 -0.0 -0.4; -3.0 -4.0 0]
@@ -152,7 +152,7 @@ end
 
 @testset "U positive gap  γ==0" begin
     c     = C(g,positive)
-    r,FB  = lagrangian(c, Λ,(X,),(Ugap,),A, t,SP0,dbg)
+    r,FB  = Muscade.lagrangian(c, Λ,(X,),(Ugap,),A, t,SP0,dbg)
     R,R∂U = Muscade.value_∂{1,3}(Muscade.∂{2,3}(r))
     @test R   ≈ [-3.0, -4.0, -24.]
     @test R∂U ≈  [-0.0 -0.0 -0.3; -0.0 -0.0 -0.4; -3.0 -4.0 -2.4]

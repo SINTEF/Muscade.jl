@@ -34,9 +34,7 @@ module Muscade
     export getndof
 
     include("ElementAPI.jl")
-    export lagrangian,residual
     export coord,∂0,∂1,∂2,getsomedofs
-    export doflist
     export noFB
 
     include("BasicElements.jl")

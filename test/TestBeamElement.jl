@@ -72,28 +72,28 @@ U = (SVector{0,𝕣}(),)
 A = SVector{0,𝕣}()
 
 x = SVector(0.,0.,0.,0.,0.,0.,0.1,0.0,0.,0.,0.,0.); X = (x,)
-R,FB=residual(beam,   X,U,A,t,SP,dbg) 
+R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg) 
 @testset "residual tension" begin
     @test R        ≈  [-0.9999999999999998, 0.0, 0.0, 0.0, 0.0, 0.0, 0.9999999999999998, 0.0, 0.0, 0.0, 0.0, 0.0]
     @test FB === nothing
 end
 
 x = SVector(0.,0.,0.,0.,0.,0.,0.,0.1,0.,0.,0.,0.); X = (x,)
-R,FB=residual(beam,   X,U,A,t,SP,dbg) 
+R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg) 
 @testset "residual flex" begin
     @test R        ≈  [0.305626505038752, -3.557508839178609, 0.0, 0.0, 0.0, -1.7940357448412423, -0.305626505038752, 3.557508839178609, 0.0, 0.0, 0.0, -1.7940357448412423]
     @test FB === nothing
 end
 
 x = SVector(0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.1); X = (x,)
-R,FB=residual(beam,   X,U,A,t,SP,dbg) 
+R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg) 
 @testset "residual flex" begin
     @test R        ≈  [0.0, 1.8000000000002365, 0.0, 0.0, 0.0, 0.6000000000000143, 0.0, -1.8000000000002365, 0.0, 0.0, 0.0, 1.2000000000002227]
     @test FB === nothing
 end
 
 x = SVector(0.,0.,0.,0.,0.,0.,0.,0.,0.,0.1,0.,0.); X = (x,)
-R,FB=residual(beam,   X,U,A,t,SP,dbg) 
+R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg) 
 @testset "residual torsion" begin
     @test R        ≈ [0.0, 0.0, 0.0, -0.40000000000000124, 0.0, 0.0, 0.0, 0.0, 0.0, 0.40000000000000135, 0.0, 0.0]
     @test FB === nothing

@@ -85,7 +85,7 @@ function Muscade.doflist(::Type{MyElement})
 end
 ```
 
-The syntax `::Type{MyElement}` is because `doflist` will be called by `Muscade` with *a `DataType`* 
+The syntax `::Type{MyElement}` is because `Muscade.doflist` will be called by `Muscade` with *a `DataType`* 
 (the type `MyElement`), not with an object *of type* `MyELement` . The function name must begin
 with `Muscade.` to make it possible to overload a function defined in the module `Muscade`. 
 
@@ -95,7 +95,7 @@ The return value of the function is a `NamedTuple` with the fields `inod`, `clas
 - `class` is a `NTuple` of `Symbol`: for each dof, its class (must be `:X`, `:U` or `:A`).
 - `field` is a `NTuple` of `Symbol`: for each dof, its field.
 
-Importantly, `doflist` does not mention dofs of class `:Λ`: if the element implements `lagrangian`, there is automaticaly a one-to-one correspondance between Λ-dofs and X-dofs.
+Importantly, `Muscade.doflist` does not mention dofs of class `:Λ`: if the element implements `Muscade.lagrangian`, there is automaticaly a one-to-one correspondance between Λ-dofs and X-dofs.
 
 For example (using Julia's syntax for one-liner functions):
 
@@ -105,7 +105,7 @@ Muscade.doflist( ::Type{Turbine}) = (inod =(1   ,1   ,2        ,2        ),
                                      field=(:tx1,:tx2,:Δseadrag,:Δskydrag))
 ```
 
-See [`doflist`](@ref).
+See [`Muscade.doflist`](@ref).
 
 ## `Muscade.lagrangian` or `Muscade.residual`
 
@@ -116,21 +116,21 @@ An element must implement at least one of `Muscade.lagrangian` or `Muscade.resid
 Elements that implement a contribution to a target function must implement `Muscade.lagrangian`.
 
 ```julia
-@espy function lagrangian(o::MyElement,Λ,X,U,A,t,SP,dbg) 
+@espy function Muscade.lagrangian(o::MyElement,Λ,X,U,A,t,SP,dbg) 
     ...
     return L,noFB
 end
 ```
 
-See [`lagrangian`](@ref) for the list of arguments and outputs.
+See [`Muscade.lagrangian`](@ref) for the list of arguments and outputs.
 
 ### `Muscade.residual`
 
 Elements that implement "physics" will typicaly implement `Muscade.residual` (they could implement the same using `lagrangian`, but the resulting code would be less performant).
 
-The interface is mostly the same as for `lagrangian` with the differences that
+The interface is mostly the same as for `Muscade.lagrangian` with the differences that
 
-- `residual` returns a vector `R`
+- `Muscade.residual` returns a vector `R`
 - there is no argument `Λ`
 
 ```julia
@@ -140,7 +140,7 @@ The interface is mostly the same as for `lagrangian` with the differences that
 end
 ```
 
-See [`residual`](@ref) for the list of arguments and outputs.
+See [`Muscade.residual`](@ref) for the list of arguments and outputs.
 
 ### Automatic differentiation
 
@@ -202,7 +202,7 @@ end
 shows that `R` is mutated. A pseudocode in immutable style would be
 
 ```julia
-@espy function residual(x,χ)
+@espy function Muscade.residual(x,χ)
     t = ntuple(ngp) do igp
         ☼F = ...
         ☼Σ = ...
@@ -248,7 +248,7 @@ gathers the hypothetic `a` of all quadrature points into a `Tuple` and adds toge
 If the loop over the Gauss points only accumulates `R` (or `L`, in `Muscade.lagrangian`), then a simpler pattern can be used:
 
 ```julia
-@espy function residual(x,χ)
+@espy function Muscade.residual(x,χ)
     R = sum(1:ngp) do igp
         ☼F = ...
         ☼Σ = ...
@@ -258,20 +258,20 @@ If the loop over the Gauss points only accumulates `R` (or `L`, in `Muscade.lagr
 end
 ```
 
-See [`residual`](@ref), [`lagrangian`](@ref).
+See [`Muscade.residual`](@ref), [`Muscade.lagrangian`](@ref).
 
 ### Performance
 
-For a given element formulation, the performance of `residual` and `lagrangian` can vary with a factor up to 100 between a good and a bad implementation.
+For a given element formulation, the performance of `Muscade.residual` and `Muscade.lagrangian` can vary with a factor up to 100 between a good and a bad implementation.
 
 **Type stable code** allows the compiler to know the type of every variable in a function given the type of its parameters. Code that is type unstable is significantly slower. See the page on [type stability](TypeStable.md).
 
 **Allocation**, and the corresponding deallocation of memory *on the heap* takes time. By contrast, allocation and deallocation *on the stack* is fast.  In Julia, only immutable variables can be allocated on the stack. See the page on [memory management](Memory.md)
 
-**Automatic differentiation** generaly does not affect how `residual` and `lagrangian` are written.  There are two performance-related exceptions to this:
+**Automatic differentiation** generaly does not affect how `Muscade.residual` and `Muscade.lagrangian` are written.  There are two performance-related exceptions to this:
 
-1. If a complicated sub-function in `residual` and `lagrangian` (typicaly a material model or other closure) operates on an array (for example, the strain) that is smaller than the number of degrees of freedom of the system, computing time can be saved by computing the derivative of the output (in the example, the stress) with respect to the input to the subfunction, and then compose the derivatives.
-2. Iterative precedures are sometimes used within `residual` and `lagrangian`, a typical example being in plastic material formulations.  There is no need to propagate automatic differentiation through all the iterations - doing so with the result of the iteration provides the same result.
+1. If a complicated sub-function in `Muscade.residual` and `Muscade.lagrangian` (typicaly a material model or other closure) operates on an array (for example, the strain) that is smaller than the number of degrees of freedom of the system, computing time can be saved by computing the derivative of the output (in the example, the stress) with respect to the input to the subfunction, and then compose the derivatives.
+2. Iterative precedures are sometimes used within `Muscade.residual` and `Muscade.lagrangian`, a typical example being in plastic material formulations.  There is no need to propagate automatic differentiation through all the iterations - doing so with the result of the iteration provides the same result.
 3. Elements with corotated reference system (e.g. [`Muscade.EulerBeam3D`](@ref)) can use automatic differentiation to transform the residual back to the global reference system.
 
 See the page on [automatic differentiation](Adiff.md)
@@ -282,7 +282,7 @@ See the page on [automatic differentiation](Adiff.md)
 
 Element constructors can use function [`coord`](@ref) to extract the coordinates fron the `Vector{Node}` they get as first argument.
 
-`residual` and `lagrangian` **must** use [`∂0`](@ref), [`∂1`](@ref) and [`∂2`](@ref) when extracting the zeroth, first and second time derivatives from arguments `X` and `U`.
+`Muscade.residual` and `Muscade.lagrangian` **must** use [`∂0`](@ref), [`∂1`](@ref) and [`∂2`](@ref) when extracting the zeroth, first and second time derivatives from arguments `X` and `U`.
 
 Constant [`noFB`](@ref) (which have value `nothing`) can be used by elements that do not have feedback to the solving procedure.
 
