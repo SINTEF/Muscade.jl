@@ -68,7 +68,7 @@ help?> Hold
 
 ## Built-in elements
 
-With a few [exceptions](@ref ellib) for testing and demonstration, `Muscade` does not provide physical elements.  However, it provides several general purpose elements  to introduce loads, costs or  constraints.
+With a few exceptions for testing and demonstration, `Muscade` does not provide physical elements.  However, it provides several general purpose elements  to introduce loads, costs or  constraints.
 
 [`DofLoad`](@ref) adds a time-varying load on a single X-dof.  Elements for more general loads, in particular, consistent loads on element boundaries or domain, or follower loads, need to be implemented if required.
 

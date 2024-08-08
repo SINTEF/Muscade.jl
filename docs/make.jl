@@ -1,6 +1,10 @@
+nodocstr(str) =  replace(str, r"(*ANYCRLF)^\"\"\"$.*?^\"\"\"$"ms => "")
+
 docs    = @__DIR__
+#muscade = dirname(pathof(Muscade))
 muscade = normpath(joinpath(docs,".."))
 docsrc  = joinpath(docs,"src")
+
 
 using Pkg
 
@@ -10,33 +14,35 @@ using Muscade
 
 cd(docs)
 Pkg.activate(".") 
+Pkg.instantiate()
 using Documenter, Literate, DocumenterCitations
 
 cp(joinpath(muscade,"LICENSE.md"),joinpath(docsrc,"LICENSE.md"),force=true)
 
-Literate.markdown(joinpath(docsrc,"tutorial1.jl"),docsrc)
+#Literate.markdown(joinpath(docsrc,"tutorial1.jl"),docsrc)
+Literate.markdown(joinpath(muscade,"src","Elements","DryFriction.jl"),docsrc,
+                       execute=false,codefence= "````julia" => "````", # prevent execution of the code by Literate and Documenter
+                       preprocess = nodocstr) 
 
-bib = CitationBibliography(
-    joinpath(docsrc, "ref.bib");
-    style=:authoryear #:numeric
-)
+bib = CitationBibliography(joinpath(docsrc, "ref.bib"); style=:authoryear) #:numeric
 
 makedocs(sitename ="Muscade.jl",
         # modules = [Elements],
         format    = Documenter.HTML(prettyurls = false,sidebar_sitename = false),
-        plugins=[bib],
+        plugins   = [bib],
         pages     = ["index.md",
                      "Theory.md",
-                     "Modelling.md",
-                     "Solvers.md",
-                     "Elements.md",
-                     "ElementLibrary.md",
-                     "TypeStable.md",
-                     "Memory.md",
-                     "Adiff.md",
-                     "reference.md",
-                     "litterature.md",
-                     "Demo tutorial" => "tutorial1.md",
+                     "User manual" => ["Modelling.md",
+                                        "Solvers.md",
+                                        "Elements.md"],
+                     "Appendix" => [
+                                            "Element library" => ["DryFriction.md"],
+                                            "TypeStable.md",
+                                            "Memory.md",
+                                            "Adiff.md",
+                                            "reference.md",
+                                            "litterature.md"],
+#                     "Demo tutorial" => "tutorial1.md",  # source for this is Muscade/docs/src/tutorial1.jl NB: *.jl
                      "LICENSE.md"],
                      source  = "src",
                      build   = "build"                 
