@@ -1,3 +1,4 @@
+# # EulerBeam3D
 # TODO
 # 1) This code is for static analysis. Use `Muscade.motion` to create Adiffs that will facilitate the dynamic computation.
 # 2) This code is not A-parameterized. Arguably, we do not want to A-parameterize the element, just the material:

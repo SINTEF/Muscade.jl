@@ -1,6 +1,10 @@
-using Muscade
+test    = @__DIR__
+muscade = normpath(joinpath(test,".."))
+Pkg.activate(test)
+
 module Runtest
-    using Test,Documenter,Muscade
+    using Test,Literate, DocumenterCitations,Printf,Documenter,Muscade
+
     @testset "Muscade.jl package" begin
         @testset "TestEspy" begin
             include("TestEspy.jl")
@@ -56,3 +60,5 @@ module Runtest
         doctest(Muscade)
     end
 end
+
+Pkg.activate(muscade) 

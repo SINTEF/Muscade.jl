@@ -1,3 +1,13 @@
+# # DryFriction
+# See [`Muscade.DryFriction`](@ref) for reference.
+#    
+# Besides providing a general example of how to implement an element in `Muscade`, this element illustrates how to implement hysteretic behaviour
+# (here: dry friction, but this would also apply to plasticity) without internal variables, since these make problems with `U`dofs intractable.
+# This is handled by making what would otherwise have been an internal variable into an additional `X`dof.  In this case, the element's second degree
+# of freedom is the friction force.
+# ## Type
+# The struct contains the values provided (indirectly) by the user. Note `Fx` and `Ff` which are type parameters: these will be `Symbol`s that
+# represent the field of the `X`dof on which to apply the friction, and a `X`dof to represent the friction force
 """
     DryFriction <: AbstractElement
 
@@ -12,20 +22,17 @@ the element has a second dof which is the friction force.
 - `x′scale::𝕣=1.`. A typical order of magnitude of the velocity of the dof to which dry friction is applied.
 
 """
-# # DryFriction
-# See [`Muscade.DryFriction`](@ref) for reference manual.
-#    
-# The struct contains the values provided (indirectly) by the user. Note `Fx` and `Ff` which are type parameters: these will be `Symbol`s that
-# represent the field of the Xdof on which to apply the friction, and a Xdof to represent the friction force
 struct DryFriction{Fx,Ff} <: AbstractElement
     fric    :: 𝕣
     x′scale :: 𝕣  
     k⁻¹     :: 𝕣   # ∈ [0,∞[, so k ∈ ]0,∞]
 end
+# ## Constructor
 # We provide a constructor, which will be clled by `AddElement!`. The keyword arguments can, or must be given by the user when calling  `AddElement!`, and are passed on
 # to the constructor. Note that the constructor is type unstable: it gets `fields` and `fieldf` as values and uses them as type parameters. This is not deemed to be a problem for
 # the constructor (type instability in `residual` would be another matter)
 DryFriction(nod::Vector{Node};fieldx::Symbol,fieldf::Symbol=:f,friction::𝕣,Δx::𝕣=0.,x′scale::𝕣=1.) = DryFriction{fieldx,fieldf}(friction,x′scale,Δx/friction)
+# ## `residual`
 # The `residual` function is prepended by `@espy` to facilitate the extraction of element-results (see [`getresults`(@ref)).
 # The full name `Muscade.residual` must be used, because we are adding a method to a function defined in the `module` `Muscade`.
 @espy function Muscade.residual(o::DryFriction, X,U,A, t,SP,dbg) 
@@ -41,6 +48,7 @@ DryFriction(nod::Vector{Node};fieldx::Symbol,fieldf::Symbol=:f,friction::𝕣,Δ
 # We return a 2-vector or residuals (corresponding to the two Xdofs), and we have no "feedback" to the solver (as opposed to constraint elements).
     return SVector(f,conds[new]), noFB
 end
+# ## `doflist`
 # Another function that must be overloaded, in order to tell `Muscade` what dofs the element provides. Note that this is a function of the element *type*, not
 # of the element *variable*: elements of the same concrete type must have the same dofs.
 Muscade.doflist( ::Type{DryFriction{Fx,Ff}}) where{Fx,Ff} = (inod =(1 ,1 ), class=(:X,:X), field=(Fx,Ff)) 

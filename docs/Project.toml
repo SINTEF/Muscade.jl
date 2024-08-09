@@ -2,6 +2,5 @@
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 DocumenterCitations = "daee34ce-89f3-4625-b898-19384cb65244"
 Literate = "98b081ad-f1c9-55d3-8b20-4c87d4299306"
+Muscade = "93488820-1883-11ed-0c34-05177b029e4d"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
-
-

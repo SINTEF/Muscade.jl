@@ -5,24 +5,19 @@ docs    = @__DIR__
 muscade = normpath(joinpath(docs,".."))
 docsrc  = joinpath(docs,"src")
 
+Pkg.activate(docs) 
 
-using Pkg
-
-cd(muscade)
-Pkg.activate(".") 
-using Muscade
-
-cd(docs)
-Pkg.activate(".") 
-Pkg.instantiate()
-using Documenter, Literate, DocumenterCitations
+using Muscade, Documenter, Literate, DocumenterCitations,Printf
 
 cp(joinpath(muscade,"LICENSE.md"),joinpath(docsrc,"LICENSE.md"),force=true)
 
 #Literate.markdown(joinpath(docsrc,"tutorial1.jl"),docsrc)
-Literate.markdown(joinpath(muscade,"src","Elements","DryFriction.jl"),docsrc,
+els = ["DryFriction","BeamElement"]
+for el ∈ els
+        Literate.markdown(joinpath(muscade,"src","Elements",@sprintf("%s.jl",el)),docsrc,
                        execute=false,codefence= "````julia" => "````", # prevent execution of the code by Literate and Documenter
                        preprocess = nodocstr) 
+end
 
 bib = CitationBibliography(joinpath(docsrc, "ref.bib"); style=:authoryear) #:numeric
 
@@ -35,12 +30,12 @@ makedocs(sitename ="Muscade.jl",
                      "User manual" => ["Modelling.md",
                                         "Solvers.md",
                                         "Elements.md"],
+                     "reference.md",
                      "Appendix" => [
-                                            "Element library" => ["DryFriction.md"],
+                                            "Element code examples" => [@sprintf("%s.md",el) for el∈els],
                                             "TypeStable.md",
                                             "Memory.md",
                                             "Adiff.md",
-                                            "reference.md",
                                             "litterature.md"],
 #                     "Demo tutorial" => "tutorial1.md",  # source for this is Muscade/docs/src/tutorial1.jl NB: *.jl
                      "LICENSE.md"],
@@ -53,5 +48,4 @@ makedocs(sitename ="Muscade.jl",
 # https://sintef.github.io/Muscade.jl/v0.3.6/index.html
 # https://sintef.github.io/Muscade.jl/stable/index.html
 
-cd(muscade)
-Pkg.activate(".")
+Pkg.activate(muscade)
