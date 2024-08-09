@@ -1,7 +1,6 @@
 nodocstr(str) =  replace(str, r"(*ANYCRLF)^\"\"\"$.*?^\"\"\"$"ms => "")
 
 docs    = @__DIR__
-#muscade = dirname(pathof(Muscade))
 muscade = normpath(joinpath(docs,".."))
 docsrc  = joinpath(docs,"src")
 
