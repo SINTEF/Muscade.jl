@@ -117,15 +117,17 @@ State(model::Model,dis;time=-∞) = State(time,(zeros(getndof(model,:X)),),
                                                (zeros(getndof(model,:U)),),
                                                 zeros(getndof(model,:A))  ,
                                                nothing,model,dis)
+# shallow copy a state, but change SP                                               
 function State{nΛder,nXder,nUder}(s::State,SP::TSP) where{nΛder,nXder,nUder,TSP}
     Λ = ntuple(i->copy(∂n(s.Λ,i-1)),nΛder)
     X = ntuple(i->copy(∂n(s.X,i-1)),nXder)
     U = ntuple(i->copy(∂n(s.U,i-1)),nUder)
     State{nΛder,nXder,nUder,TSP}(s.time,Λ,X,U,copy(s.A),SP,s.model,s.dis)
 end 
+# Constructor with empty SP
 State{nΛder,nXder,nUder}(s::State) where{nΛder,nXder,nUder} = State{nΛder,nXder,nUder}(s,(;))
-
-
+# A deep copy - except for model and dis
+Base.copy(s::State) = State(s.time,deepcopy(s.Λ),deepcopy(s.X),deepcopy(s.U),deepcopy(s.A),deepcopy(s.SP),deepcopy(s.model),deepcopy(s.dis)) 
 
 
 #### DofGroup
@@ -213,6 +215,7 @@ end
 getndof(gr::DofGroup) = length(gr.iΛ)+length(gr.iX)+length(gr.iU)+length(gr.iA)
 
 # some usefull Dofgroups
+nodofs(    model::Model,dis) = DofGroup(dis, 𝕫[],𝕫[],𝕫[],𝕫[])
 allΛdofs(  model::Model,dis) = DofGroup(dis, 1:getndof(model,:X),𝕫[],𝕫[],𝕫[])
 allXdofs(  model::Model,dis) = DofGroup(dis, 𝕫[],1:getndof(model,:X),𝕫[],𝕫[])
 allUdofs(  model::Model,dis) = DofGroup(dis, 𝕫[],𝕫[],1:getndof(model,:U),𝕫[])
@@ -244,11 +247,11 @@ function gradientstructure(dofgr,dis::EletypDisassembler)
     return nΛ,nX,nU,nA
 end
 # indices into the class partitions of the gradient returned by an element
-function gradientpartition(nΛ,nX,nU,nA)
-    iΛ          =           (1:nΛ)
-    iX          = nΛ      .+(1:nX)
-    iU          = nΛ+nX   .+(1:nU) 
-    iA          = nΛ+nX+nU.+(1:nA)
+function gradientpartition(nΛ,nX,nU,nA,nXder=1,nUder=nXder)
+    iΛ          =                           (1:nΛ)
+    iX          = nΛ                      .+(1:nX)
+    iU          = nΛ           +(nX*nXder).+(1:nU) 
+    iA          = nΛ+(nX*nXder)+(nU*nUder).+(1:nA)
     return iΛ,iX,iU,iA
 end
 # used in asmvec_kernel!

@@ -92,6 +92,7 @@ constants( ::Nothing) = 0
 struct δ{P,N,R}                end # need dum, because syntax δ{P,N,R}() collides with default constructor
 struct variate{P,N}            end
 struct directional{P,N}        end 
+struct ∂²ℝ{P,N}                end
 """
     X = δ{P,N}()
 
@@ -122,6 +123,7 @@ variate{P,N}(a::SV{N,R}            ) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,N,R}}(∂
 variate{P,N}(a::SV{N,R},δa::SV{N,𝕣}) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,N,R}}(∂ℝ{P,N,R}(a[j]   ,SV{N,R}(i==j ? R(δa[i])  : zero(R) for i=1:N)) for j=1:N)
 variate{P  }(a::R                  ) where{P,R<:ℝ}   =  ∂ℝ{P,1}(a,SV{1,R}(one(R)))
 directional{P}(a::SV{N,R},δa::SV{N,R}) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,1,R}}(∂ℝ{P,1}(a[i],SV{1,R}(δa[i])) for i=1:N)
+∂²ℝ{P,N}(x::R,i) where{P,R,N} = ∂ℝ{P+1,N}( ∂ℝ{P,N}(x,i) , SVector{N}(∂ℝ{P,N}(R(j==i)) for j=1:N ) )
 
 # Analyse
 """
@@ -304,6 +306,5 @@ hasnan(a::Tuple)             = any(hasnan.(a))
 hasnan(a::NamedTuple)        = any(hasnan.(values(a)))
 hasnan(a...;)                = any(hasnan.(a))
 hasnan(a)                    = false
-
 
 
