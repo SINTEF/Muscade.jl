@@ -113,10 +113,10 @@ mutable struct State{nΛder,nXder,nUder,TSP}
 end
 # a constructor that provides an initial state
 State(model::Model,dis;time=-∞) = State(time,(zeros(getndof(model,:X)),),
-                                               (zeros(getndof(model,:X)),),
-                                               (zeros(getndof(model,:U)),),
-                                                zeros(getndof(model,:A))  ,
-                                               nothing,model,dis)
+                                             (zeros(getndof(model,:X)),),
+                                             (zeros(getndof(model,:U)),),
+                                              zeros(getndof(model,:A))  ,
+                                              nothing,model,dis)
 # shallow copy a state, but change SP                                               
 function State{nΛder,nXder,nUder}(s::State,SP::TSP) where{nΛder,nXder,nUder,TSP}
     Λ = ntuple(i->copy(∂n(s.Λ,i-1)),nΛder)

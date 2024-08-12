@@ -1,119 +1,93 @@
 const λxua = 1:4
+const sym = (λ=1,x=,u=3,a=4)
 
+# We make a distinction between nΛder==nAder==1, nXder=length(X), nUder=length(U) on the one hand, and mΞder ≤ nΞder.  This allows
+# 1) to freeze A for XU algo (or any class)
+# 2) not to compute cost on U′ or U′′ if these costs are known to be zero (same with X)                                      
 
-
-mutable struct AssemblyDirectΛXU_A{Tλ,Tx,Tu,Ta,Tλa,Txa,Tua,Taa,Tλx,Txx,Tux,Tax,Tλu,Txu,Tuu,Tau,Tλa,Txa,Tua,Taa}  <:Assembly
-    Lλ    :: Tλ
-    Lx    :: Tx
-    Lu    :: Tu
-    La    :: Ta
-    Lλa   :: Tλa
-    Lxa   :: Txa
-    Lua   :: Tua
-    Laa   :: Taa
-    Lλx   :: Tλx
-    Lxx   :: Txx
-    Lux   :: Tux
-    Lax   :: Tax
-    Lλu   :: Tλu
-    Lxu   :: Txu
-    Luu   :: Tuu
-    Lau   :: Tau
-    Lλa   :: Tλa
-    Lxa   :: Txa
-    Lua   :: Tua
-    Laa   :: Taa
-end   
-function prepare(::Type{AssemblyDirectΛXU_A},model,dis,????) 
-    Λdofgr             = allΛdofs(model,dis)
-    Xdofgr             = allXdofs(model,dis)
-    Udofgr             = allUdofs(model,dis)
-    Adofgr             = allAdofs(model,dis)
-    nX,nU,nA           = getndof(Xdofgr),getndof(Udofgr),getndof(Adofgr)
-    narray,neletyp     = 20,getneletyp(model)
-    asm                = Matrix{𝕫2}(undef,narray,neletyp)  
-    Lλ                 = [asmvec!(view(asm, 1,:),Λdofgr,dis)                         for ider=1:nΛder             ] 
-    Lx                 = [asmvec!(view(asm, 2,:),Xdofgr,dis)                         for ider=1:nXder             ] 
-    Lu                 = [asmvec!(view(asm, 3,:),Udofgr,dis)                         for ider=1:nUder             ] 
-    La                 = [asmvec!(view(asm, 4,:),Adofgr,dis)                         for ider=1:nAder             ] 
-    Lλλ                = [asmmat!(view(asm, 5,:),view(asm,1,:),view(asm,1,:),nX,nX)  for ider=1:nΛder,jder=1:nΛder]
-    Lxλ                = [asmmat!(view(asm, 6,:),view(asm,2,:),view(asm,1,:),nX,nX)  for ider=1:nXder,jder=1:nΛder]
-    Luλ                = [asmmat!(view(asm, 7,:),view(asm,3,:),view(asm,1,:),nU,nX)  for ider=1:nUder,jder=1:nΛder]
-    Laλ                = [asmmat!(view(asm, 8,:),view(asm,4,:),view(asm,1,:),nA,nX)  for ider=1:nAder,jder=1:nΛder]
-    Lλx                = [asmmat!(view(asm, 9,:),view(asm,1,:),view(asm,2,:),nX,nX)  for ider=1:nΛder,jder=1:nXder]
-    Lxx                = [asmmat!(view(asm,10,:),view(asm,2,:),view(asm,2,:),nX,nX)  for ider=1:nXder,jder=1:nXder]
-    Lux                = [asmmat!(view(asm,11,:),view(asm,3,:),view(asm,2,:),nU,nX)  for ider=1:nUder,jder=1:nXder]
-    Lax                = [asmmat!(view(asm,12,:),view(asm,4,:),view(asm,2,:),nA,nX)  for ider=1:nAder,jder=1:nXder]
-    Lλu                = [asmmat!(view(asm,13,:),view(asm,1,:),view(asm,3,:),nX,nU)  for ider=1:nΛder,jder=1:nUder]
-    Lxu                = [asmmat!(view(asm,14,:),view(asm,2,:),view(asm,3,:),nX,nU)  for ider=1:nXder,jder=1:nUder]
-    Luu                = [asmmat!(view(asm,15,:),view(asm,3,:),view(asm,3,:),nU,nU)  for ider=1:nUder,jder=1:nUder]
-    Lau                = [asmmat!(view(asm,16,:),view(asm,4,:),view(asm,3,:),nA,nU)  for ider=1:nAder,jder=1:nUder]
-    Lλa                = [asmmat!(view(asm,17,:),view(asm,1,:),view(asm,4,:),nX,nA)  for ider=1:nΛder,jder=1:nAder]
-    Lxa                = [asmmat!(view(asm,18,:),view(asm,2,:),view(asm,4,:),nX,nA)  for ider=1:nXder,jder=1:nAder]
-    Lua                = [asmmat!(view(asm,19,:),view(asm,3,:),view(asm,4,:),nU,nA)  for ider=1:nUder,jder=1:nAder]
-    Laa                = [asmmat!(view(asm,20,:),view(asm,4,:),view(asm,4,:),nA,nA)  for ider=1:nAder,jder=1:nAder]
-
-    out                = AssemblyDirectΛXU_A(Lλ,Lx,Lu,La,Lλa,Lxa,Lua,Laa,Lλx,Lxx,Lux,Lax,Lλu,Lxu,Luu,Lau,Lλa,Lxa,Lua,Laa)
-    return out,asm,Ydofgr,Adofgr
+mutable struct AssemblyDirect{T1,T2}  <:Assembly
+    L1    :: T1
+    L2    :: T2
+end  
+struct AssemblerDirect{Mder}
+    vec :: Matrix{𝕫2}
+    mat :: Matrix{𝕫2}
 end
-function zero!(out::AssemblyDirectΛXU_A)
-   zero!.(out.Lλ )                
-   zero!.(out.Lx )                
-   zero!.(out.Lu )                
-   zero!.(out.La )                
-   zero!.(out.Lλλ) 
-   zero!.(out.Lxλ)               
-   zero!.(out.Luλ)               
-   zero!.(out.Laλ)               
-   zero!.(out.Lλx) 
-   zero!.(out.Lxx)               
-   zero!.(out.Lux)               
-   zero!.(out.Lax)               
-   zero!.(out.Lλu) 
-   zero!.(out.Lxu)               
-   zero!.(out.Luu)               
-   zero!.(out.Lau)               
-   zero!.(out.Lλa) 
-   zero!.(out.Lxa)               
-   zero!.(out.Lua)               
-   zero!.(out.Laa)
+struct AssemblerDirectLine{Mder}
+    vec :: Matrix{𝕫2}
 end
-function addin!(out::AssemblyDirectΛXU_A,asm,iele,scale,eleobj::E,Λ::SVector{Nx},X::NTuple{nXder,<:SVector{Nx}},
-                                         U::NTuple{nUder,<:SVector{Nu}},A::SVector{Na},t,SP,dbg) where{E,nXder,nUder,Nx,Nu,Na} 
-    # We make a distinction between nΛder==nAder==1, nXder=length(X), nUder=length(U) on the one hand, and mΞder ≤ nΞder.  This allows
-    # 1) to freeze A for XU algo (or any class)
-    # 2) not to compute cost on U′ or U′′ if these costs are known to be zero (same with X)                                      
-    mΛder,mXder,mUder,mAder = 1,Nder,Nder,1 
+function prepare(::Type{AssemblyDirect},model,dis,mder) 
+    dofgr              = (allΛdofs(model,dis),allXdofs(model,dis),allUdofs(model,dis),allAdofs(model,dis))
+    ndof               = getndof.(dofgr)
+    neletyp            = getneletyp(model)
+    vec                = Matrix{𝕫2}(undef,4,neletyp)
+    mat                = Matrix{𝕫2}(undef,16,neletyp)
+    asm                = AssemblerDirect{mder}(vec,mat)
+    asmline            = AssemblerDirectLine{mder}(vec)
+    L1                 = [asmvec!(view(asm.vec,α  ,:),dofgr[α],dis)                                 for ider=1:mder[α]               ] 
+    L2                 = [asmmat!(view(asm.mat,α,β,:),view(asm,α,:),view(asm,β,:),ndof[α],ndof[β])  for ider=1:mder[α],jder=1:mder[β]]
+    out                = AssemblyDirect(L1,L2)
+    return out,asm,asmline#,Ydofgr,Adofgr
+end
+function zero!(out::AssemblyDirect)
+    for α∈λxua 
+        zero!.(out.L1[α])
+        for β∈λxua
+            zero!.(out.L2[α,β])
+        end
+    end
+end
+function addin!(out::AssemblyDirect,asm::AssemblerDirect{Mder},iele,scale,eleobj,Λ::SVector{Nx},X::NTuple{nXder,SVector{Nx,T}},
+                                             U::NTuple{nUder,SVector{Nu,T}},A::SVector{Na},t,SP,dbg) where{nXder,nUder,Nx,Nu,Na,Mder,T} 
+    ndof = (Nx,Nx,Nu,Na)
 
-    Λ∂ = nΛder==0 ? Λ : SVector{Nx}(  ∂²ℝ{1,Nz}(Λ[   iλ],  iλ)   for iλ=1:Nx)
-    n       = nΛder*Nx
-    X∂      = ntuple(Nder) do i 
-        X∂ᵢ =           SVector{Nx}(  ∂²ℝ{1,Nz}(X[i][ix],n+ix)   for ix=1:Nx) 
-        n  += Nx
-    end
-    U∂      = ntuple(Nder) do i 
-        U∂ᵢ =           SVector{Nu}(  ∂²ℝ{1,Nz}(U[i][iu],n+iu)   for iu=1:Nu) 
-        n  += Nu
-    end
-    A∂ = nAder==0 ? A : SVector{Na}(  ∂²ℝ{1,Nz}(A[   ia],n+ia)   for ia=1:Na)
+    p    = 0
+    V    = ((Λ,),X,U,(A,)) # does this trigger copying?
+    V∂   =  ntuple(4) do α
+                ntuple(nder[α]) do ider 
+                    X∂ᵢ = ider≤Mder[α] ? V[α][ider] : SVector{Nx}(  ∂²ℝ{1,Nz}(V[α][ider][idof],p+ix)   for idof=1:ndof[α]) # type stable?
+                    p  += Nx
+                    X∂ᵢ
+                end
+            end
+    
+    L,FB    = getlagrangian(eleobj, Λ∂[1],X∂,U∂,A∂[1],t,SP,dbg)
+ 
+    # p       = 0 # index into partial derivatives
+    # Λ∂ = Mder[sym.λ]==0     ? Λ    : SVector{Nx}(  ∂²ℝ{1,Nz}(Λ[   iλ],  iλ)   for iλ=1:Nx)
+    # p      += nΛder*Nx
+    # X∂      = ntuple(nXder) do i 
+    #     X∂ᵢ = i≤Mder[sym.x] ? X[i] : SVector{Nx}(  ∂²ℝ{1,Nz}(X[i][ix],p+ix)   for ix=1:Nx) 
+    #     p  += Nx
+    #     X∂ᵢ
+    # end
+    # U∂      = ntuple(nUder) do i 
+    #     U∂ᵢ = i≤Mder[sym.u] ? U[i] : SVector{Nu}(  ∂²ℝ{1,Nz}(U[i][iu],p+iu)   for iu=1:Nu) 
+    #     p  += Nu
+    #     U∂ᵢ
+    # end
+    # A∂ = Mder[sym.a]==0     ? A    : SVector{Na}(  ∂²ℝ{1,Nz}(A[   ia],p+ia)   for ia=1:Na)
 
     L,FB    = getlagrangian(eleobj, Λ∂,X∂,U∂,A∂,t,SP,dbg)
   
     ∇L      = ∂{2,Nz}(L)
-    for α∈λxua, i=1:Nder[α]
-        ip = 
-        add_value!(out.L1[α][i] ,asm.vec[α],iele,∇L,ip   )
-        for β∈λxua, j=1:Nder[β]
-            jp = 
-            add_∂!{1}( out.L2[α,β][ider,jder],asm.mat[α,β],iele,∇L,ip,jp)
+    pα      = 0
+    for α∈λxua, i=1:Mder[α]
+        iα = pα+(1:ndof[α])
+        pα += ndof[α]
+        add_value!(out.L1[α][i] ,asm.vec[α],iele,∇L,iα   )
+        pβ      = 0
+        for β∈λxua, j=1:Mder[β]
+            iβ = pβ+(1:ndof[β])
+            pβ += ndof[β]
+            add_∂!{1}( out.L2[α,β][i,j],asm.mat[α,β],iele,∇L,iα,iβ)
         end
     end
-
 end
-
+# addin! for AssemblerDirectLine.  Uses same "out"
 ###--------------------- ASMDirectXUAstepwiseline: for line search
 
-mutable struct AssemblyDirectΛXU_Aline{Ty,Ta} <:Assembly
+mutable struct AssemblyDirectline{Ty,Ta} <:Assembly
     Ly    :: Ty
     La    :: Ta
     ming  :: 𝕣
@@ -121,17 +95,17 @@ mutable struct AssemblyDirectΛXU_Aline{Ty,Ta} <:Assembly
     Σλg   :: 𝕣
     npos  :: 𝕫
 end   
-function prepare(::Type{AssemblyDirectΛXU_Aline},model,dis,wantA,Nder) 
+function prepare(::Type{AssemblyDirectline},model,dis,wantA,Nder) 
     Ydofgr             = allΛXUdofs(model,dis)
     Adofgr             = wantA ? allAdofs(model,dis) : nodofs(model,dis)
     narray,neletyp     = 2,getneletyp(model)
     asm                = Matrix{𝕫2}(undef,narray,neletyp)  
     Ly                 = [asmvec!(view(asm,1,:),Ydofgr,dis)  for ider=0:Nder] 
     La                 =  asmvec!(view(asm,2,:),Adofgr,dis) 
-    out                = AssemblyDirectΛXU_Aline(Ly,La,∞,∞,0.,0) # sequential
+    out                = AssemblyDirectline(Ly,La,∞,∞,0.,0) # sequential
     return out,asm,Ydofgr,Adofgr
 end
-function zero!(out::AssemblyDirectΛXU_Aline)
+function zero!(out::AssemblyDirectline)
     zero!.(out.Ly)
     zero!( out.La)
     out.ming = ∞    
@@ -139,7 +113,7 @@ function zero!(out::AssemblyDirectΛXU_Aline)
     out.Σλg  = 0.
     out.npos = 0    
 end
-function addin!(out::AssemblyDirectΛXU_Aline,asm,iele,scale,eleobj::E,Λ,X::NTuple{nXder,<:SVector{Nx}},
+function addin!(out::AssemblyDirectline,asm,iele,scale,eleobj::E,Λ,X::NTuple{nXder,<:SVector{Nx}},
                                               U::NTuple{nUder,<:SVector{Nu}},A::SVector{Na},t,SP,dbg) where{E,nXder,Nx,nUder,Nu,Na}
     Ny              = 2Nx+Nu                           # Y=[Λ;X;U]   
     Nz              = 2Nx+Nu+Na                        # Z = [Y;A]=[Λ;X;U;A]       
@@ -212,8 +186,8 @@ function solve(::Type{DirectXUA{NA,ND}},pstate,verbose::𝕓,dbg;initialstate::V
     maxLineIter::ℤ=50,β::𝕣=.5,γfac::𝕣=.5,γbot::𝕣=1e-8) where{NA,ND}
 
     model,dis             = initialstate[begin].model,initialstate[begin].dis
-    out,asm,Ydofgr,Adofgr = prepare(AssemblyDirectΛXU_A    ,model,dis)
-    out2,asm2,_     ,_    = prepare(AssemblyDirectΛXU_Aline,model,dis)
+    out,asm,Ydofgr,Adofgr = prepare(AssemblyDirect    ,model,dis)
+    out2,asm2,_     ,_    = prepare(AssemblyDirectline,model,dis)
 
     cΔy²,cΔa²             = maxΔy^2,maxΔa^2
     nX,nU,nA              = getndof(model,(:X,:U,:A))
