@@ -9,12 +9,9 @@ mutable struct AssemblyDirect{T1,T2}  <:Assembly
     L1    :: T1
     L2    :: T2
 end  
-struct AssemblerDirect{Mder}
+struct AssemblerDirect{Mission,Mder}
     vec :: Matrix{𝕫2}
     mat :: Matrix{𝕫2}
-end
-struct AssemblerDirectLine{Mder}
-    vec :: Matrix{𝕫2}
 end
 function prepare(::Type{AssemblyDirect},model,dis,mder) 
     dofgr              = (allΛdofs(model,dis),allXdofs(model,dis),allUdofs(model,dis),allAdofs(model,dis))
@@ -22,8 +19,8 @@ function prepare(::Type{AssemblyDirect},model,dis,mder)
     neletyp            = getneletyp(model)
     vec                = Matrix{𝕫2}(undef,4,neletyp)
     mat                = Matrix{𝕫2}(undef,16,neletyp)
-    asm                = AssemblerDirect{mder}(vec,mat)
-    asmline            = AssemblerDirectLine{mder}(vec)
+    asm                = AssemblerDirect{:full,mder}(vec,mat)
+    asmline            = AssemblerDirect{:line,mder}(vec)
     L1                 = [asmvec!(view(asm.vec,α  ,:),dofgr[α],dis)                                 for ider=1:mder[α]               ] 
     L2                 = [asmmat!(view(asm.mat,α,β,:),view(asm,α,:),view(asm,β,:),ndof[α],ndof[β])  for ider=1:mder[α],jder=1:mder[β]]
     out                = AssemblyDirect(L1,L2)
@@ -37,50 +34,38 @@ function zero!(out::AssemblyDirect)
         end
     end
 end
-function addin!(out::AssemblyDirect,asm::AssemblerDirect{Mder},iele,scale,eleobj,Λ::SVector{Nx},X::NTuple{nXder,SVector{Nx,T}},
-                                             U::NTuple{nUder,SVector{Nu,T}},A::SVector{Na},t,SP,dbg) where{nXder,nUder,Nx,Nu,Na,Mder,T} 
-    ndof = (Nx,Nx,Nu,Na)
+function addin!(out::AssemblyDirect,asm::AssemblerDirect{Mission,Mder},iele,scale,eleobj,Λ::SVector{Nx},X::NTuple{nXder,SVector{Nx,T}},
+                                             U::NTuple{nUder,SVector{Nu,T}},A::SVector{Na},t,SP,dbg) where{nXder,nUder,Nx,Nu,Na,Mder,T,Mission} 
 
-    p    = 0
-    V    = ((Λ,),X,U,(A,)) # does this trigger copying?
-    V∂   =  ntuple(4) do α
+    adiff = Mission==:full ? ∂²ℝ{1,Nz} : ∂ℝ{1,Nz}
+    ndof  = (Nx  ,Nx   ,Nu   ,Na  )
+
+    nder  = (1   ,nXder,nUder,1   )
+    V     = ((Λ,),X    ,U    ,(A,)) # does this trigger copying?
+    p     = 0
+    V∂    = ntuple(4) do α
                 ntuple(nder[α]) do ider 
-                    X∂ᵢ = ider≤Mder[α] ? V[α][ider] : SVector{Nx}(  ∂²ℝ{1,Nz}(V[α][ider][idof],p+ix)   for idof=1:ndof[α]) # type stable?
+                    X∂ᵢ = ider>Mder[α] ? V[α][ider] : SVector{Nx}(  adiff(V[α][ider][idof],p+ix)   for idof=1:ndof[α]) # type stable?
                     p  += Nx
                     X∂ᵢ
                 end
             end
     
-    L,FB    = getlagrangian(eleobj, Λ∂[1],X∂,U∂,A∂[1],t,SP,dbg)
+    L,FB    = getlagrangian(eleobj, V∂[1][1],V∂[2],V∂[3],V∂[4][1],t,SP,dbg)
  
-    # p       = 0 # index into partial derivatives
-    # Λ∂ = Mder[sym.λ]==0     ? Λ    : SVector{Nx}(  ∂²ℝ{1,Nz}(Λ[   iλ],  iλ)   for iλ=1:Nx)
-    # p      += nΛder*Nx
-    # X∂      = ntuple(nXder) do i 
-    #     X∂ᵢ = i≤Mder[sym.x] ? X[i] : SVector{Nx}(  ∂²ℝ{1,Nz}(X[i][ix],p+ix)   for ix=1:Nx) 
-    #     p  += Nx
-    #     X∂ᵢ
-    # end
-    # U∂      = ntuple(nUder) do i 
-    #     U∂ᵢ = i≤Mder[sym.u] ? U[i] : SVector{Nu}(  ∂²ℝ{1,Nz}(U[i][iu],p+iu)   for iu=1:Nu) 
-    #     p  += Nu
-    #     U∂ᵢ
-    # end
-    # A∂ = Mder[sym.a]==0     ? A    : SVector{Na}(  ∂²ℝ{1,Nz}(A[   ia],p+ia)   for ia=1:Na)
-
-    L,FB    = getlagrangian(eleobj, Λ∂,X∂,U∂,A∂,t,SP,dbg)
-  
     ∇L      = ∂{2,Nz}(L)
     pα      = 0
     for α∈λxua, i=1:Mder[α]
-        iα = pα+(1:ndof[α])
+        iα  = pα+(1:ndof[α])
         pα += ndof[α]
-        add_value!(out.L1[α][i] ,asm.vec[α],iele,∇L,iα   )
-        pβ      = 0
-        for β∈λxua, j=1:Mder[β]
-            iβ = pβ+(1:ndof[β])
-            pβ += ndof[β]
-            add_∂!{1}( out.L2[α,β][i,j],asm.mat[α,β],iele,∇L,iα,iβ)
+        add_value!(out.L1[α][i] ,asm.vec[α],iele,∇L,iα)
+        if Mission==:full
+            pβ      = 0
+            for β∈λxua, j=1:Mder[β]
+                iβ  = pβ+(1:ndof[β])
+                pβ += ndof[β]
+                add_∂!{1}( out.L2[α,β][i,j],asm.mat[α,β],iele,∇L,iα,iβ)
+            end
         end
     end
 end
