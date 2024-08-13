@@ -56,11 +56,11 @@ out3 = getdof(state[1],class=:A,field=:ΔL)
 out4 = getdof(state[1],field=:tx1,nodID=[n1])
 out5 = getdof(state   ,field=:tx1,nodID=[n1])
 @testset "getdof" begin
-    @test  out1 ≈ [-5.332268523655259;;]
-    @test  out2 ≈ [-5.332268523655259;;;20.184170880401076]
-    @test  out3 ≈ [0.0;;]
-    @test  out4 ≈ [-5.332268523655259;;]
-    @test  out5 ≈ [-5.332268523655259;;; 20.18417088040054]
+    @test  out1 ≈ [-5.332268523655259;]
+    @test  out2 ≈ [-5.332268523655259 20.184170880401076]
+    @test  out3 ≈ [0.0;]
+    @test  out4 ≈ [-5.332268523655259;]
+    @test  out5 ≈ [-5.332268523655259 20.18417088040054]
 end
 req     = @request cr,ltf
 eleres = getresult(state,req,e2) # eleres[iele,istep].cr

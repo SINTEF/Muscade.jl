@@ -167,6 +167,7 @@ function solve(SX::Type{SweepX{ORDER}},pstate,verbose,dbg;
         oldt         = state.time
         state.time   = t
         Δt           = t-oldt
+        Δt ≤ 0 && ORDER>0 && muscadeerror(@sprintf("Time step length not strictly positive at step=%3d",step))
         if     ORDER==0 out.c= (a₁=0.      , a₂=0. , a₃=0.         , b₁=0.        , b₂=0.      , b₃=0.  )
         elseif ORDER==1 out.c= (a₁=1/Δt    , a₂=0  , a₃=0.         , b₁=0.        , b₂=0.      , b₃=0.  )
         elseif ORDER==2 out.c= (a₁=γ/(β*Δt), a₂=γ/β, a₃=(γ/2β-1)*Δt, b₁=1/(β*Δt^2), b₂=1/(β*Δt), b₃=1/2β) # γ, as in Newmark's β and γ

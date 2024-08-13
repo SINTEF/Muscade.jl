@@ -24,23 +24,25 @@ Muscade.doflist( ::Type{SdofOscillator})  = (inod =(1 ,1 ,1 ,1), class=(:X,:U,:A
 model1          = Model(:TrueModel)
 n               = addnode!(model1,𝕣[ 0, 0])  
 e               = addelement!(model1,SdofOscillator,[n], K=1.,C=0.05,M=1.)
-#initialstate    = Muscade.State{1,3,1}(initialize!(model1;time=0.))  # recast to force the state to have 2nd derivatives, 
-initialstate    = initialize!(model1;nXder=2,time=0.)  # recast to force the state to have 2nd derivatives, 
-setdof!(initialstate,[1.];field=:x,nodID=[n],order=1)
-time            = 0:.1:10
-state1          = solve(SweepX{0};  initialstate,time,verbose=true)
-x               = getdof(state1;field=:x,nodID=[n] )
-x               = reshape(x,length(x))
+state0          = initialize!(model1;nXder=2,time=0.)  # make space for 1st-order derivatives, 
+# setdof!(state0,[1.];field=:x,nodID=[n],order=1)
+# time            = 1.:.1:100
+# state1          = solve(SweepX{2};  initialstate=state0,time,verbose=false)
+# x               = getdof(state1;field=:x,nodID=[n],order=0 )
+# x               = reshape(x,length(x))
+# using GLMakie
+# fig             = Figure(size = (1000,800))
+# axe             = Axis(fig[1,1],title="Test",xlabel="time",ylabel="x")
+# oedge           = lines!(  axe,time,x , linewidth = 1)
 
 ###
+include("../src/DirectXUA.jl")
+dis             = state0.dis
+out,asm,Ydofgr,Adofgr = prepare(AssemblyDirect    ,model1,dis,3)
+#out2,asm2             = prepare(AssemblyDirectLine)
 
-using GLMakie
 
-
-
-
-# stateXUA           = solve(DirectXUA;initialstate=stateX,verbose=false)
-# stateXUA           = solve(DirectXUA;initialstate=stateX,saveiter=true,verbose=false)
+stateXUA           = solve(DirectXUA;initialstate=state0)
 
 #end 
 

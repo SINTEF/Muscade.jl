@@ -22,23 +22,20 @@ function getdof(state::State;kwargs...)
     dofres = getdof([state];kwargs...)
     return reshape(dofres,size(dofres)[1:2]) 
 end
-function getdof(state::Vector{S};class::Symbol=:X,field::Symbol,nodID::Vector{NodID}=NodID[],orders::ℤ1=[0])where {S<:State}
-    class ∈ [:Λ,:X,:U,:A] || muscadeerror(sprintf("Unknown dof class %s",class))
+function getdof(state::Vector{S};class::Symbol=:X,field::Symbol,nodID::Vector{NodID}=NodID[],order::ℤ=0)where {S<:State}
+        class ∈ [:Λ,:X,:U,:A] || muscadeerror(sprintf("Unknown dof class %s",class))
     c     = class==:Λ      ? :X                                   : class
     dofID = nodID==NodID[] ? getdofID(state[begin].model,c,field) : getdofID(state[begin].model,c,field,nodID)
-    orders = class==:A      ? [0]                                  : orders
-    dofres   = Array{𝕣,3}(undef,length(dofID),length(orders),length(state)) # dofres[inod,order+1]
+    dofres   = 𝕣2(undef,length(dofID),length(state)) 
     for istate ∈ eachindex(state)
-        for order∈orders
-            s = if class==:Λ; state[istate].Λ[order+1] 
-            elseif class==:X; state[istate].X[order+1]    
-            elseif class==:U; state[istate].U[order+1]    
-            elseif class==:A; state[istate].A    
-            end
-            for (idof,d) ∈ enumerate(dofID)
-                dofres[idof,order+1,istate] = s[d.idof] 
-            end
-        end 
+        s = if class==:Λ; state[istate].Λ[order+1] 
+        elseif class==:X; state[istate].X[order+1]    
+        elseif class==:U; state[istate].U[order+1]    
+        elseif class==:A; state[istate].A    
+        end
+        for (idof,d) ∈ enumerate(dofID)
+            dofres[idof,istate] = s[d.idof] 
+        end
     end
     return dofres
 end

@@ -12,9 +12,9 @@ setdof!(initialstate,[1.];field=:x,nodID=[node],order=1)                        
 T               = 0.4 *(1:100)
 state           = solve(SweepX{2};  initialstate,time= T,verbose=false,catcherror=true)
 
-X  = [s.X[1][1] for s∈state]
-X′ = [s.X[2][1] for s∈state]
-X″ = [s.X[3][1] for s∈state]
+X  = getdof(state;field=:x,nodID=[node],order=0)
+X′ = getdof(state;field=:x,nodID=[node],order=1)
+X″ = getdof(state;field=:x,nodID=[node],order=2)
 
 @testset "SDof oscillator output" begin
     @test X[ 1:10:end] ≈ [0.3653456491624315, 0.039495394592936224, -0.9800856952523974, 0.0204208015740059, 0.10202734361080085, -0.08876358375431506, 0.020279004568508258, 0.009410960025011333, -0.01164572216979256, 0.0044937076208295505]
@@ -41,9 +41,9 @@ initialstate.X[2][1] = 1.                                           # so we can 
 T               = 0.15 *(1:100)
 state           = solve(SweepX{2};  initialstate,time= T,verbose=false,catcherror=true)
 
-X  = [s.X[1][1] for s∈state]
-X′ = [s.X[2][1] for s∈state]
-X″ = [s.X[3][1] for s∈state]
+X  = getdof(state;field=:x,nodID=[node],order=0)
+X′ = getdof(state;field=:x,nodID=[node],order=1)
+X″ = getdof(state;field=:x,nodID=[node],order=2)
 
 @testset "DryFriction oscillator output, Δx=0" begin
     @test X[ 1:10:end] ≈ [0.14456443480393982,  0.7975704237766761,  0.5807448605308462,  0.025592798296295478, -0.4191499109805254, -0.47980495035837123, -0.327180958763213, -0.14250971878268207, -0.02302664416796214,  0.0049513031770612665]
