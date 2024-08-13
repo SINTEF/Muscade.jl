@@ -9,7 +9,7 @@ eletyp(model::Model) = eltype.(model.eleobj)
 
 ## Nodal results
 """
-    dofres = getdof(state;[class=:X],field=:somefield,nodID=[nodids...],[iders=[0]])
+    dofres = getdof(state;[class=:X],field=:somefield,nodID=[nodids...],[orders=[0]])
 
 Obtain the value of dofs of the same class and field, at various nodes and for various states.
 
@@ -22,29 +22,29 @@ function getdof(state::State;kwargs...)
     dofres = getdof([state];kwargs...)
     return reshape(dofres,size(dofres)[1:2]) 
 end
-function getdof(state::Vector{S};class::Symbol=:X,field::Symbol,nodID::Vector{NodID}=NodID[],iders::ℤ1=[0])where {S<:State}
+function getdof(state::Vector{S};class::Symbol=:X,field::Symbol,nodID::Vector{NodID}=NodID[],orders::ℤ1=[0])where {S<:State}
     class ∈ [:Λ,:X,:U,:A] || muscadeerror(sprintf("Unknown dof class %s",class))
     c     = class==:Λ      ? :X                                   : class
     dofID = nodID==NodID[] ? getdofID(state[begin].model,c,field) : getdofID(state[begin].model,c,field,nodID)
-    iders = class==:A      ? [0]                                  : iders
-    dofres   = Array{𝕣,3}(undef,length(dofID),length(iders),length(state)) # dofres[inod,ider+1]
+    orders = class==:A      ? [0]                                  : orders
+    dofres   = Array{𝕣,3}(undef,length(dofID),length(orders),length(state)) # dofres[inod,order+1]
     for istate ∈ eachindex(state)
-        for ider∈iders
-            s = if class==:Λ; state[istate].Λ[ider+1] 
-            elseif class==:X; state[istate].X[ider+1]    
-            elseif class==:U; state[istate].U[ider+1]    
+        for order∈orders
+            s = if class==:Λ; state[istate].Λ[order+1] 
+            elseif class==:X; state[istate].X[order+1]    
+            elseif class==:U; state[istate].U[order+1]    
             elseif class==:A; state[istate].A    
             end
             for (idof,d) ∈ enumerate(dofID)
-                dofres[idof,ider+1,istate] = s[d.idof] 
+                dofres[idof,order+1,istate] = s[d.idof] 
             end
         end 
     end
     return dofres
 end
 """
-    setdof!(state,value        ;[class=:X],field=:somefield,                  [ider=0])
-    setdof!(state,value::Vector;[class=:X],field=:somefield,nodID=[nodids...],[ider=0])
+    setdof!(state,value        ;[class=:X],field=:somefield,                  [order=0])
+    setdof!(state,value::Vector;[class=:X],field=:somefield,nodID=[nodids...],[order=0])
 
 Set the value of dofs of the same class and field, at various nodes and for various states.
 There are two methods:
@@ -54,26 +54,26 @@ There are two methods:
 
 See also: [`getresult`](@ref), [`addnode!`](@ref), [`solve`](@ref)
 """
-function setdof!(state::State,dofval::𝕣1;class::Symbol=:X,field::Symbol,nodID::Vector{NodID},ider::ℤ=0)
+function setdof!(state::State,dofval::𝕣1;class::Symbol=:X,field::Symbol,nodID::Vector{NodID},order::ℤ=0)
     class ∈ [:Λ,:X,:U,:A] || muscadeerror(sprintf("Unknown dof class %s",class))
     c     = class==:Λ ? :X : class
     dofID = getdofID(state.model,c,field,nodID)
-    s = if class==:Λ; state.Λ[ider+1] 
-    elseif class==:X; state.X[ider+1]    
-    elseif class==:U; state.U[ider+1]    
+    s = if class==:Λ; state.Λ[order+1] 
+    elseif class==:X; state.X[order+1]    
+    elseif class==:U; state.U[order+1]    
     elseif class==:A; state.A    
     end
     for (idof,d) ∈ enumerate(dofID)
         s[d.idof] = dofval[idof]  
     end
 end
-function setdof!(state::State,dofval::𝕣;class::Symbol=:X,field::Symbol,ider::ℤ=0)
+function setdof!(state::State,dofval::𝕣;class::Symbol=:X,field::Symbol,order::ℤ=0)
     class ∈ [:Λ,:X,:U,:A] || muscadeerror(sprintf("Unknown dof class %s",class))
     c     = class==:Λ ? :X : class
     dofID = getdofID(state.model,c,field)
-    s = if class==:Λ; state.Λ[ider+1] 
-    elseif class==:X; state.X[ider+1]    
-    elseif class==:U; state.U[ider+1]    
+    s = if class==:Λ; state.Λ[order+1] 
+    elseif class==:X; state.X[order+1]    
+    elseif class==:U; state.U[order+1]    
     elseif class==:A; state.A    
     end
     for d ∈ dofID

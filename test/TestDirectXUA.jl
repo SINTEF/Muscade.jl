@@ -26,7 +26,7 @@ n               = addnode!(model1,𝕣[ 0, 0])
 e               = addelement!(model1,SdofOscillator,[n], K=1.,C=0.05,M=1.)
 #initialstate    = Muscade.State{1,3,1}(initialize!(model1;time=0.))  # recast to force the state to have 2nd derivatives, 
 initialstate    = initialize!(model1;nXder=2,time=0.)  # recast to force the state to have 2nd derivatives, 
-setdof!(initialstate,[1.];field=:x,nodID=[n],ider=1)
+setdof!(initialstate,[1.];field=:x,nodID=[n],order=1)
 time            = 0:.1:10
 state1          = solve(SweepX{0};  initialstate,time,verbose=true)
 x               = getdof(state1;field=:x,nodID=[n] )

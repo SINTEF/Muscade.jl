@@ -8,7 +8,7 @@ model           = Model(:TestModel)
 node            = addnode!(model,𝕣[])
 ele             = addelement!(model,SdofOscillator,[node], K₁=1.,K₂=.3,C₁=1.,C₂=2.,M₁=3.)
 initialstate    = initialize!(model;nXder=2,time=0.)   
-setdof!(initialstate,[1.];field=:x,nodID=[node],ider=1)                                          # so we can set initial velocity
+setdof!(initialstate,[1.];field=:x,nodID=[node],order=1)                                          # so we can set initial velocity
 T               = 0.4 *(1:100)
 state           = solve(SweepX{2};  initialstate,time= T,verbose=false,catcherror=true)
 
