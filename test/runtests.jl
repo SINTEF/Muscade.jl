@@ -1,5 +1,5 @@
 test    = @__DIR__
-muscade = normpath(joinpath(docs,".."))
+muscade = normpath(joinpath(test,".."))
 Pkg.activate(test)
 
 module Runtest

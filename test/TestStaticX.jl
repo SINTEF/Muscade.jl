@@ -50,22 +50,17 @@ draw(axe,state[step],ieletyp=[1,2])
     @test  axe.call[2].kwargs[:linewidth] == 2
 end
 
-out1,dofid1 = getdof(state[1],field=:tx1)
-out2,dofid2 = getdof(state   ,field=:tx1)
-out3,dofid3 = getdof(state[1],class=:A,field=:ΔL)
-out4,dofid4 = getdof(state[1],field=:tx1,nodID=[n1])
-out5,dofid5 = getdof(state   ,field=:tx1,nodID=[n1])
+out1 = getdof(state[1],field=:tx1)
+out2 = getdof(state   ,field=:tx1)
+out3 = getdof(state[1],class=:A,field=:ΔL)
+out4 = getdof(state[1],field=:tx1,nodID=[n1])
+out5 = getdof(state   ,field=:tx1,nodID=[n1])
 @testset "getdof" begin
     @test  out1 ≈ [-5.332268523655259;;]
-    @test  dofid1 == DofID[DofID(:X, 1)]
     @test  out2 ≈ [-5.332268523655259;;;20.184170880401076]
-    @test  dofid2 == DofID[DofID(:X, 1)]
     @test  out3 ≈ [0.0;;]
-    @test  dofid3 == DofID[DofID(:A, 3)]
     @test  out4 ≈ [-5.332268523655259;;]
-    @test  dofid4 == DofID[DofID(:X, 1)]
     @test  out5 ≈ [-5.332268523655259;;; 20.18417088040054]
-    @test  dofid5 == DofID[DofID(:X, 1)]
 end
 req     = @request cr,ltf
 eleres = getresult(state,req,e2) # eleres[iele,istep].cr

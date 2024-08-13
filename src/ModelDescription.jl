@@ -296,11 +296,11 @@ Modifying a model (invoquing `addnode!` and `addelement!` after `initialize!` wi
 
 See also: [`setdof!`](@ref), [`addnode!`](@ref), [`addelement!`](@ref), [`solve`](@ref)
 """
-function initialize!(model::Model;kwargs...)
+function initialize!(model::Model;nΛder=1,nXder=1,nUder=1,kwargs...)
     assert_unlocked(model)
     model.locked = true
     dis = Disassembler(model)
-    return State(model,dis;kwargs...)
+    return State{nΛder,nXder,nUder}(model,dis;kwargs...)
 end
 function unlock(model::Model,ID::Symbol)
     ID == model.ID && muscadeerror("ID must be distinct from model.ID")

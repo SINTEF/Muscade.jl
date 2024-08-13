@@ -7,8 +7,8 @@ include("SomeElements.jl")
 model           = Model(:TestModel)
 node            = addnode!(model,𝕣[])
 ele             = addelement!(model,SdofOscillator,[node], K₁=1.,K₂=.3,C₁=1.,C₂=2.,M₁=3.)
-initialstate    = Muscade.State{1,3,1}(initialize!(model;time=0.))  # recast to force the state to have 2nd derivatives, 
-initialstate.X[2][1] = 1.                                           # so we can set initial velocity
+initialstate    = initialize!(model;nXder=2,time=0.)   
+setdof!(initialstate,[1.];field=:x,nodID=[node],ider=1)                                          # so we can set initial velocity
 T               = 0.4 *(1:100)
 state           = solve(SweepX{2};  initialstate,time= T,verbose=false,catcherror=true)
 

@@ -1,5 +1,5 @@
 const λxua = 1:4
-const sym = (λ=1,x=,u=3,a=4)
+const sym  = (λ=1,x=2,u=3,a=4)
 
 # We make a distinction between nΛder==nAder==1, nXder=length(X), nUder=length(U) on the one hand, and mΞder ≤ nΞder.  This allows
 # 1) to freeze A for XU algo (or any class)
@@ -9,7 +9,7 @@ mutable struct AssemblyDirect{T1,T2}  <:Assembly
     L1    :: T1
     L2    :: T2
 end  
-struct AssemblerDirect{Mission,Mder}
+struct AssemblerDirect{Mder}
     vec :: Matrix{𝕫2}
     mat :: Matrix{𝕫2}
 end
@@ -20,11 +20,10 @@ function prepare(::Type{AssemblyDirect},model,dis,mder)
     vec                = Matrix{𝕫2}(undef,4,neletyp)
     mat                = Matrix{𝕫2}(undef,16,neletyp)
     asm                = AssemblerDirect{:full,mder}(vec,mat)
-    asmline            = AssemblerDirect{:line,mder}(vec)
     L1                 = [asmvec!(view(asm.vec,α  ,:),dofgr[α],dis)                                 for ider=1:mder[α]               ] 
     L2                 = [asmmat!(view(asm.mat,α,β,:),view(asm,α,:),view(asm,β,:),ndof[α],ndof[β])  for ider=1:mder[α],jder=1:mder[β]]
     out                = AssemblyDirect(L1,L2)
-    return out,asm,asmline#,Ydofgr,Adofgr
+    return out,asm#,Ydofgr,Adofgr
 end
 function zero!(out::AssemblyDirect)
     for α∈λxua 
@@ -34,10 +33,9 @@ function zero!(out::AssemblyDirect)
         end
     end
 end
-function addin!(out::AssemblyDirect,asm::AssemblerDirect{Mission,Mder},iele,scale,eleobj,Λ::SVector{Nx},X::NTuple{nXder,SVector{Nx,T}},
-                                             U::NTuple{nUder,SVector{Nu,T}},A::SVector{Na},t,SP,dbg) where{nXder,nUder,Nx,Nu,Na,Mder,T,Mission} 
+function addin!(out::AssemblyDirect,asm::AssemblerDirect{Mder},iele,scale,eleobj,Λ::SVector{Nx},X::NTuple{nXder,SVector{Nx,T}},
+                                             U::NTuple{nUder,SVector{Nu,T}},A::SVector{Na},t,SP,dbg) where{nXder,nUder,Nx,Nu,Na,Mder,T} 
 
-    adiff = Mission==:full ? ∂²ℝ{1,Nz} : ∂ℝ{1,Nz}
     ndof  = (Nx  ,Nx   ,Nu   ,Na  )
 
     nder  = (1   ,nXder,nUder,1   )
@@ -45,7 +43,7 @@ function addin!(out::AssemblyDirect,asm::AssemblerDirect{Mission,Mder},iele,scal
     p     = 0
     V∂    = ntuple(4) do α
                 ntuple(nder[α]) do ider 
-                    X∂ᵢ = ider>Mder[α] ? V[α][ider] : SVector{Nx}(  adiff(V[α][ider][idof],p+ix)   for idof=1:ndof[α]) # type stable?
+                    X∂ᵢ = ider>Mder[α] ? V[α][ider] : SVector{Nx}(  ∂²ℝ{1,Nz}(V[α][ider][idof],p+ix)   for idof=1:ndof[α]) # type stable?
                     p  += Nx
                     X∂ᵢ
                 end
@@ -59,64 +57,42 @@ function addin!(out::AssemblyDirect,asm::AssemblerDirect{Mission,Mder},iele,scal
         iα  = pα+(1:ndof[α])
         pα += ndof[α]
         add_value!(out.L1[α][i] ,asm.vec[α],iele,∇L,iα)
-        if Mission==:full
-            pβ      = 0
-            for β∈λxua, j=1:Mder[β]
-                iβ  = pβ+(1:ndof[β])
-                pβ += ndof[β]
-                add_∂!{1}( out.L2[α,β][i,j],asm.mat[α,β],iele,∇L,iα,iβ)
-            end
+        pβ      = 0
+        for β∈λxua, j=1:Mder[β]
+            iβ  = pβ+(1:ndof[β])
+            pβ += ndof[β]
+            add_∂!{1}( out.L2[α,β][i,j],asm.mat[α,β],iele,∇L,iα,iβ)
         end
     end
 end
-# addin! for AssemblerDirectLine.  Uses same "out"
-###--------------------- ASMDirectXUAstepwiseline: for line search
 
-mutable struct AssemblyDirectline{Ty,Ta} <:Assembly
-    Ly    :: Ty
-    La    :: Ta
+######################
+
+mutable struct AssemblyDirectLine  <:Assembly
     ming  :: 𝕣
     minλ  :: 𝕣
     Σλg   :: 𝕣
     npos  :: 𝕫
-end   
-function prepare(::Type{AssemblyDirectline},model,dis,wantA,Nder) 
-    Ydofgr             = allΛXUdofs(model,dis)
-    Adofgr             = wantA ? allAdofs(model,dis) : nodofs(model,dis)
-    narray,neletyp     = 2,getneletyp(model)
-    asm                = Matrix{𝕫2}(undef,narray,neletyp)  
-    Ly                 = [asmvec!(view(asm,1,:),Ydofgr,dis)  for ider=0:Nder] 
-    La                 =  asmvec!(view(asm,2,:),Adofgr,dis) 
-    out                = AssemblyDirectline(Ly,La,∞,∞,0.,0) # sequential
-    return out,asm,Ydofgr,Adofgr
-end
-function zero!(out::AssemblyDirectline)
-    zero!.(out.Ly)
-    zero!( out.La)
+end  
+struct AssemblerDirectLine end
+prepare(::Type{AssemblyDirectLine} = AssemblyDirectLine(La,∞,∞,0.,0),AssemblerDirectLine()
+function zero!(out::AssemblyDirectLine)
     out.ming = ∞    
     out.minλ = ∞
     out.Σλg  = 0.
     out.npos = 0    
 end
-function addin!(out::AssemblyDirectline,asm,iele,scale,eleobj::E,Λ,X::NTuple{nXder,<:SVector{Nx}},
-                                              U::NTuple{nUder,<:SVector{Nu}},A::SVector{Na},t,SP,dbg) where{E,nXder,Nx,nUder,Nu,Na}
-    Ny              = 2Nx+Nu                           # Y=[Λ;X;U]   
-    Nz              = 2Nx+Nu+Na                        # Z = [Y;A]=[Λ;X;U;A]       
-    scaleZ          = SVector(scale.Λ...,scale.X...,scale.U...,scale.A...)
-    ΔZ              = δ{1,Nz,𝕣}(scaleZ)                 
-    iλ,ix,iu,ia     = gradientpartition(Nx,Nx,Nu,Na) # index into element vectors ΔZ and Lz
-    ΔΛ,ΔX,ΔU,ΔA     = view(ΔZ,iλ),view(ΔZ,ix),view(ΔZ,iu),view(ΔZ,ia) 
-    L,FB            = getlagrangian(eleobj, ∂0(Λ)+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A+ΔA,t,SP,dbg)
-    ∇L              = ∂{1,Nz}(L)
-    add_value!(out.Ly ,asm[1],iele,∇L,1:Ny)
-    add_value!(out.La ,asm[2],iele,∇L,ia  )
+function addin!(out::AssemblyDirectLine,asm::AssemblerDirectLine,iele,scale,eleobj,Λ,X,U,A,t,SP,dbg) 
+    L,FB    = getlagrangian(eleobj, Λ,X,U,A,t,SP,dbg)
     if hasfield(typeof(FB),:mode) && FB.mode==:positive
-        out.ming   = min(out.ming,VALUE(FB.g))
-        out.minλ   = min(out.minλ,VALUE(FB.λ))
-        out.Σλg   += VALUE(FB.g)*VALUE(FB.λ)
+        out.ming   = min(out.ming,FB.g)
+        out.minλ   = min(out.minλ,FB.λ)
+        out.Σλg   += FB.g*FB.λ
         out.npos  += 1
     end
 end
+
+
 
 """
 	DirectXUA
@@ -172,7 +148,7 @@ function solve(::Type{DirectXUA{NA,ND}},pstate,verbose::𝕓,dbg;initialstate::V
 
     model,dis             = initialstate[begin].model,initialstate[begin].dis
     out,asm,Ydofgr,Adofgr = prepare(AssemblyDirect    ,model,dis)
-    out2,asm2,_     ,_    = prepare(AssemblyDirectline,model,dis)
+    out2,asm2             = prepare(AssemblyDirectLine,model,dis)
 
     cΔy²,cΔa²             = maxΔy^2,maxΔa^2
     nX,nU,nA              = getndof(model,(:X,:U,:A))

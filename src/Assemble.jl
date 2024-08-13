@@ -117,17 +117,25 @@ State(model::Model,dis;time=-∞) = State(time,(zeros(getndof(model,:X)),),
                                              (zeros(getndof(model,:U)),),
                                               zeros(getndof(model,:A))  ,
                                               nothing,model,dis)
-# shallow copy a state, but change SP                                               
+State{nΛder,nXder,nUder}(model::Model,dis;time=-∞) where{nΛder,nXder,nUder} = 
+                                  State(time,ntuple(i->zeros(getndof(model,:X)),nΛder),
+                                             ntuple(i->zeros(getndof(model,:X)),nXder),
+                                             ntuple(i->zeros(getndof(model,:U)),nUder),
+                                                       zeros(getndof(model,:A))       ,
+                                             nothing,model,dis)
+ # shallow copy a state, but change SP, and number of derivatives                                               
 function State{nΛder,nXder,nUder}(s::State,SP::TSP) where{nΛder,nXder,nUder,TSP}
     Λ = ntuple(i->copy(∂n(s.Λ,i-1)),nΛder)
     X = ntuple(i->copy(∂n(s.X,i-1)),nXder)
     U = ntuple(i->copy(∂n(s.U,i-1)),nUder)
     State{nΛder,nXder,nUder,TSP}(s.time,Λ,X,U,copy(s.A),SP,s.model,s.dis)
 end 
+State(s::State,SP) = State(s.time,s.Λ,s.X,s.U,copy(s.A),SP,s.model,s.dis)
 # Constructor with empty SP
 State{nΛder,nXder,nUder}(s::State) where{nΛder,nXder,nUder} = State{nΛder,nXder,nUder}(s,(;))
+State(s::State) = State(s,(;))
 # A deep copy - except for model and dis
-Base.copy(s::State) = State(s.time,deepcopy(s.Λ),deepcopy(s.X),deepcopy(s.U),deepcopy(s.A),deepcopy(s.SP),deepcopy(s.model),deepcopy(s.dis)) 
+Base.copy(s::State) = State(s.time,deepcopy(s.Λ),deepcopy(s.X),deepcopy(s.U),deepcopy(s.A),deepcopy(s.SP),s.model,s.dis) 
 
 
 #### DofGroup
