@@ -57,6 +57,8 @@ module Muscade
 
     include("StaticXUA.jl")
     export StaticXUA
+    include("DirectXUA.jl")
+    export DirectXUA
 
     include("Diagnostic.jl")
     export studyscale,studysingular,describe

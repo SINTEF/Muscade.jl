@@ -5,23 +5,28 @@ const sym  = (λ=1,x=2,u=3,a=4)
 # 1) to freeze A for XU algo (or any class)
 # 2) not to compute cost on U′ or U′′ if these costs are known to be zero (same with X)                                      
 
+# dis.dis[ieletyp].index[iele].X|U|A[ieledof]       - disassembling model state into element dofs
+# dis.dis[ieletyp].scale.Λ|X|U|A[ieledof]           - scaling each element type 
+# dis.scaleΛ|X|U|A[imoddof]                         - scaling the model state
+# dis.field  X|U|A[imoddof]                         - field of dofs in model state
+
 mutable struct AssemblyDirect{T1,T2}  <:Assembly
-    L1    :: T1
-    L2    :: T2
+    L1    :: T1   # out.L1[α  ][ider     ][idof] -> gradient     α∈λxua
+    L2    :: T2   # out.L2[α,β][ider,jder][inz ] -> Hessian      α∈λxua, β∈λxua
 end  
 struct AssemblerDirect{Mder}
-    vec :: Matrix{𝕫2}
-    mat :: Matrix{𝕫2}
+    vec :: Matrix{𝕫2}     # asm.vec[α  ,ieletyp][ieledof,iele] -> idof|inz
+    mat :: Array{𝕫2,3}    # asm.mat[α,β,ieletyp][ieledof,iele] -> idof|inz
 end
 function prepare(::Type{AssemblyDirect},model,dis,mder) 
     dofgr              = (allΛdofs(model,dis),allXdofs(model,dis),allUdofs(model,dis),allAdofs(model,dis))
     ndof               = getndof.(dofgr)
     neletyp            = getneletyp(model)
-    vec                = Matrix{𝕫2}(undef,4,neletyp)
-    mat                = Matrix{𝕫2}(undef,16,neletyp)
-    asm                = AssemblerDirect{:full,mder}(vec,mat)
-    L1                 = [asmvec!(view(asm.vec,α  ,:),dofgr[α],dis)                                 for ider=1:mder[α]               ] 
-    L2                 = [asmmat!(view(asm.mat,α,β,:),view(asm,α,:),view(asm,β,:),ndof[α],ndof[β])  for ider=1:mder[α],jder=1:mder[β]]
+    vec                = Matrix{𝕫2}( undef,4  ,neletyp)
+    mat                = Array{𝕫2,3}(undef,4,4,neletyp)
+    asm                = AssemblerDirect{mder}(vec,mat)
+    L1                 = [[asmvec!(view(asm.vec,α  ,:),dofgr[α],dis)                                         for ider=1:mder[α]               ] for α∈λxua        ]
+    L2                 = [[asmmat!(view(asm.mat,α,β,:),view(asm.vec,α,:),view(asm.vec,β,:),ndof[α],ndof[β])  for ider=1:mder[α],jder=1:mder[β]] for α∈λxua, β∈λxua]
     out                = AssemblyDirect(L1,L2)
     return out,asm#,Ydofgr,Adofgr
 end
@@ -75,7 +80,7 @@ mutable struct AssemblyDirectLine  <:Assembly
     npos  :: 𝕫
 end  
 struct AssemblerDirectLine end
-prepare(::Type{AssemblyDirectLine}) = AssemblyDirectLine(La,∞,∞,0.,0),AssemblerDirectLine()
+prepare(::Type{AssemblyDirectLine}) = AssemblyDirectLine(∞,∞,0.,0),AssemblerDirectLine()
 function zero!(out::AssemblyDirectLine)
     out.ming = ∞    
     out.minλ = ∞
@@ -140,7 +145,7 @@ A vector of length equal to that of `initialstate` containing the state of the o
 
 See also: [`solve`](@ref), [`SweepX`](@ref), [`setdof!`](@ref) 
 """
-# struct DirectXUA{NA,ND} <: AbstractSolver end 
+struct DirectXUA <: AbstractSolver end 
 # function solve(::Type{DirectXUA{NA,ND}},pstate,verbose::𝕓,dbg;initialstate::Vector{<:State},
 #     maxiter::ℤ=50,maxΔy::ℝ=1e-5,maxΔa::ℝ=1e-5,
 #     saveiter::𝔹=false,
