@@ -60,6 +60,9 @@ module Runtest
         @testset "TestBlockSparse" begin
             include("TestBlockSparse.jl")
         end
+        @testset "TestFiniteDifferences" begin
+            include("TestFiniteDifferences.jl")
+        end
         doctest(Muscade)
     end
 end

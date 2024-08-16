@@ -51,6 +51,8 @@ module Muscade
 
     include("BlockSparse.jl")
     export prepare,cat!,addin!,zero!,getblock
+    
+    include("FiniteDifferences.jl")
 
     include("SweepX.jl")
     export SweepX
