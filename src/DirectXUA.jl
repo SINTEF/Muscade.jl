@@ -59,24 +59,30 @@ function addin!(out::AssemblyDirect{Mder},asm,iele,scale,eleobj,Λ::NTuple{nΛde
 # nder < ider ≤ mder        : variate 0.  So a dynamic analysis from a static state will return zero inertial force, but non-zero mass matrix
 # mder < ider ≤ nder        : do not pass to element.  So a static analysis starting from a dynamic state will not return inertial forces
     ndof  = (Nx  ,Nx   ,Nu   ,Na  )
-    nder  = (1   ,nXder,nUder,1   ) 
-    V     = (Λ   ,X    ,U    ,(A,)) # does this trigger copying?
-    Nz    = Nx+Mder[ind[:X]]*Nx+Mder[ind[:U]]*Nu+Na
-    p     = 0
-    V∂    = ntuple(4) do α
-                ntuple(Mder[α]) do ider 
-                    X∂ᵢ = if ider≤nder[α] 
-                        SVector{ndof[α]}(  ∂²ℝ{1,Nz}(V[α][ider][idof],p+idof)   for idof=1:ndof[α])
-                    else     
-                        SVector{ndof[α]}(  ∂²ℝ{1,Nz}(0.              ,p+idof)   for idof=1:ndof[α])
-                    end
-                    p  += ndof[α]
-                    X∂ᵢ
-                end
+    Nz    = Nx+Mder[2]*Nx+Mder[3]*Nu+Na
 
-            end
-    
-    L,FB    = getlagrangian(eleobj, V∂[1][1],V∂[2],V∂[3],V∂[4][1],t,SP,dbg)
+    Λ∂ = SVector{Nx}(  ∂²ℝ{1,Nz}(Λ[1][idof],idof)   for idof=1:Nx)
+#    p  = Nx
+    X∂ = ntuple(Mder[2]) do ider 
+        qx = Nx+(ider-1)*Nx
+        X∂ᵢ = if ider≤nXder SVector{Nx}(  ∂²ℝ{1,Nz}(X[ider][idof],qx+idof)   for idof=1:Nx)
+        else                SVector{Nx}(  ∂²ℝ{1,Nz}(0.           ,qx+idof)   for idof=1:Nx)
+        end
+#        p  += Nx
+        X∂ᵢ
+    end
+    U∂ = ntuple(Mder[3]) do ider 
+        qu = Nx+Mder[2]*Nx+(ider-1)*Nu
+        U∂ᵢ = if ider≤nXder SVector{Nu}(  ∂²ℝ{1,Nz}(U[ider][idof],qu+idof)   for idof=1:Nu)
+        else                SVector{Nu}(  ∂²ℝ{1,Nz}(0.           ,qu+idof)   for idof=1:Nu)
+        end
+#        p  += Nu
+        U∂ᵢ
+    end
+    qa  = Nx+Mder[2]*Nx+Mder[3]*Nu
+    A∂ = SVector{Na}(  ∂²ℝ{1,Nz}(A[idof],qa+idof)   for idof=1:Na)
+
+    L,FB    = getlagrangian(eleobj, Λ∂,X∂,U∂,A∂,t,SP,dbg)
  
     ∇L      = ∂{2,Nz}(L)
     pα      = 0   # point 1 under the start of relevant partial derivative in α,ider-loop
