@@ -1,4 +1,8 @@
-module TestDirectXUA
+# REPRISE
+# "prepare" is tested
+# Test "assemble"
+
+#module TestDirectXUA
 
 using Test
 using Muscade
@@ -57,11 +61,11 @@ zero!(out2)
 # Dofs of class :X
 # 1. field= :tx1             NodID(1)
 # 2. field= :tx1             NodID(2)
-
+#
 # Dofs of class :U
 # 1. field= :u               NodID(1)
 # 2. field= :u               NodID(2)
-
+#
 # Dofs of class :A
 # 1. field= :ΞC              NodID(1)
 # 2. field= :ΞM              NodID(1)
@@ -89,18 +93,47 @@ s2 = sparse([1, 2, 1, 2], [1, 1, 2, 2], [0.0, 0.0, 0.0, 0.0], 2, 2)
     @test out2.npos ≈ 0
 end
 @testset "prepare_asm" begin
-    @test asm.vec[1,1] ≈   [1 2]      # asm.vec[α  ,ieletyp][ieledof,iele] -> idof
-    @test asm.vec[1,2] ≈   [1; 2;;]
-    @test asm.vec[2,1] ≈   [1 2] 
-    @test asm.vec[2,2] ≈   [1; 2;;]
-    @test asm.vec[3,1] ≈   [1 2] 
-    @test asm.vec[3,2] ≈   Matrix{Int64}(undef, 0, 1)
-    @test asm.vec[4,1] ≈   [1 3; 2 4]
-    @test asm.vec[4,2] ≈   [5; 6;;]
-    @test asm.mat[1,1,1] ≈ [1 4]                    # asm.mat[λ,λ,E1][ieledof,iele] -> inz
-    @test asm.mat[4,4,1] ≈ [1 5; 2 6; 3 7; 4 8]     # asm.mat[a,a,E1][ieledof,iele] -> inz
+    @test asm[1,1]  ≈ [1 2]      # asm[iarray,ieletyp][ieledof,iele] -> idof|inz
+    @test asm[1,2]  ≈ [1; 2;;]
+    @test asm[2,1]  ≈ [1 2] 
+    @test asm[2,2]  ≈ [1; 2;;]
+    @test asm[3,1]  ≈ [1 2] 
+    @test asm[3,2]  ≈ Matrix{Int64}(undef, 0, 1)
+    @test asm[4,1]  ≈ [1 3; 2 4]
+    @test asm[4,2]  ≈ [5; 6;;]
+    @test asm[5,1]  ≈ [1 4]                   
+    @test asm[20,1] ≈ [1 5; 2 6; 3 7; 4 8]    
 end
+Muscade.assemble!(out,asm,dis,model1,state0,(;))
+@testset "prepare_out" begin
+    @test out.L1[1] ≈ [[0.0, 0.0]]
+    @test out.L1[2] ≈ [[0.0, 0.0], [0.0, 0.0], [0.0, 0.0]]
+    @test out.L1[3] ≈ [[0.0, 0.0]]
+    @test out.L1[4] ≈ [[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]]
+    @test out.L2[1,1] ≈ fill!(Matrix{Any}(undef,1,1),s2)
+    @test out.L2[2,2] ≈ fill!(Matrix{Any}(undef,3,3),s2)
+    @test out.L2[1,2][1] ≈ sparse([1, 2, 1, 2], [1, 1, 2, 2], [2.1, -1.1, -1.1, 1.1], 2, 2)
+    @test out.L2[1,2][2] ≈ sparse([1, 2, 1, 2], [1, 1, 2, 2], [0.05, 0.0, 0.0, 0.0], 2, 2) 
+    @test out.L2[1,2][3] ≈ sparse([1, 2, 1, 2], [1, 1, 2, 2], [1.0, 0.0, 0.0, 1.0], 2, 2)
+    @test out.L2[2,1][1] ≈ sparse([1, 2, 1, 2], [1, 1, 2, 2], [2.1, -1.1, -1.1, 1.1], 2, 2)
+    @test out.L2[2,1][2] ≈ sparse([1, 2, 1, 2], [1, 1, 2, 2], [0.05, 0.0, 0.0, 0.0], 2, 2) 
+    @test out.L2[2,1][3] ≈ sparse([1, 2, 1, 2], [1, 1, 2, 2], [1.0, 0.0, 0.0, 1.0], 2, 2)
+    @test out.L2[3,1][1] ≈ sparse([1, 2], [1, 2], [-1.0, -1.0], 2, 2)
+    @test out.L2[1,3][1] ≈ sparse([1, 2], [1, 2], [-1.0, -1.0], 2, 2)
+    @test out.L2[3,3] ≈ fill!(Matrix{Any}(undef,1,1),s2)
+    @test out.L2[3,4] ≈ [sparse([1, 1, 2, 2], [1, 2, 3, 4], [0.0, 0.0, 0.0, 0.0], 2, 6)]
+    @test out.L2[4,4] ≈ [sparse([1, 2, 1, 2, 3, 4, 3, 4, 5, 6, 5, 6], [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], 6, 6)]
+    @test out.L2[1,4][1] ≈ sparse([1, 1, 2, 2, 1, 2, 1, 2], [1, 2, 3, 4, 5, 5, 6, 6], [0.0, 0.0, 0.0, 0.0, 2.532843602293451, -2.532843602293451, 0.0, 0.0], 2, 6)
+    @test out.L2[4,1][1] ≈ sparse([1, 2, 5, 6, 3, 4, 5, 6], [1, 1, 1, 1, 2, 2, 2, 2], [0.0, 0.0, 2.532843602293451, 0.0, 0.0, 0.0, -2.532843602293451, 0.0], 6, 2)
+    @test typeof(out2) ==  Muscade.AssemblyDirectLine
+    @test out2.ming ≈ Inf
+    @test out2.minλ ≈ Inf
+    @test out2.Σλg ≈ 0.
+    @test out2.npos ≈ 0
+end
+
+
 #stateXUA           = solve(DirectXUA;initialstate=state0)
 
-end 
+#end 
 
