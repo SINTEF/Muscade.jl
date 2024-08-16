@@ -1,41 +1,69 @@
 
-# if I want to compute x′, list of x values I need, and corresponding weights
-function getFD(order,n,s,Δt) 
-    if order == 0
-        (i=𝕫[0],w=𝕣[1])
-    elseif order == 1
-        if     s==1   (i=𝕫[0,1],w=𝕣[-1,1]./Δt)
-        elseif s==n-0 (i=𝕫[-1,0],w=𝕣[-1,1]./Δt) 
-        else          (i=𝕫[-1,1],w=𝕣[-.5,.5]./Δt)
-        end
-    elseif order == 2
-        if     s==1   (i=𝕫[0,1,2],w=𝕣[1,-2,1]./Δt^2)
-        elseif s==n-0 (i=𝕫[-2,-1,0],w=𝕣[1,-2,1]./Δt^2)
-        else          (i=𝕫[-1,0,1],w=𝕣[1,-2,1]./Δt^2)
+# table...[order+1][left or center or right][point in kernel]
+const table_of_finite_diff_kernels            = [ [[(0,1.)] ],
+                                                  [[(0,-1.),(1,1.)], [(-1,-1.),(0,1.)], [(-1,-1/2),(1,1/2)] ],
+                                                  [[(0,1.),(1,-2.),(2,1.)], [(-2,1.),(-1,-2.),(0,1.)], [(-1,1.),(0,-2.),(1,1.)]]  ]
+
+const table_of_finite_diff_kernels_transposed = [ [ [(0,1.)] ],
+                                                  [[(0,-1.),(1,-1/2)],[(-1,1.),(1,-1/2)],[(-1,1/2),(1,-1.)],[(-1,1/2),(0,1.)],[(-1,1/2),(1,-1/2)]],
+                                                  [[(0,1.),(1,1.)], [(-1,-2.),(0,-2.),( 1,1.)], [(-2,1.),(-1,1.),(0,-2.),( 1,1.)], [( 2,1.),( 1,1.),(0,-2.),(-1,1.)],
+                                                   [( 1,-2.),(0,-2.),(-1,1.)], [(0,1.),(-1,1.)], [(-1,1.),(0,-2.),(1,1.)]                                            ] ] 
+
+function finitediff(order,n,s;transposed=false) 
+    # INPUT
+    # order - order of differentiation
+    # n - length of series to differentiate
+    # s - step index
+    # Δ - length of step
+    # ;[transpose=false] 
+    #
+    # OUTPUT 
+    # iterable collection of (Δs,w): index offset and weight
+    #
+    # transpose:
+    # for s = 1:n
+    #     for (Δs,w) ∈ finitediff(order,n,s,transpose=true)
+    #         x′[s+Δs] += x[s   ] * w/Δt  
+    #     end
+    #     for (Δs,w) ∈ finitediff(order,n,s)
+    #         x′[s   ] += x[s+Δs] * w/Δt  
+    #     end
+    # end
+    p = table_of_finite_diff_kernels
+    q = table_of_finite_diff_kernels_transposed
+    if transposed
+        if     order == 0 q[1][1]
+        elseif order == 1
+            if     s==1   q[2][1] 
+            elseif s==2   q[2][2] 
+            elseif s==n-1 q[2][3]
+            elseif s==n   q[2][4]
+            else          q[2][5] 
+            end
+        elseif order == 2 
+            if     s==1   q[3][1]
+            elseif s==2   q[3][2]   
+            elseif s==3   q[3][3]
+            elseif s==n-2 q[3][4]
+            elseif s==n-1 q[3][5]
+            elseif s==n   q[3][6]
+            else          q[3][7]
+            end
+        end        
+    else
+        if     order == 0 p[1][1]
+        elseif order == 1
+            if     s==1   p[2][1]
+            elseif s==n   p[2][2] 
+            else          p[2][3]
+            end
+        elseif order == 2
+            if     s==1   p[3][1]   
+            elseif s==n   p[3][2] 
+            else          p[3][3]  
+            end
         end
     end
 end
-# I have a value of x, where do I add it in in x′ and with what ceofficients?
-# Usefull if a value of x is available, but should no be stored
-function gettransposedFD(order,n,s,Δt) 
-    if order == 0
-        (i=𝕫[0],w=𝕣[1])
-    elseif order == 1
-        if     s==1   (i=𝕫[0,1],w=𝕣[-1,-.5]./Δt)
-        elseif s==2   (i=𝕫[-1,1],w=𝕣[1,-.5]./Δt)
-        elseif s==n-1 (i=𝕫[-1,1],w=𝕣[.5,-1]./Δt) 
-        elseif s==n-0 (i=𝕫[-1,0],w=𝕣[.5,1]./Δt) 
-        else          (i=𝕫[-1,1],w=𝕣[.5,-.5]./Δt)
-        end
-    elseif order == 2
-        if     s==1   (i=𝕫[0,1],w=𝕣[1,1]./Δt^2)
-        elseif s==2   (i=𝕫[-1,0,1],w=𝕣[-2,-2,1]./Δt^2)
-        elseif s==3   (i=𝕫[-2,-1,0,1],w=𝕣[1,1,-2,1]./Δt^2)
-        elseif s==n-2 (i=𝕫[-1,0,1,2],w=𝕣[1,-2,1,1]./Δt^2)  
-        elseif s==n-1 (i=𝕫[-1,0,1],w=𝕣[1,-2,-2]./Δt^2)  
-        elseif s==n-0 (i=𝕫[-1,0],w=𝕣[1,1]./Δt^2)
-        else          (i=𝕫[-1,0,1],w=𝕣[1,-2,1]./Δt^2)
-        end
-    end
-end
+
 

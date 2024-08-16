@@ -12,13 +12,11 @@ x1  = [zeros(n),zeros(n),zeros(n)]
 x2  = [zeros(n),zeros(n),zeros(n)]
 for order = 0:2
     for s = 1:n
-        for (i,w) ∈ Muscade.finitediff(order,n,s)
-            x1[order+1][s] += x[s+i] * w/Δt^order  
+        for (Δs,w) ∈ Muscade.finitediff(order,n,s)
+            x1[order+1][s   ] += x[s+Δs] * w/Δt^order  
         end
-    end
-    for s = 1:n
-        for (i,w) ∈ Muscade.finitediff(order,n,s,transposed=true)
-            x2[order+1][s+i] += x[s] * w/Δt^order  
+        for (Δs,w) ∈ Muscade.finitediff(order,n,s,transposed=true)
+            x2[order+1][s+Δs] += x[s   ] * w/Δt^order  
         end
     end
 end
