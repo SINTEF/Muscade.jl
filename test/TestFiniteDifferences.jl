@@ -12,16 +12,13 @@ x1  = [zeros(n),zeros(n),zeros(n)]
 x2  = [zeros(n),zeros(n),zeros(n)]
 for order = 0:2
     for s = 1:n
-        d = Muscade.getFD(order,n,s,Δt)
-        for i∈eachindex(d.i)
-            x1[order+1][s] += x[s+d.i[i]] * d.w[i]  
+        for (i,w) ∈ Muscade.finitediff(order,n,s)
+            x1[order+1][s] += x[s+i] * w/Δt^order  
         end
     end
-
     for s = 1:n
-        d = Muscade.gettransposedFD(order,n,s,Δt)
-        for i∈eachindex(d.i)
-            x2[order+1][s+d.i[i]] += x[s] * d.w[i]  
+        for (i,w) ∈ Muscade.finitediff(order,n,s,transposed=true)
+            x2[order+1][s+i] += x[s] * w/Δt^order  
         end
     end
 end
