@@ -1,3 +1,7 @@
+module SdofElements
+using Muscade,StaticArrays
+export DryFriction
+
 # # DryFriction
 #    
 # Besides providing a general example of how to implement an element in `Muscade`, this element illustrates how to implement hysteretic behaviour
@@ -17,7 +21,7 @@ end
 # to the constructor. Note that the constructor is type unstable: it gets `fields` and `fieldf` as values and uses them as type parameters. This is not deemed to be a problem for
 # the constructor (type instability in `residual` would be another matter)
 #
-# See [`Muscade.DryFriction`](@ref) for reference.
+# See [`Muscade.SdofElements.DryFriction`](@ref) for reference.
 """
     DryFriction <: AbstractElement
 
@@ -72,3 +76,4 @@ end
 Muscade.doflist( ::Type{DryFriction{Fx,Ff}}) where{Fx,Ff} =
     (inod =(1 ,1 ), class=(:X,:X), field=(Fx,Ff)) 
 
+end

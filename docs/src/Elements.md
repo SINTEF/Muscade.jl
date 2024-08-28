@@ -20,7 +20,7 @@ In classical finite element formulations, plastic strain is implemented by letti
 `Muscade` does not allow elements to have internal variables. The reason is that problem involing dofs of class `U` are not causal: our estimation of the state of a system a step `i` also depends on on measurements taken at steps `j` with `j>i`.  Hence "sweep" procedures, that is, procedures that solve a problem one load or time step at a time, are not applicable.  Solvers must hence solve for all steps at the same time.  When using Newton-Raphson iterations to solve problems of this class, internal variables make the Jacobian matrix full: the value of a stress at a given stress depends (through the internal variable) on the strain at all preceding steps. Or more formaly: Internal variables transforms the problem from *differential* to *integral*.
 A full matrix quickly leads to impossibly heavy computations.
 
-To model phenomena usualy treated using internal variable, it is necessary in `Muscade` to make the "internal" variable into a degree of freedom, and describe the equation of evolution of this degree of freedom. The element [`Muscade.DryFriction`](@ref) provides an example of implementation.  
+To model phenomena usualy treated using internal variable, it is necessary in `Muscade` to make the "internal" variable into a degree of freedom, and describe the equation of evolution of this degree of freedom. The element [`SdofElements.DryFriction`](@ref) provides an example of implementation.  
 !!! warning
     Because the equations of evolution involves first order time derivative, one can not use a static solver in combination with such elements.
 
@@ -274,7 +274,7 @@ For a given element formulation, the performance of `Muscade.residual` and `Musc
 
 1. If a complicated sub-function in `Muscade.residual` and `Muscade.lagrangian` (typicaly a material model or other closure) operates on an array (for example, the strain) that is smaller than the number of degrees of freedom of the system, computing time can be saved by computing the derivative of the output (in the example, the stress) with respect to the input to the subfunction, and then compose the derivatives.
 2. Iterative precedures are sometimes used within `Muscade.residual` and `Muscade.lagrangian`, a typical example being in plastic material formulations.  There is no need to propagate automatic differentiation through all the iterations - doing so with the result of the iteration provides the same result.
-3. Elements with corotated reference system (e.g. [`Muscade.EulerBeam3D`](@ref)) can use automatic differentiation to transform the residual back to the global reference system.
+3. Elements with corotated reference system (e.g. [`Muscade.BeamElements.EulerBeam3D`](@ref)) can use automatic differentiation to transform the residual back to the global reference system.
 
 See the page on [automatic differentiation](Adiff.md)
 
@@ -308,7 +308,7 @@ which can be read: if `kwargs.linewidth` exists, the set `linewidth` to its valu
 
 The user has facilities to draw only selected element types or selected elements, so the element's `draw` method does not need to implement a switch on *wether* to draw.
 
-See [`Muscade.EulerBeam3D`](@ref) for an example of implementation.
+See [`Muscade.BeamElements.EulerBeam3D`](@ref) for an example of implementation.
 
 ### Getting element results
 
@@ -324,13 +324,13 @@ Element constructors can use function [`coord`](@ref) to extract the coordinates
 
 Constant [`noFB`](@ref) (which have value `nothing`) can be used by elements that do not have feedback to the solving procedure.
 
-It is sometimes convenient to handle time derivatives using automatic differentiation: elements with corotated reference systems can thus handle a moving corotated system, and thus centripetal and Coriolis forces.  See [`Muscade.EulerBeam3D`](@ref) for an example. Helper functions [`Muscade.motion`](@ref), [`Muscade.position`](@ref), [`Muscade.velocity`](@ref) and [`Muscade.acceleration`](@ref) are provided. These helper functions are not exported by `Muscade`, so their invocation must be qualified with `Muscade.`.
+It is sometimes convenient to handle time derivatives using automatic differentiation: elements with corotated reference systems can thus handle a moving corotated system, and thus centripetal and Coriolis forces.  See [`Muscade.BeamElements.EulerBeam3D`](@ref) for an example. Helper functions [`Muscade.motion`](@ref), [`Muscade.position`](@ref), [`Muscade.velocity`](@ref) and [`Muscade.acceleration`](@ref) are provided. These helper functions are not exported by `Muscade`, so their invocation must be qualified with `Muscade.`.
 
 See [`Muscade.test_static_element`](@ref) (not exported) to compute the gradient of a lagrangian. 
 
 For those prefering to think in terms of Cartesian tensor algebra, rather than matrix algebra, operators [`⊗`](@ref), [`∘₁`](@ref) and [`∘₂`](@ref) provide the exterior product, the single dot product and the double dot product respectively.
 
-For elements with a corotated reference system, functions [`Muscade.Rodrigues`](@ref) and [`Muscade.adjust`](@ref) provide functionality to handle rotations in ℝ³.  See [`Muscade.EulerBeam3D`](@ref) for an example.
+For elements with a corotated reference system, functions [`Muscade.BeamElements.Rodrigues`](@ref) and [`Muscade.BeamElements.adjust`](@ref) provide functionality to handle rotations in ℝ³.  See [`Muscade.BeamElements.EulerBeam3D`](@ref) for an example.
 
 
 

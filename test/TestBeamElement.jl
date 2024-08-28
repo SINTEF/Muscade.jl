@@ -1,24 +1,24 @@
 module TestEulerBeam3D
 
-using Test, Muscade, StaticArrays, LinearAlgebra
+using Test, Muscade, Muscade.BeamElements,StaticArrays, LinearAlgebra
 
 a = SA[1,0,0]
 b = SA[0,1,1]
-r = Muscade.adjust(a,b)
-R = Muscade.Rodrigues(r)
+r = BeamElements.adjust(a,b)
+R = BeamElements.Rodrigues(r)
 u = R*a
 
 v1      = variate{1,3}(SA[.1,.2,.3])
-M1      = Muscade.Rodrigues(v1)
-w1,w∂v1 = value_∂{1,3}(Muscade.Rodrigues⁻¹(M1))
+M1      = BeamElements.Rodrigues(v1)
+w1,w∂v1 = value_∂{1,3}(BeamElements.Rodrigues⁻¹(M1))
 
 v2      = variate{1,3}(SA[1e-7,2e-7,1e-8])
-M2      = Muscade.Rodrigues(v2)
-w2,w∂v2 = value_∂{1,3}(Muscade.Rodrigues⁻¹(M2))
+M2      = BeamElements.Rodrigues(v2)
+w2,w∂v2 = value_∂{1,3}(BeamElements.Rodrigues⁻¹(M2))
 
 v3      = variate{1,3}(SA[1e-7,2e-7,1e-8])
-M3      = Muscade.Rodrigues(v3)
-w3,w∂v3 = value_∂{1,3}(Muscade.Rodrigues⁻¹(M3))
+M3      = BeamElements.Rodrigues(v3)
+w3,w∂v3 = value_∂{1,3}(BeamElements.Rodrigues⁻¹(M3))
 
 
 @testset "rotations" begin
@@ -40,9 +40,9 @@ model           = Model(:TestModel)
 node1           = addnode!(model,𝕣[0,0,0])
 node2           = addnode!(model,𝕣[4,3,0])
 elnod           = [model.nod[n.inod] for n∈[node1,node2]]
-mat             = Muscade.BeamCrossSection(EA=10.,EI=3.,GJ=4.)
+mat             = BeamElements.BeamCrossSection(EA=10.,EI=3.,GJ=4.)
 
-beam            = Muscade.EulerBeam3D(elnod;mat,orient2=SVector(0.,1.,0.))
+beam            = BeamElements.EulerBeam3D(elnod;mat,orient2=SVector(0.,1.,0.))
 
 @testset "constructor" begin
     @test beam.cₘ    ≈ [2.0, 1.5, 0.0]
@@ -65,8 +65,8 @@ model           = Model(:TestModel)
 node1           = addnode!(model,𝕣[0,0,0])
 node2           = addnode!(model,𝕣[1,0,0])
 elnod           = [model.nod[n.inod] for n∈[node1,node2]]
-mat             = Muscade.BeamCrossSection(EA=10.,EI=3.,GJ=4.)
-beam            = Muscade.EulerBeam3D(elnod;mat,orient2=SVector(0.,1.,0.))
+mat             = BeamElements.BeamCrossSection(EA=10.,EI=3.,GJ=4.)
+beam            = BeamElements.EulerBeam3D(elnod;mat,orient2=SVector(0.,1.,0.))
 t,SP,dbg  = 0.,(;),(status=:testing,)
 U = (SVector{0,𝕣}(),)
 A = SVector{0,𝕣}()
@@ -131,11 +131,11 @@ end
 # nel         = 20
 # nnod        = nel+1   
 # nodeCoord   = hcat((0:L/nel:L),zeros(Float64,nnod,2))
-# mat         = Muscade.BeamCrossSection(EA=EA,EI=EI,GJ=GJ)
+# mat         = BeamElements.BeamCrossSection(EA=EA,EI=EI,GJ=GJ)
 # model       = Model(:TestModel)
 # nodid       = addnode!(model,nodeCoord)
 # mesh        = hcat(nodid[1:nnod-1],nodid[2:nnod])
-# eleid       = addelement!(model,Muscade.EulerBeam3D,mesh;mat=mat,orient2=SVector(0.,1.,0.))
+# eleid       = addelement!(model,BeamElements.EulerBeam3D,mesh;mat=mat,orient2=SVector(0.,1.,0.))
 
 # [addelement!(model,Hold,[nodid[1]]  ;field) for field∈[:t1,:t2,:t3,:r1,:r2,:r3]]                                # Clamp end 1
 # [addelement!(model,Hold,[nodid[end]];field) for field∈[:t1,:t2,:t3,:r1,:r2,:r3]]                                # Clamp end 2

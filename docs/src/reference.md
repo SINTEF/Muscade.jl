@@ -3,28 +3,28 @@
 ## Constants
 
 ```@autodocs
-Modules = [Muscade]
+Modules = [Muscade, Muscade.BeamElements, Muscade.SdofElements]
 Order   = [:constant]
 ```
 
 ## Types
 
 ```@autodocs
-Modules = [Muscade]
+Modules = [Muscade, Muscade.BeamElements, Muscade.SdofElements]
 Order   = [:type]
 ```
 
 ## Functions
 
 ```@autodocs
-Modules = [Muscade]
+Modules = [Muscade, Muscade.BeamElements, Muscade.SdofElements]
 Order   = [:function]
 ```
 
 ## Macros
 
 ```@autodocs
-Modules = [Muscade]
+Modules = [Muscade, Muscade.BeamElements, Muscade.SdofElements]
 Order   = [:macro]
 ```
 

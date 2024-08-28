@@ -6,12 +6,13 @@ docsrc  = joinpath(docs,"src")
 
 Pkg.activate(docs) 
 
-using Muscade, Documenter, Literate, DocumenterCitations,Printf
+using Muscade, Muscade.BeamElements, Muscade.SdofElements
+using Documenter, Literate, DocumenterCitations,Printf
 
 cp(joinpath(muscade,"LICENSE.md"),joinpath(docsrc,"LICENSE.md"),force=true)
 
 #Literate.markdown(joinpath(docsrc,"tutorial1.jl"),docsrc)
-els = ["DryFriction","BeamElement"]
+els = ["SdofElements","BeamElements"]
 for el ∈ els
         Literate.markdown(joinpath(muscade,"src","Elements",@sprintf("%s.jl",el)),docsrc,
                        execute=false,codefence= "````julia" => "````", # prevent execution of the code by Literate and Documenter
@@ -21,7 +22,7 @@ end
 bib = CitationBibliography(joinpath(docsrc, "ref.bib"); style=:authoryear) #:numeric
 
 makedocs(sitename ="Muscade.jl",
-        # modules = [Elements],
+        modules   = [Muscade, Muscade.BeamElements, Muscade.SdofElements],
         format    = Documenter.HTML(prettyurls = false,sidebar_sitename = false),
         plugins   = [bib],
         pages     = ["index.md",

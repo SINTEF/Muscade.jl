@@ -8,9 +8,12 @@
 # 3) U-dofs, using a "isoparametric" formulation
 # 4) performance.  Liberal use of nested Adiff makes code simple, but not fast...
 
+module BeamElements
 
 using StaticArrays, LinearAlgebra
 using Muscade
+
+export EulerBeam3D, BeamCrossSection
 
 include("Rotations.jl")
 
@@ -128,3 +131,4 @@ const v3   = SVector{3}
     return R,noFB
 end
 
+end
