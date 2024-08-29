@@ -23,7 +23,10 @@ bib = CitationBibliography(joinpath(docsrc, "ref.bib"); style=:authoryear) #:num
 
 makedocs(sitename ="Muscade.jl",
         modules   = [Muscade, Muscade.BeamElements, Muscade.SdofElements],
-        format    = Documenter.HTML(prettyurls = false,sidebar_sitename = false),
+        format    = Documenter.HTML(    prettyurls          = false,
+                                        sidebar_sitename    = false,
+                                        size_threshold_warn = nothing,                 
+                                        size_threshold      = nothing),
         plugins   = [bib],
         pages     = ["index.md",
                      "Theory.md",
