@@ -40,9 +40,9 @@ model           = Model(:TestModel)
 node1           = addnode!(model,𝕣[0,0,0])
 node2           = addnode!(model,𝕣[4,3,0])
 elnod           = [model.nod[n.inod] for n∈[node1,node2]]
-mat             = BeamElements.BeamCrossSection(EA=10.,EI=3.,GJ=4.)
+mat             = BeamCrossSection(EA=10.,EI=3.,GJ=4.)
 
-beam            = BeamElements.EulerBeam3D(elnod;mat,orient2=SVector(0.,1.,0.))
+beam            = EulerBeam3D(elnod;mat,orient2=SVector(0.,1.,0.))
 
 @testset "constructor" begin
     @test beam.cₘ    ≈ [2.0, 1.5, 0.0]
@@ -65,8 +65,8 @@ model           = Model(:TestModel)
 node1           = addnode!(model,𝕣[0,0,0])
 node2           = addnode!(model,𝕣[1,0,0])
 elnod           = [model.nod[n.inod] for n∈[node1,node2]]
-mat             = BeamElements.BeamCrossSection(EA=10.,EI=3.,GJ=4.)
-beam            = BeamElements.EulerBeam3D(elnod;mat,orient2=SVector(0.,1.,0.))
+mat             = BeamCrossSection(EA=10.,EI=3.,GJ=4.)
+beam            = EulerBeam3D(elnod;mat,orient2=SVector(0.,1.,0.))
 t,SP,dbg  = 0.,(;),(status=:testing,)
 U = (SVector{0,𝕣}(),)
 A = SVector{0,𝕣}()
@@ -131,11 +131,11 @@ end
 # nel         = 20
 # nnod        = nel+1   
 # nodeCoord   = hcat((0:L/nel:L),zeros(Float64,nnod,2))
-# mat         = BeamElements.BeamCrossSection(EA=EA,EI=EI,GJ=GJ)
+# mat         = BeamCrossSection(EA=EA,EI=EI,GJ=GJ)
 # model       = Model(:TestModel)
 # nodid       = addnode!(model,nodeCoord)
 # mesh        = hcat(nodid[1:nnod-1],nodid[2:nnod])
-# eleid       = addelement!(model,BeamElements.EulerBeam3D,mesh;mat=mat,orient2=SVector(0.,1.,0.))
+# eleid       = addelement!(model,EulerBeam3D,mesh;mat=mat,orient2=SVector(0.,1.,0.))
 
 # [addelement!(model,Hold,[nodid[1]]  ;field) for field∈[:t1,:t2,:t3,:r1,:r2,:r3]]                                # Clamp end 1
 # [addelement!(model,Hold,[nodid[end]];field) for field∈[:t1,:t2,:t3,:r1,:r2,:r3]]                                # Clamp end 2

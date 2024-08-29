@@ -78,7 +78,9 @@ module Muscade
     include("ElementTestTools.jl")
 #    export BeamElements,SdofElements
 
-    # The files below each define a module
+    # The files below each define a submodule
+    # Muscade does not export the submodules
+    # but submodules are expected to export their core functionality
     include("Elements/BeamElements.jl")
     include("Elements/SdofElements.jl")
 end

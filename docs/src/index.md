@@ -1,6 +1,5 @@
 
 ```@meta
-using Muscade
 CurrentModule = Muscade
 ```
 
