@@ -1,5 +1,7 @@
-
-# We make a distinction between nΛder==nAder==1, nXder=length(X), nUder=length(U) on the one hand, and mΞder ≤ nΞder.  This allows
+# mder: the derivatives to be returned through `out` 
+# nder: the derivatives given to addin! 
+#
+# We make a distinction between nΛder==nAder==1, nXder=length(X), nUder=length(U) on the one hand, and m?der ≤ n?der.  This allows
 # 1) to freeze A for XU algo (or any class)
 # 2) not to compute cost on U′ or U′′ if these costs are known to be zero (same with X)                                      
 
@@ -10,34 +12,27 @@
 # asm[iarray,ieletyp][ieledof|ientry,iele] -> idof|inz
 # out.L1[α  ][ider     ][idof] -> gradient     α∈λxua
 # out.L2[α,β][ider,jder][inz ] -> Hessian      α∈λxua, β∈λxua
-# mder
 const λxua   = 1:4
 const ind    = (Λ=1,X=2,U=3,A=4)
 const nder   = 3
 const nclass = 4 
-# const nvec =  nder*nclass
-# const nmat =  nder*nclass^2  # we leave undef subarrays in asm for unwanted derivatives.
-# arrnum(α,ider       ) =        ider           + nder       *(       α      -1)
-# arrnum(α,ider,β,jder) = nvec + arrnum(β,jder) + nder*nclass*(arrnum(α,ider)-1) 
-const nvec =  nclass
-const nmat =  nclass^2  # we leave undef subarrays in asm for unwanted derivatives.
-arrnum(α  ) =        α
-arrnum(α,β) = nvec + β + nclass*(α-1) 
+const nvec   = nclass
+const nmat   = nclass^2  # we leave undef subarrays in asm for unwanted derivatives.
+arrnum(α  )  =        α
+arrnum(α,β)  = nvec + β + nclass*(α-1) 
 mutable struct AssemblyDirect{Mder,T1,T2}  <:Assembly
-    L1    :: T1   
-    L2    :: T2   
+    L1 :: T1   
+    L2 :: T2   
 end  
 function prepare(::Type{AssemblyDirect},model,dis,mder) 
     dofgr    = (allΛdofs(model,dis),allXdofs(model,dis),allUdofs(model,dis),allAdofs(model,dis))
     ndof     = getndof.(dofgr)
     neletyp  = getneletyp(model)
     asm      = Matrix{𝕫2}(undef,nvec+nmat,neletyp)
-    # L1       = [[asmvec!(view(asm,arrnum(α,ider       ),:),dofgr[α],dis   )  for ider=1:mder[α]               ] for α∈λxua        ]
-    # L2       = [[asmmat!(view(asm,arrnum(α,ider,β,jder),:),ndof[α],ndof[β])  for ider=1:mder[α],jder=1:mder[β]] for α∈λxua, β∈λxua]
     L1       = [[asmvec!(view(asm,arrnum(α  ),:),dofgr[α],dis   )                                              for ider=1:mder[α]               ] for α∈λxua        ] # recomputes asm three mder  times
     L2       = [[asmmat!(view(asm,arrnum(α,β),:),view(asm,arrnum(α),:),view(asm,arrnum(β),:),ndof[α],ndof[β])  for ider=1:mder[α],jder=1:mder[β]] for α∈λxua, β∈λxua] # recomputes asm three mder² times
     out      = AssemblyDirect{mder,typeof(L1),typeof(L2)}(L1,L2)
-    return out,asm#,Ydofgr,Adofgr
+    return out,asm
 end
 function zero!(out::AssemblyDirect)
     for α∈λxua 
@@ -51,36 +46,30 @@ function addin!(out::AssemblyDirect{Mder},asm,iele,scale,eleobj,Λ::NTuple{nΛde
                                                                 X::NTuple{nXder,SVector{Nx}},
                                                                 U::NTuple{nUder,SVector{Nu}},
                                                                 A::             SVector{Na}   ,t,SP,dbg) where{Mder,nΛder,nXder,nUder,Nx,Nu,Na} 
-                                                                                   
 # asm[iarray         ][ieledof|ientry,iele] -> idof|inz
 # mder: the derivatives wanted in out 
 # nder: the derivatives given to addin! 
 # ider ≤ nder & ider ≤ mder : take the time derivative and variate it
 # nder < ider ≤ mder        : variate 0.  So a dynamic analysis from a static state will return zero inertial force, but non-zero mass matrix
-# mder < ider ≤ nder        : do not pass to element.  So a static analysis starting from a dynamic state will not return inertial forces
+# mder < ider ≤ nder        : do not pass to element.  So a static analysis starting from a dynamic state will return neither inertial forces nor mass matrix
     ndof  = (Nx  ,Nx   ,Nu   ,Na  )
     Nz    = Nx+Mder[2]*Nx+Mder[3]*Nu+Na
 
-    Λ∂ = SVector{Nx}(  ∂²ℝ{1,Nz}(Λ[1][idof],idof)   for idof=1:Nx)
-#    p  = Nx
+    Λ∂ =               SVector{Nx}(  ∂²ℝ{1,Nz}(Λ[1   ][idof],  idof)   for idof=1:Nx)
     X∂ = ntuple(Mder[2]) do ider 
         qx = Nx+(ider-1)*Nx
-        X∂ᵢ = if ider≤nXder SVector{Nx}(  ∂²ℝ{1,Nz}(X[ider][idof],qx+idof)   for idof=1:Nx)
-        else                SVector{Nx}(  ∂²ℝ{1,Nz}(0.           ,qx+idof)   for idof=1:Nx)
+        if ider≤nXder SVector{Nx}(  ∂²ℝ{1,Nz}(X[ider][idof],qx+idof)   for idof=1:Nx)
+        else          SVector{Nx}(  ∂²ℝ{1,Nz}(0.           ,qx+idof)   for idof=1:Nx)
         end
-#        p  += Nx
-        X∂ᵢ
     end
     U∂ = ntuple(Mder[3]) do ider 
         qu = Nx+Mder[2]*Nx+(ider-1)*Nu
-        U∂ᵢ = if ider≤nXder SVector{Nu}(  ∂²ℝ{1,Nz}(U[ider][idof],qu+idof)   for idof=1:Nu)
-        else                SVector{Nu}(  ∂²ℝ{1,Nz}(0.           ,qu+idof)   for idof=1:Nu)
+        if ider≤nXder SVector{Nu}(  ∂²ℝ{1,Nz}(U[ider][idof],qu+idof)   for idof=1:Nu)
+        else          SVector{Nu}(  ∂²ℝ{1,Nz}(0.           ,qu+idof)   for idof=1:Nu)
         end
-#        p  += Nu
-        U∂ᵢ
     end
     qa  = Nx+Mder[2]*Nx+Mder[3]*Nu
-    A∂ = SVector{Na}(  ∂²ℝ{1,Nz}(A[idof],qa+idof)   for idof=1:Na)
+    A∂ =              SVector{Na}(  ∂²ℝ{1,Nz}(A[      idof],qa+idof)   for idof=1:Na)
 
     L,FB    = getlagrangian(eleobj, Λ∂,X∂,U∂,A∂,t,SP,dbg)
  
@@ -125,7 +114,7 @@ function addin!(out::AssemblyDirectLine,asm::AssemblerDirectLine,iele,scale,eleo
     end
 end
 
-
+######################
 
 """
 	DirectXUA
