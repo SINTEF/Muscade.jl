@@ -8,13 +8,19 @@ const table_of_finite_diff_kernels_transposed = [ [ [(0,1.)] ],
                                                   [[(0,-1.),(1,-1/2)],[(-1,1.),(1,-1/2)],[(-1,1/2),(1,-1.)],[(-1,1/2),(0,1.)],[(-1,1/2),(1,-1/2)]],
                                                   [[(0,1.),(1,1.)], [(-1,-2.),(0,-2.),( 1,1.)], [(-2,1.),(-1,1.),(0,-2.),( 1,1.)], [( 2,1.),( 1,1.),(0,-2.),(-1,1.)],
                                                    [( 1,-2.),(0,-2.),(-1,1.)], [(0,1.),(-1,1.)], [(-1,1.),(0,-2.),(1,1.)]                                            ] ] 
+# npoints_transposed[order] NB: this is for a linear combination of derivatives up to `order`
+function number_of_findiff_points(nstep,order)
+   if     order == 1    nstep
+   elseif order == 2  3*nstep-2
+   elseif order == 3  3*nstep      
+   end
+end
 
 function finitediff(order,n,s;transposed=false) 
     # INPUT
     # order - order of differentiation
     # n - length of series to differentiate
     # s - step index
-    # Δ - length of step
     # ;[transpose=false] 
     #
     # OUTPUT 
@@ -65,5 +71,6 @@ function finitediff(order,n,s;transposed=false)
         end
     end
 end
+
 
 

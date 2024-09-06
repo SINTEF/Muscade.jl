@@ -9,15 +9,16 @@
 # dis.dis[ieletyp].scale.Λ|X|U|A[ieledof]           - scaling each element type 
 # dis.scaleΛ|X|U|A[imoddof]                         - scaling the model state
 # dis.field  X|U|A[imoddof]                         - field of dofs in model state
-# asm[iarray,ieletyp][ieledof|ientry,iele] -> idof|inz
-# out.L1[α  ][ider     ][idof] -> gradient     α∈λxua
-# out.L2[α,β][ider,jder][inz ] -> Hessian      α∈λxua, β∈λxua
+# asm1[iarray,ieletyp][ieledof|ientry,iele] -> idof|inz
+# out1.L1[α  ][ider     ][idof] -> gradient     α∈λxua
+# out1.L2[α,β][ider,jder][inz ] -> Hessian      α∈λxua, β∈λxua
 const λxua   = 1:4
+const λxu    = 1:3
 const ind    = (Λ=1,X=2,U=3,A=4)
 const nder   = 3
 const nclass = 4 
 const nvec   = nclass
-const nmat   = nclass^2  # we leave undef subarrays in asm for unwanted derivatives.
+const nmat   = nclass^2  # we leave undef subarrays in asm1 for unwanted derivatives.
 arrnum(α  )  =        α
 arrnum(α,β)  = nvec + β + nclass*(α-1) 
 mutable struct AssemblyDirect{Mder,T1,T2}  <:Assembly
@@ -68,21 +69,21 @@ function addin!(out::AssemblyDirect{Mder},asm,iele,scale,eleobj,Λ::NTuple{nΛde
         else          SVector{Nu}(  ∂²ℝ{1,Nz}(0.           ,qu+idof)   for idof=1:Nu)
         end
     end
-    qa  = Nx+Mder[2]*Nx+Mder[3]*Nu
+    qa = Nx+Mder[2]*Nx+Mder[3]*Nu
     A∂ =              SVector{Na}(  ∂²ℝ{1,Nz}(A[      idof],qa+idof)   for idof=1:Na)
 
-    L,FB    = getlagrangian(eleobj, Λ∂,X∂,U∂,A∂,t,SP,dbg)
+    L,FB         = getlagrangian(eleobj, Λ∂,X∂,U∂,A∂,t,SP,dbg)
  
-    ∇L      = ∂{2,Nz}(L)
-    pα      = 0   # point 1 under the start of relevant partial derivative in α,ider-loop
+    ∇L           = ∂{2,Nz}(L)
+    pα           = 0   # point 1 under the start of relevant partial derivative in α,ider-loop
     for α∈λxua, i=1:Mder[α]
-        iα  = pα.+(1:ndof[α])
-        pα += ndof[α]
+        iα       = pα.+(1:ndof[α])
+        pα      += ndof[α]
         add_value!(out.L1[α][i] ,asm[arrnum(α)],iele,∇L,iα)
-        pβ      = 0
+        pβ       = 0
         for β∈λxua, j=1:Mder[β]
-            iβ  = pβ.+(1:ndof[β])
-            pβ += ndof[β]
+            iβ   = pβ.+(1:ndof[β])
+            pβ  += ndof[β]
             add_∂!{1}( out.L2[α,β][i,j],asm[arrnum(α,β)],iele,∇L,iα,iβ)
         end
     end
@@ -162,45 +163,66 @@ A vector of length equal to that of `initialstate` containing the state of the o
 
 See also: [`solve`](@ref), [`SweepX`](@ref), [`setdof!`](@ref) 
 """
-struct DirectXUA <: AbstractSolver end 
-# function solve(::Type{DirectXUA{NA,ND}},pstate,verbose::𝕓,dbg;initialstate::Vector{<:State},
+struct DirectXUA{NA,ND} <: AbstractSolver end 
+# function solve(::Type{DirectXUA{NA,ND}},pstate,verbose::𝕓,dbg;
+#     time::AbstractVector{𝕣},
+#     initialstate::State,
 #     maxiter::ℤ=50,maxΔy::ℝ=1e-5,maxΔa::ℝ=1e-5,
 #     saveiter::𝔹=false,
 #     maxLineIter::ℤ=50,β::𝕣=.5,γfac::𝕣=.5,γbot::𝕣=1e-8) where{NA,ND}
 
-#     model,dis             = initialstate[begin].model,initialstate[begin].dis
-#     out,asm,Ydofgr,Adofgr = prepare(AssemblyDirect    ,model,dis)
+#     model,dis             = initialstate.model, initialstate.dis
+#     out1,asm1             = prepare(AssemblyDirect    ,model,dis)
 #     out2,asm2             = prepare(AssemblyDirectLine,model,dis)
+#     assemble!(out1,asm1,dis,model,initialstate,(dbg...,solver=:DirectXUA,phase=:sparsity))
+
+#     nstep                 = length(time)
+
+#     ndiff                 = number_of_findiff_points(nstep,order) # number of 3*3 superblocks in the big matrix
+#     nrow = ncol           = length(λxu)*nstep + NA
+#     nblocks               = nfdiff*length(λxu)^2 + 2*(length(λxu)*nstep) + 1
+#     row                   = 𝕫1(undef,nblocks) 
+#     col                   = 𝕫1(undef,nblocks) 
+#     nz                    = Vector{SparseMatrixCSC{𝕣,𝕫}}(undef,nblocks)
+#     for idiff = 1:ndiff
+#         irow  =              # super row
+#         icol  =              # super column    
+#         for α∈λxu,β∈λxu
+#             jrow = (irow-1)*length(λxu) + α
+#             jcol = (icol-1)*length(λxu) + β
+
+#         end    
+#     blocks                = sparse(row,col,nz)
+
 
 #     cΔy²,cΔa²             = maxΔy^2,maxΔa^2
-#     nX,nU,nA              = getndof(model,(:X,:U,:A))
-#     nstep                 = length(initialstate)
-#     nV                    = nstep*(2*nX+nU) + nA
-#     nblock                = nstep + 1
-#     ΣLa                   = Vector{𝕣}(undef,nA   )
+#     # nX,nU,nA              = getndof(model,(:X,:U,:A))
+#     # nV                    = nstep*(2*nX+nU) + nA
+#     # nblock                = nstep + 1
+#     # ΣLa                   = Vector{𝕣}(undef,nA   )
 
 #     # block                 = Matrix{SparseMatrixCSC{𝕣,𝕫}}(undef,nblock,nblock)
 #     # for step ∈ eachindex(initialstate)
-#     #     block[step  ,step  ]  = out.Lyy
-#     #     block[step  ,nblock]  = out.Lya
-#     #     block[nblock,step  ]  = out.Lay
-#     #     block[nblock,nblock]  = out.Laa
+#     #     block[step  ,step  ]  = out1.Lyy
+#     #     block[step  ,nblock]  = out1.Lya
+#     #     block[nblock,step  ]  = out1.Lay
+#     #     block[nblock,nblock]  = out1.Laa
 #     # end
-#     i                     = 𝕫1(undef,4*length(initialstate))
-#     j                     = 𝕫1(undef,4*length(initialstate))
-#     v                     = Vector{typeof(out.Lyy)}(undef,4*length(initialstate))
-#     for step ∈ eachindex(initialstate)
-#         i[4step-3],j[4step-3],v[4step-3] = step  ,step  ,out.Lyy
-#         i[4step-2],j[4step-2],v[4step-2] = step  ,nblock,out.Lya
-#         i[4step-1],j[4step-1],v[4step-1] = nblock,step  ,out.Lay
-#         i[4step-0],j[4step-0],v[4step-0] = nblock,nblock,out.Laa
+#     i                     = 𝕫1(undef,4*ntime)
+#     j                     = 𝕫1(undef,4*ntime)
+#     v                     = Vector{typeof(out1.Lyy)}(undef,4*ntime)
+#     for step ∈ eachindex(time)
+#         i[4step-3],j[4step-3],v[4step-3] = step  ,step  ,out1.Lyy
+#         i[4step-2],j[4step-2],v[4step-2] = step  ,nblock,out1.Lya
+#         i[4step-1],j[4step-1],v[4step-1] = nblock,step  ,out1.Lay
+#         i[4step-0],j[4step-0],v[4step-0] = nblock,nblock,out1.Laa
 #     end
 #     block = SparseBlocks(v,i,j)
 #     Lvv,blkasm            = prepare(block)
 #     Lv                    = 𝕣1(undef,nV)
 
 
-#     states                = [State{1,1,1}(i,(γ=0.,)) for i ∈ initialstate]
+#     states                = [State{1,1,1}(step,(γ=0.,)) for step ∈ time]
 #     if saveiter
 #         statess           = Vector{Vector{State{1,1,1,typeof((γ=0.,))}}}(undef,maxiter) 
 #         pstate[]          = statess
@@ -211,6 +233,8 @@ struct DirectXUA <: AbstractSolver end
 #     Δy²                   = Vector{𝕣 }(undef,nstep)
 
 #     Σλg,npos              = 0.,0
+
+#     for iter              = 1:maxiter
 #     for (step,state)   ∈ enumerate(states) 
 #         assemble!(out2,asm2,dis,model,state,(dbg...,solver=:DirectXUA,phase=:preliminary,step=step))
 #         out2.ming ≤ 0 && muscadeerror(@sprintf("Initial point is not strictly primal-feasible at step %3d",step))
@@ -221,20 +245,19 @@ struct DirectXUA <: AbstractSolver end
 #     γ = γ₀ = Σλg/max(1,npos)*γfac
 
 #     local LU
-#     for iter              = 1:maxiter
 #         verbose && @printf("    iteration %3d, γ=%g\n",iter,γ)
 
 #         zero!(Lvv)
 #         zero!(Lv )
 #         for (step,state)   ∈ enumerate(states)
 #             state.SP = (γ=γ ,)
-#             assemble!(out,asm,dis,model,state,(dbg...,solver=:DirectXUA,step=step,iter=iter))
-#             addin!(Lvv,out.Lyy,blkasm,step  ,step  )
-#             addin!(Lvv,out.Lya,blkasm,step  ,nblock)
-#             addin!(Lvv,out.Lay,blkasm,nblock,step  )
-#             addin!(Lvv,out.Laa,blkasm,nblock,nblock) # while A is step indep, Laa and La can be step dep
-#             addin!(Lv ,out.Ly ,blkasm,step         )
-#             addin!(Lv ,out.La ,blkasm,nblock       )
+#             assemble!(out1,asm1,dis,model,state,(dbg...,solver=:DirectXUA,step=step,iter=iter))
+#             addin!(Lvv,out1.Lyy,blkasm,step  ,step  )
+#             addin!(Lvv,out1.Lya,blkasm,step  ,nblock)
+#             addin!(Lvv,out1.Lay,blkasm,nblock,step  )
+#             addin!(Lvv,out1.Laa,blkasm,nblock,nblock) # while A is step indep, Laa and La can be step dep
+#             addin!(Lv ,out1.Ly ,blkasm,step         )
+#             addin!(Lv ,out1.La ,blkasm,nblock       )
 #         end   
 
 #         try if iter==1 LU = lu(Lvv) 

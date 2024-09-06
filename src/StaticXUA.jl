@@ -179,7 +179,7 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
         i[4step-1],j[4step-1],v[4step-1] = nblock,step  ,out.Lay
         i[4step-0],j[4step-0],v[4step-0] = nblock,nblock,out.Laa
     end
-    block = SparseBlocks(v,i,j)
+    block                 = sparse(i,j,v)
     Lvv,blkasm            = prepare(block)
     Lv                    = 𝕣1(undef,nV)
 
@@ -226,10 +226,10 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
         end catch; muscadeerror(@sprintf("Lvv matrix factorization failed at iter=%i",iter));end
         Δv               = LU\Lv 
 
-        Δa               = getblock(Δv,blkasm,nblock)
+        Δa               = disblock(Δv,blkasm,nblock)
         Δa²              = sum(Δa.^2)
         for (step,state)   ∈ enumerate(states)
-            Δy           = getblock(Δv,blkasm,step  )
+            Δy           = disblock(Δv,blkasm,step  )
             Δy²[step]    = sum(Δy.^2)
             decrement!(state,0,Δy,Ydofgr)
             decrement!(state,0,Δa,Adofgr)
@@ -257,7 +257,7 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
             Δs                = s*(β-1)
             s                += Δs
             for (step,state)  ∈ enumerate(states)
-                decrement!(state,0,Δs*getblock(Δv,blkasm,step),Ydofgr)
+                decrement!(state,0,Δs*disblock(Δv,blkasm,step),Ydofgr)
                 decrement!(state,0,Δs*Δa                      ,Adofgr)
             end
         end

@@ -1,12 +1,12 @@
-######## Takes a matrix of sparses, and assembles it into a bigsparse
+######## Takes a matrix of matrices (a pattern of blocks), and assembles it into a bigsparse
 
 # i index
 # n length
 # p ptr (using the colptr compression convention - the index of start of a swath within a vector)
 #
-# b block  - indexing blocks
-# l local  - indexing inside a block
-# g global - indexing the whole matrix
+# b block  - indexing blocks within pattern
+# l local  - indexing entries inside a block
+# g global - indexing the whole bigsparse
 #
 # r row
 # c col
@@ -22,48 +22,38 @@ struct BlockSparseAssembler
     pgc ::𝕫1           # pgc[ibc]     →  Given index of block column, get index of first global column of the block 
 end
 
-struct SparseBlocks{T} <: AbstractMatrix{T}
-    nzval  :: Vector{T         }
-    rowcol :: Vector{Tuple{𝕫,𝕫}}
-    nrow   :: 𝕫
-    ncol   :: 𝕫
-end
-SparseBlocks(nzval,row,col,nrow=maximum(row),ncol=maximum(col)) = SparseBlocks(nzval,[(row[i],col[i]) for i∈eachindex(row)],nrow,ncol)
-function block(sb::SparseBlocks,row,col)
-    i = findfirst(rc->rc==(row,col),sb.rowcol)
-    return i===nothing ? nothing : sb.nzval[i]
-end
-block(B::Matrix{SparseMatrixCSC{Tv,𝕫}},row,col) where{Tv} = isassigned(B,row,col) ? B[row,col] : nothing
-Base.size(B::SparseBlocks) = (B.nrow,B.ncol)
-
+Base.zero(SparseMatrixCSC) = nothing # so that, for a sparse pattern, indexing the pattern at a a structuraly zero block returns nothing
+# provide same syntax for indexing into the pattern (full or sparse), returning `nothing` for empty blocks 
+getblock(pattern::SparseMatrixCSC{SparseMatrixCSC{Tv,𝕫}},row,col) where{Tv} = pattern[row,col]
+getblock(pattern::Matrix{SparseMatrixCSC{Tv,𝕫}},row,col) where{Tv} = isassigned(pattern,row,col) ? pattern[row,col] : nothing
 
 """
-    bigsparse,asm = prepare(blocks::Matrix{<:SparseMatrixCSC})
+    bigsparse,asm = prepare(pattern)
 
-Prepare for the assembly of sparse blocks into a large sparse matrix. Unassigned blocks (undef'ed) will be treated as all-zero.
+Prepare for the assembly of sparse blocks into a large sparse matrix. Unassigned elements in `pattern` (undef'ed) will be treated as all-zero.
 `bigsparse` is allocated, with the correct sparsity structure, but its `nzval` undef'ed.    
 Where some blocks share the same sparsity structure, `blocks` can have `===` elements.
 
-`blocks` can be a `Matrix{<:SparseMatrixCSC}`, where empty blocks are unassigned.
-`blocks` can be a `SparseBlocks{<:SparseMatrixCSC}`.
+`pattern` can be a `Matrix{<:SparseMatrixCSC}`, where empty blocks are unassigned.
+`pattern` can be a `SparseMatrixCSC{<:SparseMatrixCSC}`, where empty blocks are structuraly zero
 
 See also: [`addin!`](@ref)
 """ 
-function prepare(B::AbstractMatrix{SparseMatrixCSC{Tv,𝕫}}) where{Tv} 
-    nbr,nbc                 = size(B)  
-    nbr>0 && nbc>0 || muscadeerror("must have length(B)>0")
+function prepare(pattern::AbstractMatrix{SparseMatrixCSC{Tv,𝕫}}) where{Tv} 
+    nbr,nbc                 = size(pattern)  
+    nbr>0 && nbc>0 || muscadeerror("must have length(pattern)>0")
 
     pgr                     = 𝕫1(undef,nbr+1)         # pointers to the start of each block in global solution vector, where global*solution=rhs
     pgr[1]                  = 1
     for ibr                 = 1:nbr
         nlr                 = 0
         for ibc             = 1:nbc
-            b = block(B,ibr,ibc)
+            b = getblock(pattern,ibr,ibc)
             if ~isnothing(b)
                 nlr         = size(b,1)
                 break
             end
-            ibc<nbc || muscadeerror("B has an empty row")
+            ibc<nbc || muscadeerror("pattern has an empty row")
         end
         nlr > 0 || muscadeerror("every block-row must contain at least one assigned Sparse")
         pgr[ibr+1]          = pgr[ibr]+nlr
@@ -75,12 +65,12 @@ function prepare(B::AbstractMatrix{SparseMatrixCSC{Tv,𝕫}}) where{Tv}
     for ibc                 = 1:nbc
         nlc                 = 0
         for ibr             = 1:nbr
-            b = block(B,ibr,ibc)
+            b = getblock(pattern,ibr,ibc)
             if ~isnothing(b)
                 nlc         = size(b,2)
                 break
             end
-            ibc<nbc || muscadeerror("B has an empty column")
+            ibc<nbc || muscadeerror("pattern has an empty column")
         end
         nlc > 0 || muscadeerror("every block-column must contain at least one assigned Sparse")
         pgc[ibc+1]          = pgc[ibc]+nlc
@@ -90,7 +80,7 @@ function prepare(B::AbstractMatrix{SparseMatrixCSC{Tv,𝕫}}) where{Tv}
     ngv                     = 0                        # number of global nz values     
     for ibc                 = 1:nbc
         for ibr             = 1:nbr
-            b = block(B,ibr,ibc)
+            b = getblock(pattern,ibr,ibc)
             if ~isnothing(b)
                 ngv        += nnz(b)
             end
@@ -110,7 +100,7 @@ function prepare(B::AbstractMatrix{SparseMatrixCSC{Tv,𝕫}}) where{Tv}
        for ilc              = 1:nlc
             igc             = ilc + pgc[ibc]-1
             for ibr         = 1:nbr
-                b = block(B,ibr,ibc)
+                b = getblock(pattern,ibr,ibc)
                 if ~isnothing(b)
                         asm[ibc][ibr,ilc] = igv
                     pilr,ilr    = b.colptr, b.rowval
@@ -132,12 +122,12 @@ Add a sparse into one of the blocks of a large sparse matrix.  Will fail silentl
 `bigsparse` has the correct sparsity structure for the given `blocks`. Use [`prepare`](@ref) to
     create `bigsparse` and `asm`.
 """ 
-function addin!(out::SparseMatrixCSC{Tv,Ti},B::SparseMatrixCSC{Tv,Ti},asm::BlockSparseAssembler,ibr::𝕫,ibc::𝕫) where{Tv,Ti<:Integer}
+function addin!(out::SparseMatrixCSC{Tv,Ti},block::SparseMatrixCSC{Tv,Ti},asm::BlockSparseAssembler,ibr::𝕫,ibc::𝕫) where{Tv,Ti<:Integer}
     gv              = out.nzval
     asm.pigr[ibc][ibr,1] > 0 || muscadeerror("Trying to addin! into an empty block")
-    for ilc         = 1:size(B,2)
+    for ilc         = 1:size(block,2)
         igv         = asm.pigr[ibc][ibr,ilc]
-        pilr,lv     = B.colptr,B.nzval 
+        pilr,lv     = block.colptr,block.nzval 
         for ilv     = pilr[ilc]:pilr[ilc+1]-1 
             gv[igv]+= lv[ilv] 
             igv    += 1
@@ -145,18 +135,19 @@ function addin!(out::SparseMatrixCSC{Tv,Ti},B::SparseMatrixCSC{Tv,Ti},asm::Block
     end
 end
 """
-    addin!(bigvec,block::Vector,asm,ibr,ibc)
+    addin!(bigvec,block::Vector,asm,ibc)
 
 Add a vector into one of the blocks of a large full vector.  Use [`prepare`](@ref) to create `asm`.
 
 See also: [`prepare`](@ref)
 """ 
-function addin!(out::Vector{Tv},B::Vector{Tv},asm::BlockSparseAssembler,ibc::𝕫) where{Tv}
-    for ilc         = 1:length(B)
-        out[asm.pgc[ibc]-1+ilc] += B[ilc]
+function addin!(out::Vector{Tv},block::Vector{Tv},asm::BlockSparseAssembler,ibc::𝕫) where{Tv}
+    for ilc         = 1:length(block)
+        out[asm.pgc[ibc]-1+ilc] += block[ilc]
     end
 end
-getblock(out::Vector,asm::BlockSparseAssembler,ibc::𝕫) = view(out,asm.pgc[ibc]:(asm.pgc[ibc+1]-1))
+# disassemble a block from a big-vector
+disblock(out::Vector,asm::BlockSparseAssembler,ibc::𝕫) = view(out,asm.pgc[ibc]:(asm.pgc[ibc+1]-1))
 
 
 
