@@ -163,12 +163,12 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
     nblock                = nstep + 1
     ΣLa                   = Vector{𝕣}(undef,nA   )
 
-    # block                 = Matrix{SparseMatrixCSC{𝕣,𝕫}}(undef,nblock,nblock)
+    # pattern                 = Matrix{SparseMatrixCSC{𝕣,𝕫}}(undef,nblock,nblock)
     # for step ∈ eachindex(initialstate)
-    #     block[step  ,step  ]  = out.Lyy
-    #     block[step  ,nblock]  = out.Lya
-    #     block[nblock,step  ]  = out.Lay
-    #     block[nblock,nblock]  = out.Laa
+    #     pattern[step  ,step  ]  = out.Lyy
+    #     pattern[step  ,nblock]  = out.Lya
+    #     pattern[nblock,step  ]  = out.Lay
+    #     pattern[nblock,nblock]  = out.Laa
     # end
     i                     = 𝕫1(undef,4*length(initialstate))
     j                     = 𝕫1(undef,4*length(initialstate))
@@ -179,8 +179,8 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
         i[4step-1],j[4step-1],v[4step-1] = nblock,step  ,out.Lay
         i[4step-0],j[4step-0],v[4step-0] = nblock,nblock,out.Laa
     end
-    block                 = sparse(i,j,v)
-    Lvv,blkasm            = prepare(block)
+    pattern               = sparse(i,j,v)
+    Lvv,blkasm            = prepare(pattern)
     Lv                    = 𝕣1(undef,nV)
 
 

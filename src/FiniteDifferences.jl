@@ -9,11 +9,34 @@ const table_of_finite_diff_kernels_transposed = [ [ [(0,1.)] ],
                                                   [[(0,1.),(1,1.)], [(-1,-2.),(0,-2.),( 1,1.)], [(-2,1.),(-1,1.),(0,-2.),( 1,1.)], [( 2,1.),( 1,1.),(0,-2.),(-1,1.)],
                                                    [( 1,-2.),(0,-2.),(-1,1.)], [(0,1.),(-1,1.)], [(-1,1.),(0,-2.),(1,1.)]                                            ] ] 
 # npoints_transposed[order] NB: this is for a linear combination of derivatives up to `order`
-function number_of_findiff_points(nstep,order)
-   if     order == 1    nstep
-   elseif order == 2  3*nstep-2
-   elseif order == 3  3*nstep      
-   end
+
+function FDsparsity(order,nstep)
+    if order == 0
+        istep = jstep = collect(1:nstep)
+    else
+        if order == 1
+            istep = 𝕫1(undef,3*nstep-2)    
+            jstep = 𝕫1(undef,3*nstep-2)
+        elseif order == 2
+            istep = 𝕫1(undef,3*nstep+2)    
+            jstep = 𝕫1(undef,3*nstep+2)
+            istep[3*nstep-1] = 3
+            jstep[3*nstep-1] = 1
+            istep[3*nstep  ] = 1
+            jstep[3*nstep  ] = 3
+            istep[3*nstep+1] = nstep-2
+            jstep[3*nstep+1] = nstep
+            istep[3*nstep+2] = nstep
+            jstep[3*nstep+2] = nstep-2
+        end
+        istep[1:nstep-1] .= 2:nstep
+        jstep[1:nstep-1] .= 1:nstep-1
+        istep[nstep:2*nstep-1] .= 1:nstep
+        jstep[nstep:2*nstep-1] .= 1:nstep
+        istep[2*nstep:3*nstep-2] .= 1:nstep-1
+        jstep[2*nstep:3*nstep-2] .= 2:nstep
+    end    
+    return istep,jstep         
 end
 
 function finitediff(order,n,s;transposed=false) 

@@ -117,6 +117,52 @@ end
 
 ######################
 
+function preparebig(ND,NA,nstep,out)
+    istep,jstep              = FDsparsity(ND,nstep)
+    ndiff                    = length(istep)                      # number of 3*3 superblocks in the XU part of pattern 
+    nrow = ncol              = length(λxu)*nstep + NA             # number of rows and cols in pattern
+    nΛXUblock                = ndiff*length(λxu)^2                  
+    nAblock                  = NA*(2*(length(λxu)*nstep) + 1) 
+    nblock                   = nΛXUblock + nAblock                 # nnz of pattern
+
+    irow                     = 𝕫1(undef,nblock) 
+    icol                     = 𝕫1(undef,nblock) 
+    nz                       = Vector{SparseMatrixCSC{𝕣,𝕫}}(undef,nblock)
+    iblock                   = 0
+    for i ∈ 1:ndiff
+        for α∈λxu, β∈λxu
+            iblock          += 1
+            irow[iblock]     = (istep[i]-1)*length(λxu) + α
+            icol[iblock]     = (jstep[i]-1)*length(λxu) + β
+            nz[  iblock]     = out.L2[α,β][1,1]
+        end 
+    end 
+    if NA == 1
+        for istep            = 1:nstep   
+            for α∈λxu
+                istep,α
+                iblock      += 1
+                irow[iblock] = (istep-1)*length(λxu) + α
+                icol[iblock] = ncol
+                nz[  iblock] = out.L2[α      ,ind[:A]][1,1]
+                iblock += 1
+                irow[iblock] = nrow
+                icol[iblock] = (istep-1)*length(λxu) + α
+                nz[  iblock] = out.L2[ind[:A],α     ][1,1]
+            end
+        end        
+        iblock              += 1
+        irow[iblock]         = nrow
+        icol[iblock]         = ncol
+        nz[  iblock]         = out.L2[ind[:A],ind[:A]][1,1]
+    end
+    pattern                  = sparse(irow,icol,nz)
+    Lvv,bigasm               = prepare(pattern)
+    Lv                       = 𝕣1(undef,size(Lvv,1))
+
+    return Lv,Lvv,bigasm
+end
+
 """
 	DirectXUA
 
@@ -174,147 +220,101 @@ struct DirectXUA{NA,ND} <: AbstractSolver end
 #     model,dis             = initialstate.model, initialstate.dis
 #     out1,asm1             = prepare(AssemblyDirect    ,model,dis)
 #     out2,asm2             = prepare(AssemblyDirectLine,model,dis)
-#     assemble!(out1,asm1,dis,model,initialstate,(dbg...,solver=:DirectXUA,phase=:sparsity))
-
 #     nstep                 = length(time)
+#     assemble!(out1,asm1,dis,model,initialstate,(dbg...,solver=:DirectXUA,phase=:sparsity))
+#     Lv,Lvv,bigasm         = preparebig(ND,NA,nstep,out1)
 
-#     ndiff                 = number_of_findiff_points(nstep,order) # number of 3*3 superblocks in the big matrix
-#     nrow = ncol           = length(λxu)*nstep + NA
-#     nblocks               = nfdiff*length(λxu)^2 + 2*(length(λxu)*nstep) + 1
-#     row                   = 𝕫1(undef,nblocks) 
-#     col                   = 𝕫1(undef,nblocks) 
-#     nz                    = Vector{SparseMatrixCSC{𝕣,𝕫}}(undef,nblocks)
-#     for idiff = 1:ndiff
-#         irow  =              # super row
-#         icol  =              # super column    
-#         for α∈λxu,β∈λxu
-#             jrow = (irow-1)*length(λxu) + α
-#             jcol = (icol-1)*length(λxu) + β
-
-#         end    
-#     blocks                = sparse(row,col,nz)
-
-
-#     cΔy²,cΔa²             = maxΔy^2,maxΔa^2
-#     # nX,nU,nA              = getndof(model,(:X,:U,:A))
-#     # nV                    = nstep*(2*nX+nU) + nA
-#     # nblock                = nstep + 1
-#     # ΣLa                   = Vector{𝕣}(undef,nA   )
-
-#     # block                 = Matrix{SparseMatrixCSC{𝕣,𝕫}}(undef,nblock,nblock)
-#     # for step ∈ eachindex(initialstate)
-#     #     block[step  ,step  ]  = out1.Lyy
-#     #     block[step  ,nblock]  = out1.Lya
-#     #     block[nblock,step  ]  = out1.Lay
-#     #     block[nblock,nblock]  = out1.Laa
-#     # end
-#     i                     = 𝕫1(undef,4*ntime)
-#     j                     = 𝕫1(undef,4*ntime)
-#     v                     = Vector{typeof(out1.Lyy)}(undef,4*ntime)
-#     for step ∈ eachindex(time)
-#         i[4step-3],j[4step-3],v[4step-3] = step  ,step  ,out1.Lyy
-#         i[4step-2],j[4step-2],v[4step-2] = step  ,nblock,out1.Lya
-#         i[4step-1],j[4step-1],v[4step-1] = nblock,step  ,out1.Lay
-#         i[4step-0],j[4step-0],v[4step-0] = nblock,nblock,out1.Laa
-#     end
-#     block = SparseBlocks(v,i,j)
-#     Lvv,blkasm            = prepare(block)
-#     Lv                    = 𝕣1(undef,nV)
-
-
-#     states                = [State{1,1,1}(step,(γ=0.,)) for step ∈ time]
+#     # TODO I want SP=(γ=.,)
+#     states                = [copy(initstate) for step ∈ time] 
+#     pstate[]              = states    
 #     if saveiter
 #         statess           = Vector{Vector{State{1,1,1,typeof((γ=0.,))}}}(undef,maxiter) 
 #         pstate[]          = statess
-#     else
-#         pstate[]          = states    
 #     end    
+
+#     assemble!(out2,asm2,dis,model,initialstate,(dbg...,solver=:DirectXUA,phase=:preliminary))
+#     out2.ming ≤ 0 && muscadeerror(@sprintf("Initial point is not strictly primal-feasible"))
+#     out2.minλ ≤ 0 && muscadeerror(@sprintf("Initial point is not strictly dual-feasible"))
+#     γ = γ₀ = out2.Σλg/max(1,out2.npos)*γfac
 
 #     Δy²                   = Vector{𝕣 }(undef,nstep)
-
-#     Σλg,npos              = 0.,0
-
-#     for iter              = 1:maxiter
-#     for (step,state)   ∈ enumerate(states) 
-#         assemble!(out2,asm2,dis,model,state,(dbg...,solver=:DirectXUA,phase=:preliminary,step=step))
-#         out2.ming ≤ 0 && muscadeerror(@sprintf("Initial point is not strictly primal-feasible at step %3d",step))
-#         out2.minλ ≤ 0 && muscadeerror(@sprintf("Initial point is not strictly dual-feasible at step %3d"  ,step))
-#         Σλg  += out2.Σλg
-#         npos += out2.npos
-#     end    
-#     γ = γ₀ = Σλg/max(1,npos)*γfac
 
 #     local LU
 #         verbose && @printf("    iteration %3d, γ=%g\n",iter,γ)
 
 #         zero!(Lvv)
 #         zero!(Lv )
-#         for (step,state)   ∈ enumerate(states)
-#             state.SP = (γ=γ ,)
-#             assemble!(out1,asm1,dis,model,state,(dbg...,solver=:DirectXUA,step=step,iter=iter))
-#             addin!(Lvv,out1.Lyy,blkasm,step  ,step  )
-#             addin!(Lvv,out1.Lya,blkasm,step  ,nblock)
-#             addin!(Lvv,out1.Lay,blkasm,nblock,step  )
-#             addin!(Lvv,out1.Laa,blkasm,nblock,nblock) # while A is step indep, Laa and La can be step dep
-#             addin!(Lv ,out1.Ly ,blkasm,step         )
-#             addin!(Lv ,out1.La ,blkasm,nblock       )
+#         for step ∈ 1:step
+#             state[step].SP = (γ=γ ,)
+#             assemble!(out1,asm1,dis,model,state[step],(dbg...,solver=:DirectXUA,step=step,iter=iter))
+
+#             for β∈λxu
+#                 addin!(Lv,out1.L1[β],bigasm,3*(step-1)+β)
+#             end
+#             if NA==1
+#                 addin!(Lv,out1.L1[ind.A],bigasm,3*nstep+1)
+#             end
+#             # TODO XXXXXXXXXXXXXXXXXX
+#             for α∈λxua, i∈ , β∈λxua, j∈
+#                 addin!(Lvv,out1.L2[α,β],bigasm,step+,step+)
+#             end
 #         end   
 
-#         try if iter==1 LU = lu(Lvv) 
-#         else           lu!(LU ,Lvv)
-#         end catch; muscadeerror(@sprintf("Lvv matrix factorization failed at iter=%i",iter));end
-#         Δv               = LU\Lv 
+# #         try if iter==1 LU = lu(Lvv) 
+# #         else           lu!(LU ,Lvv)
+# #         end catch; muscadeerror(@sprintf("Lvv matrix factorization failed at iter=%i",iter));end
+# #         Δv               = LU\Lv 
 
-#         Δa               = getblock(Δv,blkasm,nblock)
-#         Δa²              = sum(Δa.^2)
-#         for (step,state)   ∈ enumerate(states)
-#             Δy           = getblock(Δv,blkasm,step  )
-#             Δy²[step]    = sum(Δy.^2)
-#             decrement!(state,0,Δy,Ydofgr)
-#             decrement!(state,0,Δa,Adofgr)
-#         end    
+# #         Δa               = getblock(Δv,bigasm,nblock)
+# #         Δa²              = sum(Δa.^2)
+# #         for (step,state)   ∈ enumerate(states)
+# #             Δy           = getblock(Δv,bigasm,step  )
+# #             Δy²[step]    = sum(Δy.^2)
+# #             decrement!(state,0,Δy,Ydofgr)
+# #             decrement!(state,0,Δa,Adofgr)
+# #         end    
         
-#         s  = 1.  
-#         local  Σλg,npos 
-#         for iline = 1:maxLineIter
-#             ΣLa              .= 0   
-#             minλ,ming         = ∞,∞
-#             Σλg,npos          = 0.,0
-#             for (step,state)  ∈ enumerate(states)
-#                 assemble!(out2,asm2,dis,model,state,(dbg...,solver=:DirectXUAstepwise,phase=:linesearch,iter=iter,iline=iline,step=step))
-#                 ΣLa         .+= out2.La 
-#                 minλ          = min(minλ,out2.minλ)
-#                 ming          = min(ming,out2.ming)
-#                 Σλg          += out2.Σλg
-#                 npos         += out2.npos
-#             end
-#             if minλ>0 && ming>0 
-#                 verbose && @printf("    %3d line-iterations\n",iline)
-#                 break#out of line search
-#             end
-#             iline==maxLineIter && muscadeerror(@sprintf("Line search failed at iter=%3d, iline=%3d, s=%7.1e",iter,iline,s))
-#             Δs                = s*(β-1)
-#             s                += Δs
-#             for (step,state)  ∈ enumerate(states)
-#                 decrement!(state,0,Δs*getblock(Δv,blkasm,step),Ydofgr)
-#                 decrement!(state,0,Δs*Δa                      ,Adofgr)
-#             end
-#         end
-#         γ                     = max(Σλg/max(1,npos)*γfac, γ₀*γbot)
+# #         s  = 1.  
+# #         local  Σλg,npos 
+# #         for iline = 1:maxLineIter
+# #             ΣLa              .= 0   
+# #             minλ,ming         = ∞,∞
+# #             Σλg,npos          = 0.,0
+# #             for (step,state)  ∈ enumerate(states)
+# #                 assemble!(out2,asm2,dis,model,state,(dbg...,solver=:DirectXUAstepwise,phase=:linesearch,iter=iter,iline=iline,step=step))
+# #                 ΣLa         .+= out2.La 
+# #                 minλ          = min(minλ,out2.minλ)
+# #                 ming          = min(ming,out2.ming)
+# #                 Σλg          += out2.Σλg
+# #                 npos         += out2.npos
+# #             end
+# #             if minλ>0 && ming>0 
+# #                 verbose && @printf("    %3d line-iterations\n",iline)
+# #                 break#out of line search
+# #             end
+# #             iline==maxLineIter && muscadeerror(@sprintf("Line search failed at iter=%3d, iline=%3d, s=%7.1e",iter,iline,s))
+# #             Δs                = s*(β-1)
+# #             s                += Δs
+# #             for (step,state)  ∈ enumerate(states)
+# #                 decrement!(state,0,Δs*getblock(Δv,bigasm,step),Ydofgr)
+# #                 decrement!(state,0,Δs*Δa                      ,Adofgr)
+# #             end
+# #         end
+# #         γ                     = max(Σλg/max(1,npos)*γfac, γ₀*γbot)
 
-#         if saveiter
-#             statess[iter]     = copy.(states) 
-#         end
+# #         if saveiter
+# #             statess[iter]     = copy.(states) 
+# #         end
 
-#         if all(Δy².≤cΔy²)  && Δa²≤cΔa²  
-#             verbose && @printf("\n    DirectXUA converged in %3d iterations.\n",iter)
-#             verbose && @printf(  "    maxₜ(|ΔY|)=%7.1e  |ΔA|=%7.1e  \n",√(maximum(Δy²)),√(Δa²) )
-#             verbose && @printf(  "    nel=%d, nvariables=%d, nstep=%d, niter=%d\n",getnele(model),nV,nstep,iter)
-#             break#out of iter
-#         end
-#         iter<maxiter || muscadeerror(@sprintf("no convergence after %3d iterations. |ΔY|=%7.1e  |ΔA|=%7.1e \n",iter,√(maximum(Δy²)),√(Δa²)))
-#     end
-#     return
+# #         if all(Δy².≤cΔy²)  && Δa²≤cΔa²  
+# #             verbose && @printf("\n    DirectXUA converged in %3d iterations.\n",iter)
+# #             verbose && @printf(  "    maxₜ(|ΔY|)=%7.1e  |ΔA|=%7.1e  \n",√(maximum(Δy²)),√(Δa²) )
+# #             verbose && @printf(  "    nel=%d, nvariables=%d, nstep=%d, niter=%d\n",getnele(model),nV,nstep,iter)
+# #             break#out of iter
+# #         end
+# #         iter<maxiter || muscadeerror(@sprintf("no convergence after %3d iterations. |ΔY|=%7.1e  |ΔA|=%7.1e \n",iter,√(maximum(Δy²)),√(Δa²)))
+# #     end
+# #     return
 # end
 
 
