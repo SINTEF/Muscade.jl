@@ -163,13 +163,6 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
     nblock                = nstep + 1
     ΣLa                   = Vector{𝕣}(undef,nA   )
 
-    # pattern                 = Matrix{SparseMatrixCSC{𝕣,𝕫}}(undef,nblock,nblock)
-    # for step ∈ eachindex(initialstate)
-    #     pattern[step  ,step  ]  = out.Lyy
-    #     pattern[step  ,nblock]  = out.Lya
-    #     pattern[nblock,step  ]  = out.Lay
-    #     pattern[nblock,nblock]  = out.Laa
-    # end
     i                     = 𝕫1(undef,4*length(initialstate))
     j                     = 𝕫1(undef,4*length(initialstate))
     v                     = Vector{typeof(out.Lyy)}(undef,4*length(initialstate))
@@ -183,10 +176,9 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
     Lvv,blkasm            = prepare(pattern)
     Lv                    = 𝕣1(undef,nV)
 
-
-    states                = [copy(State{1,1,1}(i,(γ=0.,))) for i ∈ initialstate]
+    states                = [copy(State{1,1,1,@NamedTuple{γ::Float64}}(i)) for i ∈ initialstate]
     if saveiter
-        statess           = Vector{Vector{State{1,1,1,typeof((γ=0.,))}}}(undef,maxiter) 
+        statess           = Vector{typeof(states)}(undef,maxiter) 
         pstate[]          = statess
     else
         pstate[]          = states    
@@ -196,6 +188,7 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
 
     Σλg,npos              = 0.,0
     for (step,state)   ∈ enumerate(states) 
+        state.SP = (γ=0.,)
         assemble!(out2,asm2,dis,model,state,(dbg...,solver=:StaticXUA,phase=:preliminary,step=step))
         out2.ming ≤ 0 && muscadeerror(@sprintf("Initial point is not strictly primal-feasible at step %3d",step))
         out2.minλ ≤ 0 && muscadeerror(@sprintf("Initial point is not strictly dual-feasible at step %3d"  ,step))

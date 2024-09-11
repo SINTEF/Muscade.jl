@@ -110,6 +110,10 @@ mutable struct State{nΛder,nXder,nUder,TSP}
     SP    :: TSP # solver parameter
     model :: Model
     dis   :: Disassembler
+    # Inner constructors
+    State(time::𝕣, Λ::NTuple{nΛder,𝕣1}, X::NTuple{nXder,𝕣1}, U::NTuple{nUder,𝕣1}, A::𝕣1, SP::TSP, model::Model, dis::Disassembler) where{nΛder,nXder,nUder,TSP} =
+        new{nΛder,nXder,nUder,TSP}(time,Λ,X,U,A,SP,model,dis)  
+    State{nΛder,nXder,nUder,TSP}() where{nΛder,nXder,nUder,TSP} = new{nΛder,nXder,nUder,TSP}()   
 end
 # a constructor that provides an initial zero state, specify derivatives
 State{nΛder,nXder,nUder}(model::Model,dis;time=-∞) where{nΛder,nXder,nUder} = 
@@ -118,13 +122,18 @@ State{nΛder,nXder,nUder}(model::Model,dis;time=-∞) where{nΛder,nXder,nUder} 
                                              ntuple(i->zeros(getndof(model,:U)),nUder),
                                                        zeros(getndof(model,:A))       ,
                                              nothing,model,dis)
-# a shallow copy "constructor" to shave off unwanted derivatives (or pad with zeros) and set SP
-# TODO the value of SP is dummy, but is needed to provide the default constructor with something. More elegant solution?
-function State{nΛder,nXder,nUder}(s::State,SP::TSP) where{nΛder,nXder,nUder,TSP}
-    Λ = ntuple(i->∂n(s.Λ,i-1),nΛder)
-    X = ntuple(i->∂n(s.X,i-1),nXder)
-    U = ntuple(i->∂n(s.U,i-1),nUder)
-    State{nΛder,nXder,nUder,TSP}(s.time,Λ,X,U,s.A,SP,s.model,s.dis)
+# a shallow copy "constructor" to shave off unwanted derivatives (or pad with zeros) and set the type of SP, leaving SP undef'd
+function State{nΛder,nXder,nUder,TSP}(s::State) where{nΛder,nXder,nUder,TSP}
+    state       = State{nΛder,nXder,nUder,TSP}()
+    state.time  = s.time
+    state.Λ     = ntuple(i->∂n(s.Λ,i-1),nΛder)
+    state.X     = ntuple(i->∂n(s.X,i-1),nXder)
+    state.U     = ntuple(i->∂n(s.U,i-1),nUder)
+    state.A     = s.A
+    # state.SP deliberately not set
+    state.model = s.model
+    state.dis   = s.dis
+    return state
 end 
 # A deep copy - except for SP,model and dis
 Base.copy(s::State) = State(s.time,deepcopy(s.Λ),deepcopy(s.X),deepcopy(s.U),deepcopy(s.A),s.SP,s.model,s.dis) 
