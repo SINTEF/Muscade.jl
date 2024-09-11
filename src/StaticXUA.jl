@@ -206,12 +206,12 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
         for (step,state)   ∈ enumerate(states)
             state.SP = (γ=γ ,)
             assemble!(out,asm,dis,model,state,(dbg...,solver=:StaticXUA,step=step,iter=iter))
-            addin!(Lvv,out.Lyy,blkasm,step  ,step  )
-            addin!(Lvv,out.Lya,blkasm,step  ,nblock)
-            addin!(Lvv,out.Lay,blkasm,nblock,step  )
-            addin!(Lvv,out.Laa,blkasm,nblock,nblock) # while A is step indep, Laa and La can be step dep
-            addin!(Lv ,out.Ly ,blkasm,step         )
-            addin!(Lv ,out.La ,blkasm,nblock       )
+            addin!(blkasm,Lvv,out.Lyy,step  ,step  )
+            addin!(blkasm,Lvv,out.Lya,step  ,nblock)
+            addin!(blkasm,Lvv,out.Lay,nblock,step  )
+            addin!(blkasm,Lvv,out.Laa,nblock,nblock) # while A is step indep, Laa and La can be step dep
+            addin!(blkasm,Lv ,out.Ly ,step         )
+            addin!(blkasm,Lv ,out.La ,nblock       )
         end   
 
         try if iter==1 LU = lu(Lvv) 
@@ -219,10 +219,10 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
         end catch; muscadeerror(@sprintf("Lvv matrix factorization failed at iter=%i",iter));end
         Δv               = LU\Lv 
 
-        Δa               = disblock(Δv,blkasm,nblock)
+        Δa               = disblock(blkasm,Δv,nblock)
         Δa²              = sum(Δa.^2)
         for (step,state)   ∈ enumerate(states)
-            Δy           = disblock(Δv,blkasm,step  )
+            Δy           = disblock(blkasm,Δv,step  )
             Δy²[step]    = sum(Δy.^2)
             decrement!(state,0,Δy,Ydofgr)
             decrement!(state,0,Δa,Adofgr)
@@ -250,7 +250,7 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
             Δs                = s*(β-1)
             s                += Δs
             for (step,state)  ∈ enumerate(states)
-                decrement!(state,0,Δs*disblock(Δv,blkasm,step),Ydofgr)
+                decrement!(state,0,Δs*disblock(blkasm,Δv,step),Ydofgr)
                 decrement!(state,0,Δs*Δa                      ,Adofgr)
             end
         end

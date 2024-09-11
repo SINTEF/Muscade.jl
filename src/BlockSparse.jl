@@ -119,20 +119,20 @@ function prepare(pattern::AbstractMatrix{SparseMatrixCSC{Tv,𝕫}}) where{Tv}
     return SparseMatrixCSC(ngr,ngc,pigr,igr,gv),BlockSparseAssembler(asm,pgc)    
 end
 """
-    addin!(bigsparse,block::SparseMatrixCSC,asm,ibr,ibc)
+    addin!(asm,bigsparse,block::SparseMatrixCSC,ibr,ibc,factor=1.)
 
 Add a sparse into one of the blocks of a large sparse matrix.  Will fail silently or throw an error unless
 `bigsparse` has the correct sparsity structure for the given `blocks`. Use [`prepare`](@ref) to
     create `bigsparse` and `asm`.
 """ 
-function addin!(out::SparseMatrixCSC{Tv,Ti},block::SparseMatrixCSC{Tv,Ti},asm::BlockSparseAssembler,ibr::𝕫,ibc::𝕫) where{Tv,Ti<:Integer}
+function addin!(asm::BlockSparseAssembler,out::SparseMatrixCSC{Tv,Ti},block::SparseMatrixCSC{Tv,Ti},ibr::𝕫,ibc::𝕫,factor::ℝ=1.) where{Tv,Ti<:Integer}
     gv              = out.nzval
     asm.pigr[ibc][ibr,1] > 0 || muscadeerror("Trying to addin! into an empty block")
     for ilc         = 1:size(block,2)
         igv         = asm.pigr[ibc][ibr,ilc]
         pilr,lv     = block.colptr,block.nzval 
         for ilv     = pilr[ilc]:pilr[ilc+1]-1 
-            gv[igv]+= lv[ilv] 
+            gv[igv]+= lv[ilv]*factor 
             igv    += 1
         end
     end
@@ -144,13 +144,13 @@ Add a vector into one of the blocks of a large full vector.  Use [`prepare`](@re
 
 See also: [`prepare`](@ref)
 """ 
-function addin!(out::Vector{Tv},block::Vector{Tv},asm::BlockSparseAssembler,ibc::𝕫) where{Tv}
+function addin!(asm::BlockSparseAssembler,out::Vector{Tv},block::Vector{Tv},ibc::𝕫) where{Tv}
     for ilc         = 1:length(block)
         out[asm.pgc[ibc]-1+ilc] += block[ilc]
     end
 end
 # disassemble a block from a big-vector
-disblock(out::Vector,asm::BlockSparseAssembler,ibc::𝕫) = view(out,asm.pgc[ibc]:(asm.pgc[ibc+1]-1))
+disblock(asm::BlockSparseAssembler,out::Vector,ibc::𝕫) = view(out,asm.pgc[ibc]:(asm.pgc[ibc+1]-1))
 
 
 
