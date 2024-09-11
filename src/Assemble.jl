@@ -119,6 +119,7 @@ State{nΛder,nXder,nUder}(model::Model,dis;time=-∞) where{nΛder,nXder,nUder} 
                                                        zeros(getndof(model,:A))       ,
                                              nothing,model,dis)
 # a shallow copy "constructor" to shave off unwanted derivatives (or pad with zeros) and set SP
+# TODO the value of SP is dummy, but is needed to provide the default constructor with something. More elegant solution?
 function State{nΛder,nXder,nUder}(s::State,SP::TSP) where{nΛder,nXder,nUder,TSP}
     Λ = ntuple(i->∂n(s.Λ,i-1),nΛder)
     X = ntuple(i->∂n(s.X,i-1),nXder)
