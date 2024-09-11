@@ -153,7 +153,7 @@ end
     @test dofgr.scaleA == Float64[]
 end
 
-state = Muscade.State(model,dis)
+state = Muscade.State{1,1,1}(model,dis)
 Muscade.assemble!(out,asm,dis,model,state,(someunittest=true,))
 
 @testset "assemble" begin

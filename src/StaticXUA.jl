@@ -184,7 +184,7 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
     Lv                    = 𝕣1(undef,nV)
 
 
-    states                = [State{1,1,1}(i,(γ=0.,)) for i ∈ initialstate]
+    states                = [copy(State{1,1,1}(i,(γ=0.,))) for i ∈ initialstate]
     if saveiter
         statess           = Vector{Vector{State{1,1,1,typeof((γ=0.,))}}}(undef,maxiter) 
         pstate[]          = statess

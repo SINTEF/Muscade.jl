@@ -111,12 +111,6 @@ mutable struct State{nΛder,nXder,nUder,TSP}
     model :: Model
     dis   :: Disassembler
 end
-# a constructor that provides an initial zero state, no derivatives.  Used by TestAssemble
-State(model::Model,dis;time=-∞) = State(time,(zeros(getndof(model,:X)),),
-                                             (zeros(getndof(model,:X)),),
-                                             (zeros(getndof(model,:U)),),
-                                              zeros(getndof(model,:A))  ,
-                                              nothing,model,dis)
 # a constructor that provides an initial zero state, specify derivatives
 State{nΛder,nXder,nUder}(model::Model,dis;time=-∞) where{nΛder,nXder,nUder} = 
                                   State(time,ntuple(i->zeros(getndof(model,:X)),nΛder),
@@ -124,22 +118,15 @@ State{nΛder,nXder,nUder}(model::Model,dis;time=-∞) where{nΛder,nXder,nUder} 
                                              ntuple(i->zeros(getndof(model,:U)),nUder),
                                                        zeros(getndof(model,:A))       ,
                                              nothing,model,dis)
-# a constructor that copies all dofs and sets SP                                             
+# a shallow copy "constructor" to shave off unwanted derivatives (or pad with zeros) and set SP
 function State{nΛder,nXder,nUder}(s::State,SP::TSP) where{nΛder,nXder,nUder,TSP}
-    Λ = ntuple(i->copy(∂n(s.Λ,i-1)),nΛder)
-    X = ntuple(i->copy(∂n(s.X,i-1)),nXder)
-    U = ntuple(i->copy(∂n(s.U,i-1)),nUder)
-    State{nΛder,nXder,nUder,TSP}(s.time,Λ,X,U,copy(s.A),SP,s.model,s.dis)
+    Λ = ntuple(i->∂n(s.Λ,i-1),nΛder)
+    X = ntuple(i->∂n(s.X,i-1),nXder)
+    U = ntuple(i->∂n(s.U,i-1),nUder)
+    State{nΛder,nXder,nUder,TSP}(s.time,Λ,X,U,s.A,SP,s.model,s.dis)
 end 
-# shallow copy a state, but change SP, and number of derivatives                                               
- State(s::State,SP) = State(s.time,s.Λ,s.X,s.U,copy(s.A),SP,s.model,s.dis) # what does THIS call?
-# Constructor with empty SP
-State{nΛder,nXder,nUder}(s::State) where{nΛder,nXder,nUder} = State{nΛder,nXder,nUder}(s,(;))
-# Shallowcopy a state, empty SP
-State(s::State) = State(s,(;))
-
-# A deep copy - except for model and dis
-Base.copy(s::State) = State(s.time,deepcopy(s.Λ),deepcopy(s.X),deepcopy(s.U),deepcopy(s.A),deepcopy(s.SP),s.model,s.dis) 
+# A deep copy - except for SP,model and dis
+Base.copy(s::State) = State(s.time,deepcopy(s.Λ),deepcopy(s.X),deepcopy(s.U),deepcopy(s.A),s.SP,s.model,s.dis) 
 
 
 #### DofGroup
