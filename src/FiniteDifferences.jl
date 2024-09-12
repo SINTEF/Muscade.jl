@@ -1,3 +1,10 @@
+#=
+This is bugged
+able_of_finite_diff_kernels is correct, table_of_finite_diff_kernels_transposed is apparently not, for 2nd derivatives
+
+I need an algo that transposes the finite diff operator, and hashes a data structure that can be interogated using "finitediff"
+
+=#
 
 # table...[order+1][left or center or right][point in kernel]
 const table_of_finite_diff_kernels            = [ [[(Δs=0,w=1.)] ],
@@ -31,6 +38,7 @@ function finitediff(order,n,s;transposed=false)
     #         x′[s   ] += x[s+Δs] * w/Δt  
     #     end
     # end
+    n<6 && Muscadeerror("Number of steps must be ≥6")
     p = table_of_finite_diff_kernels
     q = table_of_finite_diff_kernels_transposed
     if transposed
@@ -71,7 +79,7 @@ end
 function FDsparsity(order,nstep)
     if     order == 0  nnz =   nstep
     elseif order == 1  nnz = 3*nstep-4
-    elseif order == 2  nnz = 5*nstep-6 
+    elseif order == 2  nnz = 5*nstep-2 
     end
     istep = 𝕫1(undef,nnz)    
     jstep = 𝕫1(undef,nnz)
@@ -90,6 +98,8 @@ function FDsparsity(order,nstep)
         jstep[3*nstep-3:4*nstep-5] .= 2:nstep
         istep[4*nstep-4:5*nstep-6] .= 2:nstep
         jstep[4*nstep-4:5*nstep-6] .= 1:nstep-1
+        istep[5*nstep-5:5*nstep-2] .= [1,4,nstep-3,nstep]
+        jstep[5*nstep-5:5*nstep-2] .= [4,1,nstep,nstep-3]
     end
     return istep,jstep         
 end

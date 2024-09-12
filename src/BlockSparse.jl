@@ -127,7 +127,7 @@ Add a sparse into one of the blocks of a large sparse matrix.  Will fail silentl
 """ 
 function addin!(asm::BlockSparseAssembler,out::SparseMatrixCSC{Tv,Ti},block::SparseMatrixCSC{Tv,Ti},ibr::𝕫,ibc::𝕫,factor::ℝ=1.) where{Tv,Ti<:Integer}
     gv              = out.nzval
-    asm.pigr[ibc][ibr,1] > 0 || muscadeerror("Trying to addin! into an empty block")
+    asm.pigr[ibc][ibr,1] > 0 || muscadeerror(@printf("Trying to addin! into an empty block: [%i,%i]\n",ibr,ibc))
     for ilc         = 1:size(block,2)
         igv         = asm.pigr[ibc][ibr,ilc]
         pilr,lv     = block.colptr,block.nzval 

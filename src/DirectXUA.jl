@@ -192,10 +192,14 @@ function assemblebig!(Lvv,Lv,bigasm,asm,model,dis,out,state,nstep,Δt,NA,γ,dbg)
                             for iβ ∈ finitediff(βder-1,nstep,step;transposed=true)
                                 αblk = 3*(step+iα.Δs-1)+α
                                 βblk = 3*(step+iβ.Δs-1)+β
+                                if αblk==11 && βblk==2
+                                    @show step,α,β,αder,βder,iα,iβ
+                                    @show βder-1,nstep,step
+                                end
                                 addin!(bigasm,Lvv,out.L2[α,β][αder,βder],αblk,βblk,iα.w*iβ.w/Δt^2)
                             end
                         end
-                    end
+                    end 
                 end
             end
         end
@@ -207,7 +211,7 @@ function assemblebig!(Lvv,Lv,bigasm,asm,model,dis,out,state,nstep,Δt,NA,γ,dbg)
                 for αder = 1:size(out.L2[α,ind.A],1)
                     for iα ∈finitediff(αder-1,nstep,step;transposed=true)
                         αblk = 3*(step+iα.Δs-1)+α
-                        addin!(bigasm,Lvv,out.L2[α,ind.A][αder,1],αblk,Ablk,iα.w/Δt)
+                        addin!(bigasm,Lvv,out.L2[α,ind.A][αder,1],αblk,Ablk,iα.w/Δt) # TTODO audit weight iα.w/Δt
                     end
                 end
             end
