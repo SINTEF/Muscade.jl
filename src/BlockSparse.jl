@@ -144,9 +144,9 @@ Add a vector into one of the blocks of a large full vector.  Use [`prepare`](@re
 
 See also: [`prepare`](@ref)
 """ 
-function addin!(asm::BlockSparseAssembler,out::Vector{Tv},block::Vector{Tv},ibc::𝕫) where{Tv}
+function addin!(asm::BlockSparseAssembler,out::Vector{Tv},block::Vector{Tv},ibc::𝕫,factor::ℝ=1.) where{Tv}
     for ilc         = 1:length(block)
-        out[asm.pgc[ibc]-1+ilc] += block[ilc]
+        out[asm.pgc[ibc]-1+ilc] += block[ilc]*factor
     end
 end
 # disassemble a block from a big-vector

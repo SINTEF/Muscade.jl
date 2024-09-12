@@ -111,8 +111,10 @@ mutable struct State{nΛder,nXder,nUder,TSP}
     model :: Model
     dis   :: Disassembler
     # Inner constructors
+    # Provide values, infer type
     State(time::𝕣, Λ::NTuple{nΛder,𝕣1}, X::NTuple{nXder,𝕣1}, U::NTuple{nUder,𝕣1}, A::𝕣1, SP::TSP, model::Model, dis::Disassembler) where{nΛder,nXder,nUder,TSP} =
-        new{nΛder,nXder,nUder,TSP}(time,Λ,X,U,A,SP,model,dis)  
+        new{nΛder,nXder,nUder,TSP}(time,Λ,X,U,A,SP,model,dis) 
+    # Provide type, undef'd values    
     State{nΛder,nXder,nUder,TSP}() where{nΛder,nXder,nUder,TSP} = new{nΛder,nXder,nUder,TSP}()   
 end
 # a constructor that provides an initial zero state, specify derivatives

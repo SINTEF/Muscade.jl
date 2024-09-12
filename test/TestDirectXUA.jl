@@ -1,8 +1,10 @@
-# REPRISE
-# "prepare" is tested
-# Test "assemble"
+# module TestDirectXUA
 
-#module TestDirectXUA
+cd("C:\\Users\\philippem\\.julia\\dev\\Muscade")
+using Pkg 
+Pkg.activate(".")
+
+
 
 using Test
 using Muscade
@@ -55,7 +57,7 @@ state0          = initialize!(model1;nXder=2,time=0.)  # make space for 1st-orde
 
 dis             = state0.dis
 out1,asm1       = Muscade.prepare(Muscade.AssemblyDirect    ,model1,dis,(1,3,1,1))
-out2,asm2       = Muscade.prepare(Muscade.AssemblyDirectLine)
+out2,asm2       = Muscade.prepare(Muscade.AssemblyDirectLine,model1)
 
 zero!(out1)
 zero!(out2)
@@ -133,37 +135,44 @@ Muscade.assemble!(out1,asm1,dis,model1,state0,(;))
     @test out2.npos ≈ 0
 end
 
-@testset "FDsparsity" begin
-    @test Muscade.FDsparsity(0,5) == ([1, 2, 3, 4, 5], [1, 2, 3, 4, 5])
-    @test Muscade.FDsparsity(1,5) == ([2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4], [1, 2, 3, 4, 1, 2, 3, 4, 5, 2, 3, 4, 5])
-    @test Muscade.FDsparsity(2,5) == ([2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 3, 1, 3, 5], [1, 2, 3, 4, 1, 2, 3, 4, 5, 2, 3, 4, 5, 1, 3, 5, 3])
-end
 
 nstep            = 6
-ND               = 2
+ND               = 3
 NA               = 1
-Lv,Lvv,blkasm    = Muscade.preparebig(ND,NA,nstep,out1)
+Lv,Lvv,bigasm    = Muscade.preparebig(ND,NA,nstep,out1)
+
+
+
+
 
 
 # using GLMakie
 # fig      = Figure(size = (500,500))
 # display(fig) # open interactive window (gets closed down by "save")
 # axe      = Axis(fig[1,1],title="Lvv sparsity",xlabel="i",ylabel="j")
-# (i,j,v) = findnz(Lvv)
+# (i,j,v)  = findnz(Lvv)
 # scatter!(axe,i,-j)
 
 @testset "preparebig Lvv" begin
-    @test size(Lv) == (42,)
-    @test size(Lvv) == (42,42)
-    @test Lvv.colptr == [1,20,39,58,77,88,99,118,137,156,175,186,197,221,245,269,293,307,321,345,369,393,417,431,445,464,483,502,521,532,543,562,581,600,619,630,641,661,681,701,721,747,773]
+    @test size(Lv)         == (42,)
+    @test size(Lvv)        == (42,42)
+    @test Lvv.colptr       == [1,20,39,58,77,88,99,123,147,171,195,209,223,252,281,310,339,356,373,402,431,460,489,506,523,547,571,595,619,633,647,666,685,704,723,734,745,765,785,805,825,851,877]
     @test Lvv.rowval[1:60] == [1,2,3,4,5,7,8,9,10,11,13,14,15,16,17,37,38,41,42,1,2,3,4,6,7,8,9,10,12,13,14,15,16,18,39,40,41,42,1,2,3,4,5,7,8,9,10,11,13,14,15,16,17,37,38,41,42,1,2,3]
 end
 
-@testset "preparebig blkasm" begin
-    @test blkasm.pgc == [1,3,5,7,9,11,13,15,17,19,21,23,25,27,29,31,33,35,37,43]
-    @test blkasm.pigr[1]' == [1 3 5 6 8 10 11 13 15 0 0 0 0 0 0 0 0 0 16; 20 22 24 25 27 29 30 32 34 0 0 0 0 0 0 0 0 0 35]
+@testset "preparebig ,bigasm" begin
+    @test bigasm.pgc      == [1,3,5,7,9,11,13,15,17,19,21,23,25,27,29,31,33,35,37,43]
+    @test bigasm.pigr[1]' == [1 3 5 6 8 10 11 13 15 0 0 0 0 0 0 0 0 0 16; 20 22 24 25 27 29 30 32 34 0 0 0 0 0 0 0 0 0 35]
 end
-#stateXUA         = solve(DirectXUA;initialstate=state0)
+
+# state                 = [Muscade.State{1,ND,ND,@NamedTuple{γ::Float64}}(copy(state0)) for i = 1:nstep]
+# γ = 9.
+# Δt = 1.
+
+# Muscade.assemblebig!(Lvv,Lv,bigasm,asm1,model1,dis,out1,state,nstep,Δt,NA,γ,(caller=:TestDirectXUA,))
+
+
+stateXUA         = solve(DirectXUA{0,3};initialstate=state0,time=0:1.:5)
 
 #end 
 

@@ -1,4 +1,4 @@
-Δ
+
 # table...[order+1][left or center or right][point in kernel]
 const table_of_finite_diff_kernels            = [ [[(Δs=0,w=1.)] ],
                                                   [[(Δs=0,w=-1.),(Δs=1,w=1.)], [(Δs=-1,w=-1.),(Δs=0,w=1.)], [(Δs=-1,w=-1/2),(Δs=1,w=1/2)] ],
@@ -10,34 +10,7 @@ const table_of_finite_diff_kernels_transposed = [ [ [(Δs=0,w=1.)] ],
                                                    [(Δs= 1,w=-2.),(Δs=0,w=-2.),(Δs=-1,w=1.)], [(Δs=0,w=1.),(Δs=-1,w=1.)], [(Δs=-1,w=1.),(Δs=0,w=-2.),(Δs=1,w=1.)]                                            ] ] 
 # npoints_transposed[order] NB: this is for a linear combination of derivatives up to `order`
 
-function FDsparsity(order,nstep)
-    if order == 0
-        istep = jstep = collect(1:nstep)
-    else
-        if order == 1
-            istep = 𝕫1(undef,3*nstep-2)    
-            jstep = 𝕫1(undef,3*nstep-2)
-        elseif order == 2
-            istep = 𝕫1(undef,3*nstep+2)    
-            jstep = 𝕫1(undef,3*nstep+2)
-            istep[3*nstep-1] = 3
-            jstep[3*nstep-1] = 1
-            istep[3*nstep  ] = 1
-            jstep[3*nstep  ] = 3
-            istep[3*nstep+1] = nstep-2
-            jstep[3*nstep+1] = nstep
-            istep[3*nstep+2] = nstep
-            jstep[3*nstep+2] = nstep-2
-        end
-        istep[1:nstep-1] .= 2:nstep
-        jstep[1:nstep-1] .= 1:nstep-1
-        istep[nstep:2*nstep-1] .= 1:nstep
-        jstep[nstep:2*nstep-1] .= 1:nstep
-        istep[2*nstep:3*nstep-2] .= 1:nstep-1
-        jstep[2*nstep:3*nstep-2] .= 2:nstep
-    end    
-    return istep,jstep         
-end
+
 
 function finitediff(order,n,s;transposed=false) 
     # INPUT
@@ -95,5 +68,29 @@ function finitediff(order,n,s;transposed=false)
     end
 end
 
-
+function FDsparsity(order,nstep)
+    if     order == 0  nnz =   nstep
+    elseif order == 1  nnz = 3*nstep-4
+    elseif order == 2  nnz = 5*nstep-6 
+    end
+    istep = 𝕫1(undef,nnz)    
+    jstep = 𝕫1(undef,nnz)
+    if order ≥ 0
+        istep[        1:  nstep  ] .= 1:nstep
+        jstep[        1:  nstep  ] .= 1:nstep
+    end
+    if order ≥ 1
+        istep[  nstep+1:2*nstep-2] .= 1:nstep-2
+        jstep[  nstep+1:2*nstep-2] .= 3:nstep
+        istep[2*nstep-1:3*nstep-4] .= 3:nstep
+        jstep[2*nstep-1:3*nstep-4] .= 1:nstep-2
+    end
+    if order ≥ 2
+        istep[3*nstep-3:4*nstep-5] .= 1:nstep-1
+        jstep[3*nstep-3:4*nstep-5] .= 2:nstep
+        istep[4*nstep-4:5*nstep-6] .= 2:nstep
+        jstep[4*nstep-4:5*nstep-6] .= 1:nstep-1
+    end
+    return istep,jstep         
+end
 

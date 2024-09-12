@@ -1,5 +1,7 @@
 module TestFiniteDifferences
 
+
+
 using Test,Muscade
 
 
@@ -29,4 +31,21 @@ end
     @test x1[2]≈x2[2]
     @test x1[3]≈x2[3]
 end
+
+# using GLMakie
+# fig      = Figure(size = (500,500))
+# display(fig) # open interactive window (gets closed down by "save")
+# axe      = Axis(fig[1,1],title="FDsparsity",xlabel="i",ylabel="j")
+# (i,j) = Muscade.FDsparsity(2,7)
+# scatter!(axe,i,-j)
+
+
+
+@testset "FDsparsity" begin
+    @test Muscade.FDsparsity(0,5) == ([1,2,3,4,5],[1,2,3,4,5])
+    @test Muscade.FDsparsity(1,5) == ([1,2,3,4,5,1,2,3,3,4,5],[1,2,3,4,5,3,4,5,1,2,3])
+    @test Muscade.FDsparsity(2,5) == ([1,2,3,4,5,1,2,3,3,4,5,1,2,3,4,2,3,4,5],[1,2,3,4,5,3,4,5,1,2,3,2,3,4,5,1,2,3,4])
+end
+
+
 end
