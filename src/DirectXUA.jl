@@ -192,10 +192,6 @@ function assemblebig!(Lvv,Lv,bigasm,asm,model,dis,out,state,nstep,Δt,NA,γ,dbg)
                             for iβ ∈ finitediff(βder-1,nstep,step;transposed=true)
                                 αblk = 3*(step+iα.Δs-1)+α
                                 βblk = 3*(step+iβ.Δs-1)+β
-                                if αblk==11 && βblk==2
-                                    @show step,α,β,αder,βder,iα,iβ
-                                    @show βder-1,nstep,step
-                                end
                                 addin!(bigasm,Lvv,out.L2[α,β][αder,βder],αblk,βblk,iα.w*iβ.w/Δt^2)
                             end
                         end
@@ -276,33 +272,37 @@ See also: [`solve`](@ref), [`SweepX`](@ref), [`setdof!`](@ref)
 """
 struct DirectXUA{NA,ND} <: AbstractSolver end 
 function solve(::Type{DirectXUA{NA,ND}},pstate,verbose::𝕓,dbg;
-    time::AbstractVector{𝕣},
+    time::AbstractRange{𝕣},
     initialstate::State,
     maxiter::ℤ=50,maxΔy::ℝ=1e-5,maxΔa::ℝ=1e-5,
     saveiter::𝔹=false,
-    maxLineIter::ℤ=50,β::𝕣=.5,γfac::𝕣=.5,γbot::𝕣=1e-8) where{NA,ND}
+    #maxLineIter::ℤ=50,β::𝕣=.5,γfac::𝕣=.5,γbot::𝕣=1e-8
+    ) where{NA,ND}
 
     model,dis             = initialstate.model, initialstate.dis
     out1,asm1             = prepare(AssemblyDirect    ,model,dis,(1,ND,ND,NA))
-    out2,asm2             = prepare(AssemblyDirectLine,model)
+#    out2,asm2             = prepare(AssemblyDirectLine,model)
     nstep                 = length(time)
     assemble!(out1,asm1,dis,model,initialstate,(dbg...,solver=:DirectXUA,phase=:sparsity))
     Lv,Lvv,bigasm         = preparebig(ND,NA,nstep,out1)
 
-    state                 = [State{1,ND,ND,@NamedTuple{γ::Float64}}(copy(initialstate)) for timeᵢ ∈ time]    # TODO set state[step].time
+    state                 = [State{1,ND,ND,@NamedTuple{γ::Float64}}(copy(initialstate)) for timeᵢ ∈ time]    
+    for (step,timeᵢ) ∈ enumerate(time)
+        state[step].time = timeᵢ
+    end
     pstate[]              = state                                                                            # TODO pstate typestable???
     if saveiter
         stateiter         = Vector{typeof(state)}(undef,maxiter) 
         pstate[]          = stateiter
     end    
-    assemble!(out2,asm2,dis,model,initialstate,(dbg...,solver=:DirectXUA,phase=:preliminary))
-    out2.ming ≤ 0 && muscadeerror(@sprintf("Initial point is not strictly primal-feasible"))
-    out2.minλ ≤ 0 && muscadeerror(@sprintf("Initial point is not strictly dual-feasible"  ))
-    γ = γ₀ = out2.Σλg/max(1,out2.npos)*γfac
+    # assemble!(out2,asm2,dis,model,initialstate,(dbg...,solver=:DirectXUA,phase=:preliminary))
+    # out2.ming ≤ 0 && muscadeerror(@sprintf("Initial point is not strictly primal-feasible"))
+    # out2.minλ ≤ 0 && muscadeerror(@sprintf("Initial point is not strictly dual-feasible"  ))
+    # γ = γ₀ = out2.Σλg/max(1,out2.npos)*γfac
 
-    Δy²                   = Vector{𝕣 }(undef,nstep)
+    Δy²                   = Vector{𝕣}(undef,nstep)
 
-    Δt = time[2]-time[1]                                                                                      # TODO reformat input for cst step size
+    Δt = (last(time)-first(time))/(length(time)-1) 
 
     local LU
     for iter              = 1                                                                                 # TODO 1:maxiter
@@ -310,21 +310,19 @@ function solve(::Type{DirectXUA{NA,ND}},pstate,verbose::𝕓,dbg;
 
         assemblebig!(Lvv,Lv,bigasm,asm1,model,dis,out1,state,nstep,Δt,NA,γ,(dbg...,solver=:DirectXUA,iter=iter))
 
+        try if iter==1 LU = lu(Lvv) 
+        else           lu!(LU ,Lvv)
+        end catch; muscadeerror(@sprintf("Lvv matrix factorization failed at iter=%i",iter));end
+        Δv               = LU\Lv 
 
-
-#         try if iter==1 LU = lu(Lvv) 
-#         else           lu!(LU ,Lvv)
-#         end catch; muscadeerror(@sprintf("Lvv matrix factorization failed at iter=%i",iter));end
-#         Δv               = LU\Lv 
-
-#         Δa               = getblock(Δv,bigasm,nblock)
-#         Δa²              = sum(Δa.^2)
-#         for (step,state)   ∈ enumerate(state)
-#             Δy           = getblock(Δv,bigasm,step  )
-#             Δy²[step]    = sum(Δy.^2)
-#             decrement!(state,0,Δy,Ydofgr)
-#             decrement!(state,0,Δa,Adofgr)
-#         end    
+        Δa               = getblock(Δv,bigasm,nblock)
+        Δa²              = sum(Δa.^2)
+        for (step,state)   ∈ enumerate(state)
+            Δy           = getblock(Δv,bigasm,step  )
+            Δy²[step]    = sum(Δy.^2)
+            decrement!(state,0,Δy,Ydofgr)
+            decrement!(state,0,Δa,Adofgr)
+        end    
         
 #         s  = 1.  
 #         local  Σλg,npos 
@@ -354,19 +352,18 @@ function solve(::Type{DirectXUA{NA,ND}},pstate,verbose::𝕓,dbg;
 #         end
 #         γ                     = max(Σλg/max(1,npos)*γfac, γ₀*γbot)
 
-#         if saveiter
-#             stateiter[iter]     = copy.(state) 
-#         end
-
-#         if all(Δy².≤cΔy²)  && Δa²≤cΔa²  
-#             verbose && @printf("\n    DirectXUA converged in %3d iterations.\n",iter)
-#             verbose && @printf(  "    maxₜ(|ΔY|)=%7.1e  |ΔA|=%7.1e  \n",√(maximum(Δy²)),√(Δa²) )
-#             verbose && @printf(  "    nel=%d, nvariables=%d, nstep=%d, niter=%d\n",getnele(model),nV,nstep,iter)
-#             break#out of iter
-#         end
-#         iter<maxiter || muscadeerror(@sprintf("no convergence after %3d iterations. |ΔY|=%7.1e  |ΔA|=%7.1e \n",iter,√(maximum(Δy²)),√(Δa²)))
-       end
-#     return
+        if saveiter
+            stateiter[iter]     = copy.(state) 
+        end
+        if all(Δy².≤cΔy²)  && Δa²≤cΔa²  
+            verbose && @printf("\n    DirectXUA converged in %3d iterations.\n",iter)
+            verbose && @printf(  "    maxₜ(|ΔY|)=%7.1e  |ΔA|=%7.1e  \n",√(maximum(Δy²)),√(Δa²) )
+            verbose && @printf(  "    nel=%d, nvariables=%d, nstep=%d, niter=%d\n",getnele(model),nV,nstep,iter)
+            break#out of iter
+        end
+        iter<maxiter || muscadeerror(@sprintf("no convergence after %3d iterations. |ΔY|=%7.1e  |ΔA|=%7.1e \n",iter,√(maximum(Δy²)),√(Δa²)))
+    end # for iter
+    return
 end
 
 

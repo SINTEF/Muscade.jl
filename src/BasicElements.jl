@@ -107,9 +107,9 @@ function ElementCost(nod::Vector{Node};req,cost,costargs=(;),ElementType,element
 end
 doflist( ::Type{<:ElementCost{Teleobj}}) where{Teleobj} = doflist(Teleobj)
 @espy function lagrangian(o::ElementCost, Λ,X,U,A,t,SP,dbg)
-    req        = merge(o.req)
+    req          = merge(o.req)
     L,FB,☼eleres = getlagrangian(o.eleobj,Λ,X,U,A,t,SP,(dbg...,via=ElementCost),req.eleres)
-    ☼cost          = o.cost(eleres,X,U,A,t,o.costargs...) 
+    ☼cost        = o.cost(eleres,X,U,A,t,o.costargs...) 
     return L+cost,FB
 end    
 
@@ -121,10 +121,11 @@ An element with a single node, for adding a cost to a given dof.
 # Named arguments to the constructor
 - `class::Symbol`, either `:X`, `:U` or `:A`.
 - `field::Symbol`.
-- `cost::Function`, where `cost(x::ℝ,t::ℝ[,costargs...]) → ℝ` if `class` is `:X` or 
-  `:U`, and `cost(x::ℝ,[,costargs...]) → ℝ` if `class` is `:A`.
-- `costargs::NTuple`
-- `derivative::Int` 0, 1 or 2 - which derivative of the dof enters the cost	    
+- `cost::Function`, where 
+    - `cost(x::ℝ,t::ℝ[,costargs...]) → ℝ` if `class` is `:X` or `:U`, and 
+    - `cost(x::ℝ,    [,costargs...]) → ℝ` if `class` is `:A`.
+- `costargs::NTuple=()`
+- `derivative::Int=0` 0, 1 or 2 - which time derivative of the dof enters the cost. 	    
 
 # Requestable internal variables
 - `cost`, the value of the cost.
@@ -148,6 +149,45 @@ function SingleDofCost(nod::Vector{Node};class::Symbol,field::Symbol,cost::Funct
     elseif class==:A; DofCost(nod;ainod=(1,),afield=(field,),class=:A,cost=(    A,  args...)->cost(A[1]     ,args...),costargs)
     else              muscadeerror("'class' must be :X,:U or :A")
     end
+end    
+
+"""
+    SingleUdof{XField,Ufield,Tcost} <: AbstractElement
+
+An that creates a Udof, and associates a cost to its value.
+Thev alue of the Udof is applied as a load to a Xdof on the same node.  
+
+# Named arguments to the constructor
+- `Xfield::Symbol`.
+- `Ufield::Symbol`.
+- `cost::Function`, where 
+    `cost(x::ℝ,t::ℝ[,costargs...]) → ℝ` if `class` is `:X` or `:U`, and 
+    `cost(x::ℝ,    [,costargs...]) → ℝ` if `class` is `:A`.
+- `costargs::NTuple`
+
+# Requestable internal variables
+- `cost`, the value of the cost.
+
+# Example
+```
+using Muscade
+model = Model(:TestModel)
+node  = addnode!(model,𝕣[0,0])
+e     = addelement!(model,SingleUdofCost,[node];Xfield=:tx,Ufield=:utx,
+                    costargs=(3.,),cost=(x,t,three)->(x/three)^2)
+```    
+
+See also: [`DofCost`](@ref), [`ElementCost`](@ref)
+"""
+struct SingleUdof{Tcost,Tcostargs,Xfield,Ufield} <: AbstractElement
+    cost     :: Tcost     
+    costargs :: Tcostargs
+end
+SingleUdof(nod::Vector{Node};Xfield::Symbol,Ufield::Symbol,cost::Tcost,costargs::Tcostargs=()) where{Tcost,Tcostargs} = SingleUdof{Tcost,Tcostargs,Xfield,Ufield}(cost,costargs)
+doflist( ::Type{SingleUdof{Tcost,Tcostargs,Xfield,Ufield}}) where{Tcost,Tcostargs,Xfield,Ufield} = (inod=(1,1),class=(:X,:U),field=(Xfield,Ufield))
+@espy function lagrangian(o::SingleUdof, Λ,X,U,A,t,SP,dbg)
+    λ, u = Λ[1], ∂0(U)[1]
+    return o.cost(u)-λ*u,noFB
 end    
 
 #-------------------------------------------------

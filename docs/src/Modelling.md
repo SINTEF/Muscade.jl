@@ -76,6 +76,8 @@ With a few exceptions for testing and demonstration, `Muscade` does not provide 
 
 [`SingleDofCost`](@ref) provides a simplified syntax for costs on a single dof.
 
+[`SingleUdof`](@ref) allows to define an unknown external nodal load and apply a cost to it.
+
 [`ElementCost`](@ref) adds a cost on a combination of one element's dofs and element-results.
 
 [`DofConstraint`](@ref) adds a constraint to a combination of *values* (no time derivatives) of dofs. The constraints can switch over time between equality, inequality and "off". Inequality constraints are handled using a modified interior point method.

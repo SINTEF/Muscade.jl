@@ -39,7 +39,7 @@ module Muscade
 
     include("BasicElements.jl")
     export off,equal,positive
-    export DofCost,SingleDofCost,ElementCost
+    export DofCost,SingleDofCost,SingleUdof,ElementCost
     export DofConstraint,Hold,ElementConstraint
     export QuickFix,DofLoad
 

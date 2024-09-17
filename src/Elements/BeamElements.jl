@@ -131,4 +131,35 @@ const v3   = SVector{3}
     return R,noFB
 end
 
+
+@espy function Muscade.residual(o::EulerBeam3D,   X,U,A,t,SP,dbg) 
+    cₘ,rₘ,tgₘ,tgₑ     = o.cₘ,o.rₘ,o.tgₘ,o.tgₑ
+    Nε,Nκ,Nu         = o.Nε,o.Nκ,o.Nu
+    ζgp,ζnod,dL      = o.ζgp,o.ζnod,o.dL
+    P                = constants(X,U,A,t)  
+    ΔX               = variate{P,ndof}(∂0(X))
+    uᵧ₁,vᵧ₁,uᵧ₂,vᵧ₂  = SVector{3}(ΔX[i] for i∈1:3), SVector{3}(ΔX[i] for i∈ 4:6 ),
+                       SVector{3}(ΔX[i] for i∈7:9), SVector{3}(ΔX[i] for i∈10:12)
+    cₛ               = (uᵧ₁+uᵧ₂)/2
+    rₛ               = Rodrigues((vᵧ₁+vᵧ₂)/2)
+    rₛ               = Rodrigues(adjust(rₛ∘tgₘ,tgₘ+uᵧ₂-uᵧ₁))∘rₛ   
+    rₛₘ              = rₛ∘rₘ
+    uₗ₁              = rₛₘ'∘(uᵧ₁+tgₘ*ζnod[1]-cₛ)-tgₑ*ζnod[1]
+    uₗ₂              = rₛₘ'∘(uᵧ₂+tgₘ*ζnod[2]-cₛ)-tgₑ*ζnod[2]
+    vₗ₁              = Rodrigues⁻¹(rₛₘ'∘Rodrigues(vᵧ₁)∘rₘ)
+    vₗ₂              = Rodrigues⁻¹(rₛₘ'∘Rodrigues(vᵧ₂)∘rₘ)
+    δXₗ,T            = value_∂{P,ndof}(SVector(uₗ₁...,vₗ₁...,uₗ₂...,vₗ₂...))
+    gp              = ntuple(ngp) do igp
+        ☼ε,☼κ,☼uₗ    = Nε[igp]∘δXₗ, Nκ[igp]∘δXₗ, Nu[igp]∘δXₗ   
+        ☼x          = rₛₘ∘(tgₑ*ζgp[igp]+uₗ)+cₛ+cₘ             
+        f₁,m,fₑ     = ☼resultants(o.mat,ε,κ,x,rₛₘ)  
+        Rₗ           = (f₁ ∘₀ Nε[igp] + m∘Nκ[igp] + fₑ∘Nu[igp])*dL[igp]     
+        @named(Rₗ)
+    end
+    R  = sum(gpᵢ.Rₗ for gpᵢ∈gp) ∘ T
+    return R,noFB
+end
+
+
+
 end
