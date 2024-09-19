@@ -40,7 +40,7 @@ Where some blocks share the same sparsity structure, `blocks` can have `===` ele
 See also: [`addin!`](@ref)
 """ 
 function prepare(pattern::AbstractMatrix{SparseMatrixCSC{Tv,𝕫}}) where{Tv} 
-    nbr,nbc                 = size(pattern)  
+    nbr,nbc                 = size(pattern)
     nbr>0 && nbc>0 || muscadeerror("must have length(pattern)>0")
 
     # determine the number rows in each row of blocks, store in pgr
@@ -101,7 +101,7 @@ function prepare(pattern::AbstractMatrix{SparseMatrixCSC{Tv,𝕫}}) where{Tv}
        nlc                            = pgc[ibc+1]-pgc[ibc]
        asm[ibc]                       = zeros(𝕫,nbr,nlc)
        for ilc                        = 1:nlc
-            igc                       = ilc + pgc[ibc]-1
+            igc                       = pgc[ibc]-1 + ilc 
             for ibr                   = 1:nbr
                 b                     = getblock(pattern,ibr,ibc)
                 if ~isnothing(b)
@@ -151,6 +151,4 @@ function addin!(asm::BlockSparseAssembler,out::Vector{Tv},block::Vector{Tv},ibc:
 end
 # disassemble a block from a big-vector
 disblock(asm::BlockSparseAssembler,out::Vector,ibc::𝕫) = view(out,asm.pgc[ibc]:(asm.pgc[ibc+1]-1))
-
-
 

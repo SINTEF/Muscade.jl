@@ -304,11 +304,11 @@ calling a solver with a first time step also at `0.` causes an error.
 
 See also: [`setdof!`](@ref), [`Model`](@ref), [`addnode!`](@ref), [`addelement!`](@ref), [`solve`](@ref)
 """
-function initialize!(model::Model;nΛder=1,nXder=1,nUder=1,kwargs...)
+function initialize!(model::Model;kwargs...)
     assert_unlocked(model)
     model.locked = true
     dis = Disassembler(model)
-    return State{nΛder,nXder,nUder}(model,dis;kwargs...)
+    return State{1,1,1}(model,dis;kwargs...)
 end
 function unlock(model::Model,ID::Symbol)
     ID == model.ID && muscadeerror("ID must be distinct from model.ID")

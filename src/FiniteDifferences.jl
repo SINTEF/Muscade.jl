@@ -32,10 +32,10 @@ function finitediff(order,n,s;transposed=false)
     # transpose:
     # for s = 1:n
     #     for (Δs,w) ∈ finitediff(order,n,s,transpose=true)
-    #         x′[s+Δs] += x[s   ] * w/Δt  
+    #         x′[s+Δs] += x[s   ] * w/Δt^order  
     #     end
     #     for (Δs,w) ∈ finitediff(order,n,s)
-    #         x′[s   ] += x[s+Δs] * w/Δt  
+    #         x′[s   ] += x[s+Δs] * w/Δt^order  
     #     end
     # end
     n<6 && Muscadeerror("Number of steps must be ≥6")
@@ -76,31 +76,5 @@ function finitediff(order,n,s;transposed=false)
     end
 end
 
-function FDsparsity(order,nstep)
-    if     order == 0  nnz =   nstep
-    elseif order == 1  nnz = 5*nstep-6
-    elseif order == 2  nnz = 5*nstep-2 
-    end
-    istep = 𝕫1(undef,nnz)    
-    jstep = 𝕫1(undef,nnz)
-    if order ≥ 0
-        istep[        1:  nstep  ] .= 1:nstep
-        jstep[        1:  nstep  ] .= 1:nstep
-    end
-    if order ≥ 1
-        istep[  nstep+1:2*nstep-2] .= 1:nstep-2
-        jstep[  nstep+1:2*nstep-2] .= 3:nstep
-        istep[2*nstep-1:3*nstep-4] .= 3:nstep
-        jstep[2*nstep-1:3*nstep-4] .= 1:nstep-2
-        istep[3*nstep-3:4*nstep-5] .= 1:nstep-1
-        jstep[3*nstep-3:4*nstep-5] .= 2:nstep
-        istep[4*nstep-4:5*nstep-6] .= 2:nstep
-        jstep[4*nstep-4:5*nstep-6] .= 1:nstep-1
-    end
-    if order ≥ 2
-        istep[5*nstep-5:5*nstep-2] .= [1,4,nstep-3,nstep]
-        jstep[5*nstep-5:5*nstep-2] .= [4,1,nstep,nstep-3]
-    end
-    return istep,jstep         
-end
+
 
