@@ -81,57 +81,52 @@ pattern    = Muscade.makepattern(NDX,NDU,NA,nstep,out1)
 Lv,Lvv,bigasm    = Muscade.preparebig(NDX,NDU,NA,nstep,out1)
 Muscade.assemblebig!(Lvv,Lv,bigasm,asm1,model1,dis,out1,state,nstep,Δt,γ,(caller=:TestDirectXUA,))
 
-# using Spy
-# fig = spy(Lvv,title="bigsparse Lvv sparsity",size=1000)
+# using Spy,GLMakie
+# fig = spy(Lvv,title="bigsparse Lvv sparsity",size=500)
 # save("C:\\Users\\philippem\\.julia\\dev\\Muscade\\spy.jpg",fig)
 
 #stateXUA         = solve(DirectXUA{NA,ND};initialstate=state0,time=0:1.:5)
 
-# @testset "prepare_out" begin
-#     @test out1.L1[1] ≈ [[0.0, 0.0]]
-#     @test out1.L1[2] ≈ [[0.0, -0.2], [0.0, 0.0], [0.0, 0.0]]
-#     @test out1.L1[3] ≈ [[0.0, 0.0, 0.0, 0.0]]
-#     @test out1.L1[4] ≈ [[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]]
-#     @test out1.L2[1,1] ≈ fill!(Matrix{Any}(undef,1,1),s2)
-#     @test out1.L2[2,2][1,1] ≈ sparse([1, 2, 1, 2], [1, 1, 2, 2], [2.0, 0.0, 0.0, 2.0], 2, 2)  
-#     @test out1.L2[2,2][1,2] ≈ sparse([1, 2, 1, 2], [1, 1, 2, 2], [0.0, 0.0, 0.0, 0.0], 2, 2)  
-#     @test out1.L2[2,2][1,3] ≈ sparse([1, 2, 1, 2], [1, 1, 2, 2], [0.0, 0.0, 0.0, 0.0], 2, 2)
-#     @test out1.L2[2,1][1,1] ≈ sparse([1, 2, 1, 2], [1, 1, 2, 2], [2.1, -1.1, -1.1, 1.1], 2, 2)
-#     @test out1.L2[2,1][2,1] ≈ sparse([1, 2, 1, 2], [1, 1, 2, 2], [0.05, 0.0, 0.0, 0.0], 2, 2)
-#     @test out1.L2[2,1][3,1] ≈ sparse([1, 2, 1, 2], [1, 1, 2, 2], [1.0, 0.0, 0.0, 1.0], 2, 2)
-#     @test out1.L2[3,3][1,1] ≈ sparse([1, 2, 3, 4], [1, 2, 3, 4], [0.0, 0.0, 2.0, 2.0], 4, 4)
-#     @test out1.L2[3,4][1,1] ≈ sparse([1, 1, 2, 2], [1, 2, 3, 4], [0.0, 0.0, 0.0, 0.0], 4, 6)
-#     @test out1.L2[4,4][1,1] ≈ sparse([1, 2, 1, 2, 3, 4, 3, 4, 5, 6, 5, 6], [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6], [2.0, 0.0, 0.0, 2.0, 2.0, 0.0, 0.0, 2.0, 2.0, 0.0, 0.0, 2.0], 6, 6)
-#     # @test typeof(out2) ==  Muscade.AssemblyDirectLine
-#     # @test out2.ming ≈ Inf
-#     # @test out2.minλ ≈ Inf
-#     # @test out2.Σλg ≈ 0.
-#     # @test out2.npos ≈ 0
-# end
-# @testset "prepare_asm" begin
-#     @test asm1[1,1]  ≈ [1 2]      # asm1[iarray,ieletyp][ieledof,iele] -> idof|inz
-#     @test asm1[1,2]  ≈ [1; 2;;]
-#     @test asm1[2,1]  ≈ [1 2] 
-#     @test asm1[2,2]  ≈ [1; 2;;]
-#     @test asm1[3,1]  ≈ [1 2] 
-#     @test asm1[3,2]  ≈ Matrix{Int64}(undef, 0, 1)
-#     @test asm1[4,1]  ≈ [1 3; 2 4]
-#     @test asm1[4,2]  ≈ [5; 6;;]
-#     @test asm1[5,1]  ≈ [1 4]                   
-#     @test asm1[20,1] ≈ [1 5; 2 6; 3 7; 4 8]    
-# end
+@testset "prepare_out" begin
+    @test out1.L1[1] ≈ [[0.0, 0.0]]
+    @test out1.L1[2] ≈ [[0.055883099639785175, -0.1920340573300732], [0.0, 0.0], [0.0, 0.0]]
+    @test out1.L1[3] ≈ [[0.0, 0.0, 0.0, 0.0]]
+    @test out1.L1[4] ≈ [[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]]
+    @test size(out1.L2[1,1]) == (0,0)
+    @test out1.L2[2,2][1,1] ≈ sparse([1, 2, 1, 2], [1, 1, 2, 2], [2.0, 0.0, 0.0, 2.0], 2, 2)  
+    @test out1.L2[2,2][1,2] ≈ sparse([1, 2, 1, 2], [1, 1, 2, 2], [0.0, 0.0, 0.0, 0.0], 2, 2)  
+    @test out1.L2[2,2][1,3] ≈ sparse([1, 2, 1, 2], [1, 1, 2, 2], [0.0, 0.0, 0.0, 0.0], 2, 2)
+    @test out1.L2[2,1][1,1] ≈ sparse([1, 2, 1, 2], [1, 1, 2, 2], [2.1, -1.1, -1.1, 1.1], 2, 2)
+    @test out1.L2[2,1][2,1] ≈ sparse([1, 2, 1, 2], [1, 1, 2, 2], [0.05, 0.0, 0.0, 0.0], 2, 2)
+    @test out1.L2[2,1][3,1] ≈ sparse([1, 2, 1, 2], [1, 1, 2, 2], [1.0, 0.0, 0.0, 1.0], 2, 2)
+    @test out1.L2[3,3][1,1] ≈ sparse([1, 2, 3, 4], [1, 2, 3, 4], [0.0, 0.0, 2.0, 2.0], 4, 4)
+    @test out1.L2[3,4][1,1] ≈ sparse([1, 1, 2, 2], [1, 2, 3, 4], [0.0, 0.0, 0.0, 0.0], 4, 6)
+    @test out1.L2[4,4][1,1] ≈ sparse([1, 2, 1, 2, 3, 4, 3, 4, 5, 6, 5, 6], [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6], [2.0, 0.0, 0.0, 2.0, 2.0, 0.0, 0.0, 2.0, 2.0, 0.0, 0.0, 2.0], 6, 6)
+end
+@testset "prepare_asm" begin
+    @test asm1[1,1]  ≈ [1 2]      # asm1[iarray,ieletyp][ieledof,iele] -> idof|inz
+    @test asm1[1,2]  ≈ [1; 2;;]
+    @test asm1[2,1]  ≈ [1 2] 
+    @test asm1[2,2]  ≈ [1; 2;;]
+    @test asm1[3,1]  ≈ [1 2] 
+    @test asm1[3,2]  ≈ Matrix{Int64}(undef, 0, 1)
+    @test asm1[4,1]  ≈ [1 3; 2 4]
+    @test asm1[4,2]  ≈ [5; 6;;]
+    @test asm1[5,1]  ≈ [1 4]                   
+    @test asm1[20,1] ≈ [1 5; 2 6; 3 7; 4 8]    
+end
 
-# @testset "preparebig Lvv" begin
-#     @test size(Lv)         == (54,)
-#     @test size(Lvv)        == (54,54)
-#     @test Lvv.colptr       == [1,29,57,85,113,127,141,153,165,193,221,249,277,291,305,317,329,369,409,449,489,509,529,547,565,605,645,685,725,745,765,783,801,829,857,885,913,927,941,953,965,993,1021,1049,1077,1091,1105,1117,1129,1149,1169,1189,1209,1235,1261]
-#     @test Lvv.rowval[1:60] == [1,2,3,4,5,7,9,10,11,12,13,15,17,18,19,20,21,23,25,26,27,28,29,31,49,50,53,54,1,2,3,4,6,8,9,10,11,12,14,16,17,18,19,20,22,24,25,26,27,28,30,32,51,52,53,54,1,2,3,4]
-# end
+@testset "preparebig Lvv" begin
+    @test size(Lv)         == (54,)
+    @test size(Lvv)        == (54,54)
+    @test Lvv.colptr[1:50] == [1,11,21,45,69,75,81,85,89,101,113,137,161,168,175,180,185,199,213,241,269,277,285,291,297,311,325,353,381,389,397,403,409,421,433,457,481,488,495,500,505,515,525,549,573,579,585,589,593,613]
+    @test Lvv.rowval[1:60] == [3,4,5,7,11,12,49,50,53,54,3,4,6,8,11,12,51,52,53,54,1,2,3,4,5,7,9,10,11,12,13,15,17,18,19,20,21,23,27,28,49,50,53,54,1,2,3,4,6,8,9,10,11,12,14,16,17,18,19,20]
+end
 
-# @testset "preparebig ,bigasm" begin
-#     @test bigasm.pgc      == [1, 3, 5, 9, 11, 13, 17, 19, 21, 25, 27, 29, 33, 35, 37, 41, 43, 45, 49, 55]
-#     @test bigasm.pigr[1]' == [  1   3   5   7   9  11  13  15  17  19  21  23  0  0  0  0  0  0  25;    29  31  33  35  37  39  41  43  45  47  49  51  0  0  0  0  0  0  53]
-# end
+@testset "preparebig ,bigasm" begin
+    @test bigasm.pgc      == [1, 3, 5, 9, 11, 13, 17, 19, 21, 25, 27, 29, 33, 35, 37, 41, 43, 45, 49, 55]
+    @test bigasm.pigr[1]' == [0 1 3 0 5 0 0 0 0 0 0 0 0 0 0 0 0 0 7; 0 11 13 0 15 0 0 0 0 0 0 0 0 0 0 0 0 0 17]
+end
 
 
 

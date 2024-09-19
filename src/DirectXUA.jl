@@ -24,14 +24,33 @@ function prepare(::Type{AssemblyDirect},model,dis,NDX,NDU,NA)
     neletyp  = getneletyp(model)
     asm      = Matrix{𝕫2}(undef,nclass+nclass^2,neletyp)
     nder     = (1,NDX,NDU,NA)
-    # TODO recomputes asm multiple times
-    # TODO cull elements of L2 with Hessians wrt to time-derivatives we chose to know are zero, e.g. we know Lλλ is zero, and what if we know Lu′u′, Lua, Lxa and Lx′a are zero...
-    # Correspondingly, in addin!, use the shape of L2, not NDX,NDU,NA, to determine which Hessians to assemble to model level.
-    # Then in makepattern and assemblebig!, take out the "if α==β==ind.Λ  continue end" clauses
-    # L1[iclass][ider][idof]  (full)
-    # L2[iclass,jclass][ider,jder][idof,jdof] (the innermost is SparseMatrixCSC{Float64, Int64})
-    L1       = [[asmvec!(view(asm,arrnum(α  ),:),dofgr[α],dis   )                                              for αder=1:nder[α]               ] for α∈λxua        ] 
-    L2       = [[asmmat!(view(asm,arrnum(α,β),:),view(asm,arrnum(α),:),view(asm,arrnum(β),:),ndof[α],ndof[β])  for αder=1:nder[α],βder=1:nder[β]] for α∈λxua, β∈λxua] 
+    L1 = Vector{Vector{Vector{𝕣}}}(undef,4)
+    for α∈λxua
+        av = asmvec!(view(asm,arrnum(α),:),dofgr[α],dis)
+        L1[α] = Vector{Vector{𝕣}}(undef,nder[α])
+        for αder=1:nder[α] 
+            L1[α][αder] = copy(av)
+        end
+    end
+    L2 = Matrix{Matrix{SparseMatrixCSC{Float64, Int64}}}(undef,4,4)
+    for α∈λxua, β∈λxua
+        am = asmmat!(view(asm,arrnum(α,β),:),view(asm,arrnum(α),:),view(asm,arrnum(β),:),ndof[α],ndof[β])
+        nα,nβ = nder[α], nder[β]
+        # rules to keep out matrices we know are zero
+        if α==β==ind.Λ          nα,nβ=0,0 end   # Lλλ is always zero
+        # if α==β==ind.U          nα,nβ=1,1 end   # U-prior is white noise process
+        # if α==ind.X && β==ind.U nα,nβ=0,0 end   # X-measurements indep of U
+        # if α==ind.U && β==ind.X nα,nβ=0,0 end   # X-measurements indep of U
+        # if α==ind.X && β==ind.A nα,nβ=0,0 end   # X-measurements indep of A
+        # if α==ind.A && β==ind.X nα,nβ=0,0 end   # X-measurements indep of A
+        # if α==ind.U && β==ind.A nα,nβ=0,0 end   # U-load indep of A
+        # if α==ind.A && β==ind.U nα,nβ=0,0 end   # U-load  indep of A
+
+        L2[α,β] = Matrix{SparseMatrixCSC{Float64, Int64}}(undef,nα,nβ)
+        for αder=1:nα,βder=1:nβ
+            L2[α,β][αder,βder] = copy(am)
+        end
+    end
     out      = AssemblyDirect{NDX,NDU,NA,typeof(L1),typeof(L2)}(L1,L2)
     return out,asm
 end
@@ -63,7 +82,7 @@ function addin!(out::AssemblyDirect{NDX,NDU,NA,T1,T2},asm,iele,scale,eleobj,Λ::
     end
  
     ∇L           = ∂{2,Nz}(L)
-    pα           = 0   # points 1 entry before the start of relevant partial derivative in α,ider-loop
+    pα           = 0   # points into the partials, 1 entry before the start of relevant partial derivative in α,ider-loop
     for α∈λxua, i=1:nder[α]
         iα       = pα.+(1:ndof[α])
         pα      += ndof[α]
@@ -72,7 +91,10 @@ function addin!(out::AssemblyDirect{NDX,NDU,NA,T1,T2},asm,iele,scale,eleobj,Λ::
         for β∈λxua, j=1:nder[β]
             iβ   = pβ.+(1:ndof[β])
             pβ  += ndof[β]
-            add_∂!{1}( out.L2[α,β][i,j],asm[arrnum(α,β)],iele,∇L,iα,iβ)
+            Lαβ = out.L2[α,β]
+            if i≤size(Lαβ,1) && j≤size(Lαβ,2)
+                add_∂!{1}( out.L2[α,β][i,j],asm[arrnum(α,β)],iele,∇L,iα,iβ)
+            end
         end
     end
 end
@@ -87,14 +109,14 @@ function makepattern(NDX,NDU,NA,nstep,out)
     for step = 1:nstep
         for     α∈λxu 
             for β∈λxu
-                if α==β==ind.Λ  continue end  # Lλλ is always zero - but this should be culled by addin...
-                for     αder = 1:size(out.L2[α,β],1)
-                    for βder = 1:size(out.L2[α,β],2)
+                Lαβ = out.L2[α,β]
+                for     αder = 1:size(Lαβ,1)
+                    for βder = 1:size(Lαβ,2)
                         for     iα ∈ finitediff(αder-1,nstep,step;transposed=true)
                             for iβ ∈ finitediff(βder-1,nstep,step;transposed=true)
                                 push!(αblk,3*(step+iα.Δs-1)+α)
                                 push!(βblk,3*(step+iβ.Δs-1)+β)
-                                push!(nz  ,out.L2[α,β][1,1]  )
+                                push!(nz  ,Lαβ[1,1]  )
                             end
                         end
                     end 
@@ -114,12 +136,16 @@ function makepattern(NDX,NDU,NA,nstep,out)
         push!(nz  ,out.L2[ind.A,ind.A][1,1]  )
         for step = 1:nstep
             for     α∈λxu 
-                push!(αblk,Ablk                  )
-                push!(βblk,3*(step-1)+α          )  # this will cover all step×α combinations, so we are not forgetting time derivatives
-                push!(nz  ,out.L2[ind.A,α][1,1]  )
-                push!(αblk,3*(step-1)+α          )  
-                push!(βblk,Ablk                  )
-                push!(nz  ,out.L2[α,ind.A][1,1]  )
+                # loop over derivatives and finitediff is optimized out, as time derivatives will only 
+                # be added into superbloc already reached by non-derivatives. No, it's not a bug...
+                if size(out.L2[ind.A,α],1)>0
+                    push!(αblk,Ablk                  )
+                    push!(βblk,3*(step-1)+α          )  
+                    push!(nz  ,out.L2[ind.A,α][1,1]  )
+                    push!(αblk,3*(step-1)+α          )  
+                    push!(βblk,Ablk                  )
+                    push!(nz  ,out.L2[α,ind.A][1,1]  )
+                end
             end
         end
     end
@@ -136,7 +162,7 @@ end
 ###
 
 function assemblebig!(Lvv,Lv,bigasm,asm,model,dis,out::AssemblyDirect{NDX,NDU,NA},state,nstep,Δt,γ,dbg) where{NDX,NDU,NA}
-    nder = (1,NDX,NDU)
+  #  nder = (1,NDX,NDU)
     zero!(Lvv)
     zero!(Lv )
     for step = 1:nstep
@@ -145,25 +171,26 @@ function assemblebig!(Lvv,Lv,bigasm,asm,model,dis,out::AssemblyDirect{NDX,NDU,NA
         assemble!(out,asm,dis,model,state[step],(dbg...,asm=:assemblebig!,step=step))
 
         for β∈λxu
-            for βder = 1:nder[β]
+            Lβ = out.L1[β]
+            for βder = 1:size(Lβ,1)
                 s = Δt^-βder
                 for iβ ∈ finitediff(βder-1,nstep,step;transposed=true)
                     βblk = 3*(step+iβ.Δs-1)+β
-                    addin!(bigasm,Lv ,out.L1[β][βder],βblk,iβ.w*s) 
+                    addin!(bigasm,Lv ,Lβ[βder],βblk,iβ.w*s) 
                 end
             end
         end
         for     α∈λxu 
             for β∈λxu
-                if α==β==ind.Λ  continue end  # Lλλ is always zero - but this should be culled by addin..
-                for     αder = 1:nder[α]
-                    for βder = 1:nder[β]
+                Lαβ = out.L2[α,β]
+                for     αder = 1:size(Lαβ,1)
+                    for βder = 1:size(Lαβ,2)
                         s = Δt^-(αder+βder)
                         for     iα ∈ finitediff(αder-1,nstep,step;transposed=true)
                             for iβ ∈ finitediff(βder-1,nstep,step;transposed=true)
                                 αblk = 3*(step+iα.Δs-1)+α
                                 βblk = 3*(step+iβ.Δs-1)+β
-                                addin!(bigasm,Lvv,out.L2[α,β][αder,βder],αblk,βblk,iα.w*iβ.w*s) 
+                                addin!(bigasm,Lvv,Lαβ[αder,βder],αblk,βblk,iα.w*iβ.w*s) 
                             end
                         end
                     end 
@@ -175,12 +202,14 @@ function assemblebig!(Lvv,Lv,bigasm,asm,model,dis,out::AssemblyDirect{NDX,NDU,NA
             addin!(bigasm,Lv ,out.L1[ind.A      ][1  ],Ablk     )
             addin!(bigasm,Lvv,out.L2[ind.A,ind.A][1,1],Ablk,Ablk)
             for α∈λxu
-                for αder = 1:nder[α]
+                Lαa = out.L2[α    ,ind.A]
+                Laα = out.L2[ind.A,α    ]
+                for αder = 1:size(Lαa,1)  # size(Lαa,1)==size(Laα,2) because these are 2nd derivatives of L
                     s = Δt^-αder
                     for iα ∈finitediff(αder-1,nstep,step;transposed=true)
                         αblk = 3*(step+iα.Δs-1)+α
-                        addin!(bigasm,Lvv,out.L2[α    ,ind.A][αder,1   ],αblk,Ablk,iα.w*s) 
-                        addin!(bigasm,Lvv,out.L2[ind.A,α    ][1   ,αder],Ablk,αblk,iα.w*s) 
+                        addin!(bigasm,Lvv,Lαa[αder,1   ],αblk,Ablk,iα.w*s) 
+                        addin!(bigasm,Lvv,Laα[1   ,αder],Ablk,αblk,iα.w*s) 
                     end
                 end
             end
