@@ -18,7 +18,7 @@ mutable struct AssemblyDirect{NDX,NDU,NA,T1,T2}  <:Assembly
     L1 :: T1   
     L2 :: T2   
 end  
-function prepare(::Type{AssemblyDirect},model,dis,NDX,NDU,NA) 
+function prepare(::Type{AssemblyDirect},model,dis,NDX,NDU,NA;Uwhite=false,Xwhite=false,XUindep=false,UAindep=false,XAindep=false) 
     dofgr    = (allΛdofs(model,dis),allXdofs(model,dis),allUdofs(model,dis),allAdofs(model,dis))
     ndof     = getndof.(dofgr)
     neletyp  = getneletyp(model)
@@ -26,9 +26,11 @@ function prepare(::Type{AssemblyDirect},model,dis,NDX,NDU,NA)
     nder     = (1,NDX,NDU,NA)
     L1 = Vector{Vector{Vector{𝕣}}}(undef,4)
     for α∈λxua
+        nα = nder[α]
+        if Uwhite  && α==ind.U          nα=1 end   # U-prior is white noise process
         av = asmvec!(view(asm,arrnum(α),:),dofgr[α],dis)
-        L1[α] = Vector{Vector{𝕣}}(undef,nder[α])
-        for αder=1:nder[α] 
+        L1[α] = Vector{Vector{𝕣}}(undef,nα)
+        for αder=1:nα 
             L1[α][αder] = copy(av)
         end
     end
@@ -36,16 +38,15 @@ function prepare(::Type{AssemblyDirect},model,dis,NDX,NDU,NA)
     for α∈λxua, β∈λxua
         am = asmmat!(view(asm,arrnum(α,β),:),view(asm,arrnum(α),:),view(asm,arrnum(β),:),ndof[α],ndof[β])
         nα,nβ = nder[α], nder[β]
-        # rules to keep out matrices we know are zero
-        if α==β==ind.Λ          nα,nβ=0,0 end   # Lλλ is always zero
-        # if α==β==ind.U          nα,nβ=1,1 end   # U-prior is white noise process
-        # if α==ind.X && β==ind.U nα,nβ=0,0 end   # X-measurements indep of U
-        # if α==ind.U && β==ind.X nα,nβ=0,0 end   # X-measurements indep of U
-        # if α==ind.X && β==ind.A nα,nβ=0,0 end   # X-measurements indep of A
-        # if α==ind.A && β==ind.X nα,nβ=0,0 end   # X-measurements indep of A
-        # if α==ind.U && β==ind.A nα,nβ=0,0 end   # U-load indep of A
-        # if α==ind.A && β==ind.U nα,nβ=0,0 end   # U-load  indep of A
-
+        if            α==β==ind.Λ          nα,nβ=0,0 end   # Lλλ is always zero
+        if Uwhite  && α==β==ind.U          nα,nβ=1,1 end   # U-prior is white noise process
+        if Xwhite  && α==β==ind.X          nα,nβ=1,1 end   # X-measurement error is white noise process
+        if XUindep && α==ind.X && β==ind.U nα,nβ=0,0 end   # X-measurements indep of U
+        if XUindep && α==ind.U && β==ind.X nα,nβ=0,0 end   # X-measurements indep of U
+        if XAindep && α==ind.X && β==ind.A nα,nβ=0,0 end   # X-measurements indep of A
+        if XAindep && α==ind.A && β==ind.X nα,nβ=0,0 end   # X-measurements indep of A
+        if UAindep && α==ind.U && β==ind.A nα,nβ=0,0 end   # U-load indep of A
+        if UAindep && α==ind.A && β==ind.U nα,nβ=0,0 end   # U-load  indep of A
         L2[α,β] = Matrix{SparseMatrixCSC{Float64, Int64}}(undef,nα,nβ)
         for αder=1:nα,βder=1:nβ
             L2[α,β][αder,βder] = copy(am)
@@ -83,17 +84,20 @@ function addin!(out::AssemblyDirect{NDX,NDU,NA,T1,T2},asm,iele,scale,eleobj,Λ::
  
     ∇L           = ∂{2,Nz}(L)
     pα           = 0   # points into the partials, 1 entry before the start of relevant partial derivative in α,ider-loop
-    for α∈λxua, i=1:nder[α]
+    for α∈λxua, i=1:nder[α]   # we must loop over all time derivatives to correctly point into the adiff-partials...
         iα       = pα.+(1:ndof[α])
         pα      += ndof[α]
-        add_value!(out.L1[α][i] ,asm[arrnum(α)],iele,∇L,iα)
+        Lα = out.L1[α]
+        if i≤size(Lα,1)  # ...but only add into existing vectors of L1, for speed
+            add_value!(out.L1[α][i] ,asm[arrnum(α)],iele,∇L,iα)
+        end
         pβ       = 0
         for β∈λxua, j=1:nder[β]
             iβ   = pβ.+(1:ndof[β])
             pβ  += ndof[β]
             Lαβ = out.L2[α,β]
-            if i≤size(Lαβ,1) && j≤size(Lαβ,2)
-                add_∂!{1}( out.L2[α,β][i,j],asm[arrnum(α,β)],iele,∇L,iα,iβ)
+            if i≤size(Lαβ,1) && j≤size(Lαβ,2) # ...but only add into existing matrices of L2, for better sparsity
+                add_∂!{1}(out.L2[α,β][i,j],asm[arrnum(α,β)],iele,∇L,iα,iβ)
             end
         end
     end
@@ -153,7 +157,7 @@ function makepattern(NDX,NDU,NA,nstep,out)
 end
 
 function preparebig(NDX,NDU,NA,nstep,out)
-    # create an assembler and 
+    # create an assembler and allocate for the big linear system
     pattern                  = makepattern(NDX,NDU,NA,nstep,out)
     Lvv,bigasm               = prepare(pattern)
     Lv                       = 𝕣1(undef,size(Lvv,1))
@@ -162,7 +166,6 @@ end
 ###
 
 function assemblebig!(Lvv,Lv,bigasm,asm,model,dis,out::AssemblyDirect{NDX,NDU,NA},state,nstep,Δt,γ,dbg) where{NDX,NDU,NA}
-  #  nder = (1,NDX,NDU)
     zero!(Lvv)
     zero!(Lv )
     for step = 1:nstep
@@ -270,13 +273,14 @@ struct DirectXUA{NDX,NDU,NA} <: AbstractSolver end
 #     initialstate::State,
 #     maxiter::ℤ=50,
 #     maxΔλ::ℝ=1e-5,maxΔx::ℝ=1e-5,maxΔu::ℝ=1e-5,maxΔa::ℝ=1e-5,
-#     saveiter::𝔹=false) where{NDX,NDU,NA}
+#     saveiter::𝔹=false
+#      kwargs...) where{NDX,NDU,NA}
 
 #     nstep                 = length(time)
 #     Δt                    = (last(time)-first(time))/(nstep-1)
 
 #     model,dis             = initialstate.model, initialstate.dis
-#     out1,asm1             = prepare(AssemblyDirect    ,model,dis,NDX,NDU,NA)
+#     out1,asm1             = prepare(AssemblyDirect    ,model,dis,NDX,NDU,NA;kwargs...)
 #     assemble!(out1,asm1,dis,model,initialstate,(dbg...,solver=:DirectXUA,phase=:sparsity))
 #     Lv,Lvv,bigasm         = preparebig(NDX,NDU,NA,nstep,out1)
 
@@ -309,6 +313,8 @@ struct DirectXUA{NDX,NDU,NA} <: AbstractSolver end
 #         end catch; muscadeerror(@sprintf("Lvv matrix factorization failed at iter=%i",iter));end
 #         Δv               = LU\Lv 
 
+
+        
 #         Δa               = getblock(Δv,bigasm,3*nstep+1)
 #         Δa²              = sum(Δa.^2)
 #         for stateᵢ   ∈ state

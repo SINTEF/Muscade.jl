@@ -64,7 +64,7 @@ NA               = 1
 
 
 dis             = state0.dis
-out1,asm1       = Muscade.prepare(Muscade.AssemblyDirect    ,model1,dis,NDX,NDU,NA)
+out1,asm1       = Muscade.prepare(Muscade.AssemblyDirect    ,model1,dis,NDX,NDU,NA)#;Uwhite=true,Xwhite=true,XUindep=true,UAindep=true,XAindep=true)
 zero!(out1)
 state           = [Muscade.State{1,NDX,NDU,@NamedTuple{γ::Float64}}(copy(state0)) for i = 1:nstep]
 for i=1:nstep
