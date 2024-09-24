@@ -103,12 +103,14 @@ function addin!(out::AssemblyDirect{NDX,NDU,NA,T1,T2},asm,iele,scale,eleobj,Λ::
 end
 
 ## Assembly of bigsparse
-function makepattern(::Val{NDX},::Val{NDU},::Val{NA},nstep,out) where{NDX,NDU,NA}
+function makepattern(NDX,NDU,NA,nstep,out) 
     # Looking at all steps, class, order of fdiff and Δstep, for rows and columns: which blocks are actualy nz?
-    nder = (1,NDX,NDU)
-    αblk = 𝕫1(undef,0)
-    βblk = 𝕫1(undef,0)
-    nz   = Vector{SparseMatrixCSC{𝕣,𝕫}}(undef,0)
+    nder     = (1,NDX,NDU)
+    maxblock = 1 + nstep*90  
+    αblk     = 𝕫1(undef,maxblock)
+    βblk     = 𝕫1(undef,maxblock)
+    nz       = Vector{SparseMatrixCSC{𝕣,𝕫}}(undef,maxblock)
+    nblock   = 0
     for step = 1:nstep
         for     α∈λxu 
             for β∈λxu
@@ -117,9 +119,10 @@ function makepattern(::Val{NDX},::Val{NDU},::Val{NA},nstep,out) where{NDX,NDU,NA
                     for βder = 1:size(Lαβ,2)
                         for     iα ∈ finitediff(αder-1,nstep,step;transposed=true)
                             for iβ ∈ finitediff(βder-1,nstep,step;transposed=true)
-                                push!(αblk,3*(step+iα.Δs-1)+α)
-                                push!(βblk,3*(step+iβ.Δs-1)+β)
-                                push!(nz  ,Lαβ[1,1]  )
+                                nblock += 1   
+                                αblk[nblock]=3*(step+iα.Δs-1)+α
+                                βblk[nblock]=3*(step+iβ.Δs-1)+β
+                                nz[  nblock]=Lαβ[1,1]  
                             end
                         end
                     end 
@@ -127,36 +130,37 @@ function makepattern(::Val{NDX},::Val{NDU},::Val{NA},nstep,out) where{NDX,NDU,NA
             end
         end
     end   
-    u    = unique(i->(αblk[i],βblk[i]),eachindex(αblk))
-    αblk = αblk[u]
-    βblk = βblk[u]
-    nz   = nz[  u]
 
     if NA==1
         Ablk = 3*nstep+1
-        push!(αblk,Ablk                      )  
-        push!(βblk,Ablk                      )
-        push!(nz  ,out.L2[ind.A,ind.A][1,1]  )
+        nblock +=1
+        αblk[nblock] = Ablk                      
+        βblk[nblock] = Ablk                    
+        nz[  nblock] = out.L2[ind.A,ind.A][1,1]
         for step = 1:nstep
             for     α∈λxu 
                 # loop over derivatives and finitediff is optimized out, as time derivatives will only 
                 # be added into superbloc already reached by non-derivatives. No, it's not a bug...
                 if size(out.L2[ind.A,α],1)>0
-                    push!(αblk,Ablk                  )
-                    push!(βblk,3*(step-1)+α          )  
-                    push!(nz  ,out.L2[ind.A,α][1,1]  )
-                    push!(αblk,3*(step-1)+α          )  
-                    push!(βblk,Ablk                  )
-                    push!(nz  ,out.L2[α,ind.A][1,1]  )
+                    nblock += 1
+                    αblk[nblock] = Ablk                
+                    βblk[nblock] = 3*(step-1)+α          
+                    nz[  nblock] = out.L2[ind.A,α][1,1]
+                    nblock += 1
+                    αblk[nblock] = 3*(step-1)+α            
+                    βblk[nblock] = Ablk                  
+                    nz[  nblock] = out.L2[α,ind.A][1,1]  
                 end
             end
         end
     end
-   return sparse(αblk,βblk,nz)
+    u    = unique(i->(αblk[i],βblk[i]),1:nblock)
+
+    return sparse(αblk[u],βblk[u],nz[u])
 end
-function preparebig(::Val{NDX},::Val{NDU},::Val{NA},nstep,out) where{NDX,NDU,NA}
-    # create an assembler and allocate for the big linear system
-    pattern                  = makepattern(Val(NDX),Val(NDU),Val(NA),nstep,out)
+function preparebig(NDX,NDU,NA,nstep,out) 
+        # create an assembler and allocate for the big linear system
+    pattern                  = makepattern(NDX,NDU,NA,nstep,out)
     Lvv,bigasm               = prepare(pattern)
     Lv                       = 𝕣1(undef,size(Lvv,1))
     return Lv,Lvv,bigasm
@@ -324,7 +328,7 @@ function solve(TS::Type{DirectXUA{NDX,NDU,NA}},pstate,verbose::𝕓,dbg;
     verbose && @printf("\n    Preparing assembler\n")
     out,asm,dofgr         = prepare(AssemblyDirect{NDX,NDU,NA},model,dis;kwargs...)      # mem and assembler for system at any given step
     assemble!(out,asm,dis,model,state[1],(dbg...,solver=:DirectXUA,phase=:sparsity))     # create a sample "out" for preparebig
-    Lv,Lvv,bigasm         = preparebig(Val(NDX),Val(NDU),Val(NA),nstep,out)                             # mem and assembler for big system
+    Lv,Lvv,bigasm         = preparebig(NDX,NDU,NA,nstep,out)                             # mem and assembler for big system
 
     for iter              = 1:maxiter
         verbose && @printf("\n    Iteration %3d\n",iter)

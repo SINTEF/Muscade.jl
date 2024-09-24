@@ -146,20 +146,20 @@ Base.copy(s::State;time=s.time) = State(time,deepcopy(s.Λ),deepcopy(s.X),deepco
 # describes the relation between the dofs of the model, and a dof-vector containing an ordered selection
 # of the dofs of the model.
 
-struct DofGroup{T1,T2,T3,T4,T5,T6,T7,T8} 
+struct DofGroup 
     nX     :: 𝕫 # of the _model
     nU     :: 𝕫
     nA     :: 𝕫
 
-    iΛ     :: T1   # state.Λ[iΛ] <-> y[jΛ]*scaleΛ (hence dofgroups can handle permutations)
-    iX     :: T2 
-    iU     :: T3 
-    iA     :: T4 
+    iΛ     :: 𝕫1   # state.Λ[iΛ] <-> y[jΛ]*scaleΛ (hence dofgroups can handle permutations)
+    iX     :: 𝕫1 
+    iU     :: 𝕫1 
+    iA     :: 𝕫1 
 
-    jΛ     :: T5 
-    jX     :: T6 
-    jU     :: T7 
-    jA     :: T8 
+    jΛ     :: 𝕫1 
+    jX     :: 𝕫1 
+    jU     :: 𝕫1 
+    jA     :: 𝕫1 
 
     scaleΛ :: 𝕣1
     scaleX :: 𝕣1
@@ -171,6 +171,8 @@ struct DofGroup{T1,T2,T3,T4,T5,T6,T7,T8}
     fieldU :: Vector{Symbol}
     fieldA :: Vector{Symbol}
 end
+DofGroup(nX,nU,nA, iΛ,iX,iU,iA,  jΛ,jX,jU,jA, Λs,Xs,Us,As, Λf,Xf,Uf,Af) = 
+    DofGroup(nX,nU,nA, collect(iΛ),collect(iX),collect(iU),collect(iA),  collect(jΛ),collect(jX),collect(jU),collect(jA), Λs,Xs,Us,As, Λf,Xf,Uf,Af)
 function DofGroup(dis::Disassembler,iΛ,iX,iU,iA) 
     # constructor for dofgroup with permutation within each dof-class.  
     # The datastructure of DofGroup supports dofgroups with arbitrary permutations - but not this constructor
