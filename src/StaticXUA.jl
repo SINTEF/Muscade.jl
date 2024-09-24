@@ -224,8 +224,8 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
         for (step,state)   ∈ enumerate(states)
             Δy           = disblock(blkasm,Δv,step  )
             Δy²[step]    = sum(Δy.^2)
-            decrement!(state,0,Δy,Ydofgr)
-            decrement!(state,0,Δa,Adofgr)
+            decrement!(state,1,Δy,Ydofgr)
+            decrement!(state,1,Δa,Adofgr)
         end    
         
         s  = 1.  
@@ -250,8 +250,8 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
             Δs                = s*(β-1)
             s                += Δs
             for (step,state)  ∈ enumerate(states)
-                decrement!(state,0,Δs*disblock(blkasm,Δv,step),Ydofgr)
-                decrement!(state,0,Δs*Δa                      ,Adofgr)
+                decrement!(state,1,Δs*disblock(blkasm,Δv,step),Ydofgr)
+                decrement!(state,1,Δs*Δa                      ,Adofgr)
             end
         end
         γ                     = max(Σλg/max(1,npos)*γfac, γ₀*γbot)

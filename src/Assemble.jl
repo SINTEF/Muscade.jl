@@ -138,7 +138,7 @@ function State{nΛder,nXder,nUder,TSP}(s::State) where{nΛder,nXder,nUder,TSP}
     return state
 end 
 # A deep copy - except for SP,model and dis
-Base.copy(s::State) = State(s.time,deepcopy(s.Λ),deepcopy(s.X),deepcopy(s.U),deepcopy(s.A),s.SP,s.model,s.dis) 
+Base.copy(s::State;time=s.time) = State(time,deepcopy(s.Λ),deepcopy(s.X),deepcopy(s.U),deepcopy(s.A),s.SP,s.model,s.dis) 
 
 
 #### DofGroup
@@ -182,17 +182,17 @@ function DofGroup(dis::Disassembler,iΛ,iX,iU,iA)
     return DofGroup(nX,nU,nA, iΛ,iX,iU,iA,  jΛ,jX,jU,jA, Λs,Xs,Us,As, Λf,Xf,Uf,Af)
 end
 # use a dof-vector to decrement/increment/set/get the corresponding dofs in a State
-function decrement!(s::State,der::𝕫,y::AbstractVector{𝕣},gr::DofGroup) 
-    for i ∈ eachindex(gr.iΛ); s.Λ[der+1][gr.iΛ[i]] -= y[gr.jΛ[i]] * gr.scaleΛ[i]; end
-    for i ∈ eachindex(gr.iX); s.X[der+1][gr.iX[i]] -= y[gr.jX[i]] * gr.scaleX[i]; end
-    for i ∈ eachindex(gr.iU); s.U[der+1][gr.iU[i]] -= y[gr.jU[i]] * gr.scaleU[i]; end
-    for i ∈ eachindex(gr.iA); s.A[       gr.iA[i]] -= y[gr.jA[i]] * gr.scaleA[i]; end
+function decrement!(s::State,ider::𝕫,y::AbstractVector{𝕣},gr::DofGroup) 
+    for i ∈ eachindex(gr.iΛ); s.Λ[ider][gr.iΛ[i]] -= y[gr.jΛ[i]] * gr.scaleΛ[i]; end
+    for i ∈ eachindex(gr.iX); s.X[ider][gr.iX[i]] -= y[gr.jX[i]] * gr.scaleX[i]; end
+    for i ∈ eachindex(gr.iU); s.U[ider][gr.iU[i]] -= y[gr.jU[i]] * gr.scaleU[i]; end
+    for i ∈ eachindex(gr.iA); s.A[      gr.iA[i]] -= y[gr.jA[i]] * gr.scaleA[i]; end
 end
-function increment!(s::State,der::𝕫,y::AbstractVector{𝕣},gr::DofGroup) 
-    for i ∈ eachindex(gr.iΛ); s.Λ[der+1][gr.iΛ[i]] += y[gr.jΛ[i]] * gr.scaleΛ[i]; end
-    for i ∈ eachindex(gr.iX); s.X[der+1][gr.iX[i]] += y[gr.jX[i]] * gr.scaleX[i]; end
-    for i ∈ eachindex(gr.iU); s.U[der+1][gr.iU[i]] += y[gr.jU[i]] * gr.scaleU[i]; end
-    for i ∈ eachindex(gr.iA); s.A[       gr.iA[i]] += y[gr.jA[i]] * gr.scaleA[i]; end
+function increment!(s::State,ider::𝕫,y::AbstractVector{𝕣},gr::DofGroup) 
+    for i ∈ eachindex(gr.iΛ); s.Λ[ider][gr.iΛ[i]] += y[gr.jΛ[i]] * gr.scaleΛ[i]; end
+    for i ∈ eachindex(gr.iX); s.X[ider][gr.iX[i]] += y[gr.jX[i]] * gr.scaleX[i]; end
+    for i ∈ eachindex(gr.iU); s.U[ider][gr.iU[i]] += y[gr.jU[i]] * gr.scaleU[i]; end
+    for i ∈ eachindex(gr.iA); s.A[      gr.iA[i]] += y[gr.jA[i]] * gr.scaleA[i]; end
 end
 function set!(s::State,der::𝕫,y::AbstractVector{𝕣},gr::DofGroup) 
     s.Λ[der+1] .= 0

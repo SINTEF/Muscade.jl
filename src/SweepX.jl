@@ -236,15 +236,15 @@ function decr2!(state,Δx ,Xdofgr,c,firstiter,x′,x″)
         Δx′      = a₁*Δx 
         Δx″      = b₁*Δx 
     end
-    decrement!(state,0,Δx ,Xdofgr)
-    decrement!(state,1,Δx′,Xdofgr)
-    decrement!(state,2,Δx″,Xdofgr)
+    decrement!(state,1,Δx ,Xdofgr)
+    decrement!(state,2,Δx′,Xdofgr)
+    decrement!(state,3,Δx″,Xdofgr)
 end
 function decr1!(state,Δx ,Xdofgr,c)
     Δx′      = c.a₁*Δx 
-    decrement!(state,0,Δx ,Xdofgr)
-    decrement!(state,1,Δx′,Xdofgr)
+    decrement!(state,1,Δx ,Xdofgr)
+    decrement!(state,2,Δx′,Xdofgr)
 end
 function decr0!(state,Δx ,Xdofgr)
-    decrement!(state,0,Δx ,Xdofgr)
+    decrement!(state,1,Δx ,Xdofgr)
 end

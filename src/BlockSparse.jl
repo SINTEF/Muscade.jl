@@ -150,5 +150,5 @@ function addin!(asm::BlockSparseAssembler,out::Vector{Tv},block::Vector{Tv},ibc:
     end
 end
 # disassemble a block from a big-vector
-disblock(asm::BlockSparseAssembler,out::Vector,ibc::𝕫) = view(out,asm.pgc[ibc]:(asm.pgc[ibc+1]-1))
+disblock(asm::BlockSparseAssembler,v::Vector,ibc::𝕫) = view(v,asm.pgc[ibc]:(asm.pgc[ibc+1]-1))
 

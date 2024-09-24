@@ -34,25 +34,31 @@ Muscade.doflist( ::Type{El1})  = (inod =(1 ,1 ,1 ,1), class=(:X,:U,:A,:A), field
 
 include("SomeElements.jl")
 
-model1          = Model(:TrueModel)
-n1              = addnode!(model1,𝕣[0])  
-n2              = addnode!(model1,𝕣[1])  
-n3              = addnode!(model1,𝕣[]) # anode for spring
-e1              = addelement!(model1,El1,[n1], K=1.,C=0.05,M=1.)
-e2              = addelement!(model1,El1,[n2], K=0.,C=0.0 ,M=1.)
-e3              = addelement!(model1,Spring{1},[n1,n2,n3], EI=1.1)
-e4              = addelement!(model1,SingleDofCost,[n3];class=:A,field=:ΞL₀,cost=a->a^2)
-e5              = addelement!(model1,SingleDofCost,[n3];class=:A,field=:ΞEI,cost=a->a^2)
-e6              = addelement!(model1,SingleDofCost,[n1];class=:A,field=:ΞC ,cost=a->a^2)
-e7              = addelement!(model1,SingleDofCost,[n1];class=:A,field=:ΞM ,cost=a->a^2)
-e8              = addelement!(model1,SingleDofCost,[n2];class=:A,field=:ΞC ,cost=a->a^2)
-e9              = addelement!(model1,SingleDofCost,[n2];class=:A,field=:ΞM ,cost=a->a^2)
-e10             = addelement!(model1,SingleUdof   ,[n1];Xfield=:tx1,Ufield=:utx1,cost=u->u^2)
-e11             = addelement!(model1,SingleUdof   ,[n2];Xfield=:tx1,Ufield=:utx1,cost=u->u^2)
-e12             = addelement!(model1,SingleDofCost,[n1];class=:X,field=:tx1,cost=(tx1,t)->(tx1-0.1*sin(t))^2)
-e13             = addelement!(model1,SingleDofCost,[n2];class=:X,field=:tx1,cost=(tx1,t)->(tx1-0.1*cos(t))^2)
 
-state0          = initialize!(model1)   
+
+
+model          = Model(:TrueModel)
+n1              = addnode!(model,𝕣[0])  
+n2              = addnode!(model,𝕣[1])  
+n3              = addnode!(model,𝕣[]) # anode for spring
+e1              = addelement!(model,El1,[n1], K=1.,C=0.05,M=1.)
+e2              = addelement!(model,El1,[n2], K=0.,C=0.0 ,M=1.)
+e3              = addelement!(model,Spring{1},[n1,n2,n3], EI=1.1)
+@once f(x) = x^2
+@once l1(tx1,t) = (tx1-0.1*sin(t))^2
+@once l2(tx1,t) = (tx1-0.1*cos(t))^2
+e4              = addelement!(model,SingleDofCost,[n3];class=:A,field=:ΞL₀,     cost=f)
+e5              = addelement!(model,SingleDofCost,[n3];class=:A,field=:ΞEI,     cost=f)
+e6              = addelement!(model,SingleDofCost,[n1];class=:A,field=:ΞC ,     cost=f)
+e7              = addelement!(model,SingleDofCost,[n1];class=:A,field=:ΞM ,     cost=f)
+e8              = addelement!(model,SingleDofCost,[n2];class=:A,field=:ΞC ,     cost=f)
+e9              = addelement!(model,SingleDofCost,[n2];class=:A,field=:ΞM ,     cost=f)
+e10             = addelement!(model,SingleUdof   ,[n1];Xfield=:tx1,Ufield=:utx1,cost=f)
+e11             = addelement!(model,SingleUdof   ,[n2];Xfield=:tx1,Ufield=:utx1,cost=f)
+e12             = addelement!(model,SingleDofCost,[n1];class=:X,field=:tx1,     cost=l1)
+e13             = addelement!(model,SingleDofCost,[n2];class=:X,field=:tx1,     cost=l2)
+
+state0          = initialize!(model)   
 
 nstep            = 6
 NDX              = 3
@@ -64,56 +70,56 @@ NA               = 1
 
 
 dis             = state0.dis
-out1,asm1       = Muscade.prepare(Muscade.AssemblyDirect    ,model1,dis,NDX,NDU,NA)#;Uwhite=true,Xwhite=true,XUindep=true,UAindep=true,XAindep=true)
-zero!(out1)
+out,asm,dofgr = Muscade.prepare(Muscade.AssemblyDirect    ,model,dis,NDX,NDU,NA)#;Uwhite=true,Xwhite=true,XUindep=true,UAindep=true,XAindep=true)
+zero!(out)
 state           = [Muscade.State{1,NDX,NDU,@NamedTuple{γ::Float64}}(copy(state0)) for i = 1:nstep]
 for i=1:nstep
     state[i].time = Δt*i
 end
 
-Muscade.assemble!(out1,asm1,dis,model1,state[1],(;))
+Muscade.assemble!(out,asm,dis,model,state[1],(;))
 
-pattern    = Muscade.makepattern(NDX,NDU,NA,nstep,out1)
+pattern    = Muscade.makepattern(NDX,NDU,NA,nstep,out)
 # using Spy,GLMakie
 # fig = spypattern(pattern)
 # save("C:\\Users\\philippem\\.julia\\dev\\Muscade\\spypattern.jpg",fig)
 
-Lv,Lvv,bigasm    = Muscade.preparebig(NDX,NDU,NA,nstep,out1)
-Muscade.assemblebig!(Lvv,Lv,bigasm,asm1,model1,dis,out1,state,nstep,Δt,γ,(caller=:TestDirectXUA,))
+Lv,Lvv,bigasm    = Muscade.preparebig(NDX,NDU,NA,nstep,out)
+Muscade.assemblebig!(Lvv,Lv,bigasm,asm,model,dis,out,state,nstep,Δt,γ,(caller=:TestDirectXUA,))
 
 # using Spy,GLMakie
-# fig = spy(Lvv,title="bigsparse Lvv sparsity",size=500)
+# fig = Spy.spy(Lvv,title="bigsparse Lvv sparsity",size=500)
 # save("C:\\Users\\philippem\\.julia\\dev\\Muscade\\spy.jpg",fig)
 
-#stateXUA         = solve(DirectXUA{NA,ND};initialstate=state0,time=0:1.:5)
+stateXUA         = solve(DirectXUA{NDX,NDU,NA};initialstate=state0,time=0:1.:5,maxiter=10)
 
 @testset "prepare_out" begin
-    @test out1.L1[1] ≈ [[0.0, 0.0]]
-    @test out1.L1[2] ≈ [[0.055883099639785175, -0.1920340573300732], [0.0, 0.0], [0.0, 0.0]]
-    @test out1.L1[3] ≈ [[0.0, 0.0, 0.0, 0.0]]
-    @test out1.L1[4] ≈ [[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]]
-    @test size(out1.L2[1,1]) == (0,0)
-    @test out1.L2[2,2][1,1] ≈ sparse([1, 2, 1, 2], [1, 1, 2, 2], [2.0, 0.0, 0.0, 2.0], 2, 2)  
-    @test out1.L2[2,2][1,2] ≈ sparse([1, 2, 1, 2], [1, 1, 2, 2], [0.0, 0.0, 0.0, 0.0], 2, 2)  
-    @test out1.L2[2,2][1,3] ≈ sparse([1, 2, 1, 2], [1, 1, 2, 2], [0.0, 0.0, 0.0, 0.0], 2, 2)
-    @test out1.L2[2,1][1,1] ≈ sparse([1, 2, 1, 2], [1, 1, 2, 2], [2.1, -1.1, -1.1, 1.1], 2, 2)
-    @test out1.L2[2,1][2,1] ≈ sparse([1, 2, 1, 2], [1, 1, 2, 2], [0.05, 0.0, 0.0, 0.0], 2, 2)
-    @test out1.L2[2,1][3,1] ≈ sparse([1, 2, 1, 2], [1, 1, 2, 2], [1.0, 0.0, 0.0, 1.0], 2, 2)
-    @test out1.L2[3,3][1,1] ≈ sparse([1, 2, 3, 4], [1, 2, 3, 4], [0.0, 0.0, 2.0, 2.0], 4, 4)
-    @test out1.L2[3,4][1,1] ≈ sparse([1, 1, 2, 2], [1, 2, 3, 4], [0.0, 0.0, 0.0, 0.0], 4, 6)
-    @test out1.L2[4,4][1,1] ≈ sparse([1, 2, 1, 2, 3, 4, 3, 4, 5, 6, 5, 6], [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6], [2.0, 0.0, 0.0, 2.0, 2.0, 0.0, 0.0, 2.0, 2.0, 0.0, 0.0, 2.0], 6, 6)
+    @test out.L1[1] ≈ [[0.0, 0.0]]
+    @test out.L1[2] ≈ [[0.055883099639785175, -0.1920340573300732], [0.0, 0.0], [0.0, 0.0]]
+    @test out.L1[3] ≈ [[0.0, 0.0, 0.0, 0.0]]
+    @test out.L1[4] ≈ [[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]]
+    @test size(out.L2[1,1]) == (0,0)
+    @test out.L2[2,2][1,1] ≈ sparse([1, 2, 1, 2], [1, 1, 2, 2], [2.0, 0.0, 0.0, 2.0], 2, 2)  
+    @test out.L2[2,2][1,2] ≈ sparse([1, 2, 1, 2], [1, 1, 2, 2], [0.0, 0.0, 0.0, 0.0], 2, 2)  
+    @test out.L2[2,2][1,3] ≈ sparse([1, 2, 1, 2], [1, 1, 2, 2], [0.0, 0.0, 0.0, 0.0], 2, 2)
+    @test out.L2[2,1][1,1] ≈ sparse([1, 2, 1, 2], [1, 1, 2, 2], [2.1, -1.1, -1.1, 1.1], 2, 2)
+    @test out.L2[2,1][2,1] ≈ sparse([1, 2, 1, 2], [1, 1, 2, 2], [0.05, 0.0, 0.0, 0.0], 2, 2)
+    @test out.L2[2,1][3,1] ≈ sparse([1, 2, 1, 2], [1, 1, 2, 2], [1.0, 0.0, 0.0, 1.0], 2, 2)
+    @test out.L2[3,3][1,1] ≈ sparse([1, 2, 3, 4], [1, 2, 3, 4], [0.0, 0.0, 2.0, 2.0], 4, 4)
+    @test out.L2[3,4][1,1] ≈ sparse([1, 1, 2, 2], [1, 2, 3, 4], [0.0, 0.0, 0.0, 0.0], 4, 6)
+    @test out.L2[4,4][1,1] ≈ sparse([1, 2, 1, 2, 3, 4, 3, 4, 5, 6, 5, 6], [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6], [2.0, 0.0, 0.0, 2.0, 2.0, 0.0, 0.0, 2.0, 2.0, 0.0, 0.0, 2.0], 6, 6)
 end
 @testset "prepare_asm" begin
-    @test asm1[1,1]  ≈ [1 2]      # asm1[iarray,ieletyp][ieledof,iele] -> idof|inz
-    @test asm1[1,2]  ≈ [1; 2;;]
-    @test asm1[2,1]  ≈ [1 2] 
-    @test asm1[2,2]  ≈ [1; 2;;]
-    @test asm1[3,1]  ≈ [1 2] 
-    @test asm1[3,2]  ≈ Matrix{Int64}(undef, 0, 1)
-    @test asm1[4,1]  ≈ [1 3; 2 4]
-    @test asm1[4,2]  ≈ [5; 6;;]
-    @test asm1[5,1]  ≈ [1 4]                   
-    @test asm1[20,1] ≈ [1 5; 2 6; 3 7; 4 8]    
+    @test asm[1,1]  ≈ [1 2]      # asm[iarray,ieletyp][ieledof,iele] -> idof|inz
+    @test asm[1,2]  ≈ [1; 2;;]
+    @test asm[2,1]  ≈ [1 2] 
+    @test asm[2,2]  ≈ [1; 2;;]
+    @test asm[3,1]  ≈ [1 2] 
+    @test asm[3,2]  ≈ Matrix{Int64}(undef, 0, 1)
+    @test asm[4,1]  ≈ [1 3; 2 4]
+    @test asm[4,2]  ≈ [5; 6;;]
+    @test asm[5,1]  ≈ [1 4]                   
+    @test asm[20,1] ≈ [1 5; 2 6; 3 7; 4 8]    
 end
 
 @testset "preparebig Lvv" begin

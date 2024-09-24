@@ -2,9 +2,9 @@
 # dis.dis[ieletyp].scale.Λ|X|U|A[ieledof]           - scaling each element type 
 # dis.scaleΛ|X|U|A[imoddof]                         - scaling the model state
 # dis.field  X|U|A[imoddof]                         - field of dofs in model state
-# asm1[iarray,ieletyp][ieledof|ientry,iele] -> idof|inz
-# out1.L1[α  ][αder     ][idof] -> gradient     α∈λxua
-# out1.L2[α,β][αder,βder][inz ] -> Hessian      α∈λxua, β∈λxua
+# asm[iarray,ieletyp][ieledof|ientry,iele] -> idof|inz
+# out.L1[α  ][αder     ][idof] -> gradient     α∈λxua
+# out.L2[α,β][αder,βder][inz ] -> Hessian      α∈λxua, β∈λxua
 const λxua   = 1:4
 const λxu    = 1:3
 const xu     = 2:3
@@ -53,7 +53,7 @@ function prepare(::Type{AssemblyDirect},model,dis,NDX,NDU,NA;Uwhite=false,Xwhite
         end
     end
     out      = AssemblyDirect{NDX,NDU,NA,typeof(L1),typeof(L2)}(L1,L2)
-    return out,asm
+    return out,asm,dofgr
 end
 function zero!(out::AssemblyDirect)
     for α∈λxua 
@@ -63,7 +63,6 @@ function zero!(out::AssemblyDirect)
         end
     end
 end
-
 function addin!(out::AssemblyDirect{NDX,NDU,NA,T1,T2},asm,iele,scale,eleobj,Λ::NTuple{1  ,SVector{Nx}},
                                                                             X::NTuple{NDX,SVector{Nx}},
                                                                             U::NTuple{NDU,SVector{Nu}},
@@ -155,7 +154,6 @@ function makepattern(NDX,NDU,NA,nstep,out)
     end
    return sparse(αblk,βblk,nz)
 end
-
 function preparebig(NDX,NDU,NA,nstep,out)
     # create an assembler and allocate for the big linear system
     pattern                  = makepattern(NDX,NDU,NA,nstep,out)
@@ -163,8 +161,6 @@ function preparebig(NDX,NDU,NA,nstep,out)
     Lv                       = 𝕣1(undef,size(Lvv,1))
     return Lv,Lvv,bigasm
 end
-###
-
 function assemblebig!(Lvv,Lv,bigasm,asm,model,dis,out::AssemblyDirect{NDX,NDU,NA},state,nstep,Δt,γ,dbg) where{NDX,NDU,NA}
     zero!(Lvv)
     zero!(Lv )
@@ -219,7 +215,29 @@ function assemblebig!(Lvv,Lv,bigasm,asm,model,dis,out::AssemblyDirect{NDX,NDU,NA
         end
     end   
 end
-
+function decrementbig!(state,Δ²,bigasm,dofgr,Δv,nder,Δt,nstep) 
+    Δ²                  .= 0.
+    for (step,stateᵢ)    ∈ enumerate(state)
+        for β            ∈ λxu
+            for βder     = 1:nder[β]
+                s        = Δt^-βder
+                for iβ   ∈ finitediff(βder-1,nstep,step;transposed=false)
+                    βblk = 3*(step+iβ.Δs-1)+β   
+                    Δβ   = disblock(bigasm,Δv,βblk)
+                    decrement!(stateᵢ,βder,Δβ.*iβ.w*s,dofgr[β])
+                    if βder==1 
+                        Δ²[β] = max(Δ²[β],sum(Δβ.^2)) 
+                    end
+                end
+            end
+        end
+    end    
+    if nder[4]==1
+        Δa               = disblock(bigasm,Δv,3*nstep+1)
+        Δ²[ind.A]        = sum(Δa.^2)
+        decrement!(state[1],1,Δa,dofgr[ind.A]) # all states share same A, so decrement only once
+    end
+end
 
 """
 	DirectXUA
@@ -268,97 +286,80 @@ A vector of length equal to that of `initialstate` containing the state of the o
 See also: [`solve`](@ref), [`SweepX`](@ref), [`setdof!`](@ref) 
 """
 struct DirectXUA{NDX,NDU,NA} <: AbstractSolver end 
-# function solve(::Type{DirectXUA{NDX,NDU,NA}},pstate,verbose::𝕓,dbg;
-#     time::AbstractRange{𝕣},
-#     initialstate::State,
-#     maxiter::ℤ=50,
-#     maxΔλ::ℝ=1e-5,maxΔx::ℝ=1e-5,maxΔu::ℝ=1e-5,maxΔa::ℝ=1e-5,
-#     saveiter::𝔹=false
-#      kwargs...) where{NDX,NDU,NA}
+function solve(::Type{DirectXUA{NDX,NDU,NA}},pstate,verbose::𝕓,dbg;
+    time::AbstractRange{𝕣},
+    initialstate::State,
+    maxiter::ℤ=50,
+    maxΔλ::ℝ=1e-5,maxΔx::ℝ=1e-5,maxΔu::ℝ=1e-5,maxΔa::ℝ=1e-5,
+    saveiter::𝔹=false,
+    kwargs...) where{NDX,NDU,NA}
 
-#     nstep                 = length(time)
-#     Δt                    = (last(time)-first(time))/(nstep-1)
+    #  Mostly constants
+    local LU
+    nstep                 = length(time)
+    Δt                    = (last(time)-first(time))/(nstep-1)
+    γ                     = 0.
+    nder                  = (1,NDX,NDU,NA)
+    model,dis             = initialstate.model, initialstate.dis
+    if NA==1  Δ², maxΔ²   = 𝕣1(undef,4), [maxΔλ^2,maxΔx^2,maxΔu^2,maxΔa^2] 
+    else      Δ², maxΔ²   = 𝕣1(undef,3), [maxΔλ^2,maxΔx^2,maxΔu^2        ] 
+    end
 
-#     model,dis             = initialstate.model, initialstate.dis
-#     out1,asm1             = prepare(AssemblyDirect    ,model,dis,NDX,NDU,NA;kwargs...)
-#     assemble!(out1,asm1,dis,model,initialstate,(dbg...,solver=:DirectXUA,phase=:sparsity))
-#     Lv,Lvv,bigasm         = preparebig(NDX,NDU,NA,nstep,out1)
+    # State storage
+    S                     = State{1,NDX,NDU,@NamedTuple{γ::Float64}}
+    state                 = Vector{S}(undef,nstep)
+    s                     = S(copy(initialstate,time=time[1]))
+    for (step,timeᵢ)      = enumerate(time)
+        state[step]       = step==1 ? s : State(timeᵢ,deepcopy(s.Λ),deepcopy(s.X),deepcopy(s.U),s.A,s.SP,s.model,s.dis)
+    end
+    if saveiter
+        stateiter         = Vector{Vector{S}}(undef,maxiter) 
+        pstate[]          = stateiter
+    else
+        pstate[]          = state                                                                            # TODO pstate typestable???
+    end    
 
-#     state                 = [State{1,NDX,NDU,@NamedTuple{γ::Float64}}(copy(initialstate)) for timeᵢ ∈ time]    
-#     for (step,timeᵢ) ∈ enumerate(time)
-#         state[step].time = timeᵢ
-#     end
-#     pstate[]              = state                                                                            # TODO pstate typestable???
-#     if saveiter
-#         stateiter         = Vector{typeof(state)}(undef,maxiter) 
-#         pstate[]          = stateiter
-#     end    
+    # Prepare assembler
+    verbose && @printf("\n    Preparing assembler\n")
+    out,asm,dofgr         = prepare(AssemblyDirect    ,model,dis,NDX,NDU,NA;kwargs...)   # mem and assembler for system at any given step
+    assemble!(out,asm,dis,model,state[1],(dbg...,solver=:DirectXUA,phase=:sparsity)) # create a sample "out"
+    Lv,Lvv,bigasm         = preparebig(NDX,NDU,NA,nstep,out)                             # mem and assembler for big system
 
-#     Δλ²                   = Vector{𝕣}(undef,nstep)
-#     Δx²                   = Vector{𝕣}(undef,nstep)
-#     Δu²                   = Vector{𝕣}(undef,nstep)
-#     maxΔλ²                = maxΔλ 
-#     maxΔx²                = maxΔx 
-#     maxΔu²                = maxΔu 
-#     maxΔa²                = maxΔa 
+    for iter              = 1:maxiter
+        verbose && @printf("\n    Iteration %3d\n",iter)
 
-#     local LU
-#     for iter              = 1                                                                                 # TODO 1:maxiter
-#         verbose && @printf("    iteration %3d, γ=%g\n",iter,γ)
+        verbose && @printf("        Assembling")
+        assemblebig!(Lvv,Lv,bigasm,asm,model,dis,out,state,nstep,Δt,γ,(dbg...,solver=:DirectXUA,iter=iter))
 
-#         assemblebig!(Lvv,Lv,bigasm,asm1,model,dis,out1,state,nstep,Δt,γ,(dbg...,solver=:DirectXUA,iter=iter))
+        verbose && @printf(", solving")
+        try 
+            if iter==1 LU = lu(Lvv) 
+            else       lu!(LU ,Lvv)
+            end 
+        catch 
+            verbose && @printf("\n")
+            muscadeerror(@sprintf("Lvv matrix factorization failed at iter=%i",iter));
+        end
+        Δv               = LU\Lv 
 
-#         try if iter==1 LU = lu(Lvv) 
-#         else           lu!(LU ,Lvv)
-#         end catch; muscadeerror(@sprintf("Lvv matrix factorization failed at iter=%i",iter));end
-#         Δv               = LU\Lv 
-
-
+        verbose && @printf(", decrementing.\n")
+        decrementbig!(state,Δ²,bigasm,dofgr,Δv,nder,Δt,nstep)
         
-#         Δa               = getblock(Δv,bigasm,3*nstep+1)
-#         Δa²              = sum(Δa.^2)
-#         for stateᵢ   ∈ state
-#             decrement!(stateᵢ,0,Δa,Adofgr)
-#         end    
-#         for order = 0:ND-1 # TODO
-#             for (step,stateᵢ)   ∈ enumerate(state)
-#                 Δλ           = getblock(Δv,bigasm,3*step-2)
-#                 Δx           = getblock(Δv,bigasm,3*step-1)
-#                 Δu           = getblock(Δv,bigasm,3*step-0)
-#                 Δy²[step]    = sum(Δλ.^2)
-#                 Δx²[step]    = sum(Δx.^2)
-#                 Δu²[step]    = sum(Δu.^2)
-#                 decrement!(stateᵢ,0,Δλ,Λdofgr)  
-#                 decrement!(stateᵢ,0,Δx,Xdofgr)
-#                 decrement!(stateᵢ,0,Δu,Udofgr)
-#                 decrement!(stateᵢ,0,Δa,Adofgr)
-#                 if ND
-#             end    
-#         end
-
-#         for β∈λxu
-#             for βder = 1:size(out.L1[β],1)
-#                 for iβ ∈ finitediff(βder-1,nstep,step;transposed=true)
-#                     βblk = 3*(step+iβ.Δs-1)+β
-#                     addin!(bigasm,Lv,out.L1[β][βder],βblk,iβ.w/Δt)
-#                 end
-#             end
-#         end
- 
-
-        
-#         if saveiter
-#             stateiter[iter]     = copy.(state) 
-#         end
-#         if all(Δλ².≤maxΔλ²)  && all(Δx².≤maxΔx²)  &&all(Δu².≤maxΔu²)  && Δa²≤maxΔa²  
-#             verbose && @printf("\n    DirectXUA converged in %3d iterations.\n",iter)
-#             verbose && @printf(  "    maxₜ(|ΔY|)=%7.1e  |ΔA|=%7.1e  \n",√(maximum(Δy²)),√(Δa²) )
-#             verbose && @printf(  "    nel=%d, nvariables=%d, nstep=%d, niter=%d\n",getnele(model),nV,nstep,iter)
-#             break#out of iter
-#         end
-#         iter<maxiter || muscadeerror(@sprintf("no convergence after %3d iterations. |ΔY|=%7.1e  |ΔA|=%7.1e \n",iter,√(maximum(Δy²)),√(Δa²)))
-#     end # for iter
-#     return
-# end
+        if saveiter
+            stateiter[iter]     = copy.(state) 
+        end
+        verbose          && @printf(  "        maxₜ(|ΔΛ|)=%7.1e ≤ %7.1e  \n",√(Δ²[ind.Λ]),√(maxΔ²[ind.Λ]))
+        verbose          && @printf(  "        maxₜ(|ΔX|)=%7.1e ≤ %7.1e  \n",√(Δ²[ind.X]),√(maxΔ²[ind.X]))
+        verbose          && @printf(  "        maxₜ(|ΔU|)=%7.1e ≤ %7.1e  \n",√(Δ²[ind.U]),√(maxΔ²[ind.U]))
+        verbose && NA==1 && @printf(  "             |ΔA| =%7.1e ≤ %7.1e  \n",√(Δ²[ind.A]),√(maxΔ²[ind.A]))
+        if all(Δ².≤maxΔ²)  
+            verbose      && @printf("\n    Converged in %3d iterations.\n",iter)
+            verbose      && @printf(  "    nel=%d, nvariables=%d, nstep=%d\n",getnele(model),length(Lv),nstep)
+            break#out of iter
+        end
+        iter<maxiter || muscadeerror(@sprintf("no convergence after %3d iterations. \n",iter))
+    end # for iter
+    return
+end
 
 
