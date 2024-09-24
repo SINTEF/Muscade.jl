@@ -170,9 +170,9 @@ struct DofGroup
     fieldX :: Vector{Symbol}
     fieldU :: Vector{Symbol}
     fieldA :: Vector{Symbol}
-end
-DofGroup(nX,nU,nA, iΛ,iX,iU,iA,  jΛ,jX,jU,jA, Λs,Xs,Us,As, Λf,Xf,Uf,Af) = 
-    DofGroup(nX,nU,nA, collect(iΛ),collect(iX),collect(iU),collect(iA),  collect(jΛ),collect(jX),collect(jU),collect(jA), Λs,Xs,Us,As, Λf,Xf,Uf,Af)
+    DofGroup(nX,nU,nA, iΛ,iX,iU,iA,  jΛ,jX,jU,jA, Λs,Xs,Us,As, Λf,Xf,Uf,Af) = 
+      new(nX,nU,nA, collect(iΛ),collect(iX),collect(iU),collect(iA),  collect(jΛ),collect(jX),collect(jU),collect(jA), Λs,Xs,Us,As, Λf,Xf,Uf,Af)end
+
 function DofGroup(dis::Disassembler,iΛ,iX,iU,iA) 
     # constructor for dofgroup with permutation within each dof-class.  
     # The datastructure of DofGroup supports dofgroups with arbitrary permutations - but not this constructor

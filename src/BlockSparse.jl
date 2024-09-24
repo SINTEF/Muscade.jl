@@ -49,7 +49,7 @@ function prepare(pattern::AbstractMatrix{SparseMatrixCSC{Tv,𝕫}}) where{Tv}
     for ibr                 = 1:nbr
         nlr                 = 0
         for ibc             = 1:nbc
-            b = getblock(pattern,ibr,ibc)
+            b = getblock(pattern,ibr,ibc)  # CPU
             if ~isnothing(b)
                 nlr         = size(b,1)
                 break
@@ -67,7 +67,7 @@ function prepare(pattern::AbstractMatrix{SparseMatrixCSC{Tv,𝕫}}) where{Tv}
     for ibc                 = 1:nbc
         nlc                 = 0
         for ibr             = 1:nbr
-            b = getblock(pattern,ibr,ibc)
+            b = getblock(pattern,ibr,ibc)   # CPU 
             if ~isnothing(b)
                 nlc         = size(b,2)
                 break
@@ -83,7 +83,7 @@ function prepare(pattern::AbstractMatrix{SparseMatrixCSC{Tv,𝕫}}) where{Tv}
     ngv                     = 0                            
     for ibc                 = 1:nbc
         for ibr             = 1:nbr
-            b = getblock(pattern,ibr,ibc)
+            b = getblock(pattern,ibr,ibc) # CPU
             if ~isnothing(b)
                 ngv        += nnz(b)
             end
@@ -99,11 +99,11 @@ function prepare(pattern::AbstractMatrix{SparseMatrixCSC{Tv,𝕫}}) where{Tv}
     igv                               = 1
     for ibc                           = 1:nbc
        nlc                            = pgc[ibc+1]-pgc[ibc]
-       asm[ibc]                       = zeros(𝕫,nbr,nlc)
+       asm[ibc]                       = zeros(𝕫,nbr,nlc)    # CPU (why?)
        for ilc                        = 1:nlc
             igc                       = pgc[ibc]-1 + ilc 
             for ibr                   = 1:nbr
-                b                     = getblock(pattern,ibr,ibc)
+                b                     = getblock(pattern,ibr,ibc)  # CPU
                 if ~isnothing(b)
                     asm[ibc][ibr,ilc] = igv
                     pilr,ilr          = b.colptr, b.rowval
