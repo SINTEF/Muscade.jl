@@ -18,7 +18,7 @@ mutable struct AssemblyDirect{NDX,NDU,NA,T1,T2}  <:Assembly
     L1 :: T1   
     L2 :: T2   
 end  
-function prepare(::Type{AssemblyDirect},model,dis,NDX,NDU,NA;Uwhite=false,Xwhite=false,XUindep=false,UAindep=false,XAindep=false) 
+function prepare(::Type{AssemblyDirect{NDX,NDU,NA}},model,dis;Uwhite=false,Xwhite=false,XUindep=false,UAindep=false,XAindep=false) where{NDX,NDU,NA}
     dofgr    = (allΛdofs(model,dis),allXdofs(model,dis),allUdofs(model,dis),allAdofs(model,dis))
     ndof     = getndof.(dofgr)
     neletyp  = getneletyp(model)
@@ -103,7 +103,7 @@ function addin!(out::AssemblyDirect{NDX,NDU,NA,T1,T2},asm,iele,scale,eleobj,Λ::
 end
 
 ## Assembly of bigsparse
-function makepattern(NDX,NDU,NA,nstep,out)
+function makepattern(::Val{NDX},::Val{NDU},::Val{NA},nstep,out) where{NDX,NDU,NA}
     # Looking at all steps, class, order of fdiff and Δstep, for rows and columns: which blocks are actualy nz?
     nder = (1,NDX,NDU)
     αblk = 𝕫1(undef,0)
@@ -154,9 +154,9 @@ function makepattern(NDX,NDU,NA,nstep,out)
     end
    return sparse(αblk,βblk,nz)
 end
-function preparebig(NDX,NDU,NA,nstep,out)
+function preparebig(::Val{NDX},::Val{NDU},::Val{NA},nstep,out) where{NDX,NDU,NA}
     # create an assembler and allocate for the big linear system
-    pattern                  = makepattern(NDX,NDU,NA,nstep,out)
+    pattern                  = makepattern(Val(NDX),Val(NDU),Val(NA),nstep,out)
     Lvv,bigasm               = prepare(pattern)
     Lv                       = 𝕣1(undef,size(Lvv,1))
     return Lv,Lvv,bigasm
@@ -224,7 +224,8 @@ function decrementbig!(state,Δ²,bigasm,dofgr,Δv,nder,Δt,nstep)
                 for iβ   ∈ finitediff(βder-1,nstep,step;transposed=false)
                     βblk = 3*(step+iβ.Δs-1)+β   
                     Δβ   = disblock(bigasm,Δv,βblk)
-                    decrement!(stateᵢ,βder,Δβ.*iβ.w*s,dofgr[β])
+                    d    = dofgr[β]
+                    decrement!(stateᵢ,βder,Δβ.*iβ.w*s,d)
                     if βder==1 
                         Δ²[β] = max(Δ²[β],sum(Δβ.^2)) 
                     end
@@ -286,7 +287,7 @@ A vector of length equal to that of `initialstate` containing the state of the o
 See also: [`solve`](@ref), [`SweepX`](@ref), [`setdof!`](@ref) 
 """
 struct DirectXUA{NDX,NDU,NA} <: AbstractSolver end 
-function solve(::Type{DirectXUA{NDX,NDU,NA}},pstate,verbose::𝕓,dbg;
+function solve(TS::Type{DirectXUA{NDX,NDU,NA}},pstate,verbose::𝕓,dbg;
     time::AbstractRange{𝕣},
     initialstate::State,
     maxiter::ℤ=50,
@@ -321,9 +322,9 @@ function solve(::Type{DirectXUA{NDX,NDU,NA}},pstate,verbose::𝕓,dbg;
 
     # Prepare assembler
     verbose && @printf("\n    Preparing assembler\n")
-    out,asm,dofgr         = prepare(AssemblyDirect    ,model,dis,NDX,NDU,NA;kwargs...)   # mem and assembler for system at any given step
-    assemble!(out,asm,dis,model,state[1],(dbg...,solver=:DirectXUA,phase=:sparsity)) # create a sample "out"
-    Lv,Lvv,bigasm         = preparebig(NDX,NDU,NA,nstep,out)                             # mem and assembler for big system
+    out,asm,dofgr         = prepare(AssemblyDirect{NDX,NDU,NA},model,dis;kwargs...)      # mem and assembler for system at any given step
+    assemble!(out,asm,dis,model,state[1],(dbg...,solver=:DirectXUA,phase=:sparsity))     # create a sample "out" for preparebig
+    Lv,Lvv,bigasm         = preparebig(Val(NDX),Val(NDU),Val(NA),nstep,out)                             # mem and assembler for big system
 
     for iter              = 1:maxiter
         verbose && @printf("\n    Iteration %3d\n",iter)

@@ -301,10 +301,18 @@ end
 ## Find NaN in derivatives
 hasnan(a::ℝ   )              = isnan(a)
 hasnan(a::∂ℝ   )             = hasnan(a.x) || hasnan(a.dx)
-hasnan(a::AbstractArray)     = any(hasnan.(a))
 hasnan(a::Tuple)             = any(hasnan.(a))
+#hasnan(a::AbstractArray)     = any(hasnan.(a))
 hasnan(a::NamedTuple)        = any(hasnan.(values(a)))
 hasnan(a...;)                = any(hasnan.(a))
 hasnan(a)                    = false
+function hasnan(a::AbstractArray) 
+    for aᵢ ∈ a
+        if hasnan(aᵢ)
+            return true
+        end
+    end
+    return false
+end
 
 

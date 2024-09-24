@@ -1,9 +1,3 @@
-#=
-Verify that UU, XX XA and UA blocks are as expected (and set regression test for ΛX block)
-Move on to solving this and line search
-Profile and optimise
-=#
-
 # module TestDirectXUA
 
 cd("C:\\Users\\philippem\\.julia\\dev\\Muscade")
@@ -66,8 +60,6 @@ NDU              = 1
 NA               = 1
 γ = 9.
 Δt = 1.
-
-
 
 dis             = state0.dis
 out,asm,dofgr = Muscade.prepare(Muscade.AssemblyDirect    ,model,dis,NDX,NDU,NA)#;Uwhite=true,Xwhite=true,XUindep=true,UAindep=true,XAindep=true)
