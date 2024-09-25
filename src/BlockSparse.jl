@@ -39,83 +39,55 @@ Where some blocks share the same sparsity structure, `blocks` can have `===` ele
 
 See also: [`addin!`](@ref)
 """ 
-function prepare(pattern::AbstractMatrix{SparseMatrixCSC{Tv,𝕫}}) where{Tv} 
-    nbr,nbc                 = size(pattern)
+function prepare(pattern::SparseMatrixCSC{SparseMatrixCSC{Tv,𝕫},𝕫}) where{Tv} 
+    nbr,nbc                       = size(pattern)
     nbr>0 && nbc>0 || muscadeerror("must have length(pattern)>0")
-
-    # determine the number rows in each row of blocks, store in pgr
-    pgr                     = 𝕫1(undef,nbr+1)         # pgr[ibr]→igr pointers to the start of each block in global solution vector, where global*solution=rhs
-    pgr[1]                  = 1
-    for ibr                 = 1:nbr
-        nlr                 = 0
-        for ibc             = 1:nbc
-            b = getblock(pattern,ibr,ibc)  # CPU
-            if ~isnothing(b)
-                nlr         = size(b,1)
-                break
-            end
-            ibc<nbc || muscadeerror("pattern has an empty row")
-        end
-        nlr > 0 || muscadeerror("every block-row must contain at least one assigned Sparse")
-        pgr[ibr+1]          = pgr[ibr]+nlr
-    end 
-    ngr                     = pgr[end]-1
-
-    # determine the number columns in each column of blocks, store in pgc
-    pgc                     = 𝕫1(undef,nbc+1)         # pgc[ibc]→igc pointers to the start of each block in global rhs vector
-    pgc[1]                  = 1
-    for ibc                 = 1:nbc
-        nlc                 = 0
-        for ibr             = 1:nbr
-            b = getblock(pattern,ibr,ibc)   # CPU 
-            if ~isnothing(b)
-                nlc         = size(b,2)
-                break
-            end
-            ibr<nbr || muscadeerror("pattern has an empty column")
-        end
-        nlc > 0 || muscadeerror("every block-column must contain at least one assigned Sparse")
-        pgc[ibc+1]          = pgc[ibc]+nlc
-    end 
-    ngc                     = pgc[end]-1
-
-    # allocate arrays for global matrix
-    ngv                     = 0                            
-    for ibc                 = 1:nbc
-        for ibr             = 1:nbr
-            b = getblock(pattern,ibr,ibc) # CPU
-            if ~isnothing(b)
-                ngv        += nnz(b)
-            end
+    nlr                           = [-1 for ibr=1:nbr+1]
+    nlc                           = [-1 for ibc=1:nbc+1]
+    ngv                           = 0
+    for ibc                       = 1:nbc
+        for pbr                   = pattern.colptr[ibc]:pattern.colptr[ibc+1]-1
+            ibr                   = pattern.rowval[pbr]
+            block                 = pattern.nzval[pbr]
+            nlr[ibr+1]            = block.m
+            nlc[ibc+1]            = block.n
+            ngv                  += length(block.nzval)
         end
     end
-    pigr                    = 𝕫1(undef,ngc+1)       # aka colptr
-    igr                     = 𝕫1(undef,ngv  )       # aka rowval
-    gv                      = Vector{Tv}(undef,ngv) # aka nzval
+    nlr[1]                        = 1
+    nlc[1]                        = 1
+    all(nlr.>0) || muscadeerror("every row of the pattern must contain at least one non-zero block")
+    all(nlc.>0) || muscadeerror("every column of the pattern contain at least one non-zero block")
+    pgr                           = cumsum(nlr)  # pgr[ibr]→igr global row corresponding to the first local row of each block
+    pgc                           = cumsum(nlc)  # pgc[ibc]→igc global column corresponding to the first local row of each block
+    ngr                           = pgr[end]-1
+    ngc                           = pgc[end]-1
 
     # create asm and global matrix (gv, aka nzval is undef in global matrix)
-    asm                               = Vector{𝕫2}(undef,nbr)  # asm[ibc][ibr,ilc] → igv for a given block, and local column, where does the storage start?
-    pigr[1]                           = 1
-    igv                               = 1
-    for ibc                           = 1:nbc
-       nlc                            = pgc[ibc+1]-pgc[ibc]
-       asm[ibc]                       = zeros(𝕫,nbr,nlc)    # CPU (why?)
-       for ilc                        = 1:nlc
-            igc                       = pgc[ibc]-1 + ilc 
-            for ibr                   = 1:nbr
-                b                     = getblock(pattern,ibr,ibc)  # CPU
-                if ~isnothing(b)
-                    asm[ibc][ibr,ilc] = igv
-                    pilr,ilr          = b.colptr, b.rowval
-                    for ilv           = pilr[ilc]:pilr[ilc+1]-1 
-                        igr[igv]      = pgr[ibr]-1 + ilr[ilv]  
-                        igv          += 1    
-                    end
+    pigr                          = 𝕫1(undef,ngc+1)        # aka global.colptr
+    igr                           = 𝕫1(undef,ngv  )        # aka global.rowval
+    gv                            = Vector{Tv}(undef,ngv)  # aka global.nzval
+    asm                           = Vector{𝕫2}(undef,nbr)  # asm[ibc][ibr,ilc] → igv for a given block, and local column, where does the storage start?
+    pigr[1]                       = 1
+    igv                           = 1
+    for ibc                       = 1:nbc                  # for each block column
+        asm[ibc]                  = zeros(𝕫,nbr,nlc[ibc+1])    # TODO CPU 
+        for ilc                   = 1:nlc[ibc+1]           # for each local column
+            igc                   = pgc[ibc]-1 + ilc 
+            for pbr               = pattern.colptr[ibc]:pattern.colptr[ibc+1]-1 # for each block row
+                ibr               = pattern.rowval[pbr]
+                block             = pattern.nzval[pbr]
+                pilr,ilr          = block.colptr, block.rowval
+                asm[ibc][ibr,ilc] = igv
+                for ilv           = pilr[ilc]:pilr[ilc+1]-1 
+                    igr[igv]      = pgr[ibr]-1 + ilr[ilv]  
+                    igv          += 1    
                 end
             end
-            pigr[igc+1] = igv   
+            pigr[igc+1]           = igv   
         end
     end
+
     return SparseMatrixCSC(ngr,ngc,pigr,igr,gv),BlockSparseAssembler(asm,pgc)    
 end
 """

@@ -18,7 +18,7 @@ big,bigasm   = prepare(pattern)
 zero!(big)
 for irow = 1:nrow, icol = 1:ncol
     if irow>1 || icol>1
-        addin!(big,block,bigasm,irow,icol)
+        addin!(bigasm,big,block,irow,icol)
     end
 end
 
@@ -46,7 +46,7 @@ end
 zero!(big)
 (i,j,v) = findnz(pattern)
 for k = 1:nnz(pattern) 
-    addin!(big,block,bigasm,i[k],j[k])
+    addin!(bigasm,big,block,i[k],j[k])
 end
 
 big2 = Matrix(big)
@@ -54,30 +54,6 @@ big2 = Matrix(big)
     @test big2[1:4,1:4] == block
     @test big2[5:8,5:8] == block
     @test big2[9:12,9:12] == block
-end
-
-# Full pattern of blocks
-
-pattern = Matrix{SparseMatrixCSC{𝕣,𝕫}}(undef,nrow,ncol)
-for irow = 1:nrow,icol = 1:ncol
-    if irow>1 || icol>1
-        pattern[irow,icol] = sparse([1,1,2,3,3],[1,2,2,2,3],randn(5))
-    end
-end
-big,bigasm = prepare(pattern)  # uses only the structure of pattern, not the values
-
-zero!(big)
-for irow = 1:nrow, icol = 1:ncol
-    if irow>1 || icol>1
-        block = pattern[irow,icol] # for convenience, in the test, we use the values of pattern as blocks, but that's not typical usage
-        addin!(big,block,bigasm,irow,icol) 
-    end
-end
-
-big2 = Matrix(big)
-@testset "BlockSparseFromMatrix" begin
-    @test big2[4:6,1:3] == pattern[2,1]
-    @test big2[4:6,4:6] == pattern[2,2]
 end
 
 end
