@@ -1,4 +1,4 @@
-module TestBlockSparse
+#module TestBlockSparse
 
 # cd("C:\\Users\\philippem\\.julia\\dev\\Muscade")
 # using Pkg 
@@ -14,6 +14,7 @@ ncol = 2
 block        = sparse([1,1,2,3,3],[1,2,2,2,3],randn(5))  # block
 pattern      = sparse([1,2,2,3,3],[2,1,2,1,2],[block,block,block,block,block]) # pattern of the blocks in bigsparse
 big,bigasm   = prepare(pattern)
+
 
 zero!(big)
 for irow = 1:nrow, icol = 1:ncol
@@ -37,11 +38,13 @@ pattern      = sparse([1,2,3],[1,2,3],[block,block,block]) # pattern of the bloc
 big,bigasm   = prepare(pattern)
 
 @testset "bigasm 2" begin
-    @test bigasm.pigr[1] == [1 2 4 5; 0 0 0  0 ; 0  0  0  0 ]
-    @test bigasm.pigr[2] == [0 0 0 0; 7 8 10 11; 0  0  0  0 ]
-    @test bigasm.pigr[3] == [0 0 0 0; 0 0 0  0 ; 13 14 16 17]
+    @test bigasm.pibr == [1,2,3,4]
+    @test bigasm.ibr == [1,2,3]
+    @test bigasm.igv == [[1, 2, 3, 4, 5, 6],[7, 8, 9, 10, 11, 12],[13, 14, 15, 16, 17, 18]]
+    @test bigasm.pgr == [1,5,9,13]
     @test bigasm.pgc == [1,5,9,13]
 end
+
 
 zero!(big)
 (i,j,v) = findnz(pattern)
@@ -56,4 +59,4 @@ big2 = Matrix(big)
     @test big2[9:12,9:12] == block
 end
 
-end
+#end

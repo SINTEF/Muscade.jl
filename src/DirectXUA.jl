@@ -158,7 +158,7 @@ function makepattern(NDX,NDU,NA,nstep,out)
 
     return sparse(αblk[u],βblk[u],nz[u])
 end
-function preparebig(NDX,NDU,NA,nstep,out) 
+function preparebig(NDX,NDU,NA,nstep,out) z
         # create an assembler and allocate for the big linear system
     pattern                  = makepattern(NDX,NDU,NA,nstep,out)
     Lvv,bigasm               = prepare(pattern)
@@ -166,6 +166,17 @@ function preparebig(NDX,NDU,NA,nstep,out)
     return Lv,Lvv,bigasm
 end
 function assemblebig!(Lvv,Lv,bigasm,asm,model,dis,out::AssemblyDirect{NDX,NDU,NA},state,nstep,Δt,γ,dbg) where{NDX,NDU,NA}
+    #= TODO
+     addin!(...ibr,ibc...) is too slow.  Use the addin!(...ibv...) instead
+        To this end, create a specialised, fast function foo(asm,ibr,ibc)→ibv.  
+        The simplest would be a matrix igv[ibr,ibc] but this would hogg RAM for large problems.
+        Rather, exploit the (arrow) band-and-column-and-row structure of the big system, and create a function
+        f(ibr,ibc)→ibv that reads into arrays with arrow structure
+        How to populate this array? After "unique", traverse (αblk[u],βblk[u],nz) ????
+        for igv ∈ eachindex(αblk[u])
+            strangematrix(αblk[u][i],βblk[u][i]) = igv
+        end
+    =#  
     zero!(Lvv)
     zero!(Lv )
     for step = 1:nstep
@@ -359,7 +370,7 @@ function solve(TS::Type{DirectXUA{NDX,NDU,NA}},pstate,verbose::𝕓,dbg;
         verbose && NA==1 && @printf(  "             |ΔA| =%7.1e ≤ %7.1e  \n",√(Δ²[ind.A]),√(maxΔ²[ind.A]))
         if all(Δ².≤maxΔ²)  
             verbose      && @printf("\n    Converged in %3d iterations.\n",iter)
-            verbose      && @printf(  "    nel=%d, nvariables=%d, nstep=%d\n",getnele(model),length(Lv),nstep)
+            verbose      && @printf(  "    nel=%d, nvar=%d, nstep=%d\n",getnele(model),length(Lv),nstep)
             break#out of iter
         end
         iter<maxiter || muscadeerror(@sprintf("no convergence after %3d iterations. \n",iter))

@@ -18,14 +18,12 @@
 # irow   = ilr[ilv]  
 
 struct BlockSparseAssembler
-    pigr::Vector{𝕫2}   # pigr[ibc][ibr,ilc] → igv   Variable built up as "asm" in "prepare".  Given, index into block column & row and index into local colum, get index into gobal nz
+    pibr::𝕫1
+    ibr ::𝕫1
+    igv ::𝕫11
+    pgr ::𝕫1           # pgc[ibc]           → igc   Given index of block row,    get index of first global row    of the block 
     pgc ::𝕫1           # pgc[ibc]           → igc   Given index of block column, get index of first global column of the block 
 end
-
-Base.zero(SparseMatrixCSC) = nothing # so that, for a sparse pattern, indexing the pattern at a a structuraly zero block returns nothing
-# provide same syntax for indexing into the pattern (full or sparse), returning `nothing` for empty blocks 
-getblock(pattern::SparseMatrixCSC{SparseMatrixCSC{Tv,𝕫}},row,col) where{Tv} = pattern[row,col]
-getblock(pattern::Matrix{SparseMatrixCSC{Tv,𝕫}},row,col) where{Tv} = isassigned(pattern,row,col) ? pattern[row,col] : nothing
 
 """
     bigsparse,asm = prepare(pattern)
@@ -45,13 +43,16 @@ function prepare(pattern::SparseMatrixCSC{SparseMatrixCSC{Tv,𝕫},𝕫}) where{
     nlr                           = [-1 for ibr=1:nbr+1]
     nlc                           = [-1 for ibc=1:nbc+1]
     ngv                           = 0
+    asm_igv                       = Vector{𝕫1}(undef,nnz(pattern))
     for ibc                       = 1:nbc
-        for pbr                   = pattern.colptr[ibc]:pattern.colptr[ibc+1]-1
-            ibr                   = pattern.rowval[pbr]
-            block                 = pattern.nzval[pbr]
+        for ibv                   = pattern.colptr[ibc]:pattern.colptr[ibc+1]-1
+            ibr                   = pattern.rowval[ibv]
+            block                 = pattern.nzval[ibv]
             nlr[ibr+1]            = block.m
             nlc[ibc+1]            = block.n
-            ngv                  += length(block.nzval)
+            nlv                   = length(block.nzval)
+            ngv                  += nlv
+            asm_igv[ibv]          = 𝕫1(undef,nlv)
         end
     end
     nlr[1]                        = 1
@@ -71,56 +72,66 @@ function prepare(pattern::SparseMatrixCSC{SparseMatrixCSC{Tv,𝕫},𝕫}) where{
     pigr[1]                       = 1
     igv                           = 1
     for ibc                       = 1:nbc                  # for each block column
-        asm[ibc]                  = zeros(𝕫,nbr,nlc[ibc+1])    # TODO CPU 
         for ilc                   = 1:nlc[ibc+1]           # for each local column
             igc                   = pgc[ibc]-1 + ilc 
-            for pbr               = pattern.colptr[ibc]:pattern.colptr[ibc+1]-1 # for each block row
-                ibr               = pattern.rowval[pbr]
-                block             = pattern.nzval[pbr]
+            for ibv               = pattern.colptr[ibc]:pattern.colptr[ibc+1]-1 # for each block row
+                ibr               = pattern.rowval[ibv]
+                block             = pattern.nzval[ibv]
                 pilr,ilr          = block.colptr, block.rowval
-                asm[ibc][ibr,ilc] = igv
                 for ilv           = pilr[ilc]:pilr[ilc+1]-1 
-                    igr[igv]      = pgr[ibr]-1 + ilr[ilv]  
+                    igr[igv]      = pgr[ibr]-1 + ilr[ilv]
+                    asm_igv[ibv][ilv] = igv
                     igv          += 1    
                 end
             end
             pigr[igc+1]           = igv   
         end
     end
-
-    return SparseMatrixCSC(ngr,ngc,pigr,igr,gv),BlockSparseAssembler(asm,pgc)    
+    return SparseMatrixCSC(ngr,ngc,pigr,igr,gv),BlockSparseAssembler(pattern.colptr,pattern.rowval,asm_igv,pgr,pgc)    
 end
 """
-    addin!(asm,bigsparse,block::SparseMatrixCSC,ibr,ibc,factor=1.)
+    addin!(asm,global,block,ibr,ibc,factor=1.)
 
-Add a sparse into one of the blocks of a large sparse matrix.  Will fail silently or throw an error unless
-`bigsparse` has the correct sparsity structure for the given `blocks`. Use [`prepare`](@ref) to
-    create `bigsparse` and `asm`.
+Add a sparse `block` into a large `out` sparse matrix, at block-row and -column `ibr` and `ibc`.  
+   Use [`prepare`](@ref) to allocate memory for `global` and build the assembler `asm`.
 """ 
 function addin!(asm::BlockSparseAssembler,out::SparseMatrixCSC{Tv,Ti},block::SparseMatrixCSC{Tv,Ti},ibr::𝕫,ibc::𝕫,factor::ℝ=1.) where{Tv,Ti<:Integer}
-    gv              = out.nzval
-    asm.pigr[ibc][ibr,1] > 0 || muscadeerror(@printf("Trying to addin! into an empty block: [%i,%i]\n",ibr,ibc))
-    for ilc         = 1:size(block,2)
-        igv         = asm.pigr[ibc][ibr,ilc]
-        pilr,lv     = block.colptr,block.nzval 
-        for ilv     = pilr[ilc]:pilr[ilc+1]-1 
-            gv[igv]+= lv[ilv]*factor 
-            igv    += 1
-        end
+    ibv = asm.pibr[ibc]
+    up  = asm.pibr[ibc+1]
+    while asm.ibr[ibv]!=ibr # CPU - worst of all for the last column, which is full and long to explore.
+        ibv += 1
+        ibv == up && muscadeerror("non existant block in block matrix addin!")
+    end
+    for (ilv,igv)∈enumerate(asm.igv[ibv])
+        out.nzval[igv] += block.nzval[ilv] * factor
     end
 end
 """
-    addin!(bigvec,block::Vector,asm,ibc)
+    addin!(asm,global,block,ibv,factor=1.)
 
-Add a vector into one of the blocks of a large full vector.  Use [`prepare`](@ref) to create `asm`.
+Add a sparse `block` into a large `out` sparse matrix. The block will be positioned at the `ibv`-th non-zero value in the pattern used to build asm.  
+   Use [`prepare`](@ref) to allocate memory for `global` and build the assembler `asm`.
+""" 
+function addin!(asm::BlockSparseAssembler,out::SparseMatrixCSC{Tv,Ti},block::SparseMatrixCSC{Tv,Ti},ibv::𝕫,factor::ℝ=1.) where{Tv,Ti<:Integer}
+    for (ilv,igv)∈enumerate(asm.igv[ibv])
+        out.nzval[igv] += block.nzval[ilv] * factor
+    end
+end
+
+"""
+    addin!(asm,outvec,blockvec,ibr)
+
+Add a full `block` vector into a large `outvec` full vector.  at block-row `ibr`.
+Use [`prepare`](@ref) to create `asm`.
 
 See also: [`prepare`](@ref)
 """ 
-function addin!(asm::BlockSparseAssembler,out::Vector{Tv},block::Vector{Tv},ibc::𝕫,factor::ℝ=1.) where{Tv}
-    for ilc         = 1:length(block)
-        out[asm.pgc[ibc]-1+ilc] += block[ilc]*factor
+function addin!(asm::BlockSparseAssembler,out::Vector{Tv},block::Vector{Tv},ibr::𝕫,factor::ℝ=1.) where{Tv}
+    for (ilv,igv)∈enumerate(asm.pgr[ibr]:asm.pgr[ibr+1]-1) 
+        out[igv] += block[ilv] * factor
     end
 end
+
 # disassemble a block from a big-vector
 disblock(asm::BlockSparseAssembler,v::Vector,ibc::𝕫) = view(v,asm.pgc[ibc]:(asm.pgc[ibc+1]-1))
 
