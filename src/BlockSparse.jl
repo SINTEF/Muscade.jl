@@ -17,6 +17,8 @@
 # ilv    = pilr[ilc]+ i-1
 # irow   = ilr[ilv]  
 
+# TODO BlockSparse assembler is psychologicaly a SparseMatrixCSC{𝕫1,𝕫}: a sparse, and for each entry (so, a block), the entry is the adresses of the 
+# nzval from the block to the nzval of the bigsparse.  Rewrite it so.
 struct BlockSparseAssembler
     pibr::𝕫1
     ibr ::𝕫1
@@ -103,7 +105,7 @@ function addin!(asm::BlockSparseAssembler,out::SparseMatrixCSC{Tv,Ti},block::Spa
         aibr = asm.ibr[ibv]
         if ibr == aibr       break
         else
-            hi == lo && muscadeerror("non existant block in block matrix addin!")
+            hi == lo && muscadeerror(@sprintf("BlockSparseAssembler pattern has no block [%i,%i]",ibr,ibc))
             if ibr > aibr    lo = ibv+1
             else             hi = ibv-1  
             end

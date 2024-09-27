@@ -1,4 +1,4 @@
-#module TestBlockSparse
+module TestBlockSparse
 
 # cd("C:\\Users\\philippem\\.julia\\dev\\Muscade")
 # using Pkg 
@@ -59,4 +59,4 @@ big2 = Matrix(big)
     @test big2[9:12,9:12] == block
 end
 
-#end
+end

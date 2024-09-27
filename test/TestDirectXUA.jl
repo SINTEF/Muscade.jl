@@ -1,4 +1,4 @@
-# module TestDirectXUA
+module TestDirectXUA
 
 cd("C:\\Users\\philippem\\.julia\\dev\\Muscade")
 using Pkg 
@@ -62,7 +62,7 @@ NA               = 1
 Δt = 1.
 
 dis             = state0.dis
-out,asm,dofgr = Muscade.prepare(Muscade.AssemblyDirect    ,model,dis,NDX,NDU,NA)#;Uwhite=true,Xwhite=true,XUindep=true,UAindep=true,XAindep=true)
+out,asm,dofgr = Muscade.prepare(Muscade.AssemblyDirect{NDX,NDU,NA},model,dis)#;Uwhite=true,Xwhite=true,XUindep=true,UAindep=true,XAindep=true)
 zero!(out)
 state           = [Muscade.State{1,NDX,NDU,@NamedTuple{γ::Float64}}(copy(state0)) for i = 1:nstep]
 for i=1:nstep
@@ -83,7 +83,7 @@ Muscade.assemblebig!(Lvv,Lv,bigasm,asm,model,dis,out,state,nstep,Δt,γ,(caller=
 # fig = Spy.spy(Lvv,title="bigsparse Lvv sparsity",size=500)
 # save("C:\\Users\\philippem\\.julia\\dev\\Muscade\\spy.jpg",fig)
 
-stateXUA         = solve(DirectXUA{NDX,NDU,NA};initialstate=state0,time=0:1.:5,maxiter=10)
+stateXUA         = solve(DirectXUA{NDX,NDU,NA};initialstate=state0,time=0:1.:5,maxiter=10,verbose=false)
 
 @testset "prepare_out" begin
     @test out.L1[1] ≈ [[0.0, 0.0]]
@@ -123,11 +123,11 @@ end
 
 @testset "preparebig ,bigasm" begin
     @test bigasm.pgc      == [1, 3, 5, 9, 11, 13, 17, 19, 21, 25, 27, 29, 33, 35, 37, 41, 43, 45, 49, 55]
-    @test bigasm.pigr[1]' == [0 1 3 0 5 0 0 0 0 0 0 0 0 0 0 0 0 0 7; 0 11 13 0 15 0 0 0 0 0 0 0 0 0 0 0 0 0 17]
+    @test bigasm.pibr' == [1  5  16  21  26  37  43  49  62  69  75  88  95  100  111  117  121  132  137  156]
+    @test bigasm.igv[1]' == [1  2  11  12]
+    @test bigasm.igv[4]' == [7  8  9  10  17  18  19  20]
+    @test bigasm.igv[155]' == [611  612  631  632  651  652  671  672  697  698  723  724]
 end
 
+end 
 
-
-#end 
-
-;

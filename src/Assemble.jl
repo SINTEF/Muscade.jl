@@ -137,6 +137,7 @@ function State{nΛder,nXder,nUder,TSP}(s::State) where{nΛder,nXder,nUder,TSP}
     state.dis   = s.dis
     return state
 end 
+
 # A deep copy - except for SP,model and dis
 Base.copy(s::State;time=s.time) = State(time,deepcopy(s.Λ),deepcopy(s.X),deepcopy(s.U),deepcopy(s.A),s.SP,s.model,s.dis) 
 
