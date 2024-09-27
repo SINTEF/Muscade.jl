@@ -96,27 +96,26 @@ Add a sparse `block` into a large `out` sparse matrix, at block-row and -column 
    Use [`prepare`](@ref) to allocate memory for `global` and build the assembler `asm`.
 """ 
 function addin!(asm::BlockSparseAssembler,out::SparseMatrixCSC{Tv,Ti},block::SparseMatrixCSC{Tv,Ti},ibr::𝕫,ibc::𝕫,factor::ℝ=1.) where{Tv,Ti<:Integer}
-    ibv = asm.pibr[ibc]
-    up  = asm.pibr[ibc+1]
-    while asm.ibr[ibv]!=ibr # CPU - worst of all for the last column, which is full and long to explore.
-        ibv += 1
-        ibv == up && muscadeerror("non existant block in block matrix addin!")
+    lo  = asm.pibr[ibc]         # dichotomy to find ibv (index into asm.igv's nz values)
+    hi  = asm.pibr[ibc+1]-1
+    ibv  = div(lo+hi,2)
+    while true
+        aibr = asm.ibr[ibv]
+        if ibr == aibr       break
+        else
+            hi == lo && muscadeerror("non existant block in block matrix addin!")
+            if ibr > aibr    lo = ibv+1
+            else             hi = ibv-1  
+            end
+        end
+        ibv  = div(lo+hi,2)
     end
-    for (ilv,igv)∈enumerate(asm.igv[ibv])
-        out.nzval[igv] += block.nzval[ilv] * factor
+    aigv = asm.igv[ibv]     # addin the block
+    for ilv ∈ eachindex(aigv)  
+        out.nzval[aigv[ilv]] += block.nzval[ilv] * factor
     end
 end
-"""
-    addin!(asm,global,block,ibv,factor=1.)
 
-Add a sparse `block` into a large `out` sparse matrix. The block will be positioned at the `ibv`-th non-zero value in the pattern used to build asm.  
-   Use [`prepare`](@ref) to allocate memory for `global` and build the assembler `asm`.
-""" 
-function addin!(asm::BlockSparseAssembler,out::SparseMatrixCSC{Tv,Ti},block::SparseMatrixCSC{Tv,Ti},ibv::𝕫,factor::ℝ=1.) where{Tv,Ti<:Integer}
-    for (ilv,igv)∈enumerate(asm.igv[ibv])
-        out.nzval[igv] += block.nzval[ilv] * factor
-    end
-end
 
 """
     addin!(asm,outvec,blockvec,ibr)

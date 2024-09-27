@@ -158,7 +158,7 @@ function makepattern(NDX,NDU,NA,nstep,out)
 
     return sparse(αblk[u],βblk[u],nz[u])
 end
-function preparebig(NDX,NDU,NA,nstep,out) z
+function preparebig(NDX,NDU,NA,nstep,out) 
         # create an assembler and allocate for the big linear system
     pattern                  = makepattern(NDX,NDU,NA,nstep,out)
     Lvv,bigasm               = prepare(pattern)

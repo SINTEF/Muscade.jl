@@ -58,8 +58,9 @@ Bᵤ₁(ζ) =   12ζ
 Bᵥ₁(ζ) =    6ζ-1
 Bᵤ₂(ζ) =  -12ζ  
 Bᵥ₂(ζ) =    6ζ+1
+
 struct EulerBeam3D{Mat} <: AbstractElement
-    cₘ       :: SVector{3,𝕣} 
+    cₘ       :: SVector{3,𝕣}     
     rₘ       :: Mat33{𝕣}  
     ζgp      :: SVector{ngp,𝕣}
     ζnod     :: SVector{nnod,𝕣}
@@ -117,7 +118,7 @@ const v3   = SVector{3}
     rₛₘ              = rₛ∘rₘ
     uₗ₁              = rₛₘ'∘(uᵧ₁+tgₘ*ζnod[1]-cₛ)-tgₑ*ζnod[1]
     uₗ₂              = rₛₘ'∘(uᵧ₂+tgₘ*ζnod[2]-cₛ)-tgₑ*ζnod[2]
-    vₗ₁              = Rodrigues⁻¹(rₛₘ'∘Rodrigues(vᵧ₁)∘rₘ)
+    vₗ₁              = Rodrigues⁻¹(rₛₘ'∘Rodrigues(vᵧ₁)∘rₘ)     
     vₗ₂              = Rodrigues⁻¹(rₛₘ'∘Rodrigues(vᵧ₂)∘rₘ)
     δXₗ,T            = value_∂{P,ndof}(SVector(uₗ₁...,vₗ₁...,uₗ₂...,vₗ₂...))
     gp              = ntuple(ngp) do igp
@@ -128,7 +129,7 @@ const v3   = SVector{3}
         @named(Rₗ)
     end
     R  = sum(gpᵢ.Rₗ for gpᵢ∈gp) ∘ T
-    return R,noFB
+    return R,noFB  
 end
 
 end
