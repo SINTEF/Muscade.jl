@@ -76,8 +76,8 @@ pattern    = Muscade.makepattern(NDX,NDU,NA,nstep,out)
 # fig = spypattern(pattern)
 # save("C:\\Users\\philippem\\.julia\\dev\\Muscade\\spypattern.jpg",fig)
 
-Lv,Lvv,bigasm    = Muscade.preparebig(NDX,NDU,NA,nstep,out)
-Muscade.assemblebig!(Lvv,Lv,bigasm,asm,model,dis,out,state,nstep,Δt,γ,(caller=:TestDirectXUA,))
+Lvv,Lv,Lvvasm,Lvasm,Lvdis  = Muscade.preparebig(NDX,NDU,NA,nstep,out)
+Muscade.assemblebig!(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out,state,nstep,Δt,γ,(caller=:TestDirectXUA,))
 
 # using Spy,GLMakie
 # fig = Spy.spy(Lvv,title="bigsparse Lvv sparsity",size=500)
@@ -121,12 +121,13 @@ end
     @test Lvv.rowval[1:60] == [3,4,5,7,11,12,49,50,53,54,3,4,6,8,11,12,51,52,53,54,1,2,3,4,5,7,9,10,11,12,13,15,17,18,19,20,21,23,27,28,49,50,53,54,1,2,3,4,6,8,9,10,11,12,14,16,17,18,19,20]
 end
 
-@testset "preparebig ,bigasm" begin
-    @test bigasm.pgc      == [1, 3, 5, 9, 11, 13, 17, 19, 21, 25, 27, 29, 33, 35, 37, 41, 43, 45, 49, 55]
-    @test bigasm.pibr' == [1  5  16  21  26  37  43  49  62  69  75  88  95  100  111  117  121  132  137  156]
-    @test bigasm.igv[1]' == [1  2  11  12]
-    @test bigasm.igv[4]' == [7  8  9  10  17  18  19  20]
-    @test bigasm.igv[155]' == [611  612  631  632  651  652  671  672  697  698  723  724]
+@testset "preparebig ,Lvvasm" begin
+    @test Lvasm      == [1, 3, 5, 9, 11, 13, 17, 19, 21, 25, 27, 29, 33, 35, 37, 41, 43, 45, 49, 55]
+    @test Lvdis      == [1, 3, 5, 9, 11, 13, 17, 19, 21, 25, 27, 29, 33, 35, 37, 41, 43, 45, 49, 55]
+    @test Lvvasm.colptr' == [1  5  16  21  26  37  43  49  62  69  75  88  95  100  111  117  121  132  137  156]
+    @test Lvvasm.nzval[1]' == [1  2  11  12]
+    @test Lvvasm.nzval[4]' == [7  8  9  10  17  18  19  20]
+    @test Lvvasm.nzval[155]' == [611  612  631  632  651  652  671  672  697  698  723  724]
 end
 
 end 

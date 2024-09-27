@@ -173,7 +173,7 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
         i[4step-0],j[4step-0],v[4step-0] = nblock,nblock,out.Laa
     end
     pattern               = sparse(i,j,v)
-    Lvv,blkasm            = prepare(pattern)
+    Lvv,Lvvasm,Lvasm,Lvdis= prepare(pattern)
     Lv                    = 𝕣1(undef,nV)
 
     states                = [copy(State{1,1,1,@NamedTuple{γ::Float64}}(i)) for i ∈ initialstate]
@@ -206,12 +206,12 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
         for (step,state)   ∈ enumerate(states)
             state.SP = (γ=γ ,)
             assemble!(out,asm,dis,model,state,(dbg...,solver=:StaticXUA,step=step,iter=iter))
-            addin!(blkasm,Lvv,out.Lyy,step  ,step  )
-            addin!(blkasm,Lvv,out.Lya,step  ,nblock)
-            addin!(blkasm,Lvv,out.Lay,nblock,step  )
-            addin!(blkasm,Lvv,out.Laa,nblock,nblock) # while A is step indep, Laa and La can be step dep
-            addin!(blkasm,Lv ,out.Ly ,step         )
-            addin!(blkasm,Lv ,out.La ,nblock       )
+            addin!(Lvvasm,Lvv,out.Lyy,step  ,step  )
+            addin!(Lvvasm,Lvv,out.Lya,step  ,nblock)
+            addin!(Lvvasm,Lvv,out.Lay,nblock,step  )
+            addin!(Lvvasm,Lvv,out.Laa,nblock,nblock) # while A is step indep, Laa and La can be step dep
+            addin!(Lvasm ,Lv ,out.Ly ,step         )
+            addin!(Lvasm ,Lv ,out.La ,nblock       )
         end   
 
         try if iter==1 LU = lu(Lvv) 
@@ -219,10 +219,10 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
         end catch; muscadeerror(@sprintf("Lvv matrix factorization failed at iter=%i",iter));end
         Δv               = LU\Lv 
 
-        Δa               = disblock(blkasm,Δv,nblock)
+        Δa               = disblock(Lvdis,Δv,nblock)
         Δa²              = sum(Δa.^2)
         for (step,state)   ∈ enumerate(states)
-            Δy           = disblock(blkasm,Δv,step  )
+            Δy           = disblock(Lvdis,Δv,step  )
             Δy²[step]    = sum(Δy.^2)
             decrement!(state,1,Δy,Ydofgr)
             decrement!(state,1,Δa,Adofgr)
@@ -250,7 +250,7 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
             Δs                = s*(β-1)
             s                += Δs
             for (step,state)  ∈ enumerate(states)
-                decrement!(state,1,Δs*disblock(blkasm,Δv,step),Ydofgr)
+                decrement!(state,1,Δs*disblock(Lvdis,Δv,step),Ydofgr)
                 decrement!(state,1,Δs*Δa                      ,Adofgr)
             end
         end

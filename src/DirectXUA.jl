@@ -161,22 +161,11 @@ end
 function preparebig(NDX,NDU,NA,nstep,out) 
         # create an assembler and allocate for the big linear system
     pattern                  = makepattern(NDX,NDU,NA,nstep,out)
-    Lvv,bigasm               = prepare(pattern)
+    Lvv,Lvvasm,Lvasm,Lvdis   = prepare(pattern)
     Lv                       = 𝕣1(undef,size(Lvv,1))
-    return Lv,Lvv,bigasm
+    return Lvv,Lv,Lvvasm,Lvasm,Lvdis
 end
-function assemblebig!(Lvv,Lv,bigasm,asm,model,dis,out::AssemblyDirect{NDX,NDU,NA},state,nstep,Δt,γ,dbg) where{NDX,NDU,NA}
-    #= TODO
-     addin!(...ibr,ibc...) is too slow.  Use the addin!(...ibv...) instead
-        To this end, create a specialised, fast function foo(asm,ibr,ibc)→ibv.  
-        The simplest would be a matrix igv[ibr,ibc] but this would hogg RAM for large problems.
-        Rather, exploit the (arrow) band-and-column-and-row structure of the big system, and create a function
-        f(ibr,ibc)→ibv that reads into arrays with arrow structure
-        How to populate this array? After "unique", traverse (αblk[u],βblk[u],nz) ????
-        for igv ∈ eachindex(αblk[u])
-            strangematrix(αblk[u][i],βblk[u][i]) = igv
-        end
-    =#  
+function assemblebig!(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out::AssemblyDirect{NDX,NDU,NA},state,nstep,Δt,γ,dbg) where{NDX,NDU,NA}
     zero!(Lvv)
     zero!(Lv )
     for step = 1:nstep
@@ -190,7 +179,7 @@ function assemblebig!(Lvv,Lv,bigasm,asm,model,dis,out::AssemblyDirect{NDX,NDU,NA
                 s = Δt^-βder
                 for iβ ∈ finitediff(βder-1,nstep,step;transposed=true)
                     βblk = 3*(step+iβ.Δs-1)+β
-                    addin!(bigasm,Lv ,Lβ[βder],βblk,iβ.w*s) 
+                    addin!(Lvasm,Lv ,Lβ[βder],βblk,iβ.w*s) 
                 end
             end
         end
@@ -204,7 +193,7 @@ function assemblebig!(Lvv,Lv,bigasm,asm,model,dis,out::AssemblyDirect{NDX,NDU,NA
                             for iβ ∈ finitediff(βder-1,nstep,step;transposed=true)
                                 αblk = 3*(step+iα.Δs-1)+α
                                 βblk = 3*(step+iβ.Δs-1)+β
-                                addin!(bigasm,Lvv,Lαβ[αder,βder],αblk,βblk,iα.w*iβ.w*s) 
+                                addin!(Lvvasm,Lvv,Lαβ[αder,βder],αblk,βblk,iα.w*iβ.w*s) 
                             end
                         end
                     end 
@@ -213,8 +202,8 @@ function assemblebig!(Lvv,Lv,bigasm,asm,model,dis,out::AssemblyDirect{NDX,NDU,NA
         end
         if NA==1
             Ablk = 3*nstep+1   
-            addin!(bigasm,Lv ,out.L1[ind.A      ][1  ],Ablk     )
-            addin!(bigasm,Lvv,out.L2[ind.A,ind.A][1,1],Ablk,Ablk)
+            addin!(Lvasm ,Lv ,out.L1[ind.A      ][1  ],Ablk     )
+            addin!(Lvvasm,Lvv,out.L2[ind.A,ind.A][1,1],Ablk,Ablk)
             for α∈λxu
                 Lαa = out.L2[α    ,ind.A]
                 Laα = out.L2[ind.A,α    ]
@@ -222,15 +211,15 @@ function assemblebig!(Lvv,Lv,bigasm,asm,model,dis,out::AssemblyDirect{NDX,NDU,NA
                     s = Δt^-αder
                     for iα ∈finitediff(αder-1,nstep,step;transposed=true)
                         αblk = 3*(step+iα.Δs-1)+α
-                        addin!(bigasm,Lvv,Lαa[αder,1   ],αblk,Ablk,iα.w*s) 
-                        addin!(bigasm,Lvv,Laα[1   ,αder],Ablk,αblk,iα.w*s) 
+                        addin!(Lvvasm,Lvv,Lαa[αder,1   ],αblk,Ablk,iα.w*s) 
+                        addin!(Lvvasm,Lvv,Laα[1   ,αder],Ablk,αblk,iα.w*s) 
                     end
                 end
             end
         end
     end   
 end
-function decrementbig!(state,Δ²,bigasm,dofgr,Δv,nder,Δt,nstep) 
+function decrementbig!(state,Δ²,Lvasm,dofgr,Δv,nder,Δt,nstep) 
     Δ²                  .= 0.
     for (step,stateᵢ)    ∈ enumerate(state)
         for β            ∈ λxu
@@ -238,7 +227,7 @@ function decrementbig!(state,Δ²,bigasm,dofgr,Δv,nder,Δt,nstep)
                 s        = Δt^-βder
                 for iβ   ∈ finitediff(βder-1,nstep,step;transposed=false)
                     βblk = 3*(step+iβ.Δs-1)+β   
-                    Δβ   = disblock(bigasm,Δv,βblk)
+                    Δβ   = disblock(Lvasm,Δv,βblk)
                     d    = dofgr[β]
                     decrement!(stateᵢ,βder,Δβ.*iβ.w*s,d)
                     if βder==1 
@@ -249,7 +238,7 @@ function decrementbig!(state,Δ²,bigasm,dofgr,Δv,nder,Δt,nstep)
         end
     end    
     if nder[4]==1
-        Δa               = disblock(bigasm,Δv,3*nstep+1)
+        Δa               = disblock(Lvasm,Δv,3*nstep+1)
         Δ²[ind.A]        = sum(Δa.^2)
         decrement!(state[1],1,Δa,dofgr[ind.A]) # all states share same A, so decrement only once
     end
@@ -339,13 +328,13 @@ function solve(TS::Type{DirectXUA{NDX,NDU,NA}},pstate,verbose::𝕓,dbg;
     verbose && @printf("\n    Preparing assembler\n")
     out,asm,dofgr         = prepare(AssemblyDirect{NDX,NDU,NA},model,dis;kwargs...)      # mem and assembler for system at any given step
     assemble!(out,asm,dis,model,state[1],(dbg...,solver=:DirectXUA,phase=:sparsity))     # create a sample "out" for preparebig
-    Lv,Lvv,bigasm         = preparebig(NDX,NDU,NA,nstep,out)                             # mem and assembler for big system
+    Lvv,Lv,Lvvasm,Lvasm,Lvdis = preparebig(NDX,NDU,NA,nstep,out)                             # mem and assembler for big system
 
     for iter              = 1:maxiter
         verbose && @printf("\n    Iteration %3d\n",iter)
 
         verbose && @printf("        Assembling")
-        assemblebig!(Lvv,Lv,bigasm,asm,model,dis,out,state,nstep,Δt,γ,(dbg...,solver=:DirectXUA,iter=iter))
+        assemblebig!(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out,state,nstep,Δt,γ,(dbg...,solver=:DirectXUA,iter=iter))
 
         verbose && @printf(", solving")
         try 
@@ -359,7 +348,7 @@ function solve(TS::Type{DirectXUA{NDX,NDU,NA}},pstate,verbose::𝕓,dbg;
         Δv               = LU\Lv 
 
         verbose && @printf(", decrementing.\n")
-        decrementbig!(state,Δ²,bigasm,dofgr,Δv,nder,Δt,nstep)
+        decrementbig!(state,Δ²,Lvdis,dofgr,Δv,nder,Δt,nstep)
         
         if saveiter
             stateiter[iter]     = copy.(state) 
