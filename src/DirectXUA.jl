@@ -18,7 +18,7 @@ mutable struct AssemblyDirect{NDX,NDU,NA,T1,T2}  <:Assembly
     L1 :: T1   
     L2 :: T2   
 end  
-function prepare(::Type{AssemblyDirect{NDX,NDU,NA}},model,dis;Uwhite=false,Xwhite=false,XUindep=false,UAindep=false,XAindep=false) where{NDX,NDU,NA}
+function prepare(::Type{AssemblyDirect{NDX,NDU,NA}},model,dis;Xwhite=false,XUindep=false,UAindep=false,XAindep=false) where{NDX,NDU,NA}
     dofgr    = (allΛdofs(model,dis),allXdofs(model,dis),allUdofs(model,dis),allAdofs(model,dis))
     ndof     = getndof.(dofgr)
     neletyp  = getneletyp(model)
@@ -27,7 +27,6 @@ function prepare(::Type{AssemblyDirect{NDX,NDU,NA}},model,dis;Uwhite=false,Xwhit
     L1 = Vector{Vector{Vector{𝕣}}}(undef,4)
     for α∈λxua
         nα = nder[α]
-        if Uwhite  && α==ind.U          nα=1 end   # U-prior is white noise process
         av = asmvec!(view(asm,arrnum(α),:),dofgr[α],dis)
         L1[α] = Vector{Vector{𝕣}}(undef,nα)
         for αder=1:nα 
@@ -39,14 +38,13 @@ function prepare(::Type{AssemblyDirect{NDX,NDU,NA}},model,dis;Uwhite=false,Xwhit
         am = asmmat!(view(asm,arrnum(α,β),:),view(asm,arrnum(α),:),view(asm,arrnum(β),:),ndof[α],ndof[β])
         nα,nβ = nder[α], nder[β]
         if            α==β==ind.Λ          nα,nβ=0,0 end   # Lλλ is always zero
-        if Uwhite  && α==β==ind.U          nα,nβ=1,1 end   # U-prior is white noise process
         if Xwhite  && α==β==ind.X          nα,nβ=1,1 end   # X-measurement error is white noise process
         if XUindep && α==ind.X && β==ind.U nα,nβ=0,0 end   # X-measurements indep of U
         if XUindep && α==ind.U && β==ind.X nα,nβ=0,0 end   # X-measurements indep of U
         if XAindep && α==ind.X && β==ind.A nα,nβ=0,0 end   # X-measurements indep of A
         if XAindep && α==ind.A && β==ind.X nα,nβ=0,0 end   # X-measurements indep of A
         if UAindep && α==ind.U && β==ind.A nα,nβ=0,0 end   # U-load indep of A
-        if UAindep && α==ind.A && β==ind.U nα,nβ=0,0 end   # U-load  indep of A
+        if UAindep && α==ind.A && β==ind.U nα,nβ=0,0 end   # U-load indep of A
         L2[α,β] = Matrix{SparseMatrixCSC{Float64, Int64}}(undef,nα,nβ)
         for αder=1:nα,βder=1:nβ
             L2[α,β][αder,βder] = copy(am)
@@ -245,7 +243,7 @@ function decrementbig!(state,Δ²,Lvasm,dofgr,Δv,nder,Δt,nstep)
 end
 
 """
-	DirectXUA
+	DirectXUA{NDX,NDU,NA}
 
 A non-linear direct solver for optimisation FEM.
 
@@ -253,42 +251,46 @@ An analysis is carried out by a call with the following syntax:
 
 ```
 initialstate    = initialize!(model)
-setdof!(initialstate,1.;class=:U,field=:λcsr)
-stateX          = solve(SweepX{0}  ;initialstate=initialstate,time=[0.,1.])
-stateXUA        = solve(DirectXUA;initialstate=stateX)
+stateXUA        = solve(DirectXUA{NDX,NDU,NA};initialstate,time=0:1.:5)
 ```
 
-The interior point algorithm requires a starting point that is
-strictly primal feasible (at all steps, all inequality constraints must have 
-positive gaps) and strictly dual feasible (at all steps, all associated Lagrange 
-multipliers must be strictly positive). Note the use of `setdof!` in the example
-above to ensure dual feasibility.
+The solver does not yet support interior point methods. 
+
+# Parameters
+- `NDX`               1 for static analysis
+                      2 for first order problems in time (viscosity, friction, measurement of velocity)
+                      3 for second order problems in time (inertia, measurement of acceleration) 
+- `NDU`               1 for white noise prior to the unknown load process
+                      3 otherwise
+- `NA`                0 for XU problems (variables of class A will be unchanged)
+                      1 for XUA problems                                                  
 
 # Named arguments
-- `dbg=(;)`           a named tuple to trace the call tree (for debugging)
-- `verbose=true`      set to false to suppress printed output (for testing)
-- `silenterror=false` set to true to suppress print out of error (for testing) 
-- `initialstate`      a vector of `state`s, one for each load case in the optimization problem, 
-                      obtained from one or several previous `SweepX` analyses
-- `maxiter=50`        maximum number of Newton-Raphson iterations 
-- `maxΔa=1e-5`        "outer" convergence criteria: a norm on the scaled `A` increment 
-- `maxΔy=1e-5`        "inner" convergence criteria: a norm on the scaled `Y=[ΛXU]` increment 
-- `saveiter=false`    set to true so that the output `state` is a vector (over the Aiter) of 
+- `dbg=(;)`           a named tuple to trace the call tree (for debugging).
+- `verbose=true`      set to false to suppress printed output (for testing).
+- `silenterror=false` set to true to suppress print out of error (for testing) .
+- `initialstate`      a `State`.
+- `time`              an `AbstractRange` of times at which to compute the steps.  Example: 0:0.1:5.                       
+- `maxiter=50`        maximum number of Newton-Raphson iterations. 
+- `maxΔλ=1e-5`        convergence criteria: a norm of the scaled `Λ` increment.
+- `maxΔx=1e-5`        convergence criteria: a norm of the scaled `X` increment. 
+- `maxΔu=1e-5`        convergence criteria: a norm of the scaled `U` increment. 
+- `maxΔa=1e-5`        convergence criteria: a norm of the scaled `A` increment.
+- `saveiter=false`    set to true so that the output `state` is a vector (over the iterations) of 
                       vectors (over the steps) of `State`s of the model (for debugging 
                       non-convergence). 
-- `maxLineIter=50`    maximum number of iterations in the linear search that ensure interior points   
-- `β=0.5`             `β∈]0,1[`. In the line search, if conditions are not met, then a new line-iteration is done
-                      with `s *= β` where  `β→0` is a hasty backtracking, while `β→1` stands its ground.            
-- `γfac=0.5`          `γfac∈[0,1[`. At each iteration, the barrier parameter γ is taken as `γ = (∑ⁿᵢ₌₁ λᵢ gᵢ)/n*γfac` where
-                      `(∑ⁿᵢ₌₁ λᵢ gᵢ)/n` is the complementary slackness, and `n` the number of inequality constraints.
-- `γbot=1e-8`         `γ` will not be reduced to under the original complementary slackness divided by `γbot`,
-                      to avoid conditioning problems.                                               
+Setting the following flags to `true` will improve the sparsity of the system. But setting
+a flag to `true` when the condition isn't met causes the Hessian to be wrong, slowing convergence.                      
+- `Xwhite=false`      `true` if response measurement error is a white noise process.
+- `XUindep=false`     `true` if response measurement error is independant of `U`
+- `UAindep=false`     `true` if `U` is independant of `A`
+- `XAindep=false`     `true` if response measurement error is independant of `A`
 
 # Output
 
-A vector of length equal to that of `initialstate` containing the state of the optimized model at each of these steps.                       
+A vector of length equal to that of `time` containing the state of the optimized model at each of these steps.                       
 
-See also: [`solve`](@ref), [`SweepX`](@ref), [`setdof!`](@ref) 
+See also: [`solve`](@ref), [`SweepX`](@ref)
 """
 struct DirectXUA{NDX,NDU,NA} <: AbstractSolver end 
 function solve(TS::Type{DirectXUA{NDX,NDU,NA}},pstate,verbose::𝕓,dbg;
@@ -345,7 +347,7 @@ function solve(TS::Type{DirectXUA{NDX,NDU,NA}},pstate,verbose::𝕓,dbg;
             verbose && @printf("\n")
             muscadeerror(@sprintf("Lvv matrix factorization failed at iter=%i",iter));
         end
-        Δv               = LU\Lv 
+        Δv               = LU\Lv # use ldiv! to save allocation
 
         verbose && @printf(", decrementing.\n")
         decrementbig!(state,Δ²,Lvdis,dofgr,Δv,nder,Δt,nstep)

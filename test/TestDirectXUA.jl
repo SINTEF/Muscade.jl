@@ -31,7 +31,7 @@ include("SomeElements.jl")
 
 
 
-model          = Model(:TrueModel)
+model           = Model(:TrueModel)
 n1              = addnode!(model,𝕣[0])  
 n2              = addnode!(model,𝕣[1])  
 n3              = addnode!(model,𝕣[]) # anode for spring
