@@ -163,11 +163,11 @@ function preparebig(NDX,NDU,NA,nstep,out)
     Lv                       = 𝕣1(undef,size(Lvv,1))
     return Lvv,Lv,Lvvasm,Lvasm,Lvdis
 end
-function assemblebig!(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out::AssemblyDirect{NDX,NDU,NA},state,nstep,Δt,γ,dbg) where{NDX,NDU,NA}
+function assemblebig!(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out::AssemblyDirect{NDX,NDU,NA},state,nstep,Δt,SP,dbg) where{NDX,NDU,NA}
     zero!(Lvv)
     zero!(Lv )
     for step = 1:nstep
-        state[step].SP   = (γ=γ ,)
+        state[step].SP   = SP
         
         assemble!(out,asm,dis,model,state[step],(dbg...,asm=:assemblebig!,step=step))
 
@@ -313,7 +313,7 @@ function solve(TS::Type{DirectXUA{NDX,NDU,NA}},pstate,verbose::𝕓,dbg;
     end
 
     # State storage
-    S                     = State{1,NDX,NDU,@NamedTuple{γ::Float64}}
+    S                     = State{1,NDX,NDU,@NamedTuple{γ::Float64,iter::Int64}}
     state                 = Vector{S}(undef,nstep)
     s                     = S(copy(initialstate,time=time[1]))
     for (step,timeᵢ)      = enumerate(time)
@@ -336,7 +336,8 @@ function solve(TS::Type{DirectXUA{NDX,NDU,NA}},pstate,verbose::𝕓,dbg;
         verbose && @printf("\n    Iteration %3d\n",iter)
 
         verbose && @printf("        Assembling")
-        assemblebig!(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out,state,nstep,Δt,γ,(dbg...,solver=:DirectXUA,iter=iter))
+        SP = (γ=γ,iter=iter)
+        assemblebig!(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out,state,nstep,Δt,SP,(dbg...,solver=:DirectXUA,iter=iter))
 
         verbose && @printf(", solving")
         try 

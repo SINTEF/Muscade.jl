@@ -58,13 +58,13 @@ nstep            = 6
 NDX              = 3
 NDU              = 1
 NA               = 1
-γ = 9.
+
 Δt = 1.
 
 dis             = state0.dis
 out,asm,dofgr = Muscade.prepare(Muscade.AssemblyDirect{NDX,NDU,NA},model,dis)#;Uwhite=true,Xwhite=true,XUindep=true,UAindep=true,XAindep=true)
 zero!(out)
-state           = [Muscade.State{1,NDX,NDU,@NamedTuple{γ::Float64}}(copy(state0)) for i = 1:nstep]
+state           = [Muscade.State{1,NDX,NDU,@NamedTuple{γ::Float64,iter::Int64}}(copy(state0)) for i = 1:nstep]
 for i=1:nstep
     state[i].time = Δt*i
 end
@@ -77,7 +77,7 @@ pattern    = Muscade.makepattern(NDX,NDU,NA,nstep,out)
 # save("C:\\Users\\philippem\\.julia\\dev\\Muscade\\spypattern.jpg",fig)
 
 Lvv,Lv,Lvvasm,Lvasm,Lvdis  = Muscade.preparebig(NDX,NDU,NA,nstep,out)
-Muscade.assemblebig!(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out,state,nstep,Δt,γ,(caller=:TestDirectXUA,))
+Muscade.assemblebig!(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out,state,nstep,Δt,(γ=0.,iter=1),(caller=:TestDirectXUA,))
 
 # using Spy,GLMakie
 # fig = Spy.spy(Lvv,title="bigsparse Lvv sparsity",size=500)
@@ -94,8 +94,8 @@ stateXUA         = solve(DirectXUA{NDX,NDU,NA};initialstate=state0,time=0:1.:5,m
     @test out.L2[2,2][1,1] ≈ sparse([1, 2, 1, 2], [1, 1, 2, 2], [2.0, 0.0, 0.0, 2.0], 2, 2)  
     @test out.L2[2,2][1,2] ≈ sparse([1, 2, 1, 2], [1, 1, 2, 2], [0.0, 0.0, 0.0, 0.0], 2, 2)  
     @test out.L2[2,2][1,3] ≈ sparse([1, 2, 1, 2], [1, 1, 2, 2], [0.0, 0.0, 0.0, 0.0], 2, 2)
-    @test out.L2[2,1][1,1] ≈ sparse([1, 2, 1, 2], [1, 1, 2, 2], [2.1, -1.1, -1.1, 1.1], 2, 2)
-    @test out.L2[2,1][2,1] ≈ sparse([1, 2, 1, 2], [1, 1, 2, 2], [0.05, 0.0, 0.0, 0.0], 2, 2)
+    @test out.L2[2,1][1,1] ≈ sparse([1, 2, 1, 2], [1, 1, 2, 2], [2.1,-1.1,-1.1, 1.1], 2, 2)
+    @test out.L2[2,1][2,1] ≈ sparse([1, 2, 1, 2], [1, 1, 2, 2], [.05, 0.0, 0.0, 0.0], 2, 2)
     @test out.L2[2,1][3,1] ≈ sparse([1, 2, 1, 2], [1, 1, 2, 2], [1.0, 0.0, 0.0, 1.0], 2, 2)
     @test out.L2[3,3][1,1] ≈ sparse([1, 2, 3, 4], [1, 2, 3, 4], [0.0, 0.0, 2.0, 2.0], 4, 4)
     @test out.L2[3,4][1,1] ≈ sparse([1, 1, 2, 2], [1, 2, 3, 4], [0.0, 0.0, 0.0, 0.0], 4, 6)
