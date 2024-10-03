@@ -83,4 +83,5 @@ module Muscade
     # but submodules are expected to export their core functionality
     include("Elements/BeamElements.jl")
     include("Elements/SdofElements.jl")
+    include("Elements/FloaterMotions.jl")
 end

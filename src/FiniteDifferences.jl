@@ -38,7 +38,7 @@ function finitediff(order,n,s;transposed=false)
     #         x′[s   ] += x[s+Δs] * w/Δt^order  
     #     end
     # end
-    n<6 && Muscadeerror("Number of steps must be ≥6")
+    n<6 && muscadeerror("Number of steps must be ≥6")
     p = table_of_finite_diff_kernels
     q = table_of_finite_diff_kernels_transposed
     if transposed

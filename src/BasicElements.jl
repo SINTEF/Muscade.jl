@@ -560,11 +560,13 @@ end
 """
     Monitor <: AbstractElement
 
-An element for for monitoring inputs to and outputs from
+Debbuging tool: An element for for monitoring inputs to and outputs from
 another element, during an analysis.     
 
 Instead of adding the element to be monitored directly into the model,
 add this element with the element to be monitored as argument.
+
+Inputs and outs get @show'n to screen
 
 # Named arguments to the constructor
 
