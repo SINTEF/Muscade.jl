@@ -4,29 +4,35 @@ using StaticArrays, LinearAlgebra
 using Muscade
 export FloaterOnCalmWater,SingleDecayAcost,floatermotion
 
-const floatermotion  = (:surge,:sway)#,:heave,:roll,:pitch,:yaw)
+const floatermotion  = (:surge,:sway,:yaw)
+const idx    = (:11,:12,:16,:22,:26,:66)
 const D = length(floatermotion)
+fold(x::SVector{6}) = SMatrix{3,3}( x[1],x[2],x[3],
+                                    x[2],x[4],x[5],
+                                    x[3],x[5],x[6])
+
+
 
 ##############
 
 struct FloaterOnCalmWater <: AbstractElement
-    K  :: SMatrix{D,D,𝕣}
-    Cₒ :: SMatrix{D,D,𝕣}
-    M  :: SMatrix{D,D,𝕣}
+    K   :: SMatrix{D,D,𝕣}
+    C   :: SMatrix{D,D,𝕣}
+    M   :: SMatrix{D,D,𝕣}
 end
-FloaterOnCalmWater(nod::Vector{Node};K,Cₒ,M  )  = FloaterOnCalmWater(K,Cₒ,M)
+FloaterOnCalmWater(nod::Vector{Node};K,C,M  )  = FloaterOnCalmWater(K,C,M)
 
-Muscade.doflist(::Type{<:FloaterOnCalmWater}) = (inod = (ntuple(i-> 1,D)...,ntuple(i-> 1,D)...,ntuple(i-> 1,D)...          ),                                             
-                                                 class= (ntuple(i->:X,D)...,ntuple(i->:U,D)...,ntuple(i->:A,D)...          ), 
-                                                 field= (floatermotion...  ,floatermotion...  ,Symbol.(:C,floatermotion)...))
+Muscade.doflist(::Type{<:FloaterOnCalmWater}) = (inod = (ntuple(i-> 1,D)...,ntuple(i-> 1,D)...,ntuple(i-> 1,6)...,                  ntuple(i-> 1,6)...           ),                                             
+                                                 class= (ntuple(i->:X,D)...,ntuple(i->:U,D)...,ntuple(i->:A,6)...,                  ntuple(i->:A,6)...          ), 
+                                                 field= (floatermotion...  ,floatermotion...  ,ntuple(i->Symbol(:M,idx[i]),6)...,   ntuple(i->Symbol(:C,idx[i]),6)...))
 
 @espy function Muscade.residual(o::FloaterOnCalmWater,   X,U,A,t,SP,dbg) 
     x,x′,x″    = ∂0(X),∂1(X),∂2(X)   
     ☼u         = ∂0(U)
     a          = exp10.(A)
+    ☼r₂        = (o.M.*fold(a[@SVector [i for i∈1:6 ]]))∘x″
+    ☼r₁        = (o.C.*fold(a[@SVector [i for i∈7:12]]))∘x′
     ☼r₀        = o.K∘x
-    ☼r₁        = diagm(a)*o.Cₒ*diagm(a)∘x′
-    ☼r₂        = o.M∘x″
     return r₀+r₁+r₂-u,  noFB
 end
 
