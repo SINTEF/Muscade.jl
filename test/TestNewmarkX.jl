@@ -7,8 +7,8 @@ include("SomeElements.jl")
 model           = Model(:TestModel)
 node            = addnode!(model,𝕣[])
 ele             = addelement!(model,SdofOscillator,[node], K₁=1.,K₂=.3,C₁=1.,C₂=2.,M₁=3.)
-initialstate    = Muscade.State{1,2,1,@NamedTuple{}}(initialize!(model;time=0.))  # TODO improve syntax: initialize! or setdof! must do this internaly
-setdof!(initialstate,[1.];field=:x,nodID=[node],order=1)                                          
+initialstate    = initialize!(model;time=0.)
+initialstate    = setdof!(initialstate,[1.];field=:x,nodID=[node],order=1)                                          
 T               = 0.4 *(1:100)
 state           = solve(SweepX{2};  initialstate,time= T,verbose=false,catcherror=true)
 

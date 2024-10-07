@@ -26,7 +26,7 @@ e11             = addelement!(model, SingleDofCost, [n4], class=:A, field=:ΞEI,
 @once gap(x,u,a,t) = 1-sum(x.^2)
 e12             = addelement!(model,DofConstraint , [n1], xinod=(1,1),xfield=(:tx1,:tx2), λinod=1,λclass=:U,λfield=:λcsr, gap=gap,mode=positive)
 initialstate    = initialize!(model)
-setdof!(initialstate,1.;class=:U,field=:λcsr)
+initialstate    = setdof!(initialstate,1.;class=:U,field=:λcsr)
 stateX          = solve(SweepX{0};  initialstate,time=[.5,1.],maxΔx=1e-2,verbose=false)
 stateXUA        = solve(StaticXUA;initialstate=stateX,γfac=0.1,verbose=false)
 @testset "StaticXUA" begin

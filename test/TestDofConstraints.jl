@@ -173,8 +173,8 @@ e1              = addelement!(model,DofConstraint,[n1],xinod=(1,1),xfield=(:t1,:
 e2              = addelement!(model,DofConstraint,[n1],xinod=(1,1),xfield=(:t1,:t2),λinod=1, λclass=:X, λfield=:λ2,gap=g2,mode=positive)
 e3              = addelement!(model,DofLoad      ,[n1],field=:t2,value=gravity)
 initialstate    = initialize!(model)
-setdof!(initialstate,1.;field=:λ1)
-setdof!(initialstate,1.;field=:λ2)
+initialstate    = setdof!(initialstate,1.;field=:λ1)
+initialstate    = setdof!(initialstate,1.;field=:λ2)
 state           = solve(SweepX{0};initialstate,time=[0.],verbose=false,silenterror=false) # because there is zero physical stiffness in this model, setting γ0=0 gives singularity if one or more constraint is inactive
 
 @testset "interior point" begin
