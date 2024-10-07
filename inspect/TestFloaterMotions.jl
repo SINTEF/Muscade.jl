@@ -12,13 +12,10 @@ M         = fold(SVector{6}([1.0,    0.0,     -0.1,     0.5,     0.0,     0.3]))
 model     = Model(:MooredFloater)
 n1        = addnode!(model,𝕣[0,0,0])  
 e1        = addelement!(model,FloaterOnCalmWater,[n1]; K,C,M)
-initialstate    = Muscade.State{1,3,1,Nothing}(initialize!(model;time=0.))  # recast to force the state to have 2nd derivatives, 
-initialstate.X[2][1] = 0.                                           # so we can set initial velocity
-initialstate.X[1][1] = -.5                                           # so we can set initial position
-initialstate.X[2][2] = 0.                                           # so we can set initial velocity
-initialstate.X[1][2] = .8                                           # so we can set initial position
-initialstate.X[2][3] = 0.                                           # so we can set initial velocity
-initialstate.X[1][3] = -5.3                                           # so we can set initial position
+initialstate    = initialize!(model;time=0.)
+initialstate    = setdof!(initialstate,[-.5];   field=:surge,   nodID=[n1], order=0)                                          
+initialstate    = setdof!(initialstate,[.8];    field=:sway,    nodID=[n1], order=0)                                          
+initialstate    = setdof!(initialstate,[-5.3];  field=:yaw,     nodID=[n1], order=0)                                          
 T               = 0.15 *(1:400)
 state           = solve(SweepX{2};  initialstate,time= T,verbose=false)
 surge   = [s.X[1][1] for s∈state]
@@ -62,11 +59,11 @@ e6             = addelement!(modelXUA,SingleDofCost,[n1];class=:X,field=:sway,  
 e7             = addelement!(modelXUA,SingleDofCost,[n1];class=:X,field=:yaw,      cost=devYaw)
 initialstateXUA    = initialize!(modelXUA;time=0.)
 
-NDX       = 3
-NDU       = 1
-NA        = 1
-stateXUA         = solve(DirectXUA{3,1,1};initialstate=initialstateXUA,time=T,maxiter=100,saveiter=true,
-                        maxΔx=1e-1,maxΔλ=1e2,maxΔu=1.,maxΔa=1e-1)
+# NDX       = 3
+# NDU       = 1
+# NA        = 1
+stateXUA         = solve(DirectXUA{2,0,1};initialstate=initialstateXUA,time=T,maxiter=100,saveiter=true,
+                        maxΔx=2e-1,maxΔλ=2e2,maxΔu=2.,maxΔa=1e0)
 
 
 #As = [s.A[1][1] for s∈stateXUA]
