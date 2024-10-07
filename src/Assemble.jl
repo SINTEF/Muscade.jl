@@ -473,6 +473,22 @@ add_∂!{P}(out::SparseMatrixCSC,args...) where{P}                      = add_�
 add_∂!{P}(out::Array,asm,iele,a::SVector{M,R},args...) where{P,M,R}   = nothing
 add_∂!{P}(out::Array,asm,iele,a::SVector{M,∂ℝ{P,N,R}}) where{P,N,R,M} = add_∂!{P}(out,asm,iele,a,SVector{M}(1:M),SVector{N}(1:N))
 
+# i1as and i2as are indices BEFORE transposition
+struct add_∂ᵀ!{P} end 
+function add_∂ᵀ!{P}(out::Array,asm,iele,a::SVector{M,∂ℝ{P,N,R}},i1as,i2as) where{P,N,R,M}
+    for (i1asm,i1a) ∈ enumerate(i1as), (i2asm,i2a) ∈ enumerate(i2as)
+        ientry = i2asm+length(i2as)*(i1asm-1)
+        iout = asm[ientry,iele]
+        if iout≠0
+            out[iout]+=a[i1a].dx[i2a]  
+        end
+    end
+end  
+add_∂ᵀ!{P}(out::SparseMatrixCSC,args...) where{P}                      = add_∂ᵀ!{P}(out.nzval,args...)
+add_∂ᵀ!{P}(out::Array,asm,iele,a::SVector{M,R},args...) where{P,M,R}   = nothing
+add_∂ᵀ!{P}(out::Array,asm,iele,a::SVector{M,∂ℝ{P,N,R}}) where{P,N,R,M} = add_∂ᵀ!{P}(out,asm,iele,a,SVector{M}(1:M),SVector{N}(1:N))
+
+
 
 ####### called by addin!, and by nested elements to "get a Lagrangian" and "get a residual"
 # 1) comprehensive check of the types of arguments, to help catch bugs in solvers and elements at compile time

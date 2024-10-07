@@ -1,11 +1,3 @@
-#=
-This is bugged
-able_of_finite_diff_kernels is correct, table_of_finite_diff_kernels_transposed is apparently not, for 2nd derivatives
-
-I need an algo that transposes the finite diff operator, and hashes a data structure that can be interogated using "finitediff"
-
-=#
-
 # table...[order+1][left or center or right][point in kernel]
 const table_of_finite_diff_kernels            = [ [[(Δs=0,w=1.)] ],
                                                   [[(Δs=0,w=-1.),(Δs=1,w=1.)], [(Δs=-1,w=-1.),(Δs=0,w=1.)], [(Δs=-1,w=-1/2),(Δs=1,w=1/2)] ],

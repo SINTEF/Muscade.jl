@@ -1,4 +1,4 @@
-module TestDirectXUA
+#module TestDirectXUA
 
 cd("C:\\Users\\philippem\\.julia\\dev\\Muscade")
 using Pkg 
@@ -58,11 +58,12 @@ nstep            = 6
 OX               = 2
 OU               = 0
 IA               = 1
+FAST             = true
 
 Δt = 1.
 
 dis             = state0.dis
-out,asm,dofgr = Muscade.prepare(Muscade.AssemblyDirect{OX,OU,IA},model,dis)#;Uwhite=true,Xwhite=true,XUindep=true,UAindep=true,XAindep=true)
+out,asm,dofgr = Muscade.prepare(Muscade.AssemblyDirect{OX,OU,IA,FAST},model,dis)#;Uwhite=true,Xwhite=true,XUindep=true,UAindep=true,XAindep=true)
 zero!(out)
 state           = [Muscade.State{1,OX+1,OU+1,@NamedTuple{γ::Float64,iter::Int64}}(copy(state0)) for i = 1:nstep]
 for i=1:nstep
@@ -130,5 +131,5 @@ end
     @test Lvvasm.nzval[155]' == [611  612  631  632  651  652  671  672  697  698  723  724]
 end
 
-end 
+#end 
 
