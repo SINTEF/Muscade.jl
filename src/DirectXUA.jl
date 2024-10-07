@@ -14,16 +14,16 @@ const nclass = length(ind)
 ## Assembly of sparse
 arrnum(α  )  =          α
 arrnum(α,β)  = nclass + β + nclass*(α-1) 
-mutable struct AssemblyDirect{NDX,NDU,NA,T1,T2}  <:Assembly
+mutable struct AssemblyDirect{OX,OU,IA,T1,T2}  <:Assembly
     L1 :: T1   
     L2 :: T2   
 end  
-function prepare(::Type{AssemblyDirect{NDX,NDU,NA}},model,dis;Xwhite=false,XUindep=false,UAindep=false,XAindep=false) where{NDX,NDU,NA}
+function prepare(::Type{AssemblyDirect{OX,OU,IA}},model,dis;Xwhite=false,XUindep=false,UAindep=false,XAindep=false) where{OX,OU,IA}
     dofgr    = (allΛdofs(model,dis),allXdofs(model,dis),allUdofs(model,dis),allAdofs(model,dis))
     ndof     = getndof.(dofgr)
     neletyp  = getneletyp(model)
     asm      = Matrix{𝕫2}(undef,nclass+nclass^2,neletyp)
-    nder     = (1,NDX,NDU,NA)
+    nder     = (1,OX+1,OU+1,IA)
     L1 = Vector{Vector{Vector{𝕣}}}(undef,4)
     for α∈λxua
         nα = nder[α]
@@ -50,7 +50,7 @@ function prepare(::Type{AssemblyDirect{NDX,NDU,NA}},model,dis;Xwhite=false,XUind
             L2[α,β][αder,βder] = copy(am)
         end
     end
-    out      = AssemblyDirect{NDX,NDU,NA,typeof(L1),typeof(L2)}(L1,L2)
+    out      = AssemblyDirect{OX,OU,IA,typeof(L1),typeof(L2)}(L1,L2)
     return out,asm,dofgr
 end
 function zero!(out::AssemblyDirect)
@@ -61,19 +61,21 @@ function zero!(out::AssemblyDirect)
         end
     end
 end
-function addin!(out::AssemblyDirect{NDX,NDU,NA,T1,T2},asm,iele,scale,eleobj,Λ::NTuple{1  ,SVector{Nx}},
+function addin!(out::AssemblyDirect{OX,OU,IA,T1,T2},asm,iele,scale,eleobj,  Λ::NTuple{1  ,SVector{Nx}},
                                                                             X::NTuple{NDX,SVector{Nx}},
                                                                             U::NTuple{NDU,SVector{Nu}},
-                                                                            A::           SVector{Na} ,t,SP,dbg) where{NDX,NDU,NA,T1,T2,Nx,Nu,Na} 
+                                                                            A::           SVector{Na} ,t,SP,dbg) where{OX,OU,IA,NDX,NDU,T1,T2,Nx,Nu,Na} 
+    @assert NDX==OX+1 @sprintf("got OX=%i and NDX=%i. Expected OX+1==NDX",OX,NDX)
+    @assert NDX==OX+1 @sprintf("got OU=%i and NDU=%i. Expected OU+1==NDU",OU,NDU)
     ndof  = (Nx, Nx, Nu, Na)
-    Nz    = Nx + Nx*NDX + Nu*NDU + Na*NA
-    nder  = (1,NDX,NDU,NA)
+    Nz    = Nx + Nx*(OX+1) + Nu*(OU+1) + Na*IA
+    nder  = (1,OX+1,OU+1,IA)
 
     Λ∂ =              SVector{Nx}(∂²ℝ{1,Nz}(Λ[1   ][idof],                           idof)   for idof=1:Nx)
-    X∂ = ntuple(ider->SVector{Nx}(∂²ℝ{1,Nz}(X[ider][idof],Nx+Nx*(ider-1)            +idof)   for idof=1:Nx),NDX)
-    U∂ = ntuple(ider->SVector{Nu}(∂²ℝ{1,Nz}(U[ider][idof],Nx+Nx*NDX     +Nu*(ider-1)+idof)   for idof=1:Nu),NDU)
-    if NA == 1
-        A∂   =        SVector{Na}(∂²ℝ{1,Nz}(A[      idof],Nx+Nx*NDX     +Nu*NDU     +idof)   for idof=1:Na)
+    X∂ = ntuple(ider->SVector{Nx}(∂²ℝ{1,Nz}(X[ider][idof],Nx+Nx*(ider-1)            +idof)   for idof=1:Nx),OX+1)
+    U∂ = ntuple(ider->SVector{Nu}(∂²ℝ{1,Nz}(U[ider][idof],Nx+Nx*(OX+1)  +Nu*(ider-1)+idof)   for idof=1:Nu),OU+1)
+    if IA == 1
+        A∂   =        SVector{Na}(∂²ℝ{1,Nz}(A[      idof],Nx+Nx*(OX+1)  +Nu*(OU+1)  +idof)   for idof=1:Na)
         L,FB = getlagrangian(eleobj, Λ∂,X∂,U∂,A∂,t,SP,dbg)
     else
         L,FB = getlagrangian(eleobj, Λ∂,X∂,U∂,A ,t,SP,dbg)
@@ -101,9 +103,9 @@ function addin!(out::AssemblyDirect{NDX,NDU,NA,T1,T2},asm,iele,scale,eleobj,Λ::
 end
 
 ## Assembly of bigsparse
-function makepattern(NDX,NDU,NA,nstep,out) 
+function makepattern(OX,OU,IA,nstep,out) 
     # Looking at all steps, class, order of fdiff and Δstep, for rows and columns: which blocks are actualy nz?
-    nder     = (1,NDX,NDU)
+    nder     = (1,OX+1,OU+1)
     maxblock = 1 + nstep*90  
     αblk     = 𝕫1(undef,maxblock)
     βblk     = 𝕫1(undef,maxblock)
@@ -129,7 +131,7 @@ function makepattern(NDX,NDU,NA,nstep,out)
         end
     end   
 
-    if NA==1
+    if IA==1
         Ablk = 3*nstep+1
         nblock +=1
         αblk[nblock] = Ablk                      
@@ -156,14 +158,14 @@ function makepattern(NDX,NDU,NA,nstep,out)
 
     return sparse(αblk[u],βblk[u],nz[u])
 end
-function preparebig(NDX,NDU,NA,nstep,out) 
+function preparebig(OX,OU,IA,nstep,out) 
         # create an assembler and allocate for the big linear system
-    pattern                  = makepattern(NDX,NDU,NA,nstep,out)
+    pattern                  = makepattern(OX,OU,IA,nstep,out)
     Lvv,Lvvasm,Lvasm,Lvdis   = prepare(pattern)
     Lv                       = 𝕣1(undef,size(Lvv,1))
     return Lvv,Lv,Lvvasm,Lvasm,Lvdis
 end
-function assemblebig!(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out::AssemblyDirect{NDX,NDU,NA},state,nstep,Δt,SP,dbg) where{NDX,NDU,NA}
+function assemblebig!(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out::AssemblyDirect{OX,OU,IA},state,nstep,Δt,SP,dbg) where{OX,OU,IA}
     zero!(Lvv)
     zero!(Lv )
     for step = 1:nstep
@@ -198,7 +200,7 @@ function assemblebig!(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out::AssemblyDirect{NDX,
                 end
             end
         end
-        if NA==1
+        if IA==1
             Ablk = 3*nstep+1   
             addin!(Lvasm ,Lv ,out.L1[ind.A      ][1  ],Ablk     )
             addin!(Lvvasm,Lvv,out.L2[ind.A,ind.A][1,1],Ablk,Ablk)
@@ -243,7 +245,7 @@ function decrementbig!(state,Δ²,Lvasm,dofgr,Δv,nder,Δt,nstep)
 end
 
 """
-	DirectXUA{NDX,NDU,NA}
+	DirectXUA{OX,OU,IA}
 
 A non-linear direct solver for optimisation FEM.
 
@@ -251,18 +253,18 @@ An analysis is carried out by a call with the following syntax:
 
 ```
 initialstate    = initialize!(model)
-stateXUA        = solve(DirectXUA{NDX,NDU,NA};initialstate,time=0:1.:5)
+stateXUA        = solve(DirectXUA{OX,OU,IA};initialstate,time=0:1.:5)
 ```
 
 The solver does not yet support interior point methods. 
 
 # Parameters
-- `NDX`               1 for static analysis
-                      2 for first order problems in time (viscosity, friction, measurement of velocity)
-                      3 for second order problems in time (inertia, measurement of acceleration) 
-- `NDU`               1 for white noise prior to the unknown load process
-                      3 otherwise
-- `NA`                0 for XU problems (variables of class A will be unchanged)
+- `OX`                0 for static analysis
+                      1 for first order problems in time (viscosity, friction, measurement of velocity)
+                      2 for second order problems in time (inertia, measurement of acceleration) 
+- `OU`                0 for white noise prior to the unknown load process
+                      2 otherwise
+- `IA`                0 for XU problems (variables of class A will be unchanged)
                       1 for XUA problems                                                  
 
 # Named arguments
@@ -292,28 +294,28 @@ A vector of length equal to that of `time` containing the state of the optimized
 
 See also: [`solve`](@ref), [`SweepX`](@ref)
 """
-struct DirectXUA{NDX,NDU,NA} <: AbstractSolver end 
-function solve(TS::Type{DirectXUA{NDX,NDU,NA}},pstate,verbose::𝕓,dbg;
+struct DirectXUA{OX,OU,IA} <: AbstractSolver end 
+function solve(TS::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
     time::AbstractRange{𝕣},
     initialstate::State,
     maxiter::ℤ=50,
     maxΔλ::ℝ=1e-5,maxΔx::ℝ=1e-5,maxΔu::ℝ=1e-5,maxΔa::ℝ=1e-5,
     saveiter::𝔹=false,
-    kwargs...) where{NDX,NDU,NA}
+    kwargs...) where{OX,OU,IA}
 
     #  Mostly constants
     local LU
     nstep                 = length(time)
     Δt                    = (last(time)-first(time))/(nstep-1)
     γ                     = 0.
-    nder                  = (1,NDX,NDU,NA)
+    nder                  = (1,OX+1,OU+1,IA)
     model,dis             = initialstate.model, initialstate.dis
-    if NA==1  Δ², maxΔ²   = 𝕣1(undef,4), [maxΔλ^2,maxΔx^2,maxΔu^2,maxΔa^2] 
+    if IA==1  Δ², maxΔ²   = 𝕣1(undef,4), [maxΔλ^2,maxΔx^2,maxΔu^2,maxΔa^2] 
     else      Δ², maxΔ²   = 𝕣1(undef,3), [maxΔλ^2,maxΔx^2,maxΔu^2        ] 
     end
 
     # State storage
-    S                     = State{1,NDX,NDU,@NamedTuple{γ::Float64,iter::Int64}}
+    S                     = State{1,OX+1,OU+1,@NamedTuple{γ::Float64,iter::Int64}}
     state                 = Vector{S}(undef,nstep)
     s                     = S(copy(initialstate,time=time[1]))
     for (step,timeᵢ)      = enumerate(time)
@@ -328,9 +330,9 @@ function solve(TS::Type{DirectXUA{NDX,NDU,NA}},pstate,verbose::𝕓,dbg;
 
     # Prepare assembler
     verbose && @printf("\n    Preparing assembler\n")
-    out,asm,dofgr         = prepare(AssemblyDirect{NDX,NDU,NA},model,dis;kwargs...)      # mem and assembler for system at any given step
+    out,asm,dofgr         = prepare(AssemblyDirect{OX,OU,IA},model,dis;kwargs...)      # mem and assembler for system at any given step
     assemble!(out,asm,dis,model,state[1],(dbg...,solver=:DirectXUA,phase=:sparsity))     # create a sample "out" for preparebig
-    Lvv,Lv,Lvvasm,Lvasm,Lvdis = preparebig(NDX,NDU,NA,nstep,out)                             # mem and assembler for big system
+    Lvv,Lv,Lvvasm,Lvasm,Lvdis = preparebig(OX,OU,IA,nstep,out)                             # mem and assembler for big system
 
     for iter              = 1:maxiter
         verbose && @printf("\n    Iteration %3d\n",iter)
@@ -359,7 +361,7 @@ function solve(TS::Type{DirectXUA{NDX,NDU,NA}},pstate,verbose::𝕓,dbg;
         verbose          && @printf(  "        maxₜ(|ΔΛ|)=%7.1e ≤ %7.1e  \n",√(Δ²[ind.Λ]),√(maxΔ²[ind.Λ]))
         verbose          && @printf(  "        maxₜ(|ΔX|)=%7.1e ≤ %7.1e  \n",√(Δ²[ind.X]),√(maxΔ²[ind.X]))
         verbose          && @printf(  "        maxₜ(|ΔU|)=%7.1e ≤ %7.1e  \n",√(Δ²[ind.U]),√(maxΔ²[ind.U]))
-        verbose && NA==1 && @printf(  "             |ΔA| =%7.1e ≤ %7.1e  \n",√(Δ²[ind.A]),√(maxΔ²[ind.A]))
+        verbose && IA==1 && @printf(  "            |ΔA| =%7.1e ≤ %7.1e  \n",√(Δ²[ind.A]),√(maxΔ²[ind.A]))
         if all(Δ².≤maxΔ²)  
             verbose      && @printf("\n    Converged in %3d iterations.\n",iter)
             verbose      && @printf(  "    nel=%d, nvar=%d, nstep=%d\n",getnele(model),length(Lv),nstep)

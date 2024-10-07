@@ -55,35 +55,35 @@ e13             = addelement!(model,SingleDofCost,[n2];class=:X,field=:tx1,     
 state0          = initialize!(model)   
 
 nstep            = 6
-NDX              = 3
-NDU              = 1
-NA               = 1
+OX               = 2
+OU               = 0
+IA               = 1
 
 Δt = 1.
 
 dis             = state0.dis
-out,asm,dofgr = Muscade.prepare(Muscade.AssemblyDirect{NDX,NDU,NA},model,dis)#;Uwhite=true,Xwhite=true,XUindep=true,UAindep=true,XAindep=true)
+out,asm,dofgr = Muscade.prepare(Muscade.AssemblyDirect{OX,OU,IA},model,dis)#;Uwhite=true,Xwhite=true,XUindep=true,UAindep=true,XAindep=true)
 zero!(out)
-state           = [Muscade.State{1,NDX,NDU,@NamedTuple{γ::Float64,iter::Int64}}(copy(state0)) for i = 1:nstep]
+state           = [Muscade.State{1,OX+1,OU+1,@NamedTuple{γ::Float64,iter::Int64}}(copy(state0)) for i = 1:nstep]
 for i=1:nstep
     state[i].time = Δt*i
 end
 
 Muscade.assemble!(out,asm,dis,model,state[1],(;))
 
-pattern    = Muscade.makepattern(NDX,NDU,NA,nstep,out)
+pattern    = Muscade.makepattern(OX,OU,IA,nstep,out)
 # using Spy,GLMakie
 # fig = spypattern(pattern)
 # save("C:\\Users\\philippem\\.julia\\dev\\Muscade\\spypattern.jpg",fig)
 
-Lvv,Lv,Lvvasm,Lvasm,Lvdis  = Muscade.preparebig(NDX,NDU,NA,nstep,out)
+Lvv,Lv,Lvvasm,Lvasm,Lvdis  = Muscade.preparebig(OX,OU,IA,nstep,out)
 Muscade.assemblebig!(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out,state,nstep,Δt,(γ=0.,iter=1),(caller=:TestDirectXUA,))
 
 # using Spy,GLMakie
 # fig = Spy.spy(Lvv,title="bigsparse Lvv sparsity",size=500)
 # save("C:\\Users\\philippem\\.julia\\dev\\Muscade\\spy.jpg",fig)
 
-stateXUA         = solve(DirectXUA{NDX,NDU,NA};initialstate=state0,time=0:1.:5,maxiter=10,verbose=false)
+stateXUA         = solve(DirectXUA{OX,OU,IA};initialstate=state0,time=0:1.:5,maxiter=10,verbose=false)
 
 @testset "prepare_out" begin
     @test out.L1[1] ≈ [[0.0, 0.0]]
