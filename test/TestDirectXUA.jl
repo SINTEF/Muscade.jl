@@ -1,8 +1,8 @@
 module TestDirectXUA
 
-cd("C:\\Users\\philippem\\.julia\\dev\\Muscade")
-using Pkg 
-Pkg.activate(".")
+# cd("C:\\Users\\philippem\\.julia\\dev\\Muscade")
+# using Pkg 
+# Pkg.activate(".")
 
 
 
