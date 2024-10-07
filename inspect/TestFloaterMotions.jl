@@ -1,4 +1,4 @@
-# module TestFloaterMotions
+#module TestFloaterMotions
 # using Profile,ProfileView,BenchmarkTools
 using Test, Muscade, Muscade.FloaterMotions,StaticArrays, LinearAlgebra,Interpolations,GLMakie
 
@@ -7,27 +7,27 @@ fold(x::SVector{6}) = SMatrix{3,3}( x[1],x[2],x[3],
                                     x[2],x[4],x[5],
                                     x[3],x[5],x[6])
 K         = fold(SVector{6}([1.0,    0.0,     -0.3,     1.0,     0.0,     1.0]))
-C         = fold(SVector{6}([0.3,    0.0,     0.1,     0.2,     0.0,     0.05]))
+C         = fold(SVector{6}([0.25,    0.0,     0.05,     0.15,     0.0,     0.03]))
 M         = fold(SVector{6}([1.0,    0.0,     -0.1,     0.5,     0.0,     0.3]))
 model     = Model(:MooredFloater)
 n1        = addnode!(model,𝕣[0,0,0])  
 e1        = addelement!(model,FloaterOnCalmWater,[n1]; K,C,M)
 initialstate    = Muscade.State{1,3,1,Nothing}(initialize!(model;time=0.))  # recast to force the state to have 2nd derivatives, 
 initialstate.X[2][1] = 0.                                           # so we can set initial velocity
-initialstate.X[1][1] = 1.                                           # so we can set initial position
+initialstate.X[1][1] = -.5                                           # so we can set initial position
 initialstate.X[2][2] = 0.                                           # so we can set initial velocity
-initialstate.X[1][2] = 2.                                           # so we can set initial position
+initialstate.X[1][2] = .8                                           # so we can set initial position
 initialstate.X[2][3] = 0.                                           # so we can set initial velocity
-initialstate.X[1][3] = -1.3                                           # so we can set initial position
-T               = 0.15 *(1:200)
+initialstate.X[1][3] = -5.3                                           # so we can set initial position
+T               = 0.15 *(1:400)
 state           = solve(SweepX{2};  initialstate,time= T,verbose=false)
 surge   = [s.X[1][1] for s∈state]
 sway    = [s.X[1][2] for s∈state]
 yaw     = [s.X[1][3] for s∈state]
 
 # Create fake measurements
-surgeMeas = surge   + .05 * randn(length(T))
-swayMeas = sway     + .05 * randn(length(T))
+surgeMeas = surge   + .01 * randn(length(T))
+swayMeas = sway     + .01 * randn(length(T))
 yawMeas = yaw       + .05 * randn(length(T))
 
 
@@ -35,9 +35,8 @@ yawMeas = yaw       + .05 * randn(length(T))
 maxDevToModel = 0.5; 
 devToModelM = 1. .+ maxDevToModel*((rand(6).-.5)*2); 
 devToModelC = 1. .+ maxDevToModel*((rand(6).-.5)*2);
-Cguess = C .* fold(devToModelC[@SVector [i for i∈1:6 ]])
 Mguess = M .* fold(devToModelM[@SVector [i for i∈1:6 ]])
-
+Cguess = C .* fold(devToModelC[@SVector [i for i∈1:6 ]])
 
 fac       = [100,90,80,70,60,50,40,30,20,10,1]
 modelXUA     = Model(:MooredFloater)
@@ -55,9 +54,9 @@ e4        = [addelement!(modelXUA,SingleDecayAcost  ,[n1];          field=f,fac,
 surgeInt    = linear_interpolation(T, surgeMeas)
 swayInt     = linear_interpolation(T, swayMeas)
 yawInt      = linear_interpolation(T, yawMeas)
-@once devSurge(surge,t)     = 1e-2 ^-2 * (surge-surgeInt(t))^2
-@once devSway(sway,t)       = 1e-2 ^-2 * (sway-swayInt(t))^2
-@once devYaw(yaw,t)         = 1e-2 ^-2 * (yaw-yawInt(t))^2
+@once devSurge(surge,t)     = 5e-2 ^-2 * (surge-surgeInt(t))^2
+@once devSway(sway,t)       = 5e-2 ^-2 * (sway-swayInt(t))^2
+@once devYaw(yaw,t)         = 5e-2 ^-2 * (yaw-yawInt(t))^2
 e5             = addelement!(modelXUA,SingleDofCost,[n1];class=:X,field=:surge,    cost=devSurge)
 e6             = addelement!(modelXUA,SingleDofCost,[n1];class=:X,field=:sway,     cost=devSway)
 e7             = addelement!(modelXUA,SingleDofCost,[n1];class=:X,field=:yaw,      cost=devYaw)
@@ -66,11 +65,11 @@ initialstateXUA    = initialize!(modelXUA;time=0.)
 NDX       = 3
 NDU       = 1
 NA        = 1
-stateXUA         = solve(DirectXUA{3,1,1};initialstate=initialstateXUA,time=T,maxiter=200,saveiter=true,
-                        maxΔx=1e-3,maxΔλ=1e-2,maxΔu=1e-3,maxΔa=1e-3)
+stateXUA         = solve(DirectXUA{3,1,1};initialstate=initialstateXUA,time=T,maxiter=100,saveiter=true,
+                        maxΔx=1e-1,maxΔλ=1e2,maxΔu=1.,maxΔa=1e-1)
 
 
-# As = [s.A[1][1] for s∈stateXUA]
+#As = [s.A[1][1] for s∈stateXUA]
 
 # iter=10
 # step=1
@@ -89,7 +88,8 @@ stateXUA         = solve(DirectXUA{3,1,1};initialstate=initialstateXUA,time=T,ma
 # stateXUA[step].X[ider][idof] #X[1] value, then derivative
 # stateXUA[step].U[ider][idof]
 
-niter = findlastassigned(stateXUA)
+niter=findlastassigned(stateXUA)
+
 surgeRec   = [s.X[1][1] for s∈stateXUA[niter]]
 swayRec    = [s.X[1][2] for s∈stateXUA[niter]]
 yawRec     = [s.X[1][3] for s∈stateXUA[niter]]
@@ -98,8 +98,20 @@ surgeExtF   = [s.U[1][1] for s∈stateXUA[niter]]
 swayExtF    = [s.U[1][2] for s∈stateXUA[niter]]
 yawExtF     = [s.U[1][3] for s∈stateXUA[niter]]
 
-# C11     = [exp10(stateXUA[niter].A[1]) for s∈stateXUA[niter]]
+Mest      = Mguess .* fold(exp10.(SVector{6}(stateXUA[niter][1].A[1:6 ]))) 
+Cest      = Cguess .* fold(exp10.(SVector{6}(stateXUA[niter][1].A[7:12]))) 
 
+@show Mguess ./ M
+@show Mest ./ M
+
+@show Cguess ./ C
+@show Cest ./ C;
+
+req = @request r₂,r₁,r₀  
+loads = getresult(stateXUA[niter],req,[e1])
+inertiaLoads = [loads[i][:r₂] for i∈1:length(T)]
+dampingLoads = [loads[i][:r₁] for i∈1:length(T)]
+stiffnessLoads = [loads[i][:r₀] for i∈1:length(T)]
 
 
 # Display solution 
@@ -125,12 +137,23 @@ display(fig) # open interactive window (gets closed down by "save")
 # fig      = Figure(size = (1000,1000))
 # display(fig) # open interactive window (gets closed down by "save")
 ax=Axis(fig[1,2], ylabel="Surge [N]",        yminorgridvisible = true,xminorgridvisible = true)
-lines!(fig[1,2],T,surgeExtF,                       label="Inverse solution")
+lines!(fig[1,2],T,-[inertiaLoads[i][1] for i∈1:length(T)], label="Inertia")
+lines!(fig[1,2],T,-[dampingLoads[i][1] for i∈1:length(T)], label="Damping")
+lines!(fig[1,2],T,-[stiffnessLoads[i][1] for i∈1:length(T)], label="Stiffness")
+lines!(fig[1,2],T,surgeExtF,                       label="Unknown")
 axislegend()
+
 ax=Axis(fig[2,2], ylabel="Sway [N]",        yminorgridvisible = true,xminorgridvisible = true)
-lines!(fig[2,2],T,swayExtF,                       label="Inverse solution")
+lines!(fig[2,2],T,-[inertiaLoads[i][2] for i∈1:length(T)], label="Inertia")
+lines!(fig[2,2],T,-[dampingLoads[i][2] for i∈1:length(T)], label="Damping")
+lines!(fig[2,2],T,-[stiffnessLoads[i][2] for i∈1:length(T)], label="Stiffness")
+lines!(fig[2,2],T,swayExtF,                       label="Unknown")
+
 ax=Axis(fig[3,2], ylabel="Yaw [Nm]",       yminorgridvisible = true,xminorgridvisible = true,xlabel="Time [s]")
-lines!(fig[3,2],T,yawExtF,                       label="Inverse solution")
+lines!(fig[3,2],T,-[inertiaLoads[i][3] for i∈1:length(T)], label="Inertia")
+lines!(fig[3,2],T,-[dampingLoads[i][3] for i∈1:length(T)], label="Damping")
+lines!(fig[3,2],T,-[stiffnessLoads[i][3] for i∈1:length(T)], label="Stiffness")
+lines!(fig[3,2],T,yawExtF,                       label="Unknown")
 display(fig) # open interactive window (gets closed down by "save")
 
 
@@ -163,6 +186,5 @@ display(fig) # open interactive window (gets closed down by "save")
 # code_warntype for the call represented by that bar.
 
 
-
-# end
+#end
 ;
