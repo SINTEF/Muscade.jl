@@ -71,13 +71,14 @@ function addin!(out::AssemblyDirect{OX,OU,IA,T1,T2},asm,iele,scale,eleobj::Eleob
     @assert NDX==OX+1 @sprintf("got OU=%i and NDU=%i. Expected OU+1==NDU",OU,NDU)
     ndof  = (Nx, Nx, Nu, Na)
     nder  = (1,OX+1,OU+1,IA)
+    Npfast =      Nx*(OX+1) + Nu*(OU+1) + Na*IA # number of partials
+    Np     = Nx + Nx*(OX+1) + Nu*(OU+1) + Na*IA # number of partials
 
     if  out.fastresidual && hasmethod(residual  ,(Eleobj,       NTuple,NTuple,𝕣1,𝕣,NamedTuple,NamedTuple))
-        Np =      Nx*(OX+1) + Nu*(OU+1) + Na*IA # number of partials
-        X∂ = ntuple(ider->SVector{Nx}(∂ℝ{1,Np}(X[ider][idof],   Nx*(ider-1)            +idof)   for idof=1:Nx),OX+1)
-        U∂ = ntuple(ider->SVector{Nu}(∂ℝ{1,Np}(U[ider][idof],   Nx*(OX+1)  +Nu*(ider-1)+idof)   for idof=1:Nu),OU+1)
+        X∂ = ntuple(ider->SVector{Nx}(∂ℝ{1,Npfast}(X[ider][idof],   Nx*(ider-1)            +idof)   for idof=1:Nx),OX+1)
+        U∂ = ntuple(ider->SVector{Nu}(∂ℝ{1,Npfast}(U[ider][idof],   Nx*(OX+1)  +Nu*(ider-1)+idof)   for idof=1:Nu),OU+1)
         if IA == 1
-            A∂   =        SVector{Na}(∂ℝ{1,Np}(A[      idof],   Nx*(OX+1)  +Nu*(OU+1)  +idof)   for idof=1:Na)
+            A∂   =        SVector{Na}(∂ℝ{1,Npfast}(A[      idof],   Nx*(OX+1)  +Nu*(OU+1)  +idof)   for idof=1:Na)
             R,FB = residual(eleobj, X∂,U∂,A∂,t,SP,dbg)
         else
             R,FB = residual(eleobj, X∂,U∂,A ,t,SP,dbg)
@@ -100,7 +101,6 @@ function addin!(out::AssemblyDirect{OX,OU,IA,T1,T2},asm,iele,scale,eleobj::Eleob
         end
 
     else
-        Np = Nx + Nx*(OX+1) + Nu*(OU+1) + Na*IA # numper of partials
         Λ∂ =              SVector{Nx}(∂²ℝ{1,Np}(Λ[1   ][idof],                           idof)   for idof=1:Nx)
         X∂ = ntuple(ider->SVector{Nx}(∂²ℝ{1,Np}(X[ider][idof],Nx+Nx*(ider-1)            +idof)   for idof=1:Nx),OX+1)
         U∂ = ntuple(ider->SVector{Nu}(∂²ℝ{1,Np}(U[ider][idof],Nx+Nx*(OX+1)  +Nu*(ider-1)+idof)   for idof=1:Nu),OU+1)
