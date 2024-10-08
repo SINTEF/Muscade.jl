@@ -6,14 +6,15 @@ fold(x::SVector{6}) = SMatrix{3,3}( x[1],x[2],x[3],
                                     x[2],x[4],x[5],
                                     x[3],x[5],x[6])
 
-# Stiffness, damping and mass matrix for the true system
-K         = fold(SVector{6}([1.0,    0.0,     -0.3,     1.0,     0.0,     1.0]))
-C         = fold(SVector{6}([0.25,    0.0,     0.05,     0.15,     0.0,     0.03]))
-M         = fold(SVector{6}([1.0,    0.0,     -0.1,     0.5,     0.0,     0.3]))
-# K         = fold(SVector{6}([1.0,    0.0,    0.0,     1.0,     0.0,     1.0]))
-# C         = fold(SVector{6}([0.25,   0.0,    0.0,     0.1,     0.0,     0.3]))
-# M         = fold(SVector{6}([1.0,    0.0,    0.0,     0.5,     0.0,     0.3]))
+# Define stiffness, damping and mass matrix for the true system
+# K         = fold(SVector{6}([1.0,    0.0,     -0.3,     1.0,     0.0,     1.0]))
+# C         = fold(SVector{6}([0.25,    0.0,     0.05,     0.15,     0.0,     0.03]))
+# M         = fold(SVector{6}([1.0,    0.0,     -0.1,     0.5,     0.0,     0.3]))
+K         = fold(SVector{6}([1.0,    0.0,    0.0,     1.0,     0.0,     1.0]))
+C         = fold(SVector{6}([0.25,   0.0,    0.0,     0.1,     0.0,     0.3]))
+M         = fold(SVector{6}([1.0,    0.0,    0.0,     0.5,     0.0,     0.3]))
 
+#Solve direct problem
 model     = Model(:MooredFloater)
 n1        = addnode!(model,𝕣[0,0,0])  
 e1        = addelement!(model,FloaterOnCalmWater,[n1]; K,C,M)
@@ -28,12 +29,12 @@ sway    = [s.X[1][2] for s∈state]
 yaw     = [s.X[1][3] for s∈state]
 
 # Create fake measurements
-surgeMeas = surge   + .01 * randn(length(T))
-swayMeas = sway     + .01 * randn(length(T))
-yawMeas = yaw       + .05 * randn(length(T))
+surgeMeas = surge   + .0 * randn(length(T))
+swayMeas = sway     + .0 * randn(length(T))
+yawMeas = yaw       + .0 * randn(length(T))
 
 # Create intial guesses for M and C
-maxDevToModel = 0.5; 
+maxDevToModel = 0.0; 
 devToModelM = 1. .+ maxDevToModel*((rand(6).-.5)*2); 
 devToModelC = 1. .+ maxDevToModel*((rand(6).-.5)*2);
 Mguess = M .* fold(devToModelM[@SVector [i for i∈1:6 ]])
@@ -68,9 +69,7 @@ e7             = addelement!(modelXUA,SingleDofCost,[n1];class=:X,field=:yaw,   
 initialstateXUA    = initialize!(modelXUA;time=0.)
 stateXUA         = solve(DirectXUA{2,0,1};initialstate=initialstateXUA,time=T,maxiter=100,saveiter=true,
                         maxΔx=2e-1,maxΔλ=2e2,maxΔu=2.,maxΔa=1e0)
-
 niter=findlastassigned(stateXUA)
-
 
 # Fetch and display estimated model parameters
 Mest      = Mguess .* fold(exp10.(SVector{6}(stateXUA[niter][1].A[1:6 ]))) 
