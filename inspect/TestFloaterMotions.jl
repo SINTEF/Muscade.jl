@@ -1,4 +1,4 @@
-#module TestFloaterMotions
+module TestFloaterMotions
 using Test, Muscade, Muscade.FloaterMotions,StaticArrays, LinearAlgebra,Interpolations,GLMakie
 
 D = length(floatermotion)
@@ -65,10 +65,16 @@ e5             = addelement!(modelXUA,SingleDofCost,[n1];class=:X,field=:surge, 
 e6             = addelement!(modelXUA,SingleDofCost,[n1];class=:X,field=:sway,     cost=devSway)
 e7             = addelement!(modelXUA,SingleDofCost,[n1];class=:X,field=:yaw,      cost=devYaw)
 
+#Setting scale to improve convergence
+myScaling = (   X=(surge=1.,sway=1.,yaw=1.),
+                A=( C11=1e-1,C12=1e-1,C16=1e-1,C22=1e-1,C26=1e-1,C66=1e-1,
+                    M11=1e-1,M12=1e-1,M16=1e-1,M22=1e-1,M26=1e-1,M66=1e-1))
+setscale!(modelXUA;scale=myScaling,Λscale=1e4)
+
 #Solve inverse problem
 initialstateXUA    = initialize!(modelXUA;time=0.)
 stateXUA         = solve(DirectXUA{2,0,1};initialstate=initialstateXUA,time=T,maxiter=100,saveiter=true,
-                        maxΔx=2e-1,maxΔλ=2e2,maxΔu=2.,maxΔa=1e0)
+                        maxΔx=1e0,maxΔλ=Inf,maxΔu=1e2,maxΔa=1e0)
 niter=findlastassigned(stateXUA)
 
 # Fetch and display estimated model parameters
@@ -93,7 +99,7 @@ dampingLoads = [loads[i][:r₁] for i∈1:length(T)]
 stiffnessLoads = [loads[i][:r₀] for i∈1:length(T)]
 
 # Display response
-fig      = Figure(size = (1000,1000))
+fig      = Figure(size = (2000,1000))
 display(fig) # open interactive window (gets closed down by "save")
 ax=Axis(fig[1,1], ylabel="Surge [m]",        yminorgridvisible = true,xminorgridvisible = true)
 lines!(fig[1,1],T,surge,                          label="Exact direct solution")
@@ -112,24 +118,25 @@ scatter!(fig[3,1],T,yawMeas,                          label="Simulated measureme
 lines!(fig[3,1],T,yawRec,                       label="Inverse solution")
 
 # Display loads 
-ax=Axis(fig[1,2], ylabel="Surge [N]",        yminorgridvisible = true,xminorgridvisible = true)
+ax=Axis(fig[1,2], ylabel="Surge force [N]",        yminorgridvisible = true,xminorgridvisible = true)
 lines!(fig[1,2],T,-[inertiaLoads[i][1] for i∈1:length(T)], label="Inertia")
 lines!(fig[1,2],T,-[dampingLoads[i][1] for i∈1:length(T)], label="Damping")
 lines!(fig[1,2],T,-[stiffnessLoads[i][1] for i∈1:length(T)], label="Stiffness")
 lines!(fig[1,2],T,surgeExtF,                       label="Unknown")
 axislegend()
 
-ax=Axis(fig[2,2], ylabel="Sway [N]",        yminorgridvisible = true,xminorgridvisible = true)
+ax=Axis(fig[2,2], ylabel="Sway force [N]",        yminorgridvisible = true,xminorgridvisible = true)
 lines!(fig[2,2],T,-[inertiaLoads[i][2] for i∈1:length(T)], label="Inertia")
 lines!(fig[2,2],T,-[dampingLoads[i][2] for i∈1:length(T)], label="Damping")
 lines!(fig[2,2],T,-[stiffnessLoads[i][2] for i∈1:length(T)], label="Stiffness")
 lines!(fig[2,2],T,swayExtF,                       label="Unknown")
 
-ax=Axis(fig[3,2], ylabel="Yaw [Nm]",       yminorgridvisible = true,xminorgridvisible = true,xlabel="Time [s]")
+ax=Axis(fig[3,2], ylabel="Yaw moment [Nm]",       yminorgridvisible = true,xminorgridvisible = true,xlabel="Time [s]")
 lines!(fig[3,2],T,-[inertiaLoads[i][3] for i∈1:length(T)], label="Inertia")
 lines!(fig[3,2],T,-[dampingLoads[i][3] for i∈1:length(T)], label="Damping")
 lines!(fig[3,2],T,-[stiffnessLoads[i][3] for i∈1:length(T)], label="Stiffness")
 lines!(fig[3,2],T,yawExtF,                       label="Unknown")
 display(fig) # open interactive window (gets closed down by "save")
 
+end
 ;
