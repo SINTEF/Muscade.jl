@@ -10,9 +10,9 @@ fold(x::SVector{6}) = SMatrix{3,3}( x[1],x[2],x[3],
 # K         = fold(SVector{6}([1.0,    0.0,     -0.3,     1.0,     0.0,     1.0]))
 # C         = fold(SVector{6}([0.25,    0.0,     0.05,     0.15,     0.0,     0.03]))
 # M         = fold(SVector{6}([1.0,    0.0,     -0.1,     0.5,     0.0,     0.3]))
-K         = fold(SVector{6}([1.0,    0.0,    0.0,     1.0,     0.0,     1.0]))
-C         = fold(SVector{6}([0.25,   0.0,    0.0,     0.1,     0.0,     0.3]))
-M         = fold(SVector{6}([1.0,    0.0,    0.0,     0.5,     0.0,     0.3]))
+K         = fold(SVector{6}([1.0,    0.0,    0.0,     1.0,     0.0,     5.0]))
+C         = fold(SVector{6}([0.25,   0.0,    0.0,     0.5,     0.0,     0.5]))
+M         = fold(SVector{6}([1.0,    0.0,    0.0,     5.00,     0.0,    1.0]))
 
 #Solve direct problem
 model     = Model(:MooredFloater)
