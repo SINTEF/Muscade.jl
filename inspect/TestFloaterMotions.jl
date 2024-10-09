@@ -66,15 +66,17 @@ e6             = addelement!(modelXUA,SingleDofCost,[n1];class=:X,field=:sway,  
 e7             = addelement!(modelXUA,SingleDofCost,[n1];class=:X,field=:yaw,      cost=devYaw)
 
 #Setting scale to improve convergence
-myScaling = (   X=(surge=1.,sway=1.,yaw=1.),
+myScaling = (   X=(surge=1.,    sway=1.,    yaw=1.),
+                U=(surge=1e-1,  sway=1e-1,  yaw=1e-1),
                 A=( C11=1e-1,C12=1e-1,C16=1e-1,C22=1e-1,C26=1e-1,C66=1e-1,
                     M11=1e-1,M12=1e-1,M16=1e-1,M22=1e-1,M26=1e-1,M66=1e-1))
-setscale!(modelXUA;scale=myScaling,Λscale=1e4)
+setscale!(modelXUA;scale=myScaling,Λscale=1e2)
 
 #Solve inverse problem
 initialstateXUA    = initialize!(modelXUA;time=0.)
-stateXUA         = solve(DirectXUA{2,0,1};initialstate=initialstateXUA,time=T,maxiter=100,saveiter=true,
-                        maxΔx=1e0,maxΔλ=Inf,maxΔu=1e2,maxΔa=1e0)
+stateXUA         = solve(DirectXUA{2,0,1};initialstate=initialstateXUA,time=T,
+                        maxiter=100,saveiter=true,fastresidual=true,
+                        maxΔx=Inf,maxΔλ=Inf,maxΔu=Inf,maxΔa=Inf)
 niter=findlastassigned(stateXUA)
 
 # Fetch and display estimated model parameters
