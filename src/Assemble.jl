@@ -124,22 +124,22 @@ State{nΛder,nXder,nUder}(model::Model,dis;time=-∞) where{nΛder,nXder,nUder} 
                                              ntuple(i->zeros(getndof(model,:U)),nUder),
                                                        zeros(getndof(model,:A))       ,
                                              nothing,model,dis)
-# a shallow copy "constructor" to shave off unwanted derivatives (or pad with zeros) and set the type of SP, leaving SP undef'd
-function State{nΛder,nXder,nUder,TSP}(s::State) where{nΛder,nXder,nUder,TSP}
+# a shallow copy "constructor" to shave off unwanted derivatives (or pad with zeros) 
+function State{nΛder,nXder,nUder}(s::State,SP::TSP=s.SP) where{nΛder,nXder,nUder,TSP}
     state       = State{nΛder,nXder,nUder,TSP}()
     state.time  = s.time
     state.Λ     = ntuple(i->∂n(s.Λ,i-1),nΛder)
     state.X     = ntuple(i->∂n(s.X,i-1),nXder)
     state.U     = ntuple(i->∂n(s.U,i-1),nUder)
     state.A     = s.A
-    # state.SP deliberately not set
+    state.SP    = s.SP
     state.model = s.model
     state.dis   = s.dis
     return state
 end 
 
 # A deep copy - except for SP,model and dis
-Base.copy(s::State;time=s.time) = State(time,deepcopy(s.Λ),deepcopy(s.X),deepcopy(s.U),deepcopy(s.A),s.SP,s.model,s.dis) 
+Base.copy(s::State;time=s.time,SP=s.SP) = State(time,deepcopy(s.Λ),deepcopy(s.X),deepcopy(s.U),deepcopy(s.A),SP,s.model,s.dis) 
 
 
 #### DofGroup

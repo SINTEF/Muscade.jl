@@ -65,7 +65,7 @@ FAST             = true
 dis             = state0.dis
 out,asm,dofgr = Muscade.prepare(Muscade.AssemblyDirect{OX,OU,IA},model,dis,fastresidual=true)#;Uwhite=true,Xwhite=true,XUindep=true,UAindep=true,XAindep=true)
 zero!(out)
-state           = [Muscade.State{1,OX+1,OU+1,@NamedTuple{γ::Float64,iter::Int64}}(copy(state0)) for i = 1:nstep]
+state           = [Muscade.State{1,OX+1,OU+1}(copy(state0,SP=(γ=0.,iter=1))) for i = 1:nstep]
 for i=1:nstep
     state[i].time = Δt*i
 end

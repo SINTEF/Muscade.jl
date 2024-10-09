@@ -176,7 +176,7 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
     Lvv,Lvvasm,Lvasm,Lvdis= prepare(pattern)
     Lv                    = 𝕣1(undef,nV)
 
-    states                = [copy(State{1,1,1,@NamedTuple{γ::Float64}}(i)) for i ∈ initialstate]
+    states                = [State{1,1,1}(copy(i,SP=(γ=0.,))) for i ∈ initialstate]
     if saveiter
         statess           = Vector{typeof(states)}(undef,maxiter) 
         pstate[]          = statess
