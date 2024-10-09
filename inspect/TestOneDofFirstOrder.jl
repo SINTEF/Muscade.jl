@@ -10,9 +10,6 @@ SingleDecayAcost(nod::Vector{Node};field::Symbol,fac,cost::Function ,costargs=()
 Muscade.doflist(::Type{<:SingleDecayAcost{Field,Tcost,Tcostargs}}) where{Field,Tcost,Tcostargs} = (inod=(1,),class=(:A,),field=(Field,))
 @espy function Muscade.lagrangian(o::SingleDecayAcost,Λ,X,U,A,t,SP,dbg) 
     iter  = min(length(o.fac),default{:iter}(SP,length(o.fac)))
-    @show dbg
-    @show iter
-    @show SP
     ☼cost = o.cost(    A[1]  ,o.costargs...)
     return cost*o.fac[iter],noFB
 end
@@ -86,7 +83,7 @@ e5             = addelement!(modelXUA,SingleDofCost,[n1];class=:X,field=:surge, 
 initialstateXUA    = initialize!(modelXUA;time=0.)
 stateXUA         = solve(DirectXUA{1,0,1};initialstate=initialstateXUA,time=T,
                         maxiter=100,saveiter=true,fastresidual=true,
-                        maxΔx=Inf,maxΔλ=Inf,maxΔu=Inf,maxΔa=Inf)
+                        maxΔx=1e-3,maxΔλ=Inf,maxΔu=1e-3,maxΔa=1e-3)
 niter=findlastassigned(stateXUA)
 
 # Fetch and display estimated model parameters
