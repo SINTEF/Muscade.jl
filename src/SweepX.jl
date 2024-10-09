@@ -160,8 +160,9 @@ function solve(SX::Type{SweepX{ORDER}},pstate,verbose,dbg;
     if ORDER≥2    x″ = 𝕣1(undef,ndof) end 
     citer            = 0
     cΔx²,cLλ²        = maxΔx^2,maxLλ^2
-    state            = State{1,ORDER+1,1,@NamedTuple{γ::Float64}}(copy(initialstate)) # state.SP undef'd
-    state.SP         = (γ=0.,)
+    state            = State{1,ORDER+1,1}(copy(initialstate,SP=(γ=0.,))) 
+
+
     states           = allocate(pstate,Vector{typeof(state)}(undef,saveiter ? maxiter : length(time))) # states is not a return argument of this function.  Hence it is not lost in case of exception
     local facLλx 
     for (step,t)     ∈ enumerate(time)

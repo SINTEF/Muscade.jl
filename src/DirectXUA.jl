@@ -348,9 +348,9 @@ function solve(TS::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
     # State storage
     S                     = State{1,OX+1,OU+1,@NamedTuple{γ::Float64,iter::Int64}}
     state                 = Vector{S}(undef,nstep)
-    s                     = S(copy(initialstate,time=time[1]))
+    s                     = State{1,OX+1,OU+1}(copy(initialstate,time=time[1],SP=(γ=0.,iter=1)))   
     for (step,timeᵢ)      = enumerate(time)
-        state[step]       = step==1 ? s : State(timeᵢ,deepcopy(s.Λ),deepcopy(s.X),deepcopy(s.U),s.A,(γ=0.,iter=maxiter),s.model,s.dis)
+        state[step]       = step==1 ? s : State(timeᵢ,deepcopy(s.Λ),deepcopy(s.X),deepcopy(s.U),s.A,s.SP,s.model,s.dis)
     end
     if saveiter
         stateiter         = Vector{Vector{S}}(undef,maxiter) 
