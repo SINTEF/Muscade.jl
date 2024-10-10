@@ -4,8 +4,6 @@ authors = ["Philippe Maincon <philippe.maincon@sintef.no>"]
 version = "0.3.8"
 
 [deps]
-GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
-Interpolations = "a98d9a8b-a2ab-59e6-89dd-64a1c18fca59"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 MacroTools = "1914dd2f-81c6-5fcd-8719-6d5c9610ff09"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
@@ -14,7 +12,6 @@ SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
-GLMakie = "0.10.13"
 MacroTools = "0.5"
 SpecialFunctions = "2.4"
 StaticArrays = "1.9"

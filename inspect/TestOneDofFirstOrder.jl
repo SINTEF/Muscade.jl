@@ -1,4 +1,4 @@
-module TestOneDofViscous
+#module TestOneDofViscous
 using StaticArrays,Test, Muscade, LinearAlgebra,Interpolations,GLMakie
 
 struct SingleDecayAcost{Field,Tcost,Tcostargs} <: AbstractElement
@@ -41,7 +41,8 @@ n1        = addnode!(model,𝕣[0,0,0])
 e1        = addelement!(model,OneDofViscous,[n1]; K,C)
 initialstate    = initialize!(model;time=0.)
 initialstate    = setdof!(initialstate,[1.0];   field=:surge,   nodID=[n1], order=0)                                          
-T               = 0.01 *(1:200)
+T               = 0.2 *(1:6)
+#T               = 0.01 *(1:200)
 state           = solve(SweepX{2};  initialstate,time= T,verbose=false)
 surge   = [s.X[1][1] for s∈state]
 
@@ -81,9 +82,9 @@ e5             = addelement!(modelXUA,SingleDofCost,[n1];class=:X,field=:surge, 
 
 #Solve inverse problem
 initialstateXUA    = initialize!(modelXUA;time=0.)
-stateXUA         = solve(DirectXUA{1,0,1};initialstate=initialstateXUA,time=T,
-                        maxiter=100,saveiter=true,fastresidual=true,
-                        maxΔx=1e-3,maxΔλ=Inf,maxΔu=1e-3,maxΔa=1e-3)
+stateXUA         = solve(DirectXUA{1,0,0};initialstate=initialstateXUA,time=T,
+                        maxiter=1,saveiter=true,fastresidual=true,
+                        maxΔx=Inf,maxΔλ=Inf,maxΔu=Inf,maxΔa=Inf)
 niter=findlastassigned(stateXUA)
 
 # Fetch and display estimated model parameters
@@ -92,12 +93,12 @@ Cest      = Cguess .* exp10.(SVector{1}(stateXUA[niter][1].A[1]))
 @show Cest ./ C;
 
 # Fetch response and loads 
-surgeRec   = [s.X[1][1] for s∈stateXUA[niter]]
+surgeRec   = [s.X[1][1] for s∈stateXUA[niter]]  # cf. getdof
 surgeExtF   = [s.U[1][1] for s∈stateXUA[niter]]
 req = @request r₂,r₁,r₀  
 loads = getresult(stateXUA[niter],req,[e1])
-dampingLoads = [loads[i][:r₁] for i∈1:length(T)]
-stiffnessLoads = [loads[i][:r₀] for i∈1:length(T)]
+dampingLoads = [loads[i].r₁ for i∈1:length(T)]
+stiffnessLoads = [loads[i].r₀ for i∈1:length(T)]
 
 # Display response
 fig      = Figure(size = (2000,1000))
@@ -119,5 +120,5 @@ axislegend()
 
 display(fig) # open interactive window (gets closed down by "save")
 
-end
+#end
 ;

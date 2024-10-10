@@ -382,6 +382,11 @@ function solve(TS::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
             muscadeerror(@sprintf("Lvv matrix factorization failed at iter=%i",iter));
         end
         Δv               = LU\Lv # use ldiv! to save allocation
+        @show Matrix(Lvv)
+        @show cond(Matrix(Lvv))
+        @show Lv
+        @show Δv
+
 
         verbose && @printf(", decrementing.\n")
         decrementbig!(state,Δ²,Lvdis,dofgr,Δv,nder,Δt,nstep)
