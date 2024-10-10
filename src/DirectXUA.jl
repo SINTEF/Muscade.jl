@@ -96,7 +96,6 @@ function addin!(out::AssemblyDirect{OX,OU,IA,T1,T2},asm,iele,scale,eleobj::Eleob
             if j≤size(Lλβ,2) # ...but only add into existing matrices of L2, for better sparsity
                 add_∂!{ 1}(Lλβ[1,j],asm[arrnum(ind.Λ,β)],iele,R,iλ,iβ)
                 add_∂ᵀ!{1}(Lβλ[j,1],asm[arrnum(β,ind.Λ)],iele,R,iλ,iβ)
-                @show
             end
         end
 
@@ -206,8 +205,8 @@ function assemblebig!(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out::AssemblyDirect{OX,O
         for β∈λxu
             Lβ = out.L1[β]
             for βder = 1:size(Lβ,1)
-                s = Δt^-βder
-                for iβ ∈ finitediff(βder-1,nstep,step;transposed=true)
+                s = Δt^(1-βder)
+                for iβ ∈ finitediff(βder-1,nstep,step;transposed=false)  # TODO transpose or not? BUG to be revealed when cost on time derivative sof X or U
                     βblk = 3*(step+iβ.Δs-1)+β
                     addin!(Lvasm,Lv ,Lβ[βder],βblk,iβ.w*s) 
                 end
@@ -218,9 +217,9 @@ function assemblebig!(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out::AssemblyDirect{OX,O
                 Lαβ = out.L2[α,β]
                 for     αder = 1:size(Lαβ,1)
                     for βder = 1:size(Lαβ,2)
-                        s = Δt^-(αder+βder)
-                        for     iα ∈ finitediff(αder-1,nstep,step;transposed=true)
-                            for iβ ∈ finitediff(βder-1,nstep,step;transposed=true)
+                        s = Δt^(2-αder-βder)
+                        for     iα ∈ finitediff(αder-1,nstep,step;transposed=false) # No transposition here, that's thoroughly checked against decay.
+                            for iβ ∈ finitediff(βder-1,nstep,step;transposed=false) # No transposition here, that's thoroughly checked against decay.
                                 αblk = 3*(step+iα.Δs-1)+α
                                 βblk = 3*(step+iβ.Δs-1)+β
                                 addin!(Lvvasm,Lvv,Lαβ[αder,βder],αblk,βblk,iα.w*iβ.w*s) 
@@ -238,8 +237,8 @@ function assemblebig!(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out::AssemblyDirect{OX,O
                 Lαa = out.L2[α    ,ind.A]
                 Laα = out.L2[ind.A,α    ]
                 for αder = 1:size(Lαa,1)  # size(Lαa,1)==size(Laα,2) because these are 2nd derivatives of L
-                    s = Δt^-αder
-                    for iα ∈finitediff(αder-1,nstep,step;transposed=true)
+                    s = Δt^(1-αder)
+                    for iα ∈finitediff(αder-1,nstep,step;transposed=false) # TODO transpose or not? BUG to be revealed when cost on time derivative sof X or U
                         αblk = 3*(step+iα.Δs-1)+α
                         addin!(Lvvasm,Lvv,Lαa[αder,1   ],αblk,Ablk,iα.w*s) 
                         addin!(Lvvasm,Lvv,Laα[1   ,αder],Ablk,αblk,iα.w*s) 
@@ -254,7 +253,7 @@ function decrementbig!(state,Δ²,Lvasm,dofgr,Δv,nder,Δt,nstep)
     for (step,stateᵢ)    ∈ enumerate(state)
         for β            ∈ λxu
             for βder     = 1:nder[β]
-                s        = Δt^-βder
+                s        = Δt^(1-βder)
                 for iβ   ∈ finitediff(βder-1,nstep,step;transposed=false)
                     βblk = 3*(step+iβ.Δs-1)+β   
                     Δβ   = disblock(Lvasm,Δv,βblk)
@@ -382,11 +381,6 @@ function solve(TS::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
             muscadeerror(@sprintf("Lvv matrix factorization failed at iter=%i",iter));
         end
         Δv               = LU\Lv # use ldiv! to save allocation
-        @show Matrix(Lvv)
-        @show cond(Matrix(Lvv))
-        @show Lv
-        @show Δv
-
 
         verbose && @printf(", decrementing.\n")
         decrementbig!(state,Δ²,Lvdis,dofgr,Δv,nder,Δt,nstep)

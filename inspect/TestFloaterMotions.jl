@@ -29,9 +29,9 @@ sway    = [s.X[1][2] for s∈state]
 yaw     = [s.X[1][3] for s∈state]
 
 # Create fake measurements
-surgeMeas = surge   + .0 * randn(length(T))
-swayMeas = sway     + .0 * randn(length(T))
-yawMeas = yaw       + .0 * randn(length(T))
+surgeMeas = surge   + .01 * randn(length(T))
+swayMeas = sway     + .01 * randn(length(T))
+yawMeas = yaw       + .01 * randn(length(T))
 
 # Create intial guesses for M and C
 maxDevToModel = 0.0; 

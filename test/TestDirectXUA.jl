@@ -1,4 +1,4 @@
-#module TestDirectXUA
+module TestDirectXUA
 
 # cd("C:\\Users\\philippem\\.julia\\dev\\Muscade")
 # using Pkg 
@@ -131,5 +131,5 @@ end
     @test Lvvasm.nzval[155]' == [611  612  631  632  651  652  671  672  697  698  723  724]
 end
 
-#end 
+end 
 

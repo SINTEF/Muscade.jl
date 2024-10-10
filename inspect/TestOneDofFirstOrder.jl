@@ -41,13 +41,13 @@ n1        = addnode!(model,𝕣[0,0,0])
 e1        = addelement!(model,OneDofViscous,[n1]; K,C)
 initialstate    = initialize!(model;time=0.)
 initialstate    = setdof!(initialstate,[1.0];   field=:surge,   nodID=[n1], order=0)                                          
-T               = 0.2 *(1:6)
-#T               = 0.01 *(1:200)
+#T               = 0.2 *(1:6)
+T               = 0.02 *(1:100)
 state           = solve(SweepX{2};  initialstate,time= T,verbose=false)
 surge   = [s.X[1][1] for s∈state]
 
 # Create fake measurements
-surgeMeas = surge   + .0 * randn(length(T))
+surgeMeas = surge   + .01 * randn(length(T))
 
 # Create intial guesses for M and C
 maxDevToModel = 0.0; 
@@ -60,7 +60,7 @@ n1        = addnode!(modelXUA,𝕣[0,0,0])
 e1        = addelement!(modelXUA,OneDofViscous,[n1]; K,C=Cguess)
 
 # Assign costs to unknown forces
-Quu       = @SVector [0.1 ^-2 for i=1:1]  
+Quu       = @SVector [0.01 ^-2 for i=1:1]  
 e2        = addelement!(modelXUA,SingleDofCost     ,[n1]; class=:U,field=:surge,           cost=(u,t)-> 0.5*Quu[1]*u^2)  
 # Assign costs to variations of model parameters (wrt guess).
 fac       = [100,90,80,70,60,50,40,30,20,10,1] 
@@ -68,7 +68,7 @@ QCaa      = @SVector [.1 ^-2 for i=1:1]
 e3        = addelement!(modelXUA,SingleDecayAcost  ,[n1];          field=:C,fac,           cost=(a  )-> 0.5*QCaa[1]/length(T)*a^2) 
 # Assign costs to measurement errors
 surgeInt    = linear_interpolation(T, surgeMeas)
-@once devSurge(surge,t)     = 5e-2 ^-2 * (surge-surgeInt(t))^2
+@once devSurge(surge,t)     = 0.5*5e-2 ^-2 * (surge-surgeInt(t))^2
 #what if we do not use Interplation? --> no difference
 # @once devSurge(surge,t) = 5e-2 ^-2 *(surge-exp(-t))^2
 e5             = addelement!(modelXUA,SingleDofCost,[n1];class=:X,field=:surge,    cost=devSurge)
@@ -81,10 +81,10 @@ e5             = addelement!(modelXUA,SingleDofCost,[n1];class=:X,field=:surge, 
 # setscale!(modelXUA;scale=myScaling,Λscale=1e2)
 
 #Solve inverse problem
-initialstateXUA    = initialize!(modelXUA;time=0.)
-stateXUA         = solve(DirectXUA{1,0,0};initialstate=initialstateXUA,time=T,
-                        maxiter=1,saveiter=true,fastresidual=true,
-                        maxΔx=Inf,maxΔλ=Inf,maxΔu=Inf,maxΔa=Inf)
+initialstateXUA    = initialize!(modelXUA;time=0.)]]
+stateXUA         = solve(DirectXUA{1,0,1};initialstate=initialstateXUA,time=T,
+                        maxiter=100,saveiter=true,fastresidual=true,
+                        maxΔx=1e-3,maxΔλ=Inf,maxΔu=1e-3,maxΔa=1e-3)
 niter=findlastassigned(stateXUA)
 
 # Fetch and display estimated model parameters
