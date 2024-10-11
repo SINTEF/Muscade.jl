@@ -146,8 +146,8 @@ function makepattern(OX,OU,IA,nstep,out)
                 Lαβ = out.L2[α,β]
                 for     αder = 1:size(Lαβ,1)
                     for βder = 1:size(Lαβ,2)
-                        for     iα ∈ finitediff(αder-1,nstep,step;transposed=true)
-                            for iβ ∈ finitediff(βder-1,nstep,step;transposed=true)
+                        for     iα ∈ finitediff(αder-1,nstep,step;transposed=false)
+                            for iβ ∈ finitediff(βder-1,nstep,step;transposed=false)
                                 nblock += 1   
                                 αblk[nblock]=3*(step+iα.Δs-1)+α
                                 βblk[nblock]=3*(step+iβ.Δs-1)+β

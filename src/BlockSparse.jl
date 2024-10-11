@@ -98,7 +98,7 @@ function addin!(asm::SparseMatrixCSC{𝕫1,𝕫},out::SparseMatrixCSC{Tv,Ti},blo
         aibr = asm.rowval[ibv]
         if ibr == aibr       break # correct ibv
         else
-            hi == lo && muscadeerror(@sprintf("BlockSparseAssembler pattern has no block [%i,%i]",ibr,ibc))
+            hi ≤ lo && muscadeerror(@sprintf("BlockSparseAssembler pattern has no block [%i,%i]",ibr,ibc))
             if ibr > aibr    lo = ibv+1
             else             hi = ibv-1  
             end
