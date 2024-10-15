@@ -3,7 +3,9 @@ nodocstr(str) =  replace(str, r"(*ANYCRLF)^\"\"\"$.*?^\"\"\"$"ms => "")
 docs    = @__DIR__
 muscade = normpath(joinpath(docs,".."))
 docsrc  = joinpath(docs,"src")
+demosrc = normpath(joinpath(docs,"..","demo"))
 
+using Pkg
 Pkg.activate(docs) 
 
 using Muscade, Muscade.BeamElements, Muscade.SdofElements
@@ -11,7 +13,9 @@ using Documenter, Literate, DocumenterCitations,Printf
 
 cp(joinpath(muscade,"LICENSE.md"),joinpath(docsrc,"LICENSE.md"),force=true)
 
-#Literate.markdown(joinpath(docsrc,"tutorial1.jl"),docsrc)
+# Literate.markdown(joinpath(docsrc,"tutorial1.jl"),docsrc)
+Literate.markdown(joinpath(demosrc,"DecayAnalysis.jl"),docsrc)
+
 els = ["SdofElements","BeamElements"]
 for el ∈ els
         Literate.markdown(joinpath(muscade,"src","Elements",@sprintf("%s.jl",el)),docsrc,
@@ -25,7 +29,8 @@ makedocs(sitename ="Muscade.jl",
         modules   = [Muscade, Muscade.BeamElements, Muscade.SdofElements],
         format    = Documenter.HTML(    prettyurls          = false,
                                         sidebar_sitename    = false,
-                                        size_threshold_warn = 256*1024,                 
+                                        size_threshold_warn = 256*1024,
+                                        # example_size_threshold = nothing,                 
                                         size_threshold      = nothing),
         plugins   = [bib],
         pages     = ["index.md",
@@ -40,7 +45,8 @@ makedocs(sitename ="Muscade.jl",
                                             "Memory.md",
                                             "Adiff.md",
                                             "litterature.md"],
-#                     "Demo tutorial" => "tutorial1.md",  # source for this is Muscade/docs/src/tutorial1.jl NB: *.jl
+                #     "Demo tutorial" => "tutorial1.md",  # source for this is Muscade/docs/src/tutorial1.jl NB: *.jl
+                    "Demo tutorial" => "DecayAnalysis.md", 
                      "LICENSE.md"],
                      source  = "src",
                      build   = "build"                 
