@@ -146,8 +146,8 @@ function makepattern(OX,OU,IA,nstep,out)
                 Lαβ = out.L2[α,β]
                 for     αder = 1:size(Lαβ,1)
                     for βder = 1:size(Lαβ,2)
-                        for     iα ∈ finitediff(αder-1,nstep,step;transposed=false)
-                            for iβ ∈ finitediff(βder-1,nstep,step;transposed=false)
+                        for     iα ∈ finitediff(αder-1,nstep,step)
+                            for iβ ∈ finitediff(βder-1,nstep,step)
                                 nblock += 1   
                                 αblk[nblock]=3*(step+iα.Δs-1)+α
                                 βblk[nblock]=3*(step+iβ.Δs-1)+β
@@ -206,7 +206,7 @@ function assemblebig!(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out::AssemblyDirect{OX,O
             Lβ = out.L1[β]
             for βder = 1:size(Lβ,1)
                 s = Δt^(1-βder)
-                for iβ ∈ finitediff(βder-1,nstep,step;transposed=false)  # TODO transpose or not? BUG to be revealed when cost on time derivative sof X or U
+                for iβ ∈ finitediff(βder-1,nstep,step)  # TODO transpose or not? BUG to be revealed when cost on time derivative sof X or U
                     βblk = 3*(step+iβ.Δs-1)+β
                     addin!(Lvasm,Lv ,Lβ[βder],βblk,iβ.w*s) 
                 end
@@ -218,8 +218,8 @@ function assemblebig!(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out::AssemblyDirect{OX,O
                 for     αder = 1:size(Lαβ,1)
                     for βder = 1:size(Lαβ,2)
                         s = Δt^(2-αder-βder)
-                        for     iα ∈ finitediff(αder-1,nstep,step;transposed=false) # No transposition here, that's thoroughly checked against decay.
-                            for iβ ∈ finitediff(βder-1,nstep,step;transposed=false) # No transposition here, that's thoroughly checked against decay.
+                        for     iα ∈ finitediff(αder-1,nstep,step) # No transposition here, that's thoroughly checked against decay.
+                            for iβ ∈ finitediff(βder-1,nstep,step) # No transposition here, that's thoroughly checked against decay.
                                 αblk = 3*(step+iα.Δs-1)+α
                                 βblk = 3*(step+iβ.Δs-1)+β
                                 addin!(Lvvasm,Lvv,Lαβ[αder,βder],αblk,βblk,iα.w*iβ.w*s) 
@@ -238,7 +238,7 @@ function assemblebig!(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out::AssemblyDirect{OX,O
                 Laα = out.L2[ind.A,α    ]
                 for αder = 1:size(Lαa,1)  # size(Lαa,1)==size(Laα,2) because these are 2nd derivatives of L
                     s = Δt^(1-αder)
-                    for iα ∈finitediff(αder-1,nstep,step;transposed=false) # TODO transpose or not? BUG to be revealed when cost on time derivative sof X or U
+                    for iα ∈finitediff(αder-1,nstep,step) # TODO transpose or not? BUG to be revealed when cost on time derivative sof X or U
                         αblk = 3*(step+iα.Δs-1)+α
                         addin!(Lvvasm,Lvv,Lαa[αder,1   ],αblk,Ablk,iα.w*s) 
                         addin!(Lvvasm,Lvv,Laα[1   ,αder],Ablk,αblk,iα.w*s) 
@@ -254,7 +254,7 @@ function decrementbig!(state,Δ²,Lvasm,dofgr,Δv,nder,Δt,nstep)
         for β            ∈ λxu
             for βder     = 1:nder[β]
                 s        = Δt^(1-βder)
-                for iβ   ∈ finitediff(βder-1,nstep,step;transposed=false)
+                for iβ   ∈ finitediff(βder-1,nstep,step)
                     βblk = 3*(step+iβ.Δs-1)+β   
                     Δβ   = disblock(Lvasm,Δv,βblk)
                     d    = dofgr[β]
