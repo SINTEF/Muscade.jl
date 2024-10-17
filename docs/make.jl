@@ -3,7 +3,7 @@ nodocstr(str) =  replace(str, r"(*ANYCRLF)^\"\"\"$.*?^\"\"\"$"ms => "")
 docs    = @__DIR__
 muscade = normpath(joinpath(docs,".."))
 docsrc  = joinpath(docs,"src")
-demosrc = normpath(joinpath(docs,"..","demo"))
+examplessrc = normpath(joinpath(docs,"..","examples"))
 
 using Pkg
 Pkg.activate(docs) 
@@ -13,8 +13,10 @@ using Documenter, Literate, DocumenterCitations,Printf
 
 cp(joinpath(muscade,"LICENSE.md"),joinpath(docsrc,"LICENSE.md"),force=true)
 
-# Literate.markdown(joinpath(docsrc,"tutorial1.jl"),docsrc)
-Literate.markdown(joinpath(demosrc,"DecayAnalysis.jl"),docsrc)
+examples = ["StaticAnalysisBeam","DecayAnalysis"]
+for ex ∈ examples
+        Literate.markdown(joinpath(examplessrc,@sprintf("%s.jl",ex)),docsrc)
+end
 
 els = ["SdofElements","BeamElements"]
 for el ∈ els
@@ -45,8 +47,7 @@ makedocs(sitename ="Muscade.jl",
                                             "Memory.md",
                                             "Adiff.md",
                                             "litterature.md"],
-                #     "Demo tutorial" => "tutorial1.md",  # source for this is Muscade/docs/src/tutorial1.jl NB: *.jl
-                    "Demo tutorial" => "DecayAnalysis.md", 
+                    "Examples" => [@sprintf("%s.md",ex) for ex∈examples], 
                      "LICENSE.md"],
                      source  = "src",
                      build   = "build"                 

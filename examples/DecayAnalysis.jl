@@ -1,8 +1,9 @@
 #src module DecayAnalysis
 
-# # Decay analysis using DirectXUA
+# # Estimating model parameters
 # 
-#   Prework to be detailed
+# We estimate the mass and damping matrices of a coupled linear oscillator (floater moving in the surge, sway and yaw) based on a decay tests
+# In the following, we define the necessary element and residual function describing the dynamic behaviour of the floater. 
 using Muscade,StaticArrays,LinearAlgebra,Interpolations,GLMakie
 
 fold(x::SVector{6}) = SMatrix{3,3}( x[1],x[2],x[3],
@@ -32,6 +33,8 @@ Muscade.doflist(::Type{<:FloaterOnCalmWater}) = (inod = (ntuple(i-> 1,3)...,ntup
     ☼r₀        = o.K∘x
     return r₀+r₁+r₂-u,  noFB
 end
+
+# This is a taylor-made cost element where the cost is made dependent on the iteration number. In practice, this is used to first solve an XU problem (costs on A are prohibitive) before solving the actual XUA problem.
 
 struct SingleDecayAcost{Field,Tcost,Tcostargs} <: AbstractElement
     cost     :: Tcost     
@@ -204,9 +207,11 @@ ax=Axis(fig[3,3], limits=(nothing,nothing,0,2),
 barplot!(ax,[1,2,3,4,5,6], [Mest[3,1]/M[3,1],Mest[3,2]/M[3,2],Mest[3,3]/M[3,3], Cest[3,1]/C[3,1],Cest[3,2]/C[3,2],Cest[3,3]/C[3,3]],
     bar_labels = :y,color=:white,strokewidth=1,strokecolor=[:red,:red,:red,:blue,:blue,:blue])
 
-
-#src save("solution"* string(niter,pad=2) *".png",fig)
-display(fig) # open interactive window (gets closed down by "save")
+currentExampleDir = @__DIR__
+save(currentExampleDir*"\\..\\src\\assets\\decay.png",fig)
+# ![subet1](assets/decay.png)
+# src # save("solution"* string(niter,pad=2) *".png",fig)
+# src display(fig) # open interactive window (gets closed down by "save")
 #src end 
 
 #src end
