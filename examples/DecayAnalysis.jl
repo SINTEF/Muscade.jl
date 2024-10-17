@@ -209,10 +209,9 @@ barplot!(ax,[1,2,3,4,5,6], [Mest[3,1]/M[3,1],Mest[3,2]/M[3,2],Mest[3,3]/M[3,3], 
 
 currentExampleDir = @__DIR__
 save(currentExampleDir*"\\..\\src\\assets\\decay.png",fig)
-# ![subet1](assets/decay.png)
-# src # save("solution"* string(niter,pad=2) *".png",fig)
-# src display(fig) # open interactive window (gets closed down by "save")
-#src end 
+# ![Result](assets/decay.png)
+#src # save("solution"* string(niter,pad=2) *".png",fig)
+#src display(fig) # open interactive window (gets closed down by "save")
 
 #src end
 #src;
