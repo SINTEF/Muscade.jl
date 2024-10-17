@@ -207,8 +207,13 @@ ax=Axis(fig[3,3], limits=(nothing,nothing,0,2),
 barplot!(ax,[1,2,3,4,5,6], [Mest[3,1]/M[3,1],Mest[3,2]/M[3,2],Mest[3,3]/M[3,3], Cest[3,1]/C[3,1],Cest[3,2]/C[3,2],Cest[3,3]/C[3,3]],
     bar_labels = :y,color=:white,strokewidth=1,strokecolor=[:red,:red,:red,:blue,:blue,:blue])
 
-currentExampleDir = @__DIR__
-save(currentExampleDir*"\\..\\src\\assets\\decay.png",fig)
+currentDir = @__DIR__
+if occursin("build", currentDir)
+    save(currentDir*"\\..\\src\\assets\\decay.png",fig)
+elseif occursin("examples", currentDir)
+    save(currentDir*"\\decay.png",fig)
+end
+
 # ![Result](assets/decay.png)
 #src # save("solution"* string(niter,pad=2) *".png",fig)
 #src display(fig) # open interactive window (gets closed down by "save")
