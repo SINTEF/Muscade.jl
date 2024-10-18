@@ -2,7 +2,7 @@
 # 
 # We estimate the mass and damping matrices of a coupled linear oscillator (floater moving in the surge, sway and yaw) based on a decay tests
 # In the following, we define the necessary element and residual function describing the dynamic behaviour of the floater. 
-using Muscade,StaticArrays,LinearAlgebra,Interpolations,GLMakie
+using Muscade,StaticArrays,Interpolations,GLMakie
 
 fold(x::SVector{6}) = SMatrix{3,3}( x[1],x[2],x[3],
                                     x[2],x[4],x[5],

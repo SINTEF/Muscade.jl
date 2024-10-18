@@ -2,7 +2,7 @@
 
 # # Static analysis of a beam
 #
-using Muscade, Muscade.BeamElements, LinearAlgebra, StaticArrays, GLMakie
+using Muscade, Muscade.BeamElements, StaticArrays, GLMakie
 
 # Defining the beam properties and loading. 
 # Beam clamped at both ends, subjected to uniform distributed load of intensity q  
