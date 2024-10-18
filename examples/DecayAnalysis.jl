@@ -1,5 +1,3 @@
-#src module DecayAnalysis
-
 # # Estimating model parameters
 # 
 # We estimate the mass and damping matrices of a coupled linear oscillator (floater moving in the surge, sway and yaw) based on a decay tests
@@ -215,8 +213,3 @@ elseif occursin("examples", currentDir)
 end
 
 # ![Result](assets/decay.png)
-#src # save("solution"* string(niter,pad=2) *".png",fig)
-#src display(fig) # open interactive window (gets closed down by "save")
-
-#src end
-#src;

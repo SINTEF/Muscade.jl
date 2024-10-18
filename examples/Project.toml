@@ -1,0 +1,5 @@
+[deps]
+GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
+Interpolations = "a98d9a8b-a2ab-59e6-89dd-64a1c18fca59"
+Muscade = "93488820-1883-11ed-0c34-05177b029e4d"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"

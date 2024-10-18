@@ -1,5 +1,6 @@
 nodocstr(str) =  replace(str, r"(*ANYCRLF)^\"\"\"$.*?^\"\"\"$"ms => "")
 
+#Assumes that pwd() is docs
 docs    = @__DIR__
 muscade = normpath(joinpath(docs,".."))
 docsrc  = joinpath(docs,"src")
