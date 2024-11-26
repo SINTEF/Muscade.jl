@@ -225,7 +225,7 @@ function solve(::Type{StaticXUA},pstate,verbose::𝕓,dbg;initialstate::Vector{<
             Δy           = disblock(Lvdis,Δv,step  )
             Δy²[step]    = sum(Δy.^2)
             decrement!(state,1,Δy,Ydofgr)
-            decrement!(state,1,Δa,Adofgr)
+            decrement!(state,1,Δa,Adofgr) # each state has its own a, som must decrement each
         end    
         
         s  = 1.  

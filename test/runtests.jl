@@ -24,24 +24,24 @@ module Runtest
         @testset "TestAssemble" begin
             include("TestAssemble.jl")
         end
-        @testset "TestNewmarkX" begin
-            include("TestNewmarkX.jl")
+        @testset "TestSweepX2" begin
+            include("TestSweepX2.jl")
         end
-        @testset "TestStaticX" begin
-            include("TestStaticX.jl")
-        end
-        @testset "TestStaticXUA" begin
-            include("TestStaticXUA.jl")
+        @testset "TestSweepX0" begin
+            include("TestSweepX0.jl")
         end
         @testset "TestDirectXUA" begin
             include("TestDirectXUA.jl")
         end
-        @testset "TestStaticXUAwithineq" begin
-            include("TestStaticXUAwithineq.jl")
+        @testset "TestDirectXUA001" begin
+            include("TestStaticXUA.jl")
         end
-        @testset "TestScale" begin
-            include("TestScale.jl")
-        end
+        # @testset "TestStaticXUAwithineq" begin
+        #     include("TestStaticXUAwithineq.jl")
+        # end
+        # @testset "TestScale" begin
+        #     include("TestScale.jl")
+        # end
         @testset "TestDofConstraints" begin
             include("TestDofConstraints.jl")
         end

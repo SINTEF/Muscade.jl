@@ -17,6 +17,8 @@
 # ilv    = pilr[ilc]+ i-1
 # irow   = ilr[ilv]  
 
+using Printf
+
 """
     bigmat,bigmatasm,bigvecasm,bigvecdis = prepare(pattern)
 
@@ -30,7 +32,7 @@ See also: [`addin!`](@ref)
 """ 
 function prepare(pattern::SparseMatrixCSC{SparseMatrixCSC{Tv,𝕫},𝕫}) where{Tv} 
     nbr,nbc                       = size(pattern)
-    nbr>0 && nbc>0 || muscadeerror("must have length(pattern)>0")
+    nbr>0 && nbc>0 || muscadeerror("must have size(pattern,i)>0 ∀i∈[1,2]")
     nlr                           = [-1 for ibr=1:nbr+1] # number of local rows in each block-row of pattern
     nlc                           = [-1 for ibc=1:nbc+1] # number of local cols in each block-col of pattern
     ngv                           = 0
@@ -39,6 +41,8 @@ function prepare(pattern::SparseMatrixCSC{SparseMatrixCSC{Tv,𝕫},𝕫}) where{
         for ibv                   = pattern.colptr[ibc]:pattern.colptr[ibc+1]-1
             ibr                   = pattern.rowval[ibv]
             block                 = pattern.nzval[ ibv]
+            nlr[ibr+1]==-1 || nlr[ibr+1]==block.m || muscadeerror(@printf "block row %i of the pattern has blocks with different numbers of rows")
+            nlc[ibc+1]==-1 || nlc[ibc+1]==block.n || muscadeerror(@printf "block column %i of the pattern has blocks with different numbers of columns")
             nlr[ibr+1]            = block.m
             nlc[ibc+1]            = block.n
             nlv                   = length(block.nzval)
@@ -48,8 +52,15 @@ function prepare(pattern::SparseMatrixCSC{SparseMatrixCSC{Tv,𝕫},𝕫}) where{
     end
     nlr[1]                        = 1
     nlc[1]                        = 1
-    all(nlr.>0) || muscadeerror("every row of the pattern must contain at least one non-zero block")
-    all(nlc.>0) || muscadeerror("every column of the pattern contain at least one non-zero block")
+    if any(nlr.==-1) || any(nlc.==-1) 
+        for i = findall(nlr.==-1)
+            @printf("    row    %i of the pattern has only empty blocks\n",i)
+        end
+        for i = findall(nlc.==-1)
+            @printf("    column %i of the pattern has only empty blocks\n",i)
+        end
+        muscadeerror("invalid sparse-of-sparse pattern")
+    end
     pgr                           = cumsum(nlr)  # pgr[ibr]→igr global row corresponding to the first local row of each block
     pgc                           = cumsum(nlc)  # pgc[ibc]→igc global column corresponding to the first local row of each block
     ngr                           = pgr[end]-1
