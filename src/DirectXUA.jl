@@ -69,16 +69,16 @@ function addin!(out::AssemblyDirect{OX,OU,IA,T1,T2},asm,iele,scale,eleobj::Eleob
                                                                                          A::           SVector{Na} ,t,SP,dbg) where{OX,OU,IA,NDX,NDU,T1,T2,Nx,Nu,Na,Eleobj} 
     @assert NDX==OX+1 @sprintf("got OX=%i and NDX=%i. Expected OX+1==NDX",OX,NDX)
     @assert NDX==OX+1 @sprintf("got OU=%i and NDU=%i. Expected OU+1==NDU",OU,NDU)
-    ndof  = (Nx, Nx, Nu, Na)
-    nder  = (1,OX+1,OU+1,IA)
+    ndof   = (Nx, Nx, Nu, Na)
+    nder   = (1,OX+1,OU+1,IA)
     Npfast =      Nx*(OX+1) + Nu*(OU+1) + Na*IA # number of partials
     Np     = Nx + Nx*(OX+1) + Nu*(OU+1) + Na*IA # number of partials
 
     if  out.fastresidual && hasmethod(residual  ,(Eleobj,       NTuple,NTuple,𝕣1,𝕣,NamedTuple,NamedTuple))
-        X∂ = ntuple(ider->SVector{Nx}(∂ℝ{1,Npfast}(X[ider][idof],   Nx*(ider-1)            +idof)   for idof=1:Nx),OX+1)
-        U∂ = ntuple(ider->SVector{Nu}(∂ℝ{1,Npfast}(U[ider][idof],   Nx*(OX+1)  +Nu*(ider-1)+idof)   for idof=1:Nu),OU+1)
+        X∂ = ntuple(ider->SVector{Nx}(∂ℝ{1,Npfast}(X[ider][idof],   Nx*(ider-1)            +idof, scale.X[idof])   for idof=1:Nx),OX+1)
+        U∂ = ntuple(ider->SVector{Nu}(∂ℝ{1,Npfast}(U[ider][idof],   Nx*(OX+1)  +Nu*(ider-1)+idof, scale.U[idof])   for idof=1:Nu),OU+1)
         if IA == 1
-            A∂   =        SVector{Na}(∂ℝ{1,Npfast}(A[      idof],   Nx*(OX+1)  +Nu*(OU+1)  +idof)   for idof=1:Na)
+            A∂   =        SVector{Na}(∂ℝ{1,Npfast}(A[      idof],   Nx*(OX+1)  +Nu*(OU+1)  +idof, scale.A[idof])   for idof=1:Na)
             R,FB = residual(eleobj, X∂,U∂,A∂,t,SP,dbg)
         else
             R,FB = residual(eleobj, X∂,U∂,A ,t,SP,dbg)
@@ -100,11 +100,11 @@ function addin!(out::AssemblyDirect{OX,OU,IA,T1,T2},asm,iele,scale,eleobj::Eleob
         end
 
     else
-        Λ∂ =              SVector{Nx}(∂²ℝ{1,Np}(Λ[1   ][idof],                           idof)   for idof=1:Nx)
-        X∂ = ntuple(ider->SVector{Nx}(∂²ℝ{1,Np}(X[ider][idof],Nx+Nx*(ider-1)            +idof)   for idof=1:Nx),OX+1)
-        U∂ = ntuple(ider->SVector{Nu}(∂²ℝ{1,Np}(U[ider][idof],Nx+Nx*(OX+1)  +Nu*(ider-1)+idof)   for idof=1:Nu),OU+1)
+        Λ∂ =              SVector{Nx}(∂²ℝ{1,Np}(Λ[1   ][idof],                           idof, scale.Λ[idof])   for idof=1:Nx)
+        X∂ = ntuple(ider->SVector{Nx}(∂²ℝ{1,Np}(X[ider][idof],Nx+Nx*(ider-1)            +idof, scale.X[idof])   for idof=1:Nx),OX+1)
+        U∂ = ntuple(ider->SVector{Nu}(∂²ℝ{1,Np}(U[ider][idof],Nx+Nx*(OX+1)  +Nu*(ider-1)+idof, scale.U[idof])   for idof=1:Nu),OU+1)
         if IA == 1
-            A∂   =        SVector{Na}(∂²ℝ{1,Np}(A[      idof],Nx+Nx*(OX+1)  +Nu*(OU+1)  +idof)   for idof=1:Na)
+            A∂   =        SVector{Na}(∂²ℝ{1,Np}(A[      idof],Nx+Nx*(OX+1)  +Nu*(OU+1)  +idof, scale.A[idof])   for idof=1:Na)
             L,FB = getlagrangian(eleobj, Λ∂,X∂,U∂,A∂,t,SP,dbg)
         else
             L,FB = getlagrangian(eleobj, Λ∂,X∂,U∂,A ,t,SP,dbg)
@@ -206,7 +206,7 @@ function assemblebig!(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out::AssemblyDirect{OX,O
             Lβ = out.L1[β]
             for βder = 1:size(Lβ,1)
                 s = Δt^(1-βder)
-                for iβ ∈ finitediff(βder-1,nstep,step)  # TODO transpose or not? BUG to be revealed when cost on time derivative sof X or U
+                for iβ ∈ finitediff(βder-1,nstep,step)  # TODO transpose or not? Potential BUG to be revealed when cost on time derivative of X or U
                     βblk = 3*(step+iβ.Δs-1)+β
                     addin!(Lvasm,Lv ,Lβ[βder],βblk,iβ.w*s) 
                 end
@@ -257,8 +257,7 @@ function decrementbig!(state,Δ²,Lvasm,dofgr,Δv,nder,Δt,nstep)
                 for iβ   ∈ finitediff(βder-1,nstep,step)
                     βblk = 3*(step+iβ.Δs-1)+β   
                     Δβ   = disblock(Lvasm,Δv,βblk)
-                    d    = dofgr[β]
-                    decrement!(stateᵢ,βder,Δβ.*iβ.w*s,d)
+                    decrement!(stateᵢ,βder,Δβ.*iβ.w*s,dofgr[β])
                     if βder==1 
                         Δ²[β] = max(Δ²[β],sum(Δβ.^2)) 
                     end

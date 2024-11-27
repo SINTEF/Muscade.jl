@@ -27,29 +27,26 @@ e11             = addelement!(model1,SingleDofCost ,class=:A, field=:ΞEI,[n4]  
 
 model2          = deepcopy(model1)
 
-initialstate1   = initialize!(model1)
-#stateX1         = solve(SweepX{0};  initialstate=initialstate1,time=[.5,1.],verbose=true)
-#stateXUA1       = solve(DirectXUA{0,0,1};initialstate=stateX1[1],time=.5:.5:4,verbose=true)
-stateX1         = solve(SweepX{0};  initialstate=initialstate1,time=.5:.5:4,verbose=true)
-stateXUA1       = solve(StaticXUA;initialstate=stateX1,verbose=true)
+initialstate1    = initialize!(model1)
+stateX1          = solve(SweepX{0};  initialstate=initialstate1,time=[0.,1.],verbose=false)
+stateXUA1        = solve(DirectXUA{0,0,1};initialstate=stateX1[1],time = 0:.1:1,verbose=false)
 
-# setscale!(model2;scale=(X=(tx1=1.,tx2=10.,rx3=2.),A=(Δseadrag=3.,Δskydrag=4.,ΔL=5)),Λscale=2)  
-# initialstate2   = initialize!(model2)
-# stateX2         = solve(SweepX{0};  initialstate=initialstate2,time=[.5,1.],verbose=true)
-# stateXUA2       = solve(DirectXUA{0,0,1};initialstate=stateX2[1],time=.5:.5:4,verbose=true)
+setscale!(model2;scale=(X=(tx1=1.,tx2=10.,rx3=2.),A=(Δseadrag=3.,Δskydrag=4.,ΔL=5)),Λscale=2)  
+initialstate2    = initialize!(model2)
+stateX2          = solve(SweepX{0};  initialstate=initialstate2,time=[0.],verbose=false)
+stateXUA2        = solve(DirectXUA{0,0,1};initialstate=stateX2[1],time = 0:.1:1,verbose=false)
 
 step = 1
-@testset "ScaleStaticX" begin
+@testset "ScaleSweepX" begin
     @test  stateX1[step].X[1] ≈ stateX2[step].X[1]
 end
-@testset "ScaleStaticXUAstepwise" begin
+@testset "ScaleDirectXUAstepwise" begin
     @test  stateXUA1[step].X[1] ≈ stateXUA2[step].X[1]
     @test  stateXUA1[step].A    ≈ stateXUA2[step].A
 end
 
-scale=studyscale(stateX1[end],SP=(γ=0,),verbose=false)
+scale=studyscale(stateX1[end],SP=(γ=0,),verbose=false) # scaling suggestions from looking at a state
 @testset "StudyScale" begin
-    (Λ = (tx1 = 0.41, tx2 = 1.5, λtx1 = 0.38, λtx2 = 0.38), X = (tx1 = 2.6, tx2 = 2.6, λtx1 = 2.4, λtx2 = 0.68), U = NamedTuple(), A = (ΞL₀ = 0.14, ΞEI = 6.6))
     @test scale.Λ.tx1 ≈ 0.41
     @test scale.Λ.tx2 ≈ 1.5
     @test scale.X.λtx2 ≈ 0.68

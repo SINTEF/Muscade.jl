@@ -26,6 +26,7 @@ end
 ∂ℝ{P,N  }(x::R ,dx::SV{N,R}) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(x   ,SV{N,R}(dx))
 ∂ℝ{P,N  }(x::R             ) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(x   ,SV{N,R}(zero(R)                 for j=1:N))
 ∂ℝ{P,N  }(x::R,i::ℤ        ) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(x   ,SV{N,R}(i==j ? one(R) : zero(R) for j=1:N))
+∂ℝ{P,N  }(x::R,i::ℤ,s      ) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(x   ,SV{N,R}(i==j ? R(s)   : zero(R) for j=1:N))
 ∂ℝ{P,N,R}(x::𝕣             ) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(R(x),SV{N,R}(zero(R)                 for j=1:N))
 function ∂ℝ{P,N}(x::Rx,dx::SV{N,Rdx}) where{P,N,Rx<:ℝ,Rdx<:ℝ}
     R = promote_type(Rx,Rdx)
@@ -119,12 +120,14 @@ where `typeof(x)<:Real`, create an object of precedence `P`.
 
 See also: [`constants`](@ref), [`δ`](@ref), [`value`](@ref), [`∂`](@ref), [`VALUE`](@ref), [`value_∂`](@ref)
 """
-variate{P,N}(a::SV{N,R}            ) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,N,R}}(∂ℝ{P,N  }(a[i],i) for i=1:N)
-variate{P,N}(a::SV{N,R},δa::SV{N,𝕣}) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,N,R}}(∂ℝ{P,N,R}(a[j]   ,SV{N,R}(i==j ? R(δa[i])  : zero(R) for i=1:N)) for j=1:N)
-variate{P  }(a::R                  ) where{P,R<:ℝ}   =  ∂ℝ{P,1}(a,SV{1,R}(one(R)))
-directional{P}(a::SV{N,R},δa::SV{N,R}) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,1,R}}(∂ℝ{P,1}(a[i],SV{1,R}(δa[i])) for i=1:N)
-∂²ℝ{P,N}(x::R,i) where{P,R,N} = ∂ℝ{P+1,N}( ∂ℝ{P,N}(x,i) , SVector{N}(∂ℝ{P,N}(R(j==i)) for j=1:N ) )
-
+variate{    P,N}(a::SV{N,R}            ) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,N,R}}(∂ℝ{P,N  }(a[i],i) for i=1:N)
+variate{    P,N}(a::SV{N,R},δa::SV{N,𝕣}) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,N,R}}(∂ℝ{P,N,R}(a[j]   ,SV{N,R}(i==j ? R(δa[i])  : zero(R) for i=1:N)) for j=1:N)
+variate{    P  }(a::R                  ) where{P,  R<:ℝ} =      ∂ℝ{P,1  }(a,SV{1,R}(one(R)))
+directional{P  }(a::SV{N,R},δa::SV{N,R}) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,1,R}}(∂ℝ{P,1}(a[i],SV{1,R}(δa[i])) for i=1:N)
+function ∂²ℝ{P,N}(x::R,i,s=one(R)) where{P,N,R<:ℝ}
+    R1 = ∂ℝ{P,N,R}
+    return ∂ℝ{P+1,N,R1}( ∂ℝ{P,N}(x,i,s) , SV{N,R1}(j==i ? R1(s) : zero(R1) for j=1:N ))
+end
 # Analyse
 """
     @show VALUE(Y)
@@ -302,10 +305,10 @@ end
 hasnan(a::ℝ   )              = isnan(a)
 hasnan(a::∂ℝ   )             = hasnan(a.x) || hasnan(a.dx)
 hasnan(a::Tuple)             = any(hasnan.(a))
-#hasnan(a::AbstractArray)     = any(hasnan.(a))
 hasnan(a::NamedTuple)        = any(hasnan.(values(a)))
 hasnan(a...;)                = any(hasnan.(a))
 hasnan(a)                    = false
+#hasnan(a::AbstractArray)     = any(hasnan.(a)) # slow
 function hasnan(a::AbstractArray) 
     for aᵢ ∈ a
         if hasnan(aᵢ)
