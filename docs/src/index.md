@@ -4,7 +4,12 @@ CurrentModule = Muscade
 ```
 
 !!! info
-    `Muscade.jl` is under development. New solvers will be added.
+    `Muscade.jl` is under development: 
+    - Functionality 
+    - Testing 
+    - Documentation
+    - Performonance
+    are all work in progress, and APIs may still evolve.
 
 # [Purpose](@id purpose)
 

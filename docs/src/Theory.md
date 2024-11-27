@@ -4,15 +4,15 @@
 
 `Muscade` introduces 3 *classes* of degrees of freedom (dofs). 
 
-**Xdofs** are the dofs normaly encountered in normal "forward" FEM analysis.  They provide a discrete representation of the response of the system. There is a one-to-one relation (a "duality") between the ``X``dofs and the *residuals* ``R``, which are the discretized form of he differential equations we seek to solve. In forward FEM, we seek to solve a problem of the form
+**X dofs** are the dofs normaly encountered in normal "forward" FEM analysis.  They provide a discrete representation of the response of the system. There is a one-to-one relation (a "duality") between the ``X``dofs and the *residuals* ``R``, which are the discretized form of he differential equations we seek to solve. In forward FEM, we seek to solve a problem of the form
 
 ```math
 \forall t, R(X(t),t)=0
 ```
 
-**Udofs** are additional dofs that can be used to represent additional loads on the system. Like ``X``dofs, ``U``dofs are time-dependent. Unlike ``X``dofs, there is no residual (no new equations) corresponding to them.
+**U dofs** are additional dofs that can be used to represent additional loads on the system. Like ``X``dofs, ``U``dofs are time-dependent. Unlike ``X``dofs, there is no residual (no new equations) corresponding to them.
 
-**Adofs** are additional dofs that can be used to parameterise the model. Adofs are *not* time-dependant,and there are no residuals corresponing to them.
+**A dofs** are additional dofs that can be used to parameterise the model. Adofs are *not* time-dependant,and there are no residuals corresponing to them.
 
 Equilibrium now requires
 

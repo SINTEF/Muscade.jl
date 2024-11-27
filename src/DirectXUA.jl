@@ -310,7 +310,7 @@ The solver does not yet support interior point methods.
                       vectors (over the steps) of `State`s of the model (for debugging 
                       non-convergence). 
 Setting the following flags to `true` will improve the sparsity of the system. But setting
-a flag to `true` when the condition isn't met causes the Hessian to be wrong, slowing convergence.                      
+a flag to `true` when the condition isn't met causes the Hessian to be wrong, which is detrimental for convergence.                      
 - `Xwhite=false`      `true` if response measurement error is a white noise process.
 - `XUindep=false`     `true` if response measurement error is independant of `U`
 - `UAindep=false`     `true` if `U` is independant of `A`
