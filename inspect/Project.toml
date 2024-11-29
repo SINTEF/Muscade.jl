@@ -1,5 +1,6 @@
 [deps]
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+Debugger = "31a5f54b-26ea-5ae9-a837-f05ce5417438"
 GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
 Interpolations = "a98d9a8b-a2ab-59e6-89dd-64a1c18fca59"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
