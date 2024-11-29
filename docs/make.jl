@@ -1,9 +1,12 @@
 nodocstr(str) =  replace(str, r"(*ANYCRLF)^\"\"\"$.*?^\"\"\"$"ms => "")
 
+#Assumes that pwd() is docs
 docs    = @__DIR__
 muscade = normpath(joinpath(docs,".."))
 docsrc  = joinpath(docs,"src")
+examplessrc = normpath(joinpath(docs,"..","examples"))
 
+using Pkg
 Pkg.activate(docs) 
 
 using Muscade, Muscade.BeamElements, Muscade.SdofElements
@@ -11,7 +14,11 @@ using Documenter, Literate, DocumenterCitations,Printf
 
 cp(joinpath(muscade,"LICENSE.md"),joinpath(docsrc,"LICENSE.md"),force=true)
 
-#Literate.markdown(joinpath(docsrc,"tutorial1.jl"),docsrc)
+examples = ["StaticAnalysisBeam","DecayAnalysis"]
+for ex ∈ examples
+        Literate.markdown(joinpath(examplessrc,@sprintf("%s.jl",ex)),docsrc)
+end
+
 els = ["SdofElements","BeamElements"]
 for el ∈ els
         Literate.markdown(joinpath(muscade,"src","Elements",@sprintf("%s.jl",el)),docsrc,
@@ -25,7 +32,8 @@ makedocs(sitename ="Muscade.jl",
         modules   = [Muscade, Muscade.BeamElements, Muscade.SdofElements],
         format    = Documenter.HTML(    prettyurls          = false,
                                         sidebar_sitename    = false,
-                                        size_threshold_warn = 256*1024,                 
+                                        size_threshold_warn = 256*1024,
+                                        # example_size_threshold = nothing,                 
                                         size_threshold      = nothing),
         plugins   = [bib],
         pages     = ["index.md",
@@ -40,7 +48,7 @@ makedocs(sitename ="Muscade.jl",
                                             "Memory.md",
                                             "Adiff.md",
                                             "litterature.md"],
-#                     "Demo tutorial" => "tutorial1.md",  # source for this is Muscade/docs/src/tutorial1.jl NB: *.jl
+                    "Examples" => [@sprintf("%s.md",ex) for ex∈examples], 
                      "LICENSE.md"],
                      source  = "src",
                      build   = "build"                 

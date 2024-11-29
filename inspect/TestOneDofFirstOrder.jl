@@ -81,7 +81,7 @@ e5             = addelement!(modelXUA,SingleDofCost,[n1];class=:X,field=:surge, 
 # setscale!(modelXUA;scale=myScaling,Λscale=1e2)
 
 #Solve inverse problem
-initialstateXUA    = initialize!(modelXUA;time=0.)]]
+initialstateXUA    = initialize!(modelXUA;time=0.)
 stateXUA         = solve(DirectXUA{1,0,1};initialstate=initialstateXUA,time=T,
                         maxiter=100,saveiter=true,fastresidual=true,
                         maxΔx=1e-3,maxΔλ=Inf,maxΔu=1e-3,maxΔa=1e-3)

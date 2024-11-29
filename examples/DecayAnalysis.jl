@@ -1,10 +1,12 @@
-module TestFloaterMotions
-using Muscade,StaticArrays,LinearAlgebra,Interpolations,GLMakie
+# # Estimating model parameters
+# 
+# We estimate the mass and damping matrices of a coupled linear oscillator (floater moving in the surge, sway and yaw) based on a decay tests
+# In the following, we define the necessary element and residual function describing the dynamic behaviour of the floater. 
+using Muscade,StaticArrays,Interpolations,GLMakie
 
 fold(x::SVector{6}) = SMatrix{3,3}( x[1],x[2],x[3],
                                     x[2],x[4],x[5],
                                     x[3],x[5],x[6])
-
 
 const floatermotion  = (:surge,:sway,:yaw)
 const idx    = (:11,:12,:16,:22,:26,:66)
@@ -30,6 +32,8 @@ Muscade.doflist(::Type{<:FloaterOnCalmWater}) = (inod = (ntuple(i-> 1,3)...,ntup
     return r₀+r₁+r₂-u,  noFB
 end
 
+# This is a taylor-made cost element where the cost is made dependent on the iteration number. In practice, this is used to first solve an XU problem (costs on A are prohibitive) before solving the actual XUA problem.
+
 struct SingleDecayAcost{Field,Tcost,Tcostargs} <: AbstractElement
     cost     :: Tcost     
     costargs :: Tcostargs
@@ -47,9 +51,9 @@ end
 # Define stiffness, damping and mass matrix for the true system
 K         = fold(SVector{6}([1.0,    0.0,     0.0,     1.0,    0.0,     1.0]))
 C         = fold(SVector{6}([0.25,   -0.2,     0.1,     0.15,   -0.15,     0.03]))
-M         = fold(SVector{6}([1.0,    0.1,     0.2,     0.5,     0.1,     0.1]))
+M         = fold(SVector{6}([1.0,    0.1,     0.2,     0.5,     0.1,     0.1]));
 
-#Solve direct problem
+# Solve direct problem
 model     = Model(:MooredFloater)
 n1        = addnode!(model,𝕣[0,0,0])  
 e1        = addelement!(model,FloaterOnCalmWater,[n1]; K,C,M)
@@ -58,41 +62,40 @@ initialstate    = setdof!(initialstate,[2.0];   field=:surge,   nodID=[n1], orde
 initialstate    = setdof!(initialstate,[1.0];    field=:sway,    nodID=[n1], order=0)                                          
 initialstate    = setdof!(initialstate,[-5.0];  field=:yaw,     nodID=[n1], order=0)                                          
 T               = 0.1 *(1:250)
-state           = solve(SweepX{2};  initialstate,time= T)
+state           = solve(SweepX{2};  initialstate,time= T,verbose=false);
 surge   = [s.X[1][1] for s∈state]
 sway    = [s.X[1][2] for s∈state]
-yaw     = [s.X[1][3] for s∈state]
+yaw     = [s.X[1][3] for s∈state];
 
 # Create fake measurements
 surgeMeas = surge   + .05 * randn(length(T))
 swayMeas = sway     + .05 * randn(length(T))
-yawMeas = yaw       + .1 * randn(length(T))
+yawMeas = yaw       + .1 * randn(length(T));
 
 # Create intial guesses for M and C
 Cguess         = fold(SVector{6}([0.1,   -0.1,     0.1,     0.1,   -0.1,     0.1]))
-Mguess         = fold(SVector{6}([1.0,    1.0,     1.0,     1.0,    1.0,     1.0]))
+Mguess         = fold(SVector{6}([1.0,    1.0,     1.0,     1.0,    1.0,     1.0]));
 
-# Could also be done randomly
-# maxDevToModel = 0.9; 
-# devToModelM = 1. .+ maxDevToModel*((rand(6).-.5)*2); 
-# devToModelC = 1. .+ maxDevToModel*((rand(6).-.5)*2);
-# Mguess = M .* fold(devToModelM[@SVector [i for i∈1:6 ]])
-# Cguess = C .* fold(devToModelC[@SVector [i for i∈1:6 ]])
+#src Could also be done randomly
+#src maxDevToModel = 0.9; 
+#src devToModelM = 1. .+ maxDevToModel*((rand(6).-.5)*2); 
+#src devToModelC = 1. .+ maxDevToModel*((rand(6).-.5)*2);
+#src Mguess = M .* fold(devToModelM[@SVector [i for i∈1:6 ]])
+#src Cguess = C .* fold(devToModelC[@SVector [i for i∈1:6 ]])
 
 # Create XUA model
 modelXUA     = Model(:MooredFloater)
 n1        = addnode!(modelXUA,𝕣[0,0,0])  
-e1        = addelement!(modelXUA,FloaterOnCalmWater,[n1]; K,C=Cguess,M=Mguess)
-
+e1        = addelement!(modelXUA,FloaterOnCalmWater,[n1]; K,C=Cguess,M=Mguess);
 # Assign costs to unknown forces
 Quu       = @SVector [0.05 ^-2 for i=1:3 ]  
-e2        = [addelement!(modelXUA,SingleDofCost     ,[n1]; class=:U,field=f           ,    cost=(u,t)-> 0.5*Quu[i]*u^2)  for (i,f)∈enumerate(floatermotion)]
+e2        = [addelement!(modelXUA,SingleDofCost     ,[n1]; class=:U,field=f           ,    cost=(u,t)-> 0.5*Quu[i]*u^2)  for (i,f)∈enumerate(floatermotion)];
 # Assign costs to variations of model parameters (wrt guess).
 fac       = [256,128,64,32,16,8,4,2,1] 
 QCaa      = @SVector [.1 ^-2 for i=1:6 ]  
 e3        = [addelement!(modelXUA,SingleDecayAcost  ,[n1];          field=f,fac,           cost=(a  )-> 0.5*QCaa[i]/length(T)*a^2) for (i,f)∈enumerate((:C11,:C12,:C16,:C22,:C26,:C66))] 
 QMaa      = @SVector [.1 ^-2 for i=1:6 ]  
-e4        = [addelement!(modelXUA,SingleDecayAcost  ,[n1];          field=f,fac,           cost=(a  )-> 0.5*QMaa[i]/length(T)*a^2) for (i,f)∈enumerate((:M11,:M12,:M16,:M22,:M26,:M66))] 
+e4        = [addelement!(modelXUA,SingleDecayAcost  ,[n1];          field=f,fac,           cost=(a  )-> 0.5*QMaa[i]/length(T)*a^2) for (i,f)∈enumerate((:M11,:M12,:M16,:M22,:M26,:M66))];
 # Assign costs to measurement errors
 surgeInt    = linear_interpolation(T, surgeMeas)
 swayInt     = linear_interpolation(T, swayMeas)
@@ -102,29 +105,25 @@ yawInt      = linear_interpolation(T, yawMeas)
 @once devYaw(yaw,t)         = 1e-1 ^-2 * (yaw-yawInt(t))^2
 e5             = addelement!(modelXUA,SingleDofCost,[n1];class=:X,field=:surge,    cost=devSurge)
 e6             = addelement!(modelXUA,SingleDofCost,[n1];class=:X,field=:sway,     cost=devSway)
-e7             = addelement!(modelXUA,SingleDofCost,[n1];class=:X,field=:yaw,      cost=devYaw)
+e7             = addelement!(modelXUA,SingleDofCost,[n1];class=:X,field=:yaw,      cost=devYaw);
 
-##Setting scale to improve convergence
-#myScaling = (   X=(surge=1.,    sway=1.,    yaw=1.),
-#                U=(surge=1e-1,  sway=1e-1,  yaw=1e-1),
-#                A=( C11=1e-1,C12=1e-1,C16=1e-1,C22=1e-1,C26=1e-1,C66=1e-1,
-#                    M11=1e-1,M12=1e-1,M16=1e-1,M22=1e-1,M26=1e-1,M66=1e-1))
-#setscale!(modelXUA;scale=myScaling,Λscale=1e2)
+#src Setting scale to improve convergence
+#src myScaling = (   X=(surge=1.,    sway=1.,    yaw=1.),
+#src                U=(surge=1e-1,  sway=1e-1,  yaw=1e-1),
+#src                A=( C11=1e-1,C12=1e-1,C16=1e-1,C22=1e-1,C26=1e-1,C66=1e-1,
+#src                    M11=1e-1,M12=1e-1,M16=1e-1,M22=1e-1,M26=1e-1,M66=1e-1))
+#src setscale!(modelXUA;scale=myScaling,Λscale=1e2)
 
 #Solve inverse problem
 initialstateXUA    = initialize!(modelXUA;time=0.)
 stateXUA         = solve(DirectXUA{2,0,1};initialstate=initialstateXUA,time=T,
                         maxiter=100,saveiter=true,fastresidual=true,
-                        maxΔx=1e-5,maxΔλ=Inf,maxΔu=1e-5,maxΔa=1e-5)
-
-lastIter = findlastassigned(stateXUA)
-# for niter=1:lastIter
-niter = lastIter
+                        maxΔx=1e-5,maxΔλ=Inf,maxΔu=1e-5,maxΔa=1e-5);
 
 # Fetch and display estimated model parameters
+lastIter = findlastassigned(stateXUA); niter = lastIter; 
 Mest      = Mguess .* fold(exp10.(SVector{6}(stateXUA[niter][1].A[1:6 ]))) 
-Cest      = Cguess .* fold(exp10.(SVector{6}(stateXUA[niter][1].A[7:12]))) 
-
+Cest      = Cguess .* fold(exp10.(SVector{6}(stateXUA[niter][1].A[7:12])));  
 # Fetch response and loads 
 surgeRec   = [s.X[1][1] for s∈stateXUA[niter]]
 swayRec    = [s.X[1][2] for s∈stateXUA[niter]]
@@ -136,11 +135,12 @@ req = @request r₂,r₁,r₀
 loads = getresult(stateXUA[niter],req,[e1])
 inertiaLoads = [loads[i][:r₂] for i∈1:length(T)]
 dampingLoads = [loads[i][:r₁] for i∈1:length(T)]
-stiffnessLoads = [loads[i][:r₀] for i∈1:length(T)]
+stiffnessLoads = [loads[i][:r₀] for i∈1:length(T)];
+
+# Create a figure with the results
+fig      = Figure(size = (2000,1000));
 
 # Display response
-fig      = Figure(size = (2000,1000))
-# display(fig) # open interactive window (gets closed down by "save")
 ax=Axis(fig[1,1], ylabel="Surge", yminorgridvisible = true,xminorgridvisible = true)
 scatter!(fig[1,1],T,surgeMeas, color=RGBf(.8, .8, .8),        label=L"\text{Measurements}")
 lines!(fig[1,1],T,surge,       color=:black, linestyle=:dash, label=L"\text{Exact direct solution } (M,C,K)")
@@ -205,10 +205,11 @@ ax=Axis(fig[3,3], limits=(nothing,nothing,0,2),
 barplot!(ax,[1,2,3,4,5,6], [Mest[3,1]/M[3,1],Mest[3,2]/M[3,2],Mest[3,3]/M[3,3], Cest[3,1]/C[3,1],Cest[3,2]/C[3,2],Cest[3,3]/C[3,3]],
     bar_labels = :y,color=:white,strokewidth=1,strokecolor=[:red,:red,:red,:blue,:blue,:blue])
 
-
-# save("solution"* string(niter,pad=2) *".png",fig)
-display(fig) # open interactive window (gets closed down by "save")
-# end 
-
+currentDir = @__DIR__
+if occursin("build", currentDir)
+    save(currentDir*"\\..\\src\\assets\\decay.png",fig)
+elseif occursin("examples", currentDir)
+    save(currentDir*"\\decay.png",fig)
 end
-;
+
+# ![Result](assets/decay.png)
