@@ -80,8 +80,8 @@ scatter!(fig[4,1],[xgp1;xgp2],  [Mgp1_;Mgp2_],          label="Muscade/beam");
 
 currentDir = @__DIR__
 if occursin("build", currentDir)
-    save(currentDir*"\\..\\src\\assets\\beam.png",fig)
+    save(normpath(joinpath(currentDir,"..","src","assets","beam.png")),fig)
 elseif occursin("examples", currentDir)
-    save(currentDir*"\\beam.png",fig)
-end;
+    save(normpath(joinpath(currentDir,"beam.png")),fig)
+end
 # ![Result](assets/beam.png)

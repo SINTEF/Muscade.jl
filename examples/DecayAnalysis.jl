@@ -207,9 +207,9 @@ barplot!(ax,[1,2,3,4,5,6], [Mest[3,1]/M[3,1],Mest[3,2]/M[3,2],Mest[3,3]/M[3,3], 
 
 currentDir = @__DIR__
 if occursin("build", currentDir)
-    save(currentDir*"\\..\\src\\assets\\decay.png",fig)
+    save(normpath(joinpath(currentDir,"..","src","assets","decay.png")),fig)
 elseif occursin("examples", currentDir)
-    save(currentDir*"\\decay.png",fig)
+    save(normpath(joinpath(currentDir,"decay.png")),fig)
 end
 
 # ![Result](assets/decay.png)
