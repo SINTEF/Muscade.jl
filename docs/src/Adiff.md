@@ -2,7 +2,7 @@
 
 `Muscade` has its own implementation of forward automatic differentiation for historical reasons: Prototypes automaticdifferentiation of `Muscade` where developed in parallel with [`ForwardDiff.jl`](https://juliadiff.org/ForwardDiff.jl/stable/).  While the inner workings of [`ForwardDiff.jl`](https://juliadiff.org/ForwardDiff.jl/stable/) and `Muscade`'s version are similar ( with `ForwardDiff.jl` probably having better performance), the API are quite different.
 
-`Muscade` evaluates second derivative of the Lagrangian, using neste *forward* differentiation, which is far from optimal.  An ambition is to make use of reverse differentiation (using [`Zygote.jl`](https://fluxml.ai/Zygote.jl/latest/), [`Enzyme.jl`](https://docs.sciml.ai/Enzyme/stable/) or similar).
+`Muscade` evaluates second derivative of the Lagrangian, using dneste *forward* differentiation, which is far from optimal.  An ambition is to make use of reverse differentiation (using [`Zygote.jl`](https://fluxml.ai/Zygote.jl/latest/), [`Enzyme.jl`](https://docs.sciml.ai/Enzyme/stable/) or similar).
 
 `Muscade`s automatic differentiation is used as follows:
 

@@ -36,11 +36,8 @@ module Runtest
             include("TestDirectXUA.jl")
         end
         @testset "TestDirectXUA001" begin
-            include("TestStaticXUA.jl")
+            include("TestDirectXUA001.jl")
         end
-        # @testset "TestStaticXUAwithineq" begin
-        #     include("TestStaticXUAwithineq.jl")
-        # end
         @testset "TestScale" begin
             include("TestScale.jl")
         end

@@ -57,8 +57,6 @@ module Muscade
     include("SweepX.jl")
     export SweepX
 
-    include("StaticXUA.jl")
-    export StaticXUA
     include("DirectXUA.jl")
     export DirectXUA
 
@@ -72,15 +70,8 @@ module Muscade
     export draw,request2draw
 
     include("Unit.jl")
-#    export unit,←,→,convert
     export ←,→
 
     include("ElementTestTools.jl")
-#    export BeamElements,SdofElements
 
-    # The files below each define a submodule
-    # Muscade does not export the submodules
-    # but submodules are expected to export their core functionality
-    include("Elements/BeamElements.jl")
-    include("Elements/SdofElements.jl")
 end

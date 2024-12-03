@@ -1,4 +1,3 @@
-# # EulerBeam3D
 # TODO
 # 1) This code is for static analysis. Use `Muscade.motion` to create Adiffs that will facilitate the dynamic computation.
 # 2) This code is not A-parameterized. Arguably, we do not want to A-parameterize the element, just the material:
@@ -8,16 +7,14 @@
 # 3) U-dofs, using a "isoparametric" formulation
 # 4) performance.  Liberal use of nested Adiff makes code simple, but not fast...
 
-module BeamElements
+include("Rotations.jl")
+
+# # Euler beam element
 
 using StaticArrays, LinearAlgebra
 using Muscade
 
-export EulerBeam3D, BeamCrossSection
-
-include("Rotations.jl")
-
-# Cross section "material"
+## Cross section "material"
 
 struct BeamCrossSection
     EA :: 𝕣
@@ -33,7 +30,7 @@ BeamCrossSection(;EA=EA,EI=EI,GJ=GJ) = BeamCrossSection(EA,EI,GJ)
     return f₁,m,fₑ
 end
 
-# Static Euler beam element
+## Static Euler beam element
 
 const ngp        = 2
 const ndim       = 3
@@ -132,4 +129,3 @@ const v3   = SVector{3}
     return R,noFB  
 end
 
-end

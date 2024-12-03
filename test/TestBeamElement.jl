@@ -1,24 +1,21 @@
-module TestEulerBeam3D
+module TestBeamElements
 
-using Test, Muscade, Muscade.BeamElements,StaticArrays, LinearAlgebra
+using Test, Muscade, StaticArrays, LinearAlgebra
+include("../examples/BeamElements.jl")
 
 a = SA[1,0,0]
 b = SA[0,1,1]
-r = BeamElements.adjust(a,b)
-R = BeamElements.Rodrigues(r)
+r = adjust(a,b)
+R = Rodrigues(r)
 u = R*a
 
 v1      = variate{1,3}(SA[.1,.2,.3])
-M1      = BeamElements.Rodrigues(v1)
-w1,w∂v1 = value_∂{1,3}(BeamElements.Rodrigues⁻¹(M1))
+M1      = Rodrigues(v1)
+w1,w∂v1 = value_∂{1,3}(Rodrigues⁻¹(M1))
 
 v2      = variate{1,3}(SA[1e-7,2e-7,1e-8])
-M2      = BeamElements.Rodrigues(v2)
-w2,w∂v2 = value_∂{1,3}(BeamElements.Rodrigues⁻¹(M2))
-
-v3      = variate{1,3}(SA[1e-7,2e-7,1e-8])
-M3      = BeamElements.Rodrigues(v3)
-w3,w∂v3 = value_∂{1,3}(BeamElements.Rodrigues⁻¹(M3))
+M2      = Rodrigues(v2)
+w2,w∂v2 = value_∂{1,3}(Rodrigues⁻¹(M2))
 
 
 @testset "rotations" begin
@@ -28,11 +25,7 @@ w3,w∂v3 = value_∂{1,3}(BeamElements.Rodrigues⁻¹(M3))
     @test w∂v1 ≈ I#[1 0 0;0 1 0;0 0 1]
     @test v2 ≈ w2
     @test w∂v2 ≈ I#[1 0 0;0 1 0;0 0 1]
-    @test v3 ≈ w3
-    @test w∂v3 ≈ I#[1 0 0;0 1 0;0 0 1]
 end
-
-
 
 ###
 

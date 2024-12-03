@@ -1,6 +1,4 @@
-module SdofElements
 using Muscade,StaticArrays
-export DryFriction
 
 # # DryFriction
 #    
@@ -20,8 +18,6 @@ end
 # We provide a constructor, which will be called by `AddElement!`. The keyword arguments can, or must be given by the user when calling  `AddElement!`, and are passed on
 # to the constructor. Note that the constructor is type unstable: it gets `fields` and `fieldf` as values and uses them as type parameters. This is not deemed to be a problem for
 # the constructor (type instability in `residual` would be another matter)
-#
-# See [`Muscade.SdofElements.DryFriction`](@ref) for reference.
 """
     DryFriction <: AbstractElement
 
@@ -76,4 +72,3 @@ end
 Muscade.doflist( ::Type{DryFriction{Fx,Ff}}) where{Fx,Ff} =
     (inod =(1 ,1 ), class=(:X,:X), field=(Fx,Ff)) 
 
-end

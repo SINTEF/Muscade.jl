@@ -1,8 +1,10 @@
 module TestNewmarkX
 using Test
-using Muscade, Muscade.SdofElements
+using Muscade
+
 
 include("SomeElements.jl")
+include("../examples/DryFriction.jl")
 
 model           = Model(:TestModel)
 node            = addnode!(model,𝕣[])

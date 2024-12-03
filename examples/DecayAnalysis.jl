@@ -32,7 +32,7 @@ Muscade.doflist(::Type{<:FloaterOnCalmWater}) = (inod = (ntuple(i-> 1,3)...,ntup
     return r₀+r₁+r₂-u,  noFB
 end
 
-# This is a taylor-made cost element where the cost is made dependent on the iteration number. In practice, this is used to first solve an XU problem (costs on A are prohibitive) before solving the actual XUA problem.
+# This is a tailor-made cost element where the cost is made dependent on the iteration number. In practice, this is used to first solve an XU problem (costs on A are prohibitive) before solving the actual XUA problem.
 
 struct SingleDecayAcost{Field,Tcost,Tcostargs} <: AbstractElement
     cost     :: Tcost     

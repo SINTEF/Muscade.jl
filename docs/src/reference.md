@@ -1,30 +1,30 @@
-# [Reference manual](@id reference)
+# [Reference](@id reference)
 
 ## Constants
 
 ```@autodocs
-Modules = [Muscade, Muscade.BeamElements, Muscade.SdofElements]
+Modules = [Muscade]
 Order   = [:constant]
 ```
 
 ## Types
 
 ```@autodocs
-Modules = [Muscade, Muscade.BeamElements, Muscade.SdofElements]
+Modules = [Muscade]
 Order   = [:type]
 ```
 
 ## Functions
 
 ```@autodocs
-Modules = [Muscade, Muscade.BeamElements, Muscade.SdofElements]
+Modules = [Muscade]
 Order   = [:function]
 ```
 
 ## Macros
 
 ```@autodocs
-Modules = [Muscade, Muscade.BeamElements, Muscade.SdofElements]
+Modules = [Muscade]
 Order   = [:macro]
 ```
 

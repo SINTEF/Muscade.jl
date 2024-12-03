@@ -1,8 +1,10 @@
-# module TestEulerBeam3D
-
 # # Static analysis of a beam
 #
-using Muscade, Muscade.BeamElements, StaticArrays, GLMakie
+using Muscade, StaticArrays, GLMakie
+
+include("BeamElements.jl")
+
+# # Analysis
 
 # Defining the beam properties and loading. 
 # Beam clamped at both ends, subjected to uniform distributed load of intensity q  

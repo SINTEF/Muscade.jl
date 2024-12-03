@@ -59,7 +59,7 @@ end
     ElementCost{Teleobj,Treq,Tcost,Tcostargs} <: AbstractElement
 
 An element to apply costs on another "target" element's dofs and element-results.  
-The target element must *not* be added separatly to the model.  Instead, the 
+The target element must *not* be added separately to the model.  Instead, the 
 `ElementType`, and the named arguments to the target element are provided
 as input to the `ElementCost` constructor.
 
@@ -430,7 +430,7 @@ end
     ElementConstraint{Teleobj,λinod,λfield,Nu,Treq,Tg,Tgargs,Tmode} <: AbstractElement
 
 An element to apply optimisation equality/inequality constraints on the element-results of 
-another "target" element. The target element must *not* be added separatly to the model.  Instead, the 
+another "target" element. The target element must *not* be added separately to the model.  Instead, the 
 `ElementType`, and the named arguments to the target element are provided as input to the 
 `ElementConstraint` constructor.
 
