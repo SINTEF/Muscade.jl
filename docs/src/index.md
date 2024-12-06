@@ -8,7 +8,7 @@ CurrentModule = Muscade
     - Functionality 
     - Testing 
     - Documentation
-    - Performonance
+    - Performance
     are all work in progress, and APIs may still evolve.
 
 # [Purpose](@id purpose)

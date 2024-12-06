@@ -1,7 +1,7 @@
 name = "Muscade"
 uuid = "93488820-1883-11ed-0c34-05177b029e4d"
 authors = ["Philippe Maincon <philippe.maincon@sintef.no>"]
-version = "0.4.0rc"
+version = "0.4.0"
 
 [deps]
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
