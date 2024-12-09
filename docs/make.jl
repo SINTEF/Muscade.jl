@@ -68,7 +68,7 @@ makedocs(sitename ="Muscade.jl",
 
 #deploydocs(muscade = "github.com/SINTEF/Muscade.jl.git",target="build",devbranch="dev")
 
-# https://sintef.github.io/Muscade.jl/v0.3.6/index.html
-# https://sintef.github.io/Muscade.jl/stable/index.html
+# https://sintef.github.io/Muscade.jl/dev
+# https://sintef.github.io/Muscade.jl/stable
 
 Pkg.activate(muscade)
