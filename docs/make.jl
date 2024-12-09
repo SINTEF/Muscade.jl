@@ -31,8 +31,6 @@ end
 for ex ∈ examples
         Literate.markdown(joinpath(examplessrc,@sprintf("%s.jl",ex)),
                         docsrc, 
-                        #execute=true, # execute the *.jl and put their output in the *.md files generated
-                        #codefence= "````julia" => "````", # prevent execution of the code snippets included in the *.md file
                         preprocess = replace_includes)
 end
 
