@@ -1,10 +1,10 @@
-nodocstr(str) =  replace(str, r"(*ANYCRLF)^\"\"\"$.*?^\"\"\"$"ms => "")
 
 #Assumes that pwd() is docs
-docs    = @__DIR__
-muscade = normpath(joinpath(docs,".."))
-docsrc  = joinpath(docs,"src")
+docs        = @__DIR__
+muscade     = normpath(joinpath(docs,".."))
+docsrc      = joinpath(docs,"src")
 examplessrc = normpath(joinpath(docs,"..","examples"))
+examples    = ["StaticBeamAnalysis","DecayAnalysis","DryFriction"]
 
 using Pkg
 Pkg.activate(docs) 
@@ -16,12 +16,12 @@ cp(joinpath(muscade,"LICENSE.md"),joinpath(docsrc,"LICENSE.md"),force=true)
 
 ## Literate
 
-examples = ["StaticBeamAnalysis","DecayAnalysis","DryFriction"]
 
-function replace_includes(str)
+nodocstr(str) =  replace(str, r"(*ANYCRLF)^\"\"\"$.*?^\"\"\"$"ms => "") # Take """ somedocstring """ out of str
+function replace_includes(str)  # include source file into mother file
         included = ["BeamElements.jl","Rotations.jl"] # in this order
         path = "examples/"
-        for ex in included
+        for ex ∈ included
                 content = read(path*ex, String)
                 str     = replace(str, "include(\"$(ex)\")" => content)
         end
@@ -29,15 +29,12 @@ function replace_includes(str)
 end
 
 for ex ∈ examples
-        Literate.markdown(joinpath(examplessrc,@sprintf("%s.jl",ex)),docsrc, preprocess = replace_includes)
+        Literate.markdown(joinpath(examplessrc,@sprintf("%s.jl",ex)),
+                        docsrc, 
+                        #execute=true, # execute the *.jl and put their output in the *.md files generated
+                        #codefence= "````julia" => "````", # prevent execution of the code snippets included in the *.md file
+                        preprocess = replace_includes)
 end
-
-# els = ["DryFriction","BeamElements"]
-# for el ∈ els
-#         Literate.markdown(joinpath(muscade,"examples",@sprintf("%s.jl",el)),docsrc,
-#                        execute=false,codefence= "````julia" => "````", # prevent execution of the code by Literate and Documenter
-#                        preprocess = replace_includes) 
-# end
 
 ## DocumenterCitations
 
@@ -47,6 +44,7 @@ bib = CitationBibliography(joinpath(docsrc, "ref.bib"); style=:authoryear) #:num
 
 makedocs(sitename ="Muscade.jl",
         modules   = [Muscade],
+        doctest = false, # we do not use doctest, we run Literate.jl on mydemo.jl files that are included in a unit test file
         format    = Documenter.HTML(    prettyurls          = false,
                                         sidebar_sitename    = false,
                                         size_threshold_warn = 256*1024,

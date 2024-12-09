@@ -62,7 +62,7 @@ module Runtest
         @testset "TestFiniteDifferences" begin
             include("TestFiniteDifferences.jl")
         end
-        doctest(Muscade)
+        # doctest(Muscade) we do not use doctest, we run Literate.jl on mydemo.jl files that are included in a unit test file
     end
 end
 

@@ -6,6 +6,8 @@ on:
   push:
     branches:
       - main
+      - dev
+      - doc
     tags: '*'
   pull_request:
 
