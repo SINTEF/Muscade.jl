@@ -1,5 +1,5 @@
 name: Documentation
-# See https://documenter.juliadocs.org/stable/man/hosting/ 
+# See  https://documenter.juliadocs.org/stable/man/hosting/ 
 # Should host doc at https://sintef.github.io/Muscade.jl/dev 
 # or                 https://sintef.github.io/Muscade.jl/stable 
 on:
