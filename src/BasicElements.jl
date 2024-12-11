@@ -25,7 +25,7 @@ An element to apply costs on combinations of dofs.
 # Example
 ```
 ele1 = addelement!(model,DofCost,[nod1],xinod=(1,),field=(:tx1,),
-       class=:I,cost=(X,U,A,t)->X[1]^2
+       class=:I,cost=(X,U,A,t;X0)->(X[1]-X0)^2,costargs=(;X0=0.27)
 ```
 
 See also: [`SingleDofCost`](@ref), [`ElementCost`](@ref), [`addelement!`](@ref)  
@@ -87,9 +87,11 @@ From the target element once can request
 
 # Example
 ```
-@once cost(eleres,X,U,A,t) = eleres.Fh^2
+@once cost(eleres,X,U,A,t;Fh0) = (eleres.Fh-Fh0)^2
 ele1 = addelement!(model,ElementCost,[nod1];req=@request(Fh),
-                   cost=cost,ElementType=AnchorLine,
+                   cost=cost,
+                   costargs = (;Fh0=0.27)
+                   ElementType=AnchorLine,
                    elementkwargs=(Λₘtop=[5.,0,0], xₘbot=[250.,0], L=290., buoyancy=-5e3))
 ```
 
@@ -154,8 +156,8 @@ end
 """
     SingleUdof{XField,Ufield,Tcost} <: AbstractElement
 
-An that creates a Udof, and associates a cost to its value.
-Thev alue of the Udof is applied as a load to a Xdof on the same node.  
+An element that creates a Udof, and associates a cost to its value.
+The value of the Udof is applied as a load to a Xdof on the same node.  
 
 # Named arguments to the constructor
 - `Xfield::Symbol`.
@@ -186,7 +188,7 @@ SingleUdof(nod::Vector{Node};Xfield::Symbol,Ufield::Symbol,cost::Tcost,costargs:
 doflist( ::Type{SingleUdof{Tcost,Tcostargs,Xfield,Ufield}}) where{Tcost,Tcostargs,Xfield,Ufield} = (inod=(1,1),class=(:X,:U),field=(Xfield,Ufield))
 @espy function lagrangian(o::SingleUdof, Λ,X,U,A,t,SP,dbg)
     λ, u = Λ[1], ∂0(U)[1]
-    return o.cost(u)-λ*u,noFB
+    return o.cost(u,t,o.costargs...)-λ*u,noFB
 end    
 
 #-------------------------------------------------
