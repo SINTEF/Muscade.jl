@@ -174,7 +174,7 @@ The value of the Udof is applied as a load to a Xdof on the same node.
 using Muscade
 model = Model(:TestModel)
 node  = addnode!(model,𝕣[0,0])
-e     = addelement!(model,SingleUdofCost,[node];Xfield=:tx,Ufield=:utx,
+e     = addelement!(model,SingleUdof,[node];Xfield=:tx,Ufield=:utx,
                     costargs=(3.,),cost=(x,t,three)->(x/three)^2)
 ```    
 
