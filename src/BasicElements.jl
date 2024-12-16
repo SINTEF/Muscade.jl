@@ -16,7 +16,7 @@ An element to apply costs on combinations of dofs.
                                  if `class==:A`, `cost(A,costargs...)→ℝ` 
                                  `X` and `U` are tuples (derivates of dofs...), and `∂0(X)`,`∂1(X)`,`∂2(X)` 
                                  must be used by `cost` to access the value and derivatives of `X` (resp. `U`) 
-- `costargs::NTuple`
+- `[costargs::NTuple=() or NamedTuple] of additional arguments passed to `cost``
 
 
 # Requestable internal variables
@@ -71,7 +71,7 @@ as input to the `ElementCost` constructor.
                         `X` and `U` are tuples (derivates of dofs...), and `∂0(X)`,`∂1(X)`,`∂2(X)` 
                         must be used by `cost` to access the value and derivatives of `X` (resp. `U`).
                         `X`, `U` and `A` are the degrees of freedom of the element `ElementType`.
-- `costargs=(;)`        A named tuple of additional arguments to the cost function 
+- `[costargs::NTuple=() or NamedTuple] of additional arguments passed to `cost``
 - `ElementType`         The named of the constructor for the relevant element 
 - `elementkwargs`       A named tuple containing the named arguments of the `ElementType` constructor.     
 
@@ -103,7 +103,7 @@ struct ElementCost{Teleobj,Treq,Tcost,Tcostargs} <: AbstractElement
     cost     :: Tcost     
     costargs :: Tcostargs
 end
-function ElementCost(nod::Vector{Node};req,cost,costargs=(;),ElementType,elementkwargs)
+function ElementCost(nod::Vector{Node};req,cost,costargs=(),ElementType,elementkwargs)
     eleobj   = ElementType(nod;elementkwargs...)
     return ElementCost(eleobj,(eleres=req,),cost,costargs)
 end
@@ -126,7 +126,7 @@ An element with a single node, for adding a cost to a given dof.
 - `cost::Function`, where 
     - `cost(x::ℝ,t::ℝ[,costargs...]) → ℝ` if `class` is `:X` or `:U`, and 
     - `cost(x::ℝ,    [,costargs...]) → ℝ` if `class` is `:A`.
-- `costargs::NTuple=()`
+- `[costargs::NTuple=() or NamedTuple] of additional arguments passed to `cost``
 - `derivative::Int=0` 0, 1 or 2 - which time derivative of the dof enters the cost. 	    
 
 # Requestable internal variables
@@ -162,9 +162,8 @@ The value of the Udof is applied as a load to a Xdof on the same node.
 # Named arguments to the constructor
 - `Xfield::Symbol`.
 - `Ufield::Symbol`.
-- `cost::Function`, where 
-    `cost(u::ℝ,t::ℝ[,costargs...]) → ℝ` 
-- `[costargs::NTuple]`
+- `cost::Function`, where `cost(u::ℝ,t::ℝ[,costargs...]) → ℝ` 
+- `[costargs::NTuple=() or NamedTuple] of additional arguments passed to `cost``
 
 # Requestable internal variables
 - `cost`, the value of the cost.
