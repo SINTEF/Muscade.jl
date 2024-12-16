@@ -14,8 +14,6 @@ module Muscade
     export  value,VALUE,∂,value_∂ # \partial, \nabla
     export  constants,precedence,npartial,norm
 
-    include("Multiplex.jl")
-    
     include("Dots.jl")
     export dots,∘₀,∘₁,∘₂,⊗
 
