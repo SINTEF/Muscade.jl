@@ -297,18 +297,21 @@ The user can for example require
 draw(model;linewidth=2)
 ```
 
-The element's `draw` method *must* accept an arbitrary list of keyword arguments.  Keywords arguments not used by the method are automaticaly ignored.  In order not to fail if a *used*
-keyword argument is not provided by the user, the following syntax can be used in the element's `draw` method
+The element's `draw` method *must* accept an arbitrary list of keyword arguments.  Keywords arguments not used by the method are automaticaly ignored.  In order not to fail if a *used* keyword argument is not provided by the user, the following syntax can be used in the element's `draw` method.   
 
 ```julia
-linewith = default{:linewidth}(kwargs,2.)
+function Muscade.draw(...)
+    ...
+    linewith = default{:linewidth}(kwargs,2.)
+    ...
+end
 ```
 
 which can be read: if `kwargs.linewidth` exists, the set `linewidth` to its value, otherwise, set it to `2.`.
 
 The user has facilities to draw only selected element types or selected elements, so the element's `draw` method does not need to implement a switch on *wether* to draw.
 
-See [`examples/BeamElements.jl`](StaticBeamAnalysis.md) for an advanced example of implementation.
+See [`examples/BeamElements.jl`](StaticBeamAnalysis.md) for an example of implementation.
 
 ### Getting element results
 

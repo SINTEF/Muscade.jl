@@ -1,6 +1,3 @@
-# Default: an element asked to draw itself does nothing
-draw(::Type{<:AbstractElement}, axe,eleobj, Λ,X,U,A, t,SP,dbg;kwargs...) = nothing
-
 # Model drawing
 # typestable kernel
 function draw_(axe,dis::EletypDisassembler,eleobj,iele,state,dbg;kwargs...)  
