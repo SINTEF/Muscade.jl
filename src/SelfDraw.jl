@@ -1,4 +1,9 @@
-function draw_(axe,dis::EletypDisassembler,eleobj,iele,state,dbg;kwargs...)  # typestable kernel
+# Default: an element asked to draw itself does nothing
+draw(::Type{<:AbstractElement}, axe,eleobj, Λ,X,U,A, t,SP,dbg;kwargs...) = nothing
+
+# Model drawing
+# typestable kernel
+function draw_(axe,dis::EletypDisassembler,eleobj,iele,state,dbg;kwargs...)  
     nel      = length(iele)
     nXder    = length(state.X)
     nUder    = length(state.U) 
@@ -59,4 +64,5 @@ function draw(axe,state::State;kwargs...)   # whole model
         iele                = eachindex(eleobj)
         draw_(axe,dis,eleobj,iele,state,(ieletyp=ieletyp,);kwargs...) # call kernel
     end
-end    
+end   
+

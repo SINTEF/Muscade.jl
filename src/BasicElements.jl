@@ -114,7 +114,8 @@ doflist( ::Type{<:ElementCost{Teleobj}}) where{Teleobj} = doflist(Teleobj)
     ☼cost        = o.cost(eleres,X,U,A,t,o.costargs...) 
     return L+cost,FB
 end    
-
+draw(::Type{<:ElementCost{Teleobj}}, axe,eleobj, Λ,X,U,A, t,SP,dbg;kwargs...) where{Teleobj} = 
+      draw(Teleobj, axe,[eᵢ.eleobj for eᵢ∈eleobj], Λ,X,U,A, t,SP,dbg;kwargs...)
 """
     SingleDofCost{Derivative,Class,Field,Tcost} <: AbstractElement
 
@@ -513,6 +514,8 @@ doflist( ::Type{<:ElementConstraint{Teleobj,λinod,λfield}}) where{Teleobj,λin
     end
     return L,(λ=λ,g=gap,mode=m)
 end
+draw(::Type{<:ElementConstraint{Teleobj}}, axe,eleobj, Λ,X,U,A, t,SP,dbg;kwargs...) where{Teleobj} = 
+      draw(Teleobj, axe,[eᵢ.eleobj for eᵢ∈eleobj], Λ,X,U,A, t,SP,dbg;kwargs...)
 
 #-------------------------------------------------
 
