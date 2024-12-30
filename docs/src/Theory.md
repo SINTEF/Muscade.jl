@@ -28,11 +28,35 @@ To simplify the presentations in the following, we drop time ``t`` from the nota
 
 To make the problem well-posed again, we introduce a target function ``Q(X,U,A)``.  We then seek to make ``Q`` stationary (finding a local minimum or maximum), under the constraint ``R(X,U,A)=0``. Depending on the relevant application, the target function ``Q`` can represent different concepts.
 
+### Target function as financial value
 In design optimisation, one can associate a monetary value to ``A`` (building stronger costs more money), and to ``X`` (some system responses, including failure, would cost money). The objective is to find the design with the lowest associated cost.
 
-In a load estimation problem where part of the response is measured, we wish to find the most probable unknown load ``U`` (large loads are not likely) and response (a computed response ``X`` that drasticaly disagrees with the actual measurements is not likely) - under the constraint that load and response verify equilibrium.  In this case, we minimize the *surprisal* ``s = -\log(P)`` instead of maximizing ``P``.  Maximizing probabilities or making surprisal stationary is equivalent. However, since probabilities of independent variables multiply, the corresponding surprisals add, which fits into the system of elements that *add* contribution to the system of equations to be solved. Further, the surprisals are typicaly numericaly "kinder".
+### Target function as surprisal
+In a load estimation problem where part of the response is measured, we wish to find the most probable unknown load ``U`` (large loads are not likely) and response (a computed response ``X`` that drasticaly disagrees with the actual measurements is not likely) - under the constraint that load and response verify equilibrium.  In Muscade, this *must* be handled by minimizing the *surprisal* ``s = -\log(P)`` instead of maximizing the probability density ``P``. 
 
-## Lagrangian
+1) ``s`` and ``P`` have the same extrema, so finding a minimum of ``s`` does give a maximum of ``P``.  
+2) The joint probability density of independant random variables is equal to the *product* of each variable's probability density. As a conseqience, the joint surprisal of independant random variables is equal to the *sum* of each variable's surprisal. In forward finite element analysis, the load vectors and incremental matrices of elements are *added* into a system vector and system matrix.  Muscade extends this logic: contributions to the Lagrangian from various elements are *added* together.
+3) Generaly speaking, surprisals are numericaly better behaved that probability densities.  
+ 
+To understand the last point, consider a multinormal Gaussian probability density distribution and its surprisal:
+   
+```math
+\begin{aligned}
+P(X) &= (2\pi)^{-k/2} \det(Σ)^{-1/2} \exp \left(-\frac{1}{2} \left( X-\mu \right)^T \cdot \Sigma^{-1} \cdot \left( X-\mu \right) \right) \\
+s(X) &= -\log(X) \\
+     &= k + \frac{1}{2} \left( X-\mu \right)^T \cdot Q_{XX} \cdot \left( X-\mu \right)
+\end{aligned}
+```
+
+where ``k`` is a constant, which value does not affect the extremal ``X``, so ``k`` is ignored in contributions to the target function. ``Q_{XX}`` is the inverse of the covariance matrix ``\Sigma``. Importantly ``s`` is a quadratic function of ``X``: the Hessian is constant and has value ``Q_{XX}``.  A Newton-Rapshon algorithm solves the minimization of a quadratic function exactly, in one iteration.  Further, a Newton-Raphson algorithm solves the minimization of a quadratic function, constrained by linear constraints, exaclty, in one iteration.  By contrast, directly applying Newton-Raphson to setting to zero the derivative of a Gaussian distribution, tends to diverge.
+
+Hence, the code for an element defining a "cost" on a single dof ``X``, measured to a value ``v(t)`` with a Gaussian measurement error of standard deviation ``\sigma`` would implemented the function 
+
+```math
+Q(X,t) = \frac{1}{2} \frac{1}{\sigma^2} \left( X-v(t) \right)^2
+```
+
+## Constrained optimization
 
 Making ``Q`` stationary under the equilibrium constraints ``R(X,U,A)=0`` is equivalent to finding a stationary point (a saddle point) of the *Lagrangian*
 
