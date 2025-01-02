@@ -65,25 +65,25 @@ as input to the `ElementCost` constructor.
 
 # Named arguments to the constructor
 - `req`                 A request for element-results to be extracted from the target element, see [`@request`](@ref).
-                        The request is formulated as if adressed directly to the target element (no "prefixing" with 
-                        `eleres`, see "Requestable internal variables")
-- `cost`                a cost function `cost(eleres,X,U,A,t,costargs...)→ℝ`
+                        The request is formulated as if adressed directly to the target element.
+- `cost`                A cost function `cost(eleres,X,U,A,t,costargs...)→ℝ`. 
+                        `eleres` is the output of the above-mentionned request to the target element.     
                         `X` and `U` are tuples (derivates of dofs...), and `∂0(X)`,`∂1(X)`,`∂2(X)` 
                         must be used by `cost` to access the value and derivatives of `X` (resp. `U`).
                         `X`, `U` and `A` are the degrees of freedom of the element `ElementType`.
-- `[costargs::NTuple=() or NamedTuple] of additional arguments passed to `cost``
-- `ElementType`         The named of the constructor for the relevant element 
+- `[costargs::NTuple=() or NamedTuple]` Additional arguments passed to `cost`.
+- `ElementType`         The named of the constructor for the relevant element.
 - `elementkwargs`       A named tuple containing the named arguments of the `ElementType` constructor.     
-
 
 # Requestable internal variables
 
-From `ElementConstraint` one can request
-- `cost`               The value of the cost
-
-From the target element once can request
-- `eleres(...)`        where `...` is the list of requestables from the target element.  It must be "prefixed" by 
-                       `eleres` to prevent possible confusion with variables requestable from `ElementConstraint`.
+Not to be confused with the `req` provided as input to `addelement!` when adding an `ElementCost`, one can, after 
+the analysis, request results from `ElementConstraint` 
+- `cost`               The value of `cost(eleres,X,U,A,t,costargs...)`.
+- `eleres(...)`        where `...` is the list of requestables wanted from the target element.  The "prefix"  
+                       `eleres` is there to prevent possible confusion with variables requestable from `ElementConstraint`.  
+                       For example `@request cost` would extract the value of the `ElementConstraint`'s function `cost`, while
+                       `@request eleres(cost)` refers to the value of a variable called `cost` in the target element. 
 
 # Example
 ```
@@ -95,7 +95,7 @@ ele1 = addelement!(model,ElementCost,[nod1];req=@request(Fh),
                    elementkwargs=(Λₘtop=[5.,0,0], xₘbot=[250.,0], L=290., buoyancy=-5e3))
 ```
 
-See also: [`SingleDofCost`](@ref), [`DofCost`](@ref), [`@request`](@ref) 
+See also: [`SingleDofCost`](@ref), [`DofCost`](@ref), [`@request`](@ref), [`@once`](@ref) 
 """
 struct ElementCost{Teleobj,Treq,Tcost,Tcostargs} <: AbstractElement
     eleobj   :: Teleobj
@@ -445,11 +445,11 @@ The Lagrangian multiplier introduced by this optimisation constraint is of class
 - `λinod::𝕫`            The element-node number of the Lagrange multiplier.
 - `λfield::Symbol`      The field of the Lagrange multiplier.
 - `req`                 A request for element-results to be extracted from the target element, see [`@request`](@ref).
-                        The request is formulated as if adressed directly to the target element (no "prefixing" with 
-                        `eleres`, see "Requestable internal variables")
+                        The request is formulated as if adressed directly to the target element.
 - `gₛ::𝕣=1.`             A scale for the gap.
 - `λₛ::𝕣=1.`             A scale for the Lagrange multiplier.
-- `gap`                 a gap function `gap(eleres,X,U,A,t,gargs...)→ℝ`
+- `gap`                 A gap function `gap(eleres,X,U,A,t,gargs...)→ℝ`.
+                        `eleres` is the output of the above-mentionned request to the target element. 
                         `X` and `U` are tuples (derivates of dofs...), and `∂0(X)`,`∂1(X)`,`∂2(X)` 
                         must be used by `cost` to access the value and derivatives of `X` (resp. `U`).
                         `X`, `U` and `A` are the degrees of freedom of the element `ElementType`.
@@ -463,14 +463,15 @@ The Lagrangian multiplier introduced by this optimisation constraint is of class
 
 # Requestable internal variables
 
-From `ElementConstraint` one can request
+Not to be confused with the `req` provided as input to `addelement!` when adding an `ElementConstraint`, one can, after 
+the analysis, request results from `ElementConstraint` 
 - `λ`                   The constraints Lagrange multiplier
 - `gap`                 The constraints gap function
+- `eleres(...)`         where `...` is the list of requestables wanted from the target element.  The "prefix"  
+                        `eleres` is there to prevent possible confusion with variables requestable from `ElementConstraint`.  
+                        For example `@request gap` would extract the value of the `ElementConstraint`'s function `gap`, while
+                        `@request eleres(gap)` refers to the value of a variable called `gap` in the target element. 
 
-From the target element on can request
-- `eleres(...)`         where `...` is the list of requestables from the target element.  It must be "prefixed" by 
-                        `eleres` to prevent possible confusion with variables requestable from `ElementConstraint`.
-δX
 # Example
 
 ```
@@ -481,7 +482,7 @@ ele1 = addelement!(model,ElementCoonstraint,[nod1];req=@request(Fh),
                    elementkwargs=(Δxₘtop=[5.,0,0], xₘbot=[250.,0],L=290., buoyancy=-5e3))
 ```
 
-See also: [`Hold`](@ref), [`DofConstraint`](@ref), [`off`](@ref), [`equal`](@ref), [`positive`](@ref), [`@request`](@ref)
+See also: [`Hold`](@ref), [`DofConstraint`](@ref), [`off`](@ref), [`equal`](@ref), [`positive`](@ref), [`@request`](@ref), [`@once`](@ref)
 """
 struct ElementConstraint{Teleobj,λinod,λfield,Nu,Treq,Tg,Tgargs,Tmode} <: AbstractElement
     eleobj   :: Teleobj
