@@ -28,7 +28,9 @@ function replace_includes(str)  # include source file into mother file
         return nodocstr(str)
 end
 
+@printf "\nLiterate.markdown is generating *.md files from *s.jl files\n\n"
 for ex ∈ examples
+        
         Literate.markdown(joinpath(examplessrc,@sprintf("%s.jl",ex)),
                         docsrc, 
                         preprocess = replace_includes)
@@ -40,9 +42,10 @@ bib = CitationBibliography(joinpath(docsrc, "ref.bib"); style=:authoryear) #:num
 
 ## Documenter
 
+@printf "\nDocumenter.makedocs is generating *.html from *.md\n\n"
 makedocs(sitename ="Muscade.jl",
         modules   = [Muscade],
-        doctest = false, # we do not use doctest, we run Literate.jl on mydemo.jl files that are included in a unit test file
+        doctest   = false, # we do not use doctest, we run Literate.jl on mydemo.jl files that are also included in unit test files
         format    = Documenter.HTML(    prettyurls          = false,
                                         sidebar_sitename    = false,
                                         size_threshold_warn = 256*1024,
@@ -65,6 +68,7 @@ makedocs(sitename ="Muscade.jl",
                         source  = "src",
                         build   = "build"                 
         )
+
 
 #deploydocs(muscade = "github.com/SINTEF/Muscade.jl.git",target="build",devbranch="dev")
 

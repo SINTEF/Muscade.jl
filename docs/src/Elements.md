@@ -17,13 +17,11 @@ Each element must implement *either* [`Muscade.lagrangian`](@ref) *or* [`Muscade
 
 In classical finite element formulations, plastic strain is implemented by letting an element have plastic strain and a hardening parameter as an *internal variable* at each quadrature point of the element.  Internal variables are not degrees of freedom.  Instead, they are a memory of the converged state of the element at the previous load or time step, used to affect the residual computed at the present time step.  Internal variables are also used when modeling friction and damage processes.
 
-`Muscade` does not allow elements to have internal variables. The reason is that problem involing dofs of class `U` are not causal: our estimation of the state of a system a step `i` also depends on on measurements taken at steps `j` with `j>i`.  Hence "sweep" procedures, that is, procedures that solve a problem one load or time step at a time, are not applicable.  Solvers must hence solve for all steps at the same time.  When using Newton-Raphson iterations to solve problems of this class, internal variables make the Jacobian matrix full: the value of a stress at a given stress depends (through the internal variable) on the strain at all preceding steps. Or more formaly: Internal variables transforms the problem from *differential* to *integral*.
-A full matrix quickly leads to impossibly heavy computations.
+`Muscade` does not allow elements to have internal variables. The reason is that problem involing dofs of class `U` are not causal: our estimation of the state of a system a step `i` also depends on on measurements taken at steps `j` with `j>i`.  Hence "sweep" procedures, that is, procedures that solve a problem one load or time step at a time, are not applicable to such problems.  Solvers must hence solve for all dofs and steps at once.  When using Newton-Raphson iterations to solve problems of this class, internal variables make the Hessian matrix full: the value of a stress at a given stress depends (through the internal variable) on the strain at all preceeding steps. Or more formaly: Internal variables transforms the problem from *differential* to *integral*. A full matrix quickly leads to impossibly heavy computations.
 
 To model phenomena usualy treated using internal variable, it is necessary in `Muscade` to make the "internal" variable into a degree of freedom, and describe the equation of evolution of this degree of freedom. See [`examples/DecayAnalysis.jl`](DecayAnalysis.md) for an example of implementation.  
 !!! warning
     Because the equations of evolution involves first order time derivative, one can not use a static solver in combination with such elements.
-
 
 ## DataType
 
@@ -297,18 +295,21 @@ The user can for example require
 draw(model;linewidth=2)
 ```
 
-The element's `draw` method *must* accept an arbitrary list of keyword arguments.  Keywords arguments not used by the method are automaticaly ignored.  In order not to fail if a *used*
-keyword argument is not provided by the user, the following syntax can be used in the element's `draw` method
+The element's `draw` method *must* accept an arbitrary list of keyword arguments.  Keywords arguments not used by the method are automaticaly ignored.  In order not to fail if a *used* keyword argument is not provided by the user, the following syntax can be used in the element's `draw` method.   
 
 ```julia
-linewith = default{:linewidth}(kwargs,2.)
+function Muscade.draw(...)
+    ...
+    linewith = default{:linewidth}(kwargs,2.)
+    ...
+end
 ```
 
 which can be read: if `kwargs.linewidth` exists, the set `linewidth` to its value, otherwise, set it to `2.`.
 
 The user has facilities to draw only selected element types or selected elements, so the element's `draw` method does not need to implement a switch on *wether* to draw.
 
-See [`examples/BeamElements.jl`](StaticBeamAnalysis.md) for an advanced example of implementation.
+See [`examples/BeamElements.jl`](StaticBeamAnalysis.md) for an example of implementation.
 
 ### Getting element results
 

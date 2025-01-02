@@ -1,4 +1,6 @@
-function draw_(axe,dis::EletypDisassembler,eleobj,iele,state,dbg;kwargs...)  # typestable kernel
+# Model drawing
+# typestable kernel
+function draw_(axe,dis::EletypDisassembler,eleobj,iele,state,dbg;kwargs...)  
     nel      = length(iele)
     nXder    = length(state.X)
     nUder    = length(state.U) 
@@ -59,4 +61,5 @@ function draw(axe,state::State;kwargs...)   # whole model
         iele                = eachindex(eleobj)
         draw_(axe,dis,eleobj,iele,state,(ieletyp=ieletyp,);kwargs...) # call kernel
     end
-end    
+end   
+

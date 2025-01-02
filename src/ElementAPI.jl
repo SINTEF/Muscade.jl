@@ -251,8 +251,8 @@ Inputs are:
 - `axe`, a `GLMakie` axe
 - `o` a `AbstractVector` of element objects, of length `nel`.
 - `Λ` a matrix of size `(nXdof,nel)`
-- `X` a `NTuple` of matrices of size `(nXdof,nel)`
-- `U` a `NTuple` of matrices of size `(nUdof,nel)`
+- `X` a `NTuple` (over the derivatives) of matrices of size `(nXdof,nel)`
+- `U` a `NTuple` (over the derivatives) of matrices of size `(nUdof,nel)`
 - `A` a matrix of size `(nAdof,nel)`
 - `t` time
 - `SP` solver parameters
