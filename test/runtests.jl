@@ -1,5 +1,6 @@
 module Runtest
-    using Test,Literate, DocumenterCitations,Printf,Documenter,Muscade
+    using Test,Muscade
+    #using Literate, DocumenterCitations,Printf,Documenter
 
     @testset "Muscade.jl package" begin
         @testset "TestEspy" begin
@@ -53,6 +54,6 @@ module Runtest
         @testset "TestFiniteDifferences" begin
             include("TestFiniteDifferences.jl")
         end
-        # doctest(Muscade) we do not use doctest, we run Literate.jl on mydemo.jl files that are included in a unit test file
+        # doctest(Muscade) # we do not use doctest, we run Literate.jl on mydemo.jl files that are included in a unit test file
     end
 end
