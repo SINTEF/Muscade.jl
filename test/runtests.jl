@@ -1,7 +1,8 @@
 test    = @__DIR__
 muscade = normpath(joinpath(test,".."))
 docs    = normpath(joinpath(test,"../docs"))
-using Pkg
+import Pkg; Pkg.add("Pkg") # for CI on headless server
+#using Pkg
 Pkg.activate(test)
 using Muscade # seems necessary for doc test to work on a cold start
 module Runtest
