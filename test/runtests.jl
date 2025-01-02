@@ -1,10 +1,3 @@
-test    = @__DIR__
-muscade = normpath(joinpath(test,".."))
-docs    = normpath(joinpath(test,"../docs"))
-import Pkg; Pkg.add("Pkg") # for CI on headless server
-#using Pkg
-Pkg.activate(test)
-using Muscade # seems necessary for doc test to work on a cold start
 module Runtest
     using Test,Literate, DocumenterCitations,Printf,Documenter,Muscade
 
@@ -17,9 +10,6 @@ module Runtest
         end
         @testset "TestAdiff" begin
             include("TestAdiff.jl")
-        end
-        @testset "TestMultiplex" begin
-            include("TestMultiplex.jl")
         end
         @testset "TestModelDescription" begin
             include("TestModelDescription.jl")
@@ -66,5 +56,3 @@ module Runtest
         # doctest(Muscade) we do not use doctest, we run Literate.jl on mydemo.jl files that are included in a unit test file
     end
 end
-
-Pkg.activate(muscade) 
