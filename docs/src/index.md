@@ -9,7 +9,7 @@ CurrentModule = Muscade
 
 **[Muscade.jl](https://github.com/SINTEF/Muscade.jl) is a [Julia](https://julialang.org) package for the description and solution of optimization problems constrained by the equilibrium of a finite element (FEM) model.**
 
-The problems solved by `Muscade` have two components:
+The problems solved by `Muscade` are defined by two components:
 
 1) A fairly classical FEM model (the constraints) - but with more *degrees of freedom* (refered to as "dofs" in the following) than usual: In `Muscade`, dofs are separated into three `classes`:
 
@@ -17,7 +17,9 @@ The problems solved by `Muscade` have two components:
    2. `U`-dofs typicaly represent unknown external loads acting on the system, that vary with time.
    3. `A`-dofs typicaly represent unknown model parameters or design parameters that remain constant in time.
 
-1) A function of the above dofs.  It can represent a cost to be minimized, or a probability to be maximized.  This function is necessary because the FEM model alone has more unknowns that it has equations (a form of ill-posedness).
+2) A function of the above dofs.  It can represent a cost to be minimized, or a probability to be maximized.  This function is necessary because the FEM model alone has more unknowns that it has equations (a form of ill-posedness).
+
+`Muscade` deals with both static problems, and dynamic problems (with systems that evolve over time).
 
 ## Applications
 
@@ -37,9 +39,9 @@ FEM-optimization problems include a variety of applications:
 
 Constrained optimization problems can be solved by two approaches.
 
-The first is a change of variables to eliminate the constraints.  In FEM-optimization: the FEM model is used to eliminate the response of the system from the problem handled by the optimization algorithm. This has found wide application because it allows to use an *existing* FEM software.  The software that is evaluated repeatedly by an optimization algorithm (FEM in the loop).  Such an approach is suitable in many applications, but it does not scale well to large numbers of parameters to optimize.  For example, this is not a good solution to identify the load history that must have acted on a dynamic structure to make it respond in a way that has been partialy measured.
+The first is a change of variables to eliminate the constraints.  In FEM-optimization, the FEM model is used to express the response as a function of unknow loads and/or model parameters.  This in turn allows to reexpress the target function in terums of unknow loads and/or model parameters: we now have an unconstrained optimization problem. One advantage of this approach is that this allows to use an *existing* FEM software: The FEM software  is evaluated repeatedly by an optimization algorithm (FEM in the loop).  Such an approach is suitable in many applications, but it does not scale well to large numbers of parameters to optimize.  For example, this is not a good solution to identify the load history that must have acted on a dynamic structure to cause the response that has been partialy measured.
 
-The second approach to constrained optimzation is to use Lagrange multipliers.  This approach requires dedicated solvers, and dedicated systems for the assembly of gradient vectors and Hessian matrices. `Muscade` provides such solvers, and more are to be added in the near future.  The "Lagrange multiplier"-approach also requires that elements provide partial derivatives and internal results to the solution algorithms, in a way that is not easily achievable within the architecture of existing FEM software. As a consequence, in `Muscade`, all element types required to model a given physical system need to be reimplemented, which is a serious drawback.  However, thanks to careful design of `Muscade`, as well as to the capabilities provided by the [Julia](https://julialang.org) programming language, implementing elements is significantly easier than it would be within a classical FE software.
+The second approach to constrained optimization is to use Lagrange multipliers (also known in this context as adjoint state variables).  This approach requires dedicated solvers, and dedicated systems for the assembly of gradient vectors and Hessian matrices. `Muscade` provides such solvers (and more are to be added in the near future).  The "Lagrange multiplier"-approach also requires that elements provide partial derivatives and internal results to the solution algorithms, in a way that is not easily achievable within the architecture of existing FEM software. As a consequence, in `Muscade`, all element types required to model a given physical system need to be reimplemented, which is a serious drawback.  However, thanks to careful design of `Muscade`, as well as to the capabilities provided by the [Julia](https://julialang.org) programming language, implementing elements is significantly easier than it would be within a classical FE software.
 
 ## Elements in `Muscade`
 
