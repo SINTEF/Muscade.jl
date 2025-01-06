@@ -5,11 +5,9 @@ CurrentModule = Muscade
 
 # [Introduction](@id purpose)
 
-## [FEM-optimization problems](@id examples_FEM_op)
+## FEM-optimization problems
 
-**[Muscade.jl](https://github.com/SINTEF/Muscade.jl) is a [Julia](https://julialang.org) package for the description and solution of optimization problems constrained by the equilibrium of a finite element (FEM) model.**
-
-The problems solved by `Muscade` are defined by two components:
+**[Muscade.jl](https://github.com/SINTEF/Muscade.jl) is a [Julia](https://julialang.org) package for the description and solution of optimization problems constrained by the equilibrium of a finite element (FEM) model.**  The problems solved by `Muscade` are defined by two components:
 
 1) A fairly classical FEM model (the constraints) - but with more *degrees of freedom* (refered to as "dofs" in the following) than usual: In `Muscade`, dofs are separated into three `classes`:
 
@@ -17,9 +15,9 @@ The problems solved by `Muscade` are defined by two components:
    2. `U`-dofs typicaly represent unknown external loads acting on the system, that vary with time.
    3. `A`-dofs typicaly represent unknown model parameters or design parameters that remain constant in time.
 
-2) A function of the above dofs.  It can represent a cost to be minimized, or a probability to be maximized.  This function is necessary because the FEM model alone has more unknowns that it has equations (a form of ill-posedness).
+2) A "target" function of the above dofs.  It can represent a cost to be minimized, or a probability to be maximized.  This function is necessary because the FEM model alone has more unknowns that it has equations (a form of ill-posedness).
 
-`Muscade` deals with both static problems, and dynamic problems (with systems that evolve over time).
+`Muscade` deals with static problems (FEM-equilibrium at a given time, and a target function that depends on the values of the dofs at that time), and dynamic problems (FEM-equilibrium at all time steps, and a target function that depends on the values, of derivatives, of the dofs at all time steps).
 
 ## Applications
 
@@ -30,6 +28,9 @@ FEM-optimization problems include a variety of applications:
 **Reliability analysis**: Finding a design point. What is the most probable combination of external loads `U` and strength of the structure `A` that may cause the response `X` to exceed, in one of many ways, an acceptable limit? Here the target function in the optimization problem describes the probability density (or rather, its logarithm) of unknown loads and strength parameters.
 
 **Load identification and monitoring**: Given incomplete and noisy measurements of the response `X` of a system, what are the loads `U` that are most likely to have caused a response close to what has been measured?  The target function describes prior knowledge of the load processes, and the type, value and precision of the measurements. 
+
+![iFEMsmall](iFEMsmall.jpg)
+*Conceptual representation of load identification and response monitoring. `U`-dof in red `X`-dof in magenta, measurement data in black and evaluated measurement (not a `Muscade` analysis output)in green. The figure is not a `Muscade` analysis output.*
 
 **Model identification**: Adjust the model parameters `A` of a system (model calibration, damage detection) given measurements on its response `X` when exposed to at least partly unknown (`U`) load. As in load identification problems, the target function describes prior knowledge of the load processes, and the measurements.  In addition, it expresses prior knowledge of the state of the structure. 
 
