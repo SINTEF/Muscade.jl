@@ -4,15 +4,15 @@
 
 `Muscade` introduces 3 *classes* of degrees of freedom (dofs). 
 
-**X dofs** are the dofs normaly encountered in normal "forward" FEM analysis.  They provide a discrete representation of the response of the system. There is a one-to-one relation (a "duality") between the ``X``dofs and the *residuals* ``R``, which are the discretized form of the differential equations we seek to solve. In forward FEM, we formulate a discreet problem of the form
+**``X``-dofs** are the dofs normaly encountered in normal "forward" FEM analysis.  They provide a discrete representation of the response of the system. There is a one-to-one relation (a "duality") between the ``X``-dofs and the *residuals* ``R``, which are the discretized form of the differential equations we seek to solve. In forward FEM, we formulate a discreet problem of the form
 
 ```math
 \forall t, R(X(t),t)=0
 ```
 
-**U dofs** are additional dofs that can be used to represent additional *unknown* loads on the system. Like ``X``dofs, ``U``dofs are time-dependent. Unlike ``X``dofs, there is no residual (no new equations) corresponding to them.
+**``U``-dofs** are additional dofs that can be used to represent additional *unknown* loads on the system. Like ``X``-dofs, ``U``-dofs are time-dependent. Unlike ``X``-dofs, there is no residual (no new equations) corresponding to them.
 
-**A dofs** are additional dofs that can be used to represent *unknown* model parameters. Adofs are *not* time-dependent, and there are no residuals corresponing to them.
+**``A``-dofs** are additional dofs that can be used to represent *unknown* model parameters. ``X``-dofs are *not* time-dependent, and there are no residuals corresponing to them.
 
 We now formulate the discrete finite element model of the form
 
@@ -37,9 +37,9 @@ In design optimisation, one can associate a monetary value to ``A`` (building st
 ### Target function as surprisal
 In a load estimation problem where part of the response is measured, we wish to find the most probable unknown load ``U`` (very large loads are not likely) and response (a computed response ``X`` that drasticaly disagrees with the actual measurements is not likely) - under the constraint that load and response verify equilibrium.  
 
-In Muscade, this *must* be handled by minimizing the *surprisal* ``s = -\log(P)`` instead of maximizing the probability density ``P``. 
+In Muscade, this *must* be handled by minimizing the *surprisal* ``Q = -\log(P)`` instead of maximizing the probability density ``P``. 
 
-1) ``s`` and ``P`` have the same extrema, so finding a minimum of ``s`` does give a maximum of ``P``.  
+1) ``Q`` and ``P`` have the same extrema, so finding a minimum of ``Q`` does give a maximum of ``P``.  
 2) The joint probability density of independant random variables is equal to the *product* of each variable's probability density. Because ``\log(a+b)=\log(a)+\log(b)``, the joint surprisal of independant random variables is equal to the *sum* of each variable's surprisal. In forward finite element analysis, the load vectors and incremental matrices of elements are *added* into a system vector and system matrix.  Muscade extends this logic: contributions to the Lagrangian from various elements are *added* together.
 3) Generaly speaking, surprisals are numericaly better behaved that probability densities.  
  
@@ -48,7 +48,7 @@ To illustrate the last point, consider a multinormal Gaussian probability densit
 ```math
 \begin{aligned}
 P(X) &= (2\pi)^{-k/2} \det(Σ)^{-1/2} \exp \left(-\frac{1}{2} \left( X-\mu \right)^T \cdot \Sigma^{-1} \cdot \left( X-\mu \right) \right) \\
-s(X) &= -\log(X) \\
+Q(X) &= -\log(P(X)) \\
      &= k + \frac{1}{2} \left( X-\mu \right)^T \cdot Q_{XX} \cdot \left( X-\mu \right)
 \end{aligned}
 ```
@@ -67,25 +67,22 @@ In Muscade, additive contributions to the target function are called "costs", al
 
 One example of built-in element defining a cost is [`DofCost`](@ref), an element to add a cost which is a function of the value of a dof. Examples would include:
 
-- A cost on a `U`dof, a surprisal expressing prior knowledge of the magnitude of forces that may be explaining measured response.
-- A cost on a `X`dof, a financial cost incured if a point in the model has a too high value, causing a failure.
+- A cost on a ``U``-dof, a surprisal expressing prior knowledge of the magnitude of forces that may be explaining measured response.
+- A cost on a ``X``-dof, a financial cost incured if a point in the model has a too high value, causing a failure.
 
-Another built-in element is [`ElementCost`](@ref), an element to add a cost which is a function of an element-result. For example, a bar element can have "axial strain" as an internal value, that is, a value it computes that is neither a dof nor a residual. This can express:
-
-- a financial cost: "so high strains mean failure, and this is expensive".
-- a surprisal: "the strain must be reasonnably close to a given measured value".
+Another built-in element is [`ElementCost`](@ref), an element to add a cost which is a function of an element-result. For example, a bar element can have "axial strain" as an internal value, that is, a value it computes that is neither a dof nor a residual. 
 
 ## Constrained optimization
 
-Making ``Q`` stationary under the equilibrium constraints ``R(X,U,A)=0`` is equivalent to finding a stationary point (a saddle point) of the *Lagrangian*
+Making ``Q`` stationary under the equilibrium constraints ``R(X,U,A)=0`` is equivalent to finding a stationary point (a saddle point) of the *Lagrangian* ``L``
 
 ```math
 L(\Lambda,X,U,A) = Q(X,U,A) + R(X,U,A) \cdot \Lambda
 ```
 
-where ``Λ`` are Lagrange multipliers.  
+where ``Λ`` are [Lagrange multipliers](https://en.wikipedia.org/wiki/Lagrange_multiplier) (also known as *adjoint state variables*).  
 
-There is a one-to-one correspondance between Lagrange multipliers ``Λ``dofs and residuals  ``R``, and hence between ``Λ``dofs and ``X``dofs.  One result of this correspondance is that when implementing a new element, the method that must be provided `doflist` does not list the ``Λ``dofs (this would otherwise just have been a compulsory repetition of the list of ``X``dofs). 
+There is a one-to-one correspondance between Lagrange multipliers ``Λ``dofs and residuals  ``R``, and hence between ``Λ``-dofs and ``X``-dofs.  One result of this correspondance is that when implementing a new element, the method that must be provided `doflist` does not list the ``Λ``-dofs (this would otherwise just have been a compulsory repetition of the list of ``X``-dofs). 
 
 For evolution problems (involving a time-dependency), the dot product ``R(X,U,A) \cdot \Lambda`` includes an integral over time: the Lagrangian is a *functional*, and the gradients of ``L`` are ordinary differential equations in time, found using [functional derivatives](https://en.wikipedia.org/wiki/Functional_derivative).  
 
@@ -94,23 +91,6 @@ For evolution problems (involving a time-dependency), the dot product ``R(X,U,A)
 In the original finite element analysis, the *elements* in a model form a partition of a domain over which differential equations are to be solved. We will call these "physical elements".  These elements provide additive contributions to the system of equations ``R(X,U,A)=0``. Further contributions can come from external loads.
 
 When doing optimization-FEM in `Muscade`, the elements provide additive contributions to the Lagrangian scalar ``L``, instead of to the residual vector ``R``. Actually when creating a new element in `Muscade` to create an application, one can either implement a contribution to ``R`` by implementing a method `Muscade.residual` for the element, or a contribution to ``L`` by implementing `Muscade.lagrangian`.  For performance, whenever possible (for example when implementing a physical element), prefer `Muscade.residual`. 
-
-In `Muscade`, the broad view is taken that anything that contributes to ``L`` is an element (even if no part of the domain is actually associated to the element).  This more general definition of "elements" includes a variety of types:
-
-- Physical element, discretizing differential equations over a part of the domain
-- Known external loads on the boundary (non-essential boundary conditions)
-- Known external loads in the domain
-- Constrained dofs (essential boundary conditions)
-- Holonomic equality and inequality constraints (contact)
-- Optimisation constraints (e.g. stresses shal not exceed some limit at any point within part of the domain)
-- Response measurements (surprisal on Xdofs)
-- Unknown external loads (surprisal on Udofs)
-- Observed damage (surprisal on Adofs)
-- Cost of unfavorable response (cost on Xdofs)
-- Cost of actuators (cost on Udofs)
-- Cost of building a system (cost on Adofs)
-
-Because "everything" is an element, app developers can express a wide range of ideas through `Muscade`'s element API.
 
 ## Physical and optimisation constraints
 
@@ -132,7 +112,7 @@ R^*(X^*,U,A) &= \left[R(X,U,A) - ∇g_x(X,U,A) \cdot X_λ \; , \; g_x(X,U,A)\rig
 
 *Optimisation constraints* allow to define that some situations are impossible, or inacceptable. For example, in a design optimisation analysis, excessive stresses would lead to failure, so would be constrained to remain under a given threshold. In a tracking or optimal control problem, an actuator force may not exceed some limit for the actuator's capacity.
 
-Optimisation constraints that have to be verified at every step (for example stresses that must remain below a critical level, at any time) require a Lagrange multiplier that changes over time, and that is thus of class ``U``. Optimisation constraints that act only on ``A``dofs (for example, there is a limit to the strength of steel we can order)  require a Lagrange multiplier of class ``A``.  With optimisation constraints, the Lagrangian is of the form
+Optimisation constraints that have to be verified at every step (for example stresses that must remain below a critical level, at any time) require a Lagrange multiplier that changes over time, and that is thus of class ``U``. Optimisation constraints that act only on ``A``-dofs (for example, there is a limit to the strength of steel we can order)  require a Lagrange multiplier of class ``A``.  With optimisation constraints, the Lagrangian is of the form
 
 ```math
 L^*(\Lambda,X,U^*,A^*) = Q^*(X,U^*,A^*)  + R(X,U,A) \cdot Λ 

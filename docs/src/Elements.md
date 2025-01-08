@@ -2,10 +2,29 @@
 
 ## Introduction
 
+In `Muscade`, the broad view is taken that anything that contributes to the Lagrangian is an element.  This is a broader definition of "elements", compared to classical *finite element* formulations, in which an element is an element of a partition of a domain over which differential equations are to be solved.  This more general definition of "elements" includes a variety of types:
+
+- Physical element (or finite element), discretizing differential equations over a part of the domain
+- Known external loads on the boundary (non-essential boundary conditions)
+- Known external loads in the domain
+- Constrained dofs (essential boundary conditions)
+- Holonomic equality and inequality constraints (contact)
+- Optimisation constraints (e.g. stresses shal not exceed some limit at any point within part of the domain)
+- Response measurements (surprisal on ``X``-dofs)
+- Unknown external loads (surprisal on ``U``-dofs)
+- Observed damage (surprisal on ``A``-dofs)
+- Cost of unfavorable response (cost on ``X``-dofs)
+- Cost of actuators (cost on ``U``-dofs)
+- Cost of building a system (cost on ``A``-dofs)
+
+Because "everything" is an element in `Muscade`, app developers can express a wide range of ideas through `Muscade`'s element API.
+
+## API
+
 The implementation of a element requires 
 
-- A `struct` defining the element. 
-- A **constructor** which is called when the user adds an element to the model, and constructs the above `struct`.
+- A **[`struct`](@ref struct)** defining the element. 
+- A **[constructor](@ref constructor)** which is called when the user adds an element to the model, and constructs the above `struct`.
 - **[`Muscade.doflist`](@ref)** specifies the degrees of freedom (dofs) of the element.
 - **[`Muscade.residual`](@ref)** (either this of [`Muscade.lagrangian`](@ref)) takes element dofs as input and returns the element's additive contribution to the residual of a non-linear system of equations,
 - **[`Muscade.lagrangian`](@ref)** (either this of [`Muscade.residual`](@ref)) takes element dofs as input and returns the element's additive contribution to a target function,
@@ -23,7 +42,7 @@ To model phenomena usualy treated using internal variable, it is necessary in `M
 !!! warning
     Because the equations of evolution involves first order time derivative, one can not use a static solver in combination with such elements.
 
-## DataType
+## [DataType](@id struct)
 
 For a new element type `MyELement`, the datatype is defined as
 
@@ -35,7 +54,7 @@ end
 
 `MyElement` *must* be declared a subtype of [`AbstractElement`](@ref).
 
-## Constructor
+## [Constructor](@id constructor)
 
 The element must provide a constructor of the form
 
@@ -93,7 +112,7 @@ The return value of the function is a `NamedTuple` with the fields `inod`, `clas
 - `class` is a `NTuple` of `Symbol`: for each dof, its class (must be `:X`, `:U` or `:A`).
 - `field` is a `NTuple` of `Symbol`: for each dof, its field.
 
-Importantly, `Muscade.doflist` does not mention dofs of class `:Λ`: if the element implements `Muscade.lagrangian`, there is automaticaly a one-to-one correspondance between Λ-dofs and X-dofs.
+Importantly, `Muscade.doflist` does not mention dofs of class `:Λ`: if the element implements `Muscade.lagrangian`, there is automaticaly a one-to-one correspondance between ``Λ``-dofs and ``X``-dofs.
 
 For example (using Julia's syntax for one-liner functions):
 
@@ -142,8 +161,7 @@ See [`Muscade.residual`](@ref) for the list of arguments and outputs.
 
 ### Automatic differentiation
 
-The gradients and Hessians of `R` or `L` do not need to be implemented, because `Muscade` uses automatic 
-differentiation. Because of this, it is important not to over-specify the inputs.  For example, 
+The gradients and Hessians of `R` or `L` do not need to be implemented, because `Muscade` uses [automatic differentiation](Adiff.md). Because of this, it is important not to over-specify the inputs.  For example, 
 implementing a function header with
 
 ```julia
@@ -154,7 +172,7 @@ implementing a function header with
 would cause a `MethodError`, because `Muscade` will attempt to call with a `SVector` instead of `Vector`, and a special
 datatype supporting automatic differentiation instead of `Float64`.
 
-### Extraction of element-results
+### [Extraction of element-results](@id espy)
 
 The function definitions of `Muscade.lagrangian` and `Muscade.residual` must be anotated with the macro call `@espy`.  
 Variables within the body of `Muscade.lagrangian` and `Muscade.residual`, which
@@ -307,7 +325,7 @@ end
 
 which can be read: if `kwargs.linewidth` exists, the set `linewidth` to its value, otherwise, set it to `2.`.
 
-The user has facilities to draw only selected element types or selected elements, so the element's `draw` method does not need to implement a switch on *wether* to draw.
+The user has facilities to draw only selected element types or selected elements, so the element's `draw` method does not need to implement a switch on *whether* to draw.
 
 See [`examples/BeamElements.jl`](StaticBeamAnalysis.md) for an example of implementation.
 
