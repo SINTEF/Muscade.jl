@@ -1,5 +1,9 @@
 # Theory
 
+## Introduction
+
+This section presents the theory of how FEM-optimization problems are *defined* or formulated.  This is of interest both for the user of a `Muscade`-based application, and for someone implementing new elements to create such an application.
+
 ## Classes of degrees of freedom
 
 `Muscade` introduces 3 *classes* of degrees of freedom (dofs). 
@@ -94,7 +98,7 @@ When doing optimization-FEM in `Muscade`, the elements provide additive contribu
 
 ## Physical and optimisation constraints
 
-*Physical constraints* (including contact or Dirichlet/essential boundary conditions) are added to the model by using an element that adds adds a dof of class ``X`` to the model.  This new dof ``X_λ`` is a Lagrange multiplier for the constraint. If we note ``R``, ``X`` and ``Λ`` the list of dofs before adding the constraint element and ``R^*``, ``X^*`` and ``Λ^*`` after, then  
+**Physical constraints** (including contact or Dirichlet/essential boundary conditions) are added to the model by using an element that adds adds a dof of class ``X`` to the model.  This new dof ``X_λ`` is a Lagrange multiplier for the constraint. If we note ``R``, ``X`` and ``Λ`` the list of dofs before adding the constraint element and ``R^*``, ``X^*`` and ``Λ^*`` after, then  
 
 ```math
 L^*(\Lambda^*,X^*,U,A) = Q(X,U,A)  + R^*(X^*,U,A) \cdot Λ^* 
@@ -110,7 +114,7 @@ R^*(X^*,U,A) &= \left[R(X,U,A) - ∇g_x(X,U,A) \cdot X_λ \; , \; g_x(X,U,A)\rig
 \end{aligned}
 ```
 
-*Optimisation constraints* allow to define that some situations are impossible, or inacceptable. For example, in a design optimisation analysis, excessive stresses would lead to failure, so would be constrained to remain under a given threshold. In a tracking or optimal control problem, an actuator force may not exceed some limit for the actuator's capacity.
+**Optimisation constraints** allow to define that some situations are impossible, or inacceptable. For example, in a design optimisation analysis, excessive stresses would lead to failure, so would be constrained to remain under a given threshold. In a tracking or optimal control problem, an actuator force may not exceed some limit for the actuator's capacity.
 
 Optimisation constraints that have to be verified at every step (for example stresses that must remain below a critical level, at any time) require a Lagrange multiplier that changes over time, and that is thus of class ``U``. Optimisation constraints that act only on ``A``-dofs (for example, there is a limit to the strength of steel we can order)  require a Lagrange multiplier of class ``A``.  With optimisation constraints, the Lagrangian is of the form
 
@@ -130,7 +134,7 @@ Q^*(X,U^*,A^*) &= Q(X,U,A) +  g_u(X,U,A) \cdot U_\lambda + g_a(A) \cdot A_λ \\
 
 ## Literature
 
-For more details on the theory and example of applications, see [maincon04a](@cite), [maincon04b](@cite), [maree04](@cite), [barnardo04](@cite), [hauser06](@cite), [wu07](@cite), [maincon08](@cite), [hauser08](@cite), [wu08](@cite), [wu09](@cite), [maincon13](@cite). 
+For more details on the theory and examples of applications, see [maincon04a](@cite), [maincon04b](@cite), [maree04](@cite), [barnardo04](@cite), [hauser06](@cite), [wu07](@cite), [maincon08](@cite), [hauser08](@cite), [wu08](@cite), [wu09](@cite), [maincon13](@cite). 
 
 
 

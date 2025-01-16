@@ -19,19 +19,6 @@ In `Muscade`, the broad view is taken that anything that contributes to the Lagr
 
 Because "everything" is an element in `Muscade`, app developers can express a wide range of ideas through `Muscade`'s element API.
 
-## API
-
-The implementation of a element requires 
-
-- A **[`struct`](@ref struct)** defining the element. 
-- A **[constructor](@ref constructor)** which is called when the user adds an element to the model, and constructs the above `struct`.
-- **[`Muscade.doflist`](@ref)** specifies the degrees of freedom (dofs) of the element.
-- **[`Muscade.residual`](@ref)** (either this of [`Muscade.lagrangian`](@ref)) takes element dofs as input and returns the element's additive contribution to the residual of a non-linear system of equations,
-- **[`Muscade.lagrangian`](@ref)** (either this of [`Muscade.residual`](@ref)) takes element dofs as input and returns the element's additive contribution to a target function,
-- **[`Muscade.draw`](@ref)** (optional) which draws all the elements of the same element type.
-
-Each element must implement *either* [`Muscade.lagrangian`](@ref) *or* [`Muscade.residual`](@ref), depending on what is more natural: a beam element will implement [`Muscade.residual`](@ref) (element reaction forces as a function of nodal displacements), while an element representing a strain sensor will implement [`Muscade.lagrangian`](@ref) (log-of the probability density of the strain, given an uncertain measurement).
-
 ## No internal variables
 
 In classical finite element formulations, plastic strain is implemented by letting an element have plastic strain and a hardening parameter as an *internal variable* at each quadrature point of the element.  Internal variables are not degrees of freedom.  Instead, they are a memory of the converged state of the element at the previous load or time step, used to affect the residual computed at the present time step.  Internal variables are also used when modeling friction and damage processes.
@@ -41,6 +28,47 @@ In classical finite element formulations, plastic strain is implemented by letti
 To model phenomena usualy treated using internal variable, it is necessary in `Muscade` to make the "internal" variable into a degree of freedom, and describe the equation of evolution of this degree of freedom. See [`examples/DecayAnalysis.jl`](DecayAnalysis.md) for an example of implementation.  
 !!! warning
     Because the equations of evolution involves first order time derivative, one can not use a static solver in combination with such elements.
+
+## Sign convention in elements
+
+Starting with matrix methods in structural analysis, the traditional convention is that in an equation of the form
+
+```math
+K \cdot ΔX = R\\
+X \leftarrow X + ΔX
+```
+
+``K`` is (typicaly) symmetric positive definite, ``ΔX`` are incremental nodal displacements, and ``R`` are *external* loads applied to the structure (a positive load tends to induce a positive displacement).  As a consequence, when an element is implemented within this convention, the element must return its stiffness ``K`` and its "internal reaction forces" ``R_i``: a bar that is elongated reacts by pulling its ends inwards. The forces are "el-on-nod" (element on node).  `Muscade` uses the same convention for the *description of models*.  
+
+However, the *implementation of elements* in `Muscade` uses another convention.  This is because `Muscade` optimizes a Lagrangian, relative to a set of variables here collectively denoted as ``Z``.  A Newton step for seeking to make ``L(Z)`` stationary is naturaly written as
+
+```math
+G = \frac{\partial L}{\partial Z}\\
+H = \frac{\partial G}{\partial Z}\\
+H \cdot ΔZ = G\\
+Z \leftarrow Z - ΔX
+```
+
+Note the minus sign on the last lign.  As a consequence of this minus sign, in `Muscade`, an element returns ``R_e=-R_i``, and ``K`` is computed (by automatic differentiation, invisible to the element developer) as
+
+```math
+K = \frac{\partial R_e}{\partial X}
+```
+
+This implies that ``R_e`` are the "external forces": to elongate a bar one must pull its ends outwards. The forces are "nod-on-el" (node on element).  This has one implication that may be surprising: an element that for example implements an (external) point load ``F`` must return ``R_e = -F``, note the minus sign, so that the user of the element will interpret ``F`` as a classic external load.  The same applies to elements that connect unknown external loads ``U`` to the equilibrium equations.  Such an element must return ``R_e = -U``.  Further, elements that return a Lagrangian (see below) must return ``L = Q + \Lambda \cdot R_e``, note the plus sign.
+
+## API
+
+The implementation of a element requires 
+
+- A **[`DataType`](@ref struct)** defining the element. 
+- A **[constructor](@ref constructor)** which is called when the user adds an element to the model, and constructs the above `struct`.
+- **[`Muscade.doflist`](@ref)** specifies the degrees of freedom (dofs) of the element.
+- **[`Muscade.residual`](@ref)** (either this of [`Muscade.lagrangian`](@ref)) takes element dofs as input and returns the element's additive contribution to the residual of a non-linear system of equations,
+- **[`Muscade.lagrangian`](@ref)** (either this of [`Muscade.residual`](@ref)) takes element dofs as input and returns the element's additive contribution to a target function,
+- **[`Muscade.draw`](@ref)** (optional) which draws all the elements of the same element type.
+
+Each element must implement *either* [`Muscade.lagrangian`](@ref) *or* [`Muscade.residual`](@ref), depending on what is more natural: a beam element will implement [`Muscade.residual`](@ref) (element reaction forces as a function of nodal displacements), while an element representing a strain sensor will implement [`Muscade.lagrangian`](@ref) (log-of the probability density of the strain, given an uncertain measurement).
 
 ## [DataType](@id struct)
 
@@ -300,9 +328,12 @@ See the page on [automatic differentiation](Adiff.md).
 
 Elements *can* implement a [`Muscade.draw`](@ref) method. If no method is implemented, the element will be invisible if the user requests a drawing of the element.
 
+None of `Muscade` built-in elements implement methods for `draw`: because `Muscade` has no inherent interpretation of the various `X` dofs, there is no graphical representation associated to them.  On the other hand, it might make sense for an app developer (giving an interpretation to various dofs) to create such methods.
+
+Because `Muscade` provides no implementation of `draw` (with the exception of some demo elements), `Muscade` does not prescribe the use of any specific graphic package.  See [`Makie.jl`](https://docs.makie.org/) and [`WriteVTK.jl`](https://juliavtk.github.io/WriteVTK.jl/stable/) for candidates.
+
 While the API may remind that of [`Muscade.lagrangian`](@ref), there is one significant difference: 
-because it is more efficient to create few graphical object (few calls to `lines!`, `scatter!`) etc., the element's method for `draw` 
-will be called once to draw several elements of the same type. Multiple lines can be drawn in one call to `lines!` by using `NaN`s to "lift the pen".
+because it is more efficient to create few graphical object (in `Makie`: few calls to `lines!`, `scatter!`) etc., the element's method for `draw` will be called once to draw several elements of the same type. In `Makie` multiple lines can be drawn in one call to `lines!` by using `NaN`s to "lift the pen".
 
 ### Keyword arguments
 
