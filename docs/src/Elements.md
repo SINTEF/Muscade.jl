@@ -237,20 +237,20 @@ The pseudo code:
 ```julia
 R .= 0
 for igp = 1:ngp
-    F = ...
-    Σ = ...
+    F  = ...
+    Σ  = ...
     R += F ∘ Σ ∘ ∇N * dV
 end
 ```
 
-shows that `R` is mutated. For the extraction of results from a loop, the following patterm **must** be used:
+shows that `R` is mutated. For the extraction of results from a loop, the following pattern **must** be used:
 
 ```julia
 @espy function Muscade.residual(x,χ)
     t = ntuple(ngp) do igp
         ☼F = ...
         ☼Σ = ...
-        r = F ∘ Σ ∘ ∇N * dV
+        r  = F ∘ Σ ∘ ∇N * dV
         @named(r)
     end
     R = sum(   igp->t[igp].r,ngp)
