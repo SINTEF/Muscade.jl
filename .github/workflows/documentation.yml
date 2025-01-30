@@ -1,4 +1,4 @@
-name: Documentation
+name: Documentation build and deploy
 # See  https://documenter.juliadocs.org/stable/man/hosting/ 
 # Should host doc at https://sintef.github.io/Muscade.jl/dev 
 # or                 https://sintef.github.io/Muscade.jl/stable 
@@ -7,23 +7,37 @@ on:
     branches:
       - main
       - dev
-     # - doc
+      - doc2
     tags: '*'
   pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
-  build:
+  build-and-deply:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@latest
         with:
           version: '1.10'
-      - run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev xsettingsd x11-xserver-utils
+      - name: Install binary dependencies
+        run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev xsettingsd x11-xserver-utils
       - name: Install dependencies
         run: julia --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
-      - name: Build and deploy
+      - name: Build and deploy docs
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # If authenticating with GitHub Actions token
-        #  DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }} # If authenticating with SSH deploy key
-        run: julia --project=docs/ docs/make.jl
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
+        run: >
+          cd docs;
+          DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24'
+          julia --color=yes makedocs.jl
+      - name: Upload site as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Docs build
+          path: ./docs/build
