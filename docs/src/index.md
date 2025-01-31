@@ -31,7 +31,7 @@ FEM-optimization problems include a variety of applications:
 
 **Model identification**: Adjust the model parameters `A` of a system (model calibration, damage detection) given measurements on its response `X` when exposed to at least partly unknown (`U`) load. As in load identification problems, the target function describes prior knowledge of the load processes, and the measurements.  In addition, it expresses prior knowledge of the state of the structure. 
 
-![Decaysmall](Decaysmall.png)
+![Decaysmall](decaysmall.png)
 
 *A small-scale physical model of an anchored vessel is "kicked" in an ocean laboratory, and the vessel's oscillations registrered. The graph shows the identification, using `Muscade`, of the system's non-linear added mass, damping and stiffness for surge (oscillation in forward direction). The actual analysis also captures the interaction with other degrees of freedom (sway and yaw).* 
 
