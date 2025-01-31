@@ -3,7 +3,7 @@
 docs        = @__DIR__
 muscade     = normpath(joinpath(docs,".."))
 docsrc      = joinpath(docs,"src")
-examplessrc = normpath(joinpath(docs,"..","examples"))
+examplesrc(ex) = normpath(joinpath(docs,"..","examples",ex))
 examples    = ["StaticBeamAnalysis","DecayAnalysis","DryFriction"]
 
 using Pkg
@@ -20,20 +20,16 @@ cp(joinpath(muscade,"LICENSE.md"),joinpath(docsrc,"LICENSE.md"),force=true)
 nodocstr(str) =  replace(str, r"(*ANYCRLF)^\"\"\"$.*?^\"\"\"$"ms => "") # Take """ somedocstring """ out of str
 function replace_includes(str)  # include source file into mother file
         included = ["BeamElements.jl","Rotations.jl"] # in this order
-        path = "examples/"
         for ex ∈ included
-                content = read(path*ex, String)
+                content = read(examplesrc(ex), String)
                 str     = replace(str, "include(\"$(ex)\")" => content)
         end
         return nodocstr(str)
 end
 
-@printf "\nLiterate.markdown is generating *.md files from *s.jl files\n\n"
+@printf "\nLiterate.markdown: *.jl → *.md\n\n"
 for ex ∈ examples
-        
-        Literate.markdown(joinpath(examplessrc,@sprintf("%s.jl",ex)),
-                        docsrc, 
-                        preprocess = replace_includes)
+        Literate.markdown(examplesrc(@sprintf("%s.jl",ex)), docsrc, preprocess = replace_includes)
 end
 
 ## DocumenterCitations
@@ -42,7 +38,7 @@ bib = CitationBibliography(joinpath(docsrc, "ref.bib"); style=:authoryear) #:num
 
 ## Documenter
 
-@printf "\nDocumenter.makedocs is generating *.html from *.md\n\n"
+@printf "\nDocumenter.makedocs: *.md → *.html\n\n"
 makedocs(sitename ="Muscade.jl",
         modules   = [Muscade],
         doctest   = false, # we do not use doctest, we run Literate.jl on mydemo.jl files that are also included in unit test files
