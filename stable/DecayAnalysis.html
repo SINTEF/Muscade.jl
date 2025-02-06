@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Estimating model parameters · Muscade.jl</title><meta name="title" content="Estimating model parameters · Muscade.jl"/><meta property="og:title" content="Estimating model parameters · Muscade.jl"/><meta property="twitter:title" content="Estimating model parameters · Muscade.jl"/><meta name="description" content="Documentation for Muscade.jl."/><meta property="og:description" content="Documentation for Muscade.jl."/><meta property="twitter:description" content="Documentation for Muscade.jl."/><script data-outdated-warner src="assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="assets/documenter.js"></script><script src="search_index.js"></script><script src="siteinfo.js"></script><script src="../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="index.html"><img src="assets/logo.png" alt="Muscade.jl logo"/></a><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="index.html">Introduction</a></li><li><a class="tocitem" href="Theory.html">Theory</a></li><li><span class="tocitem">User manual</span><ul><li><a class="tocitem" href="Modelling.html">Creating a model</a></li><li><a class="tocitem" href="Solvers.html">Solvers</a></li><li><a class="tocitem" href="Elements.html">Implementing new elements</a></li></ul></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="StaticBeamAnalysis.html">Static analysis of a beam</a></li><li class="is-active"><a class="tocitem" href="DecayAnalysis.html">Estimating model parameters</a></li><li><a class="tocitem" href="DryFriction.html">DryFriction</a></li></ul></li><li><a class="tocitem" href="reference.html">Reference</a></li><li><span class="tocitem">Appendix</span><ul><li><a class="tocitem" href="TypeStable.html">Type-stability</a></li><li><a class="tocitem" href="Memory.html">Memory management</a></li><li><a class="tocitem" href="Adiff.html">Automatic differentiation</a></li><li><a class="tocitem" href="litterature.html">Literature</a></li></ul></li><li><a class="tocitem" href="LICENSE.html">MIT License</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href="DecayAnalysis.html">Estimating model parameters</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href="DecayAnalysis.html">Estimating model parameters</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/SINTEF/Muscade.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/SINTEF/Muscade.jl/blob/main/examples/DecayAnalysis.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Estimating-model-parameters"><a class="docs-heading-anchor" href="#Estimating-model-parameters">Estimating model parameters</a><a id="Estimating-model-parameters-1"></a><a class="docs-heading-anchor-permalink" href="#Estimating-model-parameters" title="Permalink"></a></h1><p>We estimate the mass and damping matrices of a coupled linear oscillator (floater moving in the surge, sway and yaw) based on a decay tests In the following, we define the necessary element and residual function describing the dynamic behaviour of the floater.</p><pre><code class="language-julia hljs">using Muscade,StaticArrays,Interpolations,GLMakie
+
+fold(x::SVector{6}) = SMatrix{3,3}( x[1],x[2],x[3],
+                                    x[2],x[4],x[5],
+                                    x[3],x[5],x[6])
+
+const floatermotion  = (:surge,:sway,:yaw)
+const idx    = (:11,:12,:16,:22,:26,:66)
+
+struct FloaterOnCalmWater &lt;: AbstractElement
+    K   :: SMatrix{3,3,𝕣}
+    C   :: SMatrix{3,3,𝕣}
+    M   :: SMatrix{3,3,𝕣}
+end
+FloaterOnCalmWater(nod::Vector{Node};K,C,M  )  = FloaterOnCalmWater(K,C,M)
+
+Muscade.doflist(::Type{&lt;:FloaterOnCalmWater}) = (inod = (ntuple(i-&gt; 1,3)...,ntuple(i-&gt; 1,3)...,ntuple(i-&gt; 1,6)...,                  ntuple(i-&gt; 1,6)...           ),
+                                                 class= (ntuple(i-&gt;:X,3)...,ntuple(i-&gt;:U,3)...,ntuple(i-&gt;:A,6)...,                  ntuple(i-&gt;:A,6)...          ),
+                                                 field= (floatermotion...  ,floatermotion...  ,ntuple(i-&gt;Symbol(:M,idx[i]),6)...,   ntuple(i-&gt;Symbol(:C,idx[i]),6)...))
+
+@espy function Muscade.residual(o::FloaterOnCalmWater,   X,U,A,t,SP,dbg)
+    x,x′,x″    = ∂0(X),∂1(X),∂2(X)
+    ☼u         = ∂0(U)
+    a          = exp10.(A)
+    ☼r₂        = (o.M.*fold(a[@SVector [i for i∈1:6 ]]))∘x″
+    ☼r₁        = (o.C.*fold(a[@SVector [i for i∈7:12]]))∘x′
+    ☼r₀        = o.K∘x
+    return r₀+r₁+r₂-u,  noFB
+end</code></pre><p>This is a tailor-made cost element where the cost is made dependent on the iteration number. In practice, this is used to first solve an XU problem (costs on A are prohibitive) before solving the actual XUA problem.</p><pre><code class="language-julia hljs">struct SingleDecayAcost{Field,Tcost,Tcostargs} &lt;: AbstractElement
+    cost     :: Tcost
+    costargs :: Tcostargs
+    fac      :: 𝕣1
+end
+
+SingleDecayAcost(nod::Vector{Node};field::Symbol,fac,cost::Function ,costargs=()) = SingleDecayAcost{field,typeof(cost),typeof(costargs)}(cost,costargs,fac)
+Muscade.doflist(::Type{&lt;:SingleDecayAcost{Field,Tcost,Tcostargs}}) where{Field,Tcost,Tcostargs} = (inod=(1,),class=(:A,),field=(Field,))
+@espy function Muscade.lagrangian(o::SingleDecayAcost,Λ,X,U,A,t,SP,dbg)
+    iter  = min(length(o.fac),default{:iter}(SP,length(o.fac)))
+    ☼cost = o.cost(    A[1]  ,o.costargs...)
+    return cost*o.fac[iter],noFB
+end</code></pre><p>Define stiffness, damping and mass matrix for the true system</p><pre><code class="language-julia hljs">K         = fold(SVector{6}([1.0,    0.0,     0.0,     1.0,    0.0,     1.0]))
+C         = fold(SVector{6}([0.25,   -0.2,     0.1,     0.15,   -0.15,     0.03]))
+M         = fold(SVector{6}([1.0,    0.1,     0.2,     0.5,     0.1,     0.1]));</code></pre><p>Solve direct problem</p><pre><code class="language-julia hljs">model     = Model(:MooredFloater)
+n1        = addnode!(model,𝕣[0,0,0])
+e1        = addelement!(model,FloaterOnCalmWater,[n1]; K,C,M)
+initialstate    = initialize!(model;time=0.)
+initialstate    = setdof!(initialstate,[2.0];   field=:surge,   nodID=[n1], order=0)
+initialstate    = setdof!(initialstate,[1.0];    field=:sway,    nodID=[n1], order=0)
+initialstate    = setdof!(initialstate,[-5.0];  field=:yaw,     nodID=[n1], order=0)
+T               = 0.1 *(1:250)
+state           = solve(SweepX{2};  initialstate,time= T,verbose=false);
+surge   = [s.X[1][1] for s∈state]
+sway    = [s.X[1][2] for s∈state]
+yaw     = [s.X[1][3] for s∈state];</code></pre><p>Create fake measurements</p><pre><code class="language-julia hljs">surgeMeas = surge   + .05 * randn(length(T))
+swayMeas = sway     + .05 * randn(length(T))
+yawMeas = yaw       + .1 * randn(length(T));</code></pre><p>Create intial guesses for M and C</p><pre><code class="language-julia hljs">Cguess         = fold(SVector{6}([0.1,   -0.1,     0.1,     0.1,   -0.1,     0.1]))
+Mguess         = fold(SVector{6}([1.0,    1.0,     1.0,     1.0,    1.0,     1.0]));</code></pre><p>Create XUA model</p><pre><code class="language-julia hljs">modelXUA     = Model(:MooredFloater)
+n1        = addnode!(modelXUA,𝕣[0,0,0])
+e1        = addelement!(modelXUA,FloaterOnCalmWater,[n1]; K,C=Cguess,M=Mguess);</code></pre><p>Assign costs to unknown forces</p><pre><code class="language-julia hljs">Quu       = @SVector [0.05 ^-2 for i=1:3 ]
+e2        = [addelement!(modelXUA,SingleDofCost     ,[n1]; class=:U,field=f           ,    cost=(u,t)-&gt; 0.5*Quu[i]*u^2)  for (i,f)∈enumerate(floatermotion)];</code></pre><p>Assign costs to variations of model parameters (wrt guess).</p><pre><code class="language-julia hljs">fac       = [256,128,64,32,16,8,4,2,1]
+QCaa      = @SVector [.1 ^-2 for i=1:6 ]
+e3        = [addelement!(modelXUA,SingleDecayAcost  ,[n1];          field=f,fac,           cost=(a  )-&gt; 0.5*QCaa[i]/length(T)*a^2) for (i,f)∈enumerate((:C11,:C12,:C16,:C22,:C26,:C66))]
+QMaa      = @SVector [.1 ^-2 for i=1:6 ]
+e4        = [addelement!(modelXUA,SingleDecayAcost  ,[n1];          field=f,fac,           cost=(a  )-&gt; 0.5*QMaa[i]/length(T)*a^2) for (i,f)∈enumerate((:M11,:M12,:M16,:M22,:M26,:M66))];</code></pre><p>Assign costs to measurement errors</p><pre><code class="language-julia hljs">surgeInt    = linear_interpolation(T, surgeMeas)
+swayInt     = linear_interpolation(T, swayMeas)
+yawInt      = linear_interpolation(T, yawMeas)
+@once devSurge(surge,t)     = 1e-1 ^-2 * (surge-surgeInt(t))^2
+@once devSway(sway,t)       = 1e-1 ^-2 * (sway-swayInt(t))^2
+@once devYaw(yaw,t)         = 1e-1 ^-2 * (yaw-yawInt(t))^2
+e5             = addelement!(modelXUA,SingleDofCost,[n1];class=:X,field=:surge,    cost=devSurge)
+e6             = addelement!(modelXUA,SingleDofCost,[n1];class=:X,field=:sway,     cost=devSway)
+e7             = addelement!(modelXUA,SingleDofCost,[n1];class=:X,field=:yaw,      cost=devYaw);
+
+
+#Solve inverse problem
+initialstateXUA    = initialize!(modelXUA;time=0.)
+stateXUA         = solve(DirectXUA{2,0,1};initialstate=initialstateXUA,time=T,
+                        maxiter=100,saveiter=true,fastresidual=true,
+                        maxΔx=1e-5,maxΔλ=Inf,maxΔu=1e-5,maxΔa=1e-5);</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
+
+
+<span class="sgr36"><span class="sgr1">Muscade:</span> DirectXUA{2, 0, 1} solver</span>
+
+
+    Preparing assembler
+
+    Iteration   1
+        Assembling, solving, decrementing.
+        maxₜ(|ΔΛ|)=6.4e+02 ≤     Inf
+        maxₜ(|ΔX|)=2.2e+00 ≤ 1.0e-05
+        maxₜ(|ΔU|)=1.6e+00 ≤ 1.0e-05
+             |ΔA| =0.0e+00 ≤ 1.0e-05
+
+    Iteration   2
+        Assembling, solving, decrementing.
+        maxₜ(|ΔΛ|)=4.7e+02 ≤     Inf
+        maxₜ(|ΔX|)=1.2e+00 ≤ 1.0e-05
+        maxₜ(|ΔU|)=5.5e-01 ≤ 1.0e-05
+             |ΔA| =2.2e-01 ≤ 1.0e-05
+
+    Iteration   3
+        Assembling, solving, decrementing.
+        maxₜ(|ΔΛ|)=2.3e+02 ≤     Inf
+        maxₜ(|ΔX|)=2.0e+00 ≤ 1.0e-05
+        maxₜ(|ΔU|)=1.4e+00 ≤ 1.0e-05
+             |ΔA| =3.0e-01 ≤ 1.0e-05
+
+    Iteration   4
+        Assembling, solving, decrementing.
+        maxₜ(|ΔΛ|)=2.5e+02 ≤     Inf
+        maxₜ(|ΔX|)=1.2e+00 ≤ 1.0e-05
+        maxₜ(|ΔU|)=3.1e-01 ≤ 1.0e-05
+             |ΔA| =5.7e-01 ≤ 1.0e-05
+
+    Iteration   5
+        Assembling, solving, decrementing.
+        maxₜ(|ΔΛ|)=1.9e+02 ≤     Inf
+        maxₜ(|ΔX|)=7.5e-01 ≤ 1.0e-05
+        maxₜ(|ΔU|)=6.5e-01 ≤ 1.0e-05
+             |ΔA| =6.2e-01 ≤ 1.0e-05
+
+    Iteration   6
+        Assembling, solving, decrementing.
+        maxₜ(|ΔΛ|)=2.7e+02 ≤     Inf
+        maxₜ(|ΔX|)=8.0e-01 ≤ 1.0e-05
+        maxₜ(|ΔU|)=6.4e-01 ≤ 1.0e-05
+             |ΔA| =3.5e-01 ≤ 1.0e-05
+
+    Iteration   7
+        Assembling, solving, decrementing.
+        maxₜ(|ΔΛ|)=1.9e+02 ≤     Inf
+        maxₜ(|ΔX|)=5.7e-01 ≤ 1.0e-05
+        maxₜ(|ΔU|)=3.6e-01 ≤ 1.0e-05
+             |ΔA| =2.9e-01 ≤ 1.0e-05
+
+    Iteration   8
+        Assembling, solving, decrementing.
+        maxₜ(|ΔΛ|)=2.3e+02 ≤     Inf
+        maxₜ(|ΔX|)=2.7e-01 ≤ 1.0e-05
+        maxₜ(|ΔU|)=2.8e-01 ≤ 1.0e-05
+             |ΔA| =2.8e-01 ≤ 1.0e-05
+
+    Iteration   9
+        Assembling, solving, decrementing.
+        maxₜ(|ΔΛ|)=2.2e+02 ≤     Inf
+        maxₜ(|ΔX|)=1.1e-01 ≤ 1.0e-05
+        maxₜ(|ΔU|)=4.0e-02 ≤ 1.0e-05
+             |ΔA| =1.9e-01 ≤ 1.0e-05
+
+    Iteration  10
+        Assembling, solving, decrementing.
+        maxₜ(|ΔΛ|)=2.3e+02 ≤     Inf
+        maxₜ(|ΔX|)=1.1e-02 ≤ 1.0e-05
+        maxₜ(|ΔU|)=1.6e-02 ≤ 1.0e-05
+             |ΔA| =2.8e-02 ≤ 1.0e-05
+
+    Iteration  11
+        Assembling, solving, decrementing.
+        maxₜ(|ΔΛ|)=2.3e+02 ≤     Inf
+        maxₜ(|ΔX|)=1.8e-03 ≤ 1.0e-05
+        maxₜ(|ΔU|)=8.3e-04 ≤ 1.0e-05
+             |ΔA| =2.4e-03 ≤ 1.0e-05
+
+    Iteration  12
+        Assembling, solving, decrementing.
+        maxₜ(|ΔΛ|)=2.3e+02 ≤     Inf
+        maxₜ(|ΔX|)=1.6e-04 ≤ 1.0e-05
+        maxₜ(|ΔU|)=1.0e-04 ≤ 1.0e-05
+             |ΔA| =4.9e-04 ≤ 1.0e-05
+
+    Iteration  13
+        Assembling, solving, decrementing.
+        maxₜ(|ΔΛ|)=2.3e+02 ≤     Inf
+        maxₜ(|ΔX|)=2.8e-05 ≤ 1.0e-05
+        maxₜ(|ΔU|)=1.0e-05 ≤ 1.0e-05
+             |ΔA| =6.7e-05 ≤ 1.0e-05
+
+    Iteration  14
+        Assembling, solving, decrementing.
+        maxₜ(|ΔΛ|)=2.3e+02 ≤     Inf
+        maxₜ(|ΔX|)=4.1e-06 ≤ 1.0e-05
+        maxₜ(|ΔU|)=2.3e-06 ≤ 1.0e-05
+             |ΔA| =1.4e-05 ≤ 1.0e-05
+
+    Iteration  15
+        Assembling, solving, decrementing.
+        maxₜ(|ΔΛ|)=2.3e+02 ≤     Inf
+        maxₜ(|ΔX|)=8.4e-07 ≤ 1.0e-05
+        maxₜ(|ΔU|)=5.0e-07 ≤ 1.0e-05
+             |ΔA| =2.7e-06 ≤ 1.0e-05
+
+    Converged in  15 iterations.
+    nel=19, nvar=2262, nstep=250
+    DirectXUA{2, 0, 1} time:   17 [s]
+<span class="sgr36"><span class="sgr1">Muscade done.</span></span></code></pre><p>Fetch and display estimated model parameters</p><pre><code class="language-julia hljs">lastIter = findlastassigned(stateXUA); niter = lastIter;
+Mest      = Mguess .* fold(exp10.(SVector{6}(stateXUA[niter][1].A[1:6 ])))
+Cest      = Cguess .* fold(exp10.(SVector{6}(stateXUA[niter][1].A[7:12])));</code></pre><p>Fetch response and loads</p><pre><code class="language-julia hljs">surgeRec   = [s.X[1][1] for s∈stateXUA[niter]]
+swayRec    = [s.X[1][2] for s∈stateXUA[niter]]
+yawRec     = [s.X[1][3] for s∈stateXUA[niter]]
+surgeExtF   = [s.U[1][1] for s∈stateXUA[niter]]
+swayExtF    = [s.U[1][2] for s∈stateXUA[niter]]
+yawExtF     = [s.U[1][3] for s∈stateXUA[niter]]
+req = @request r₂,r₁,r₀
+loads = getresult(stateXUA[niter],req,[e1])
+inertiaLoads = [loads[i][:r₂] for i∈1:length(T)]
+dampingLoads = [loads[i][:r₁] for i∈1:length(T)]
+stiffnessLoads = [loads[i][:r₀] for i∈1:length(T)];</code></pre><p>Create a figure with the results</p><pre><code class="language-julia hljs">fig      = Figure(size = (2000,1000));</code></pre><p>Display response</p><pre><code class="language-julia hljs">ax=Axis(fig[1,1], ylabel=&quot;Surge&quot;, yminorgridvisible = true,xminorgridvisible = true)
+scatter!(fig[1,1],T,surgeMeas, color=RGBf(.8, .8, .8),        label=L&quot;\text{Measurements}&quot;)
+lines!(fig[1,1],T,surge,       color=:black, linestyle=:dash, label=L&quot;\text{Exact direct solution } (M,C,K)&quot;)
+lines!(fig[1,1],T,surgeRec,    color=:black,                  label=L&quot;\text{Inverse solution } (\hat{M},\hat{C},K)&quot;)
+ylims!(ax,minimum(surgeMeas),maximum(surgeMeas))
+ax.title=&quot;Displacements [m,deg]&quot;
+axislegend()
+
+ax=Axis(fig[2,1], ylabel=&quot;Sway&quot;, yminorgridvisible = true,xminorgridvisible = true)
+scatter!(fig[2,1],T,swayMeas,   color=RGBf(.8, .8, .8))
+lines!(fig[2,1],T,sway,         color=:black, linestyle=:dash)
+ylims!(ax,-1,2)
+lines!(fig[2,1],T,swayRec,      color=:black)
+ylims!(ax,minimum(swayMeas),maximum(swayMeas))
+
+ax=Axis(fig[3,1], ylabel=&quot;Yaw&quot;, yminorgridvisible = true,xminorgridvisible = true,xlabel=&quot;Time [s]&quot;)
+scatter!(fig[3,1],T,yawMeas,    color=RGBf(.8, .8, .8))
+lines!(fig[3,1],T,yaw,          color=:black, linestyle=:dash)
+lines!(fig[3,1],T,yawRec,       color=:black)
+ylims!(ax,minimum(yawMeas),maximum(yawMeas))</code></pre><p>Display loads</p><pre><code class="language-julia hljs">ax=Axis(fig[1,2], yminorgridvisible = true,xminorgridvisible = true)
+lines!(fig[1,2],T,-[inertiaLoads[i][1] for i∈1:length(T)],  color=:red,     label=L&quot;\text{Inertia } (\hat{M})&quot;)
+lines!(fig[1,2],T,-[dampingLoads[i][1] for i∈1:length(T)],  color=:blue,    label=L&quot;\text{Damping } (\hat{C})&quot;)
+lines!(fig[1,2],T,-[stiffnessLoads[i][1] for i∈1:length(T)],color=:green,   label=L&quot;\text{Stiffness } (K)&quot;)
+lines!(fig[1,2],T,surgeExtF,                                color=:black,   label=L&quot;\text{Unknown}&quot;)
+ax.title=&quot;Loads [N, Nm]&quot;
+ylims!(ax,-2,2)
+axislegend()
+
+ax=Axis(fig[2,2], yminorgridvisible = true,xminorgridvisible = true)
+lines!(fig[2,2],T,-[inertiaLoads[i][2] for i∈1:length(T)],      color=:red  )
+lines!(fig[2,2],T,-[dampingLoads[i][2] for i∈1:length(T)],      color=:blue )
+lines!(fig[2,2],T,-[stiffnessLoads[i][2] for i∈1:length(T)],    color=:green)
+lines!(fig[2,2],T,swayExtF,                                     color=:black)
+ylims!(ax,-2,3)
+
+ax=Axis(fig[3,2], yminorgridvisible = true,xminorgridvisible = true,xlabel=&quot;Time [s]&quot;)
+lines!(fig[3,2],T,-[inertiaLoads[i][3] for i∈1:length(T)],      color=:red  )
+lines!(fig[3,2],T,-[dampingLoads[i][3] for i∈1:length(T)],      color=:blue)
+lines!(fig[3,2],T,-[stiffnessLoads[i][3] for i∈1:length(T)],    color=:green)
+lines!(fig[3,2],T,yawExtF,                                      color=:black)
+ylims!(ax,-4,4)
+
+ax=Axis(fig[1,3], limits=(nothing,nothing,0,2),
+    xticks = (1:6, [L&quot;\hat{M}_{11}/M_{11}&quot;, L&quot;\hat{M}_{12}/M_{12}&quot;, L&quot;\hat{M}_{16}/M_{16}&quot;,L&quot;\hat{C}_{11}/C_{11}&quot;, L&quot;\hat{C}_{12}/C_{12}&quot;, L&quot;\hat{C}_{16}/C_{16}&quot;]),
+    yminorgridvisible = true,xminorgridvisible = true)
+barplot!(ax,[1,2,3,4,5,6], [Mest[1,1]/M[1,1],Mest[1,2]/M[1,2],Mest[1,3]/M[1,3], Cest[1,1]/C[1,1],Cest[1,2]/C[1,2],Cest[1,3]/C[1,3]],
+    bar_labels = :y,color=:white,strokewidth=1,strokecolor=[:red,:red,:red,:blue,:blue,:blue])
+ax.title=&quot;Estimated model parameters compared to exact solution (iteration &quot; * string(niter) * &quot;/&quot; * string(lastIter) * &quot;)&quot;
+
+ax=Axis(fig[2,3], limits=(nothing,nothing,0,2),
+    xticks = (1:6, [L&quot;\hat{M}_{21}/M_{21}&quot;, L&quot;\hat{M}_{22}/M_{22}&quot;, L&quot;\hat{M}_{26}/M_{26}&quot;,L&quot;\hat{C}_{21}/C_{21}&quot;, L&quot;\hat{C}_{22}/C_{22}&quot;, L&quot;\hat{C}_{26}/C_{26}&quot;]),
+    yminorgridvisible = true,xminorgridvisible = true)
+barplot!(ax,[1,2,3,4,5,6], [Mest[2,1]/M[2,1],Mest[2,2]/M[2,2],Mest[2,3]/M[2,3], Cest[2,1]/C[2,1],Cest[2,2]/C[2,2],Cest[2,3]/C[2,3]],
+    bar_labels = :y,color=:white,strokewidth=1,strokecolor=[:red,:red,:red,:blue,:blue,:blue])
+
+ax=Axis(fig[3,3], limits=(nothing,nothing,0,2),
+    xticks = (1:6, [L&quot;\hat{M}_{61}/M_{61}&quot;, L&quot;\hat{M}_{62}/M_{62}&quot;, L&quot;\hat{M}_{66}/M_{66}&quot;,L&quot;\hat{C}_{61}/C_{61}&quot;, L&quot;\hat{C}_{62}/C_{62}&quot;, L&quot;\hat{C}_{66}/C_{66}&quot;]),
+    yminorgridvisible = true,xminorgridvisible = true)
+barplot!(ax,[1,2,3,4,5,6], [Mest[3,1]/M[3,1],Mest[3,2]/M[3,2],Mest[3,3]/M[3,3], Cest[3,1]/C[3,1],Cest[3,2]/C[3,2],Cest[3,3]/C[3,3]],
+    bar_labels = :y,color=:white,strokewidth=1,strokecolor=[:red,:red,:red,:blue,:blue,:blue])
+
+currentDir = @__DIR__
+if occursin(&quot;build&quot;, currentDir)
+    save(normpath(joinpath(currentDir,&quot;..&quot;,&quot;src&quot;,&quot;assets&quot;,&quot;decay.png&quot;)),fig)
+elseif occursin(&quot;examples&quot;, currentDir)
+    save(normpath(joinpath(currentDir,&quot;decay.png&quot;)),fig)
+end</code></pre><p><img src="assets/decay.png" alt="Result"/></p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="StaticBeamAnalysis.html">« Static analysis of a beam</a><a class="docs-footer-nextpage" href="DryFriction.html">DryFriction »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.8.0 on <span class="colophon-date" title="Thursday 6 February 2025 12:33">Thursday 6 February 2025</span>. Using Julia version 1.10.8.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
