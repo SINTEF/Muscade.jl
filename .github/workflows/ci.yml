@@ -1,10 +1,9 @@
-name: CI
+name: Running tests on all platforms
 on:
   push: 
     branches:
       - main
       - dev
-      - doc
     tags: '*'
     pull_request:  
 env:
