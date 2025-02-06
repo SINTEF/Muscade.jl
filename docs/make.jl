@@ -66,8 +66,8 @@ makedocs(sitename ="Muscade.jl",
         )
 
 
-deploydocs(repo = "github.com/SINTEF/Muscade.jl.git",devbranch="dev")
-deploydocs(repo = "github.com/SINTEF/Muscade.jl.git",devbranch="doc2")
+deploydocs(repo = "github.com/SINTEF/Muscade.jl.git",devbranch="dev",devurl="dev")
+deploydocs(repo = "github.com/SINTEF/Muscade.jl.git",devbranch="main",devurl="stable")
 
 # https://sintef.github.io/Muscade.jl/dev
 # https://sintef.github.io/Muscade.jl/stable
