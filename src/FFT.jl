@@ -1,0 +1,217 @@
+
+## Basic engine
+const 𝑖 = im  # \iti
+const π𝑖 = π*𝑖
+const ℜ = real # \Re 
+const ℑ = imag  # \Im
+const expπ𝑖 = cispi  
+exp2π𝑖(x) = expπ𝑖(2x)
+"""
+    𝕫log2(i::𝕫)
+
+Compute the integer `log2` of an integer, fails if `i` is not a power of two.
+"""
+function 𝕫log2(i::𝕫) 
+    a = 63-leading_zeros(i)
+    b = trailing_zeros(i) 
+    a==b || error("Input must be a power of 2")
+    return a
+end
+
+#https://en.wikipedia.org/wiki/Bit-reversal_permutation
+function bitreversalpermutation(p) 
+    n                           = 2^p
+    brp                         = Vector{𝕫}(undef,n)
+    brp[1]                      = 0
+    ek                          = 1
+    for k                       = 0:p-1  
+        @simd for j             = 1:ek
+            @inbounds brp[j]   *= 2
+            @inbounds brp[j+ek] =  brp[j]+1
+        end
+        ek                     *=2
+    end 
+    @simd for j                 = 1:n # base-1 indexing of arrays in Julia
+        @inbounds brp[j]       += 1
+    end
+    return brp
+end
+function getiW(nc) # = 𝑖 * expπ𝑖(-(0:nc-1)/nc) - the twiddles
+    ωₘ         = expπ𝑖(-1/nc) 
+    iW         = Vector{Complex{Float64}}(undef,nc)
+    iW[1]      = 𝑖
+    @simd for i      = 1:nc-1
+        @inbounds iW[i+1]= iW[i]*ωₘ
+        if mod(i,1024) == 15  # once in a while, renormalize iW 
+            @inbounds iW[i+1] *= (3-ℜ(iW[i+1])^2-ℑ(iW[i+1])^2)/2  # but do so fast, do it using a 1st order Taylor expansion at 1 of of 1/|ω|
+        end
+    end
+    return iW
+end
+
+# iterative radix-2 FFT algorithm implemented using bit-reversal permutation.
+# https://en.wikipedia.org/wiki/Cooley%E2%80%93Tukey_FFT_algorithm 
+# Cormen, Thomas H.; Leiserson, Charles; Rivest, Ronald; Stein, Clifford (2009). 
+# Introduction to algorithms (3rd ed.). Cambridge, Mass.: MIT Press. pp. 915–918. ISBN 978-0-262-03384-8
+#
+# A (complex, length 2^p): mutable memory for input and output
+# brp (integer, length 2^p): bit reversal permutation
+# p (integer): log2 of the length of A and a
+# z (integer): -1 for forward and 1 for inverse transform
+function basic_fft!(A::AbstractVector{Complex{R}},p,z) where{R<:Real}   # Wikipedia convention
+    # Assumes n == 2^p
+    n                              = length(A)
+    @assert 2^p == n
+    m                              = 1
+    for s ∈ 0:p-1 # s-1 in Wikipedia          Scale of blocks m = 1,2,4,8,..,n/2
+        ωₘ                         = expπ𝑖(z/m) 
+        for k ∈ 1:2m:n # k+1 in Wikipedia     Block index
+            ω                      = complex(1.)
+            @simd for j ∈ 0:m-1              #      Within block 
+                @inbounds t        = ω*A[k+j+m]  # if a∈ℝ, i>1 then A[i]=A[n-i+2]'
+                @inbounds u        =   A[k+j  ]  # hence for m=n/2, A[n/2+k+j] = A[n/2+2-k-j]'
+                @inbounds A[k+j]   = u+t
+                @inbounds A[k+j+m] = u-t
+                ω                 *= ωₘ
+                if mod(j,1024) == 15  # once in a while, renormalize ω 
+                    ω             *= (3-ℜ(ω)^2-ℑ(ω)^2)/2  # but do so fast, do it using a 1st order Taylor expansion at 1 of of 1/|ω|
+                end
+            end
+        end
+        m                         *= 2
+    end
+end
+
+## ℝ → ℂ transforms
+# See "fft real.pdf" for theory
+# forward 2^(p-1) complex transform of 2^p real vector 
+function basic_rfft!(A::AbstractVector{Complex{R}},a::AbstractVector{R},brp,iW,pc) where{R<:Real}
+    # mutates A
+    nc     = 2^pc # N in the theory
+    @assert length(A  )== nc
+    @assert length(a  )==2nc
+    @assert length(brp)== nc
+    
+    @simd for i = 0:nc-1
+        A[brp[i+1]] = complex(a[2i+1],a[2i+1+1])
+    end
+    basic_fft!(A,pc,-1)
+    @inbounds A[1]      *= Complex(1,-1)
+    @simd for i      = 1:(div(nc,2))-1
+        j      = mod(nc-i,nc)   
+        @inbounds α      = 1-iW[j+1]
+        @inbounds β      = 1+iW[j+1]
+        @inbounds Aᵢ     = (     A[i+1] *conj(α) + conj(A[j+1])*conj(β))/2
+        @inbounds Aⱼ     = (conj(A[i+1])*     β  +      A[j+1] *     α )/2
+        @inbounds A[i+1] = Aᵢ
+        @inbounds A[j+1] = Aⱼ
+    end
+end
+function basic_irfft!(a::AbstractVector{R},A::AbstractVector{Complex{R}},brp,iW,pc) where{R<:Real}
+    # NB: mutates both a and A
+    nc     = 2^pc # N in the theory
+    @assert length(A  )== nc
+    @assert length(a  )==2nc
+    @assert length(brp)== nc
+    @inbounds A[1]      /= Complex(1,-1)
+    @simd for i      = 1:(div(nc,2))-1
+        j      = mod(nc-i,nc)   
+        @inbounds Aᵢ     = A[i+1]
+        @inbounds Aⱼ     = A[j+1]
+        @inbounds α      = 1-iW[j+1]
+        @inbounds β      = 1+iW[j+1]
+        det    = α^2-β^2
+        @inbounds A[i+1] = conj(( α*conj(Aᵢ) - β*Aⱼ)/det) *2
+        @inbounds A[j+1] =     ((-β*conj(Aᵢ) + α*Aⱼ)/det) *2
+    end
+    A[brp] = A
+    basic_fft!(A,pc,1)  # this overwrites input A
+    @simd for i = 0:nc-1
+        @inbounds (a[2i+1],a[2i+1+1]) = reim(A[i+1])
+    end
+end
+"""
+    X = 𝔉(x,δt)  # typeset with \\mfrakF\\Bbbr
+
+    Fourrier transform of a real time series x stored at time steps `δt` and length `2*N = 2*2^p`
+    into a complex spectre X stored at frequency intervals `δf=getδf(2*N,δt)=1/(2*N*δt)`.  
+    The length of the spectre is `N`: only positive frequencies are stored (the Fourrier 
+    transform of real functions are Hermitian).
+
+    The transformation is unitary, in the sense that
+    `sum(abs2.(x))*δt ≈ (sum(abs2.(X)) - abs2.(X[1])/2)*δf` 
+    The term `- abs2.(X[1])/2` in the norm of the spectre prevents counting the constant term twice
+
+    This thus provides a discritization of the unitary Fourrier transform, 
+    
+    G(f) = √2 𝔉(g)(f) = √2 ∫exp(-2π𝑖 f t) g(t) dt
+
+    where the factor of 2 amplifies the spectre because only positive frequencies are kept.
+    vector of `<:Real` of length `2^(p+1)` into a `Complex` Vector of length `2^p`
+
+    # Arguments
+    - `x` a vector of real numbers representing a time series.  Its length must be a power of two.
+    - `δt` the time step of the time series
+
+    # Example
+
+    ```
+    X   = 𝔉(x,δt) 
+    δf  = getδf(length(x),δt)
+    x′  = 𝔉⁻¹(X,δf) # ≈ x
+    ```
+
+    See also: [`𝔉⁻¹`](@ref), [`getδf`](@ref), [`getδt`](@ref),
+
+"""
+function 𝔉(a::AbstractVector{R},δt::ℝ) where{R<:Real} #\mfrakF
+    nr      = length(a)
+    nc      = div(nr,2)
+    pc      = 𝕫log2(nc)
+    A       = Vector{Complex{R}}(undef,nc)
+    iW      = getiW(nc)
+    brp     = bitreversalpermutation(pc)
+    basic_rfft!(A,a,brp,iW,pc)
+    A     .*= δt*√2   # √2 so that the half spectre A has same 2-norm as signal `a` (note the constant term must be weighted with 1/2 to compute the norm)
+    return A
+end
+"""
+    X = 𝔉⁻¹(x,δt)  # typeset with \\mfrakF\\^-\\^1
+
+    See [`𝔉`](@ref)    
+
+    # Arguments
+    - `X` a vector of complex numbers representing one side of a spectra. Its length must be a power of two.
+    - `δf` or `δω` the frequency step (respectively circular frequency step) of spectra
+
+    # Example
+
+    ```
+    X   = 𝔉(x,δt) 
+    δf  = getδf(length(x),δt)
+    x′  = 𝔉⁻¹(X,δf) # ≈ x
+    ```
+
+    See also: [`𝔉⁻¹`](@ref), [`getδf`](@ref), [`getδt`](@ref),
+
+"""
+function 𝔉⁻¹(A::AbstractVector{Complex{R}},δϕ::ℝ) where{R<:Real} #\mfrakF
+    nc      = length(A)
+    nr      = 2nc
+    pc      = 𝕫log2(nc)
+    a       = Vector{R}(undef,nr)
+    iW      = getiW(nc)
+    brp     = bitreversalpermutation(pc)
+    B       = copy(A)
+    basic_irfft!(a,B,brp,iW,pc)
+    a     .*= δϕ*√2
+    return a
+end
+"""
+    getδf(n,δt)    =  1/(n*δt)
+"""
+getδf(n,δt)    =  1/(n*δt)
+"""
+    getδt(n,δf) = 1/(n*δf)
+"""
+getδt(n,δϕ) = 1/(n*δϕ)

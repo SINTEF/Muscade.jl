@@ -36,13 +36,13 @@ module Runtest
         @testset "TestDofConstraints" begin
             include("TestDofConstraints.jl")
         end
-        @testset "ElementCost" begin
+        @testset "TestElementCost" begin
             include("TestElementCost.jl")
         end
-        @testset "BeamElement" begin
+        @testset "TestBeamElement" begin
             include("TestBeamElement.jl")
         end
-        @testset "Rotations" begin
+        @testset "TestRotations" begin
             include("TestRotations.jl")
         end
         @testset "TestUnit" begin
@@ -50,6 +50,9 @@ module Runtest
         end
         @testset "TestBlockSparse" begin
             include("TestBlockSparse.jl")
+        end
+        @testset "TestFFT" begin
+            include("TestFFT.jl")
         end
         @testset "TestFiniteDifferences" begin
             include("TestFiniteDifferences.jl")

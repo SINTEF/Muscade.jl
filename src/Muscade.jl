@@ -72,4 +72,7 @@ module Muscade
 
     include("ElementTestTools.jl")
 
+    include("FFT.jl")
+    #export getδf,getδt(n3,δf3′),𝔉𝕣(g.(t3),δt3),𝔉𝕣⁻¹(X3′′,δf3)
+
 end
