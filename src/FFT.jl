@@ -5,7 +5,6 @@ const π𝑖 = π*𝑖
 const ℜ = real # \Re 
 const ℑ = imag  # \Im
 const expπ𝑖 = cispi  
-exp2π𝑖(x) = expπ𝑖(2x)
 """
     𝕫log2(i::𝕫)
 
@@ -173,7 +172,7 @@ function 𝔉(a::AbstractVector{R},δt::ℝ) where{R<:Real} #\mfrakF
     return A
 end
 """
-    X = 𝔉⁻¹(x,δt)  # typeset with \\mfrakF\\^-\\^1
+    x = 𝔉⁻¹(X,δω)  # typeset with \\mfrakF\\^-\\^1
 
     See [`𝔉`](@ref)    
 

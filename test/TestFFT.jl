@@ -1,4 +1,4 @@
-#module TestFFT
+module TestFFT
 using Test
 using Muscade
 
@@ -67,11 +67,11 @@ end
    @test x3′[1:16:end] ≈ [0.0, -1.3315999428623215e-17, 0.0, 5.088140083372391e-10, 0.39894228040143276, 5.088140377655672e-10, 0.0, -2.7370741107777605e-17]
 end
 
-@testset "𝔉 is unitary" begin
+@testset "𝔉 is half-unitary" begin
    @test  sum(abs2.(g.(t1)))           .*δt1   ≈ 0.28209479177387814 # energy of signal
    @test (sum(abs2.(X1))-abs2(X1[1])/2).*δω1   ≈ 0.14104739588693924 # energy of half spectre
    @test (sum(abs2.(X2))-abs2(X2[1])/2).*δω2   ≈ 0.14104739588693924 # energy of half spectre
    @test (sum(abs2.(X3))-abs2(X3[1])/2).*δω3   ≈ 0.14104739588693924 # energy of half spectre
 end
 
-#end #module
+end #module
