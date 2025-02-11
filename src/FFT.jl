@@ -65,10 +65,11 @@ end
 # A (complex, length 2^p): mutable memory for input and output
 # p (integer): log2 of the length of A and a
 # z (integer): -1 for forward and 1 for inverse transform
-function basic_fft!(A::AbstractVector{Complex{R}},p,z) where{R<:Real}   # Wikipedia convention
+function basic_fft!(A::AbstractVector{Complex{R}},brp,p,z) where{R<:Real}   # Wikipedia convention
     # Assumes n == 2^p
     n                              = length(A)
     @assert 2^p == n
+    applybrp!(A,brp)
     m                              = 1
     for s ∈ 0:p-1 # s-1 in Wikipedia          Scale of blocks m = 1,2,4,8,..,n/2
         ωₘ                         = expπ𝑖(z/m) 
@@ -100,8 +101,7 @@ function basic_rfft!(A::AbstractVector{Complex{R}},brp,iW,pc) where{R<:Real}
     @assert length(A  )== nc
     @assert length(brp)== nc
     
-    applybrp!(A,brp)
-    basic_fft!(A,pc,-1)
+    basic_fft!(A,brp,pc,-1)
     @inbounds A[1]      *= Complex(1,-1)
     @simd for i      = 1:(div(nc,2))-1
         j      = mod(nc-i,nc)   
@@ -132,8 +132,7 @@ function basic_irfft!(A::AbstractVector{Complex{R}},brp,iW,pc) where{R<:Real}
         @inbounds A[i+1] = conj(( α*conj(Aᵢ) - β*Aⱼ)/det) *2
         @inbounds A[j+1] =     ((-β*conj(Aᵢ) + α*Aⱼ)/det) *2
     end
-    applybrp!(A,brp)
-    basic_fft!(A,pc,1)  
+    basic_fft!(A,brp,pc,1)  
 end
 """
     X = 𝔉(x,δt)  # typeset with \\mfrakF\\Bbbr
