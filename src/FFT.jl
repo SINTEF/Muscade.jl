@@ -133,21 +133,18 @@ end
 """
     X = 𝔉(x,δt)  # typeset with \\mfrakF\\Bbbr
 
-    Fourrier transform of a real time series x stored at time steps `δt` and length `2*N = 2*2^p`
-    into a complex spectre X stored at frequency intervals `δf=getδf(2*N,δt)=1/(2*N*δt)`.  
+    Fourrier transform of a real time series x stored at time steps `δt` and length `2N = 2*2^p`
+    into a complex spectre X stored at frequency intervals `δω=getδω(2N,δt)=2π/(2N*δt)`.  
     The length of the spectre is `N`: only positive frequencies are stored (the Fourrier 
     transform of real functions are Hermitian).
 
-    The transformation is unitary, in the sense that
-    `sum(abs2.(x))*δt ≈ (sum(abs2.(X)) - abs2.(X[1])/2)*δf` 
-    The term `- abs2.(X[1])/2` in the norm of the spectre prevents counting the constant term twice
-
-    This thus provides a discritization of the unitary Fourrier transform, 
+    This provides a discretization of the unitary Fourrier transform, 
     
-    G(f) = √2 𝔉(g)(f) = √2 ∫exp(-2π𝑖 f t) g(t) dt
+    G(ω) = 𝔉(g)(ω) = 1/√(2π) ∫exp(-𝑖ωt) g(t) dt
 
-    where the factor of 2 amplifies the spectre because only positive frequencies are kept.
-    vector of `<:Real` of length `2^(p+1)` into a `Complex` Vector of length `2^p`
+    𝔉 is unitary, in the sense that
+    `sum(abs2.(x))*δt ≈ 2*(sum(abs2.(X)) - abs2.(X[1])/2)*δω` 
+    (since the discrete spectre is provided for ω≥0, it contains only half the energy)
 
     # Arguments
     - `x` a vector of real numbers representing a time series.  Its length must be a power of two.
@@ -157,11 +154,11 @@ end
 
     ```
     X   = 𝔉(x,δt) 
-    δf  = getδf(length(x),δt)
-    x′  = 𝔉⁻¹(X,δf) # ≈ x
+    δω  = getδω(length(x),δt)
+    x′  = 𝔉⁻¹(X,δω) # ≈ x
     ```
 
-    See also: [`𝔉⁻¹`](@ref), [`getδf`](@ref), [`getδt`](@ref),
+    See also: [`𝔉⁻¹`](@ref), [`getδω`](@ref), [`getδt`](@ref),
 
 """
 function 𝔉(a::AbstractVector{R},δt::ℝ) where{R<:Real} #\mfrakF
@@ -172,7 +169,7 @@ function 𝔉(a::AbstractVector{R},δt::ℝ) where{R<:Real} #\mfrakF
     iW      = getiW(nc)
     brp     = bitreversalpermutation(pc)
     basic_rfft!(A,a,brp,iW,pc)
-    A     .*= δt*√2   # √2 so that the half spectre A has same 2-norm as signal `a` (note the constant term must be weighted with 1/2 to compute the norm)
+    A     .*= δt/√(2π)   # √2/√(2π) so that the half spectre A has same 2-norm as signal `a` (note the constant term must be weighted with 1/2 to compute the norm)
     return A
 end
 """
@@ -182,20 +179,20 @@ end
 
     # Arguments
     - `X` a vector of complex numbers representing one side of a spectra. Its length must be a power of two.
-    - `δf` or `δω` the frequency step (respectively circular frequency step) of spectra
+    - `δω`, the angular frequency step of spectra
 
     # Example
 
     ```
     X   = 𝔉(x,δt) 
-    δf  = getδf(length(x),δt)
-    x′  = 𝔉⁻¹(X,δf) # ≈ x
+    δω  = getδω(length(x),δt)
+    x′  = 𝔉⁻¹(X,δω) # ≈ x
     ```
 
-    See also: [`𝔉⁻¹`](@ref), [`getδf`](@ref), [`getδt`](@ref),
+    See also: [`𝔉⁻¹`](@ref), [`getδω`](@ref), [`getδt`](@ref),
 
 """
-function 𝔉⁻¹(A::AbstractVector{Complex{R}},δϕ::ℝ) where{R<:Real} #\mfrakF
+function 𝔉⁻¹(A::AbstractVector{Complex{R}},δω::ℝ) where{R<:Real} #\mfrakF
     nc      = length(A)
     nr      = 2nc
     pc      = 𝕫log2(nc)
@@ -204,14 +201,14 @@ function 𝔉⁻¹(A::AbstractVector{Complex{R}},δϕ::ℝ) where{R<:Real} #\mfr
     brp     = bitreversalpermutation(pc)
     B       = copy(A)
     basic_irfft!(a,B,brp,iW,pc)
-    a     .*= δϕ*√2
+    a     .*= δω*√(2/π)
     return a
 end
 """
-    getδf(n,δt)    =  1/(n*δt)
+    getδω(n,δt) = 2π/(n*δt)
 """
-getδf(n,δt)    =  1/(n*δt)
+getδω(n,δt)    =  2π/(n*δt)
 """
-    getδt(n,δf) = 1/(n*δf)
+    getδt(n,δω) = 2π/(n*δω)
 """
-getδt(n,δϕ) = 1/(n*δϕ)
+getδt(n,δω) = 2π/(n*δω)
