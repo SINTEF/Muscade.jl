@@ -1,7 +1,6 @@
 
 ## Basic engine
-const 𝑖 = im  # \iti
-const π𝑖 = π*𝑖
+const 𝑖  = im  # \iti
 const ℜ = real # \Re 
 const ℑ = imag  # \Im
 const expπ𝑖 = cispi  
@@ -173,7 +172,20 @@ function 𝔉(a::AbstractVector{R},δt::ℝ) where{R<:Real} #\mfrakF
     iW      = getiW(nc)
     brp     = bitreversalpermutation(pc)
     basic_rfft!(A,brp,iW,pc)
-    A     .*= δt/√(2π)   # √2/√(2π) so that the half spectre A has same 2-norm as signal `a` (note the constant term must be weighted with 1/2 to compute the norm)
+    A     .*= δt/√(2π)   
+    return A
+end
+# A = reinterpret(Complex{R},a)  # a[it,idof]
+# 𝔉!(A,δt)                       # A[iω,idof]
+function 𝔉!(A::AbstractMatrix{Complex{R}},δt::ℝ) where{R<:Real} #\mfrakF
+    nc,ndof  = size(A)
+    pc      = 𝕫log2(nc)
+    iW      = getiW(nc)
+    brp     = bitreversalpermutation(pc)
+    Threads.@threads for idof = 1:ndof  
+        basic_rfft!(view(A,:,idof),brp,iW,pc)
+    end
+    A     .*= δt/√(2π)   
     return A
 end
 """
@@ -208,8 +220,22 @@ function 𝔉⁻¹(A::AbstractVector{Complex{R}},δω::ℝ) where{R<:Real} #\mfr
     a     .*= δω*√(2/π)
     return reinterpret(R,a) 
 end
+# 𝔉⁻¹!(A,δω)                     # A[iω,idof]
+# a = reinterpret(Complex{R},A)  # a[it,idof]
+function 𝔉⁻¹!(A::AbstractMatrix{Complex{R}},δω::ℝ) where{R<:Real} #\mfrakF
+    nc,ndof  = size(A)
+    pc      = 𝕫log2(nc)
+    iW      = getiW(nc)
+    brp     = bitreversalpermutation(pc)
+    Threads.@threads for idof = 1:ndof  
+        basic_irfft!(view(A,:,idof),brp,iW,pc)
+    end
+    A     .*= δω*√(2/π) 
+    return A
+end
+
 """
-    getδω(n,δt) = 2π/(n*δt)
+    δω=getδω(n,δt) = 2π/(n*δt)
 """
 getδω(n,δt)    =  2π/(n*δt)
 """
