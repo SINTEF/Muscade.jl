@@ -35,6 +35,15 @@ function bitreversalpermutation(p)
     end
     return brp
 end
+function applybrp!(a,brp)
+    @assert length(a) == length(brp)
+    @simd for i = 1:length(a)
+        @inbounds j = brp[i]
+        if j≤i
+            @inbounds a[i],a[j] = a[j],a[i]
+        end
+    end
+end
 function getiW(nc) # = 𝑖 * expπ𝑖(-(0:nc-1)/nc) - the twiddles
     ωₘ         = expπ𝑖(-1/nc) 
     iW         = Vector{Complex{Float64}}(undef,nc)
@@ -54,7 +63,6 @@ end
 # Introduction to algorithms (3rd ed.). Cambridge, Mass.: MIT Press. pp. 915–918. ISBN 978-0-262-03384-8
 #
 # A (complex, length 2^p): mutable memory for input and output
-# brp (integer, length 2^p): bit reversal permutation
 # p (integer): log2 of the length of A and a
 # z (integer): -1 for forward and 1 for inverse transform
 function basic_fft!(A::AbstractVector{Complex{R}},p,z) where{R<:Real}   # Wikipedia convention
@@ -92,7 +100,7 @@ function basic_rfft!(A::AbstractVector{Complex{R}},brp,iW,pc) where{R<:Real}
     @assert length(A  )== nc
     @assert length(brp)== nc
     
-    A[brp]          = A
+    applybrp!(A,brp)
     basic_fft!(A,pc,-1)
     @inbounds A[1]      *= Complex(1,-1)
     @simd for i      = 1:(div(nc,2))-1
@@ -124,7 +132,7 @@ function basic_irfft!(A::AbstractVector{Complex{R}},brp,iW,pc) where{R<:Real}
         @inbounds A[i+1] = conj(( α*conj(Aᵢ) - β*Aⱼ)/det) *2
         @inbounds A[j+1] =     ((-β*conj(Aᵢ) + α*Aⱼ)/det) *2
     end
-    A[brp] = A   
+    applybrp!(A,brp)
     basic_fft!(A,pc,1)  
 end
 """
