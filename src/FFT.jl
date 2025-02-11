@@ -83,17 +83,16 @@ end
 
 ## ℝ → ℂ transforms
 # See "fft real.pdf" for theory
-# forward 2^(p-1) complex transform of 2^p real vector 
-function basic_rfft!(A::AbstractVector{Complex{R}},a::AbstractVector{R},brp,iW,pc) where{R<:Real}
-    # mutates A
+# forward 2^pc complex transform A of 2*2^pc real vector a
+#   A = reinterpret(Complex{Float64},a) # just a view
+#   basic_rfft!(A,brp,iW,pc)   # TODO reinterpret is not an AbstractVector
+# A is the half Fourrier transform
+function basic_rfft!(A::AbstractVector{Complex{R}},brp,iW,pc) where{R<:Real}
     nc     = 2^pc # N in the theory
     @assert length(A  )== nc
-    @assert length(a  )==2nc
     @assert length(brp)== nc
     
-    @simd for i = 0:nc-1
-        A[brp[i+1]] = complex(a[2i+1],a[2i+1+1])
-    end
+    A[brp]          = A
     basic_fft!(A,pc,-1)
     @inbounds A[1]      *= Complex(1,-1)
     @simd for i      = 1:(div(nc,2))-1
@@ -106,11 +105,13 @@ function basic_rfft!(A::AbstractVector{Complex{R}},a::AbstractVector{R},brp,iW,p
         @inbounds A[j+1] = Aⱼ
     end
 end
-function basic_irfft!(a::AbstractVector{R},A::AbstractVector{Complex{R}},brp,iW,pc) where{R<:Real}
-    # NB: mutates both a and A
+# A is the half Fourrier transform
+#   basic_irfft!(A,brp,iW,pc)
+#   a = reinterpret(Float64,A) # just a view
+# A is the half Fourrier transform
+function basic_irfft!(A::AbstractVector{Complex{R}},brp,iW,pc) where{R<:Real}
     nc     = 2^pc # N in the theory
     @assert length(A  )== nc
-    @assert length(a  )==2nc
     @assert length(brp)== nc
     @inbounds A[1]      /= Complex(1,-1)
     @simd for i      = 1:(div(nc,2))-1
@@ -123,11 +124,8 @@ function basic_irfft!(a::AbstractVector{R},A::AbstractVector{Complex{R}},brp,iW,
         @inbounds A[i+1] = conj(( α*conj(Aᵢ) - β*Aⱼ)/det) *2
         @inbounds A[j+1] =     ((-β*conj(Aᵢ) + α*Aⱼ)/det) *2
     end
-    A[brp] = A
-    basic_fft!(A,pc,1)  # this overwrites input A
-    @simd for i = 0:nc-1
-        @inbounds (a[2i+1],a[2i+1+1]) = reim(A[i+1])
-    end
+    A[brp] = A   
+    basic_fft!(A,pc,1)  
 end
 """
     X = 𝔉(x,δt)  # typeset with \\mfrakF\\Bbbr
@@ -164,10 +162,10 @@ function 𝔉(a::AbstractVector{R},δt::ℝ) where{R<:Real} #\mfrakF
     nr      = length(a)
     nc      = div(nr,2)
     pc      = 𝕫log2(nc)
-    A       = Vector{Complex{R}}(undef,nc)
+    A       = copy(reinterpret(Complex{R},a))
     iW      = getiW(nc)
     brp     = bitreversalpermutation(pc)
-    basic_rfft!(A,a,brp,iW,pc)
+    basic_rfft!(A,brp,iW,pc)
     A     .*= δt/√(2π)   # √2/√(2π) so that the half spectre A has same 2-norm as signal `a` (note the constant term must be weighted with 1/2 to compute the norm)
     return A
 end
@@ -198,10 +196,10 @@ function 𝔉⁻¹(A::AbstractVector{Complex{R}},δω::ℝ) where{R<:Real} #\mfr
     a       = Vector{R}(undef,nr)
     iW      = getiW(nc)
     brp     = bitreversalpermutation(pc)
-    B       = copy(A)
-    basic_irfft!(a,B,brp,iW,pc)
+    a       = copy(A)
+    basic_irfft!(a,brp,iW,pc)
     a     .*= δω*√(2/π)
-    return a
+    return reinterpret(R,a) 
 end
 """
     getδω(n,δt) = 2π/(n*δt)
