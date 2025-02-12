@@ -79,7 +79,7 @@ function basic_fft!(A::AbstractVector{Complex{R}},brp,p,z) where{R<:Real}   # Wi
                 @inbounds u        =   A[k+j  ]  # hence for m=n/2, A[n/2+k+j] = A[n/2+2-k-j]'
                 @inbounds A[k+j]   = u+t
                 @inbounds A[k+j+m] = u-t
-                ω                 *= ωₘ
+                ω                 *= ωₘ   # TODO use a precomputed twiddle instead
                 if mod(j,1024) == 15  # once in a while, renormalize ω 
                     ω             *= (3-ℜ(ω)^2-ℑ(ω)^2)/2  # but do so fast, do it using a 1st order Taylor expansion at 1 of of 1/|ω|
                 end
@@ -175,8 +175,8 @@ function 𝔉(a::AbstractVector{R},δt::ℝ) where{R<:Real} #\mfrakF
     A     .*= δt/√(2π)   
     return A
 end
-# A = reinterpret(Complex{R},a)  # a[it,idof]
-# 𝔉!(A,δt)                       # A[iω,idof]
+# A = reinterpret(Complex{R},a)  # a[it,idof] length 2N
+# 𝔉!(A,δt)                       # A[iω,idof] length N
 function 𝔉!(A::AbstractMatrix{Complex{R}},δt::ℝ) where{R<:Real} #\mfrakF
     nc,ndof  = size(A)
     pc      = 𝕫log2(nc)
@@ -220,8 +220,8 @@ function 𝔉⁻¹(A::AbstractVector{Complex{R}},δω::ℝ) where{R<:Real} #\mfr
     a     .*= δω*√(2/π)
     return reinterpret(R,a) 
 end
-# 𝔉⁻¹!(A,δω)                     # A[iω,idof]
-# a = reinterpret(Complex{R},A)  # a[it,idof]
+# 𝔉⁻¹!(A,δω)                     # A[iω,idof] length N
+# a = reinterpret(Complex{R},A)  # a[it,idof] length 2N
 function 𝔉⁻¹!(A::AbstractMatrix{Complex{R}},δω::ℝ) where{R<:Real} #\mfrakF
     nc,ndof  = size(A)
     pc      = 𝕫log2(nc)

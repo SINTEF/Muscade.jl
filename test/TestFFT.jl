@@ -35,6 +35,16 @@ t3      = δt3*(-n3/2:n3/2-1)
 X3      = Muscade.𝔉(g.(t3),δt3) 
 x3′     = Muscade.𝔉⁻¹(X3,δω3)
 
+x = Matrix{Float64}(undef,n1,3)
+x[:,1]  = g.(t1)
+x[:,2]  = g.(2t1)
+x[:,3]  = g.(3t1)
+X       = reinterpret(Complex{Float64},copy(x))
+Muscade.𝔉!(X,δt1)
+y       = copy(X) 
+Muscade.𝔉⁻¹!(y,δω1)
+x′       = reinterpret(Float64,y)
+
 # using GLMakie
 # fig      = Figure(size = (1000,600))
 # display(fig) # open interactive window (gets closed down by "save")
@@ -73,5 +83,11 @@ end
    @test (sum(abs2.(X2))-abs2(X2[1])/2).*δω2   ≈ 0.14104739588693924 # energy of half spectre
    @test (sum(abs2.(X3))-abs2(X3[1])/2).*δω3   ≈ 0.14104739588693924 # energy of half spectre
 end
+
+@testset "𝔉! and 𝔉⁻¹!" begin
+   @test X[:,1] ≈ X1
+   @test x ≈ x′
+end
+
 
 end #module
