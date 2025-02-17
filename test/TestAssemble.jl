@@ -125,7 +125,7 @@ Lλ          = Muscade.asmvec!(asmvec,dofgr,dis)
     @test asmvec[1] == [1; 2;;]
     @test asmvec[2] == [1; 2; 3;;]
 end
-out,asm,dofgr = Muscade.AssemblySweepX{0}(model,dis)
+out,asm,dofgr = Muscade.prepare(Muscade.AssemblySweepX{0},model,dis)
 Muscade.zero!(out)
 @testset "prepare" begin
     @test  out.Lλ ≈ [0,0,0]

@@ -246,7 +246,7 @@ end
 
 ######## Prepare assembler datastructure "asm"
 
-# asm[iarray,ieletyp][ieledof/ientry,iele] has value zero for terms from element gradient/hessian that are not to be added in. Otherwise, the value they
+# asm[iarray,ieletyp][ieledof/i,iele] has value zero for terms from element gradient/hessian that are not to be added in. Otherwise, the value they
 # have is where in the matrix/vector/nzval to put the values.
 # Example: for stiffness matrix iarray=2, beam element ieletyp=3, put the 4th entry (column major) of the iele=5th element into
 # the asm[2,3][4,5]-th non-zero value (nzval) of the stiffness matrix for the solver.
@@ -298,8 +298,8 @@ function asmfullmat!(asm,iasm,jasm,nimoddof,njmoddof)
         for iele=1:nele, jeledof=1:njeledof, ieledof=1:nieledof
             imoddof,jmoddof = iasm[ieletyp][ieledof,iele], jasm[ieletyp][jeledof,iele]
             if (imoddof≠0)  &&  (jmoddof≠0)
-                ientry = ieledof+nieledof*(jeledof-1)
-                asm[ieletyp][ientry,iele] = imoddof+nimoddof*(jmoddof-1)
+                i = ieledof+nieledof*(jeledof-1)
+                asm[ieletyp][i,iele] = imoddof+nimoddof*(jmoddof-1)
             end
         end
     end
@@ -373,8 +373,8 @@ function asmmat!(asm,iasm,jasm,nimoddof,njmoddof)
         for iele=1:nele, jeledof=1:njeledof, ieledof=1:nieledof
             if (iasm[ieletyp][ieledof,iele]≠0)  &&  (jasm[ieletyp][jeledof,iele]≠0)
                 ipair += 1
-                ientry = ieledof+nieledof*(jeledof-1) 
-                asm[ieletyp][ientry,iele] = K[ipair]  
+                i = ieledof+nieledof*(jeledof-1) 
+                asm[ieletyp][i,iele] = K[ipair]  
             end
         end
     end
@@ -414,7 +414,7 @@ function assemble_!(out::Assembly,asm,dis,eleobj,state::State{nΛder,nXder,nUder
         Ue    = NTuple{nUder}(u[index.U] for u∈state.U)
         Ae    = state.A[index.A]
         addin!(out,asm,iele,scale,eleobj[iele],Λe,Xe,Ue,Ae, state.time,SP,(dbg...,iele=iele)) # defined by solver.  Called for each element. But the asm that is passed
-    end                                                                                       # is of the form asm[iarray][ientry,iele], because addin! will add to all arrays in one pass
+    end                                                                                       # is of the form asm[iarray][i,iele], because addin! will add to all arrays in one pass
 end
 
 ############# Tools for addin!
@@ -441,46 +441,38 @@ function zero!(out::AbstractSparseArray)
 end
 
 #### extract value or derivatives from a SVector 'a' of adiffs, and add it directly into vector, full matrix or nzval of sparse matrix 'out'.
-function add_value!(out::𝕣1,asm,iele,a::SVector{M,∂ℝ{P,N,𝕣}},ias) where{P,N,M}
-    # asm[ientry,iel]
-    for (ientry,ia) ∈ enumerate(ias)
-        iout = asm[ientry,iele]
+function add_value!(out::𝕣1,asm,iele,a::SVector,ia=eachindex(a),io=axes(asm,1)) 
+    for (i,iaᵢ) ∈ enumerate(ia)
+        iout = asm[io[i],iele]
         if iout≠0
-            out[iout]+=a[ia].x
+            out[iout]+=VALUE(a[iaᵢ])
         end
     end
 end   
-function add_value!(out::𝕣1,asm,iele,a::SVector{M,𝕣},ias) where{M}
-    for (ientry,ia) ∈ enumerate(ias)
-        iout = asm[ientry,iele]
-        if iout≠0
-            out[iout]+=a[ia]
-        end
-    end
-end   
-add_value!(out,asm,iele,a) = add_value!(out,asm,iele,a,eachindex(a)) 
+  
 struct add_∂!{P} end 
-function add_∂!{P}(out::Array,asm,iele,a::SVector{M,∂ℝ{P,N,R}},i1as,i2as) where{P,N,R,M}
-    for (i1asm,i1a) ∈ enumerate(i1as), (i2asm,i2a) ∈ enumerate(i2as)
-        ientry = i1asm+length(i1as)*(i2asm-1)
-        iout = asm[ientry,iele]
+#function add_∂!{P}(out::Array,asm,iele,a::SVector{M,∂ℝ{P,N,R}},ia=SVector{M}(1:M),ja=SVector{N}(1:N),io=SVector{M}(1:M),jo=SVector{N}(1:N)) where{P,N,R,M}
+function add_∂!{P}(out::Array,asm,iele,a::SVector{M,∂ℝ{P,N,R}},ia=SVector{M}(1:M),ja=SVector{N}(1:N)) where{P,N,R,M}
+    for (i,iaᵢ) ∈ enumerate(ia), (j,jaⱼ) ∈ enumerate(ja)
+#        k = io[i]+length(ia)*(io[j]-1)
+        k = i+length(ia)*(j-1)
+        iout = asm[k,iele]
         if iout≠0
-            out[iout]+=a[i1a].dx[i2a]  
+            out[iout]+=a[iaᵢ].dx[jaⱼ]  
         end
     end
 end  
 add_∂!{P}(out::SparseMatrixCSC,args...) where{P}                      = add_∂!{P}(out.nzval,args...)
 add_∂!{P}(out::Array,asm,iele,a::SVector{M,R},args...) where{P,M,R}   = nothing
-add_∂!{P}(out::Array,asm,iele,a::SVector{M,∂ℝ{P,N,R}}) where{P,N,R,M} = add_∂!{P}(out,asm,iele,a,SVector{M}(1:M),SVector{N}(1:N))
 
-# i1as and i2as are indices BEFORE transposition
+# ia and ja are indices BEFORE transposition
 struct add_∂ᵀ!{P} end 
-function add_∂ᵀ!{P}(out::Array,asm,iele,a::SVector{M,∂ℝ{P,N,R}},i1as,i2as) where{P,N,R,M}
-    for (i1asm,i1a) ∈ enumerate(i1as), (i2asm,i2a) ∈ enumerate(i2as)
-        ientry = i2asm+length(i2as)*(i1asm-1)
-        iout = asm[ientry,iele]
+function add_∂ᵀ!{P}(out::Array,asm,iele,a::SVector{M,∂ℝ{P,N,R}},ia,ja) where{P,N,R,M}
+    for (i,iaᵢ) ∈ enumerate(ia), (j,jaⱼ) ∈ enumerate(ja)
+        k = j+length(ja)*(i-1)
+        iout = asm[k,iele]
         if iout≠0
-            out[iout]+=a[i1a].dx[i2a]  
+            out[iout]+=a[iaᵢ].dx[jaⱼ]  
         end
     end
 end  

@@ -91,8 +91,8 @@ function addin!(out::AssemblyDirect{OX,OU,IA,T1,T2},asm,iele,scale,eleobj::Eleob
         for β∈xua, j=1:nder[β]
             iβ   = pβ.+(1:ndof[β])
             pβ  += ndof[β]
-            Lλβ = out.L2[ind.Λ,β]
-            Lβλ = out.L2[β,ind.Λ]
+            Lλβ  = out.L2[ind.Λ,β]
+            Lβλ  = out.L2[β,ind.Λ]
             if j≤size(Lλβ,2) # ...but only add into existing matrices of L2, for better sparsity
                 add_∂!{ 1}(Lλβ[1,j],asm[arrnum(ind.Λ,β)],iele,R,iλ,iβ)
                 add_∂ᵀ!{1}(Lβλ[j,1],asm[arrnum(β,ind.Λ)],iele,R,iλ,iβ)

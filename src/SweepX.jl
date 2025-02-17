@@ -13,7 +13,7 @@ mutable struct AssemblySweepX{ORDER,Tλ,Tλx} <: Assembly
     firstiter :: 𝕓   
     line      :: 𝕓
 end   
-function AssemblySweepX{ORDER}(model,dis) where{ORDER}
+function prepare(::Type{AssemblySweepX{ORDER}},model,dis) where{ORDER}
     Xdofgr             = allXdofs(model,dis)  # dis: the model's disassembler
     ndof               = getndof(Xdofgr)
     narray,neletyp     = 2,getneletyp(model)
@@ -154,7 +154,7 @@ function solve(SX::Type{SweepX{ORDER}},pstate,verbose,dbg;
                     saveiter::𝔹=false,
                     maxLineIter::ℤ=50,sfac::𝕣=.5,γfac::𝕣=.5) where{ORDER}
     model,dis        = initialstate.model,initialstate.dis
-    out,asm,Xdofgr   = AssemblySweepX{ORDER}(model,dis)  
+    out,asm,Xdofgr   = prepare(AssemblySweepX{ORDER},model,dis)  
     ndof             = getndof(Xdofgr)
     if ORDER≥1    x′ = 𝕣1(undef,ndof) end 
     if ORDER≥2    x″ = 𝕣1(undef,ndof) end 
