@@ -441,44 +441,50 @@ function zero!(out::AbstractSparseArray)
 end
 
 #### extract value or derivatives from a SVector 'a' of adiffs, and add it directly into vector, full matrix or nzval of sparse matrix 'out'.
-function add_value!(out::𝕣1,asm,iele,a::SVector,ia=eachindex(a),io=axes(asm,1)) 
+
+# out[asm[:   ,iele]] += a
+# out[asm[iasm,iele]] += a      # pick: 'a' is only a part of the element vector (FreqXU)   
+# out[asm[:,   iele]] += a[ia]  # split: parts of 'a' are assembled (DirectXUA)   
+# out[asm[iasm,iele]] += a[ia]  # not used
+function add_value!(out::𝕣1,asm,iele,a::SVector;ia=eachindex(a),iasm=axes(asm,1)) 
     for (i,iaᵢ) ∈ enumerate(ia)
-        iout = asm[io[i],iele]
-        if iout≠0
-            out[iout]+=VALUE(a[iaᵢ])
+        iout = asm[iasm[i],iele]
+        if iout≠0 
+            out[iout]+=VALUE(a[iaᵢ]) 
         end
     end
 end   
-  
-struct add_∂!{P} end 
-#function add_∂!{P}(out::Array,asm,iele,a::SVector{M,∂ℝ{P,N,R}},ia=SVector{M}(1:M),ja=SVector{N}(1:N),io=SVector{M}(1:M),jo=SVector{N}(1:N)) where{P,N,R,M}
-function add_∂!{P}(out::Array,asm,iele,a::SVector{M,∂ℝ{P,N,R}},ia=SVector{M}(1:M),ja=SVector{N}(1:N)) where{P,N,R,M}
-    for (i,iaᵢ) ∈ enumerate(ia), (j,jaⱼ) ∈ enumerate(ja)
-#        k = io[i]+length(ia)*(io[j]-1)
+
+
+struct add_∂!{P} end # to allow syntax with type-parameter P
+#function add_∂!{P}(out::Array,asm,iele,a::SVector{Na,∂ℝ{P,Nda,R}},ia=SVector{Na}(1:Na),ida=SVector{Nda}(1:Nda),iasm=SVector{Na}(1:Na),jo=SVector{Nda}(1:Nda)) where{P,Nda,R,Na}
+function add_∂!{P}(out::Array,asm,iele,a::SVector{Na,∂ℝ{P,Nda,R}},ia=SVector{Na}(1:Na),ida=SVector{Nda}(1:Nda)) where{P,Nda,R,Na}
+    for (i,iaᵢ) ∈ enumerate(ia), (j,idaⱼ) ∈ enumerate(ida)
+#        k = iasm[i]+length(ia)*(iasm[j]-1)  < this would have to be the V
         k = i+length(ia)*(j-1)
         iout = asm[k,iele]
         if iout≠0
-            out[iout]+=a[iaᵢ].dx[jaⱼ]  
+            out[iout]+=a[iaᵢ].dx[idaⱼ]  
         end
     end
 end  
 add_∂!{P}(out::SparseMatrixCSC,args...) where{P}                      = add_∂!{P}(out.nzval,args...)
-add_∂!{P}(out::Array,asm,iele,a::SVector{M,R},args...) where{P,M,R}   = nothing
+add_∂!{P}(out::Array,asm,iele,a::SVector{Na,R},args...) where{P,Na,R}   = nothing
 
-# ia and ja are indices BEFORE transposition
+# ia and ida are indices BEFORE transposition
 struct add_∂ᵀ!{P} end 
-function add_∂ᵀ!{P}(out::Array,asm,iele,a::SVector{M,∂ℝ{P,N,R}},ia,ja) where{P,N,R,M}
-    for (i,iaᵢ) ∈ enumerate(ia), (j,jaⱼ) ∈ enumerate(ja)
-        k = j+length(ja)*(i-1)
+function add_∂ᵀ!{P}(out::Array,asm,iele,a::SVector{Na,∂ℝ{P,Nda,R}},ia,ida) where{P,Nda,R,Na}
+    for (i,iaᵢ) ∈ enumerate(ia), (j,idaⱼ) ∈ enumerate(ida)
+        k = j+length(ida)*(i-1)
         iout = asm[k,iele]
         if iout≠0
-            out[iout]+=a[iaᵢ].dx[jaⱼ]  
+            out[iout]+=a[iaᵢ].dx[idaⱼ]  
         end
     end
 end  
 add_∂ᵀ!{P}(out::SparseMatrixCSC,args...) where{P}                      = add_∂ᵀ!{P}(out.nzval,args...)
-add_∂ᵀ!{P}(out::Array,asm,iele,a::SVector{M,R},args...) where{P,M,R}   = nothing
-add_∂ᵀ!{P}(out::Array,asm,iele,a::SVector{M,∂ℝ{P,N,R}}) where{P,N,R,M} = add_∂ᵀ!{P}(out,asm,iele,a,SVector{M}(1:M),SVector{N}(1:N))
+add_∂ᵀ!{P}(out::Array,asm,iele,a::SVector{Na,R},args...) where{P,Na,R}   = nothing
+add_∂ᵀ!{P}(out::Array,asm,iele,a::SVector{Na,∂ℝ{P,Nda,R}}) where{P,Nda,R,Na} = add_∂ᵀ!{P}(out,asm,iele,a,SVector{Na}(1:Na),SVector{Nda}(1:Nda))
 
 
 

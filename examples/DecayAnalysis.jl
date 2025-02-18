@@ -14,13 +14,13 @@ const idx    = (:11,:12,:16,:22,:26,:66)
 struct FloaterOnCalmWater <: AbstractElement
     K   :: SMatrix{3,3,𝕣}
     C   :: SMatrix{3,3,𝕣}
-    M   :: SMatrix{3,3,𝕣}
+    M   :: SMatrix{3,3,𝕣}S
 end
 FloaterOnCalmWater(nod::Vector{Node};K,C,M  )  = FloaterOnCalmWater(K,C,M)
 
-Muscade.doflist(::Type{<:FloaterOnCalmWater}) = (inod = (ntuple(i-> 1,3)...,ntuple(i-> 1,3)...,ntuple(i-> 1,6)...,                  ntuple(i-> 1,6)...           ),                                             
-                                                 class= (ntuple(i->:X,3)...,ntuple(i->:U,3)...,ntuple(i->:A,6)...,                  ntuple(i->:A,6)...          ), 
-                                                 field= (floatermotion...  ,floatermotion...  ,ntuple(i->Symbol(:M,idx[i]),6)...,   ntuple(i->Symbol(:C,idx[i]),6)...))
+Muscade.doflist(::Type{<:FloaterOnCalmWater}) = (inod  = (ntuple(i-> 1,3)...,ntuple(i-> 1,3)...,ntuple(i-> 1,6)...,                  ntuple(i-> 1,6)...           ),                                             
+                                                 class = (ntuple(i->:X,3)...,ntuple(i->:U,3)...,ntuple(i->:A,6)...,                  ntuple(i->:A,6)...          ), 
+                                                 field = (floatermotion...  ,floatermotion...  ,ntuple(i->Symbol(:M,idx[i]),6)...,   ntuple(i->Symbol(:C,idx[i]),6)...))
 
 @espy function Muscade.residual(o::FloaterOnCalmWater,   X,U,A,t,SP,dbg) 
     x,x′,x″    = ∂0(X),∂1(X),∂2(X)   

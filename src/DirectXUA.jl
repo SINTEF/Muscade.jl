@@ -86,7 +86,7 @@ function addin!(out::AssemblyDirect{OX,OU,IA,T1,T2},asm,iele,scale,eleobj::Eleob
         hasnan(R,FB) && muscadeerror((dbg...,t=t,SP=SP),@sprintf("residual(%s,...) returned NaN in R, FB or derivatives",Eleobj)) 
         iλ   = 1:ndof[ind.Λ]
         Lλ   = out.L1[ind.Λ]
-        add_value!(Lλ[1] ,asm[arrnum(ind.Λ)],iele,R,iλ)
+        add_value!(Lλ[1] ,asm[arrnum(ind.Λ)],iele,R,ia=iλ)
         pβ       = 0
         for β∈xua, j=1:nder[β]
             iβ   = pβ.+(1:ndof[β])
@@ -116,7 +116,7 @@ function addin!(out::AssemblyDirect{OX,OU,IA,T1,T2},asm,iele,scale,eleobj::Eleob
             pα      += ndof[α]
             Lα = out.L1[α]
             if i≤size(Lα,1)  # ...but only add into existing vectors of L1, for speed
-                add_value!(out.L1[α][i] ,asm[arrnum(α)],iele,∇L,iα)
+                add_value!(out.L1[α][i] ,asm[arrnum(α)],iele,∇L,ia=iα)
             end
             pβ       = 0
             for β∈λxua, j=1:nder[β]
