@@ -57,8 +57,8 @@ function addin!(out::AssemblySweepX{ORDER},asm,iele,scale,eleobj::E,Λ,X::NTuple
             Lλ,FB      = getresidual(eleobj,(vx,vx′,vx″),U,A,t,SP,dbg)
             Lλ         = Lλ .* scale.X
             add_value!(out.Lλ ,asm[1],iele,Lλ             )
-            add_∂!{1}( out.Lλ ,asm[1],iele,Lλ,1:Nx,(Nx+1,))  # rhs = R - C⋅a - M⋅b 
-            add_∂!{1}( out.Lλx,asm[2],iele,Lλ,1:Nx,1:Nx   )
+            add_∂!{1}( out.Lλ ,asm[1],iele,Lλ,ia=1:Nx,ida=(Nx+1,))  # rhs = R - C⋅a - M⋅b 
+            add_∂!{1}( out.Lλx,asm[2],iele,Lλ,ia=1:Nx,ida=1:Nx   )
         else
             δX         = δ{1,Nx,𝕣}(scale.X)
             if     ORDER==0  Lλ,FB = getresidual(eleobj,(∂0(X)+δX,                         ),U,A,t,SP,dbg)

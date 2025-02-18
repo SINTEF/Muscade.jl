@@ -205,3 +205,17 @@ struct default{S} end
 default{S}(t::T,d=nothing) where{S,T<:NamedTuple} = hasfield(T,S) ? getfield(t,S) : d
 default{S}(t::T,d=nothing) where{S,T            } =                                 d
 
+
+"""
+An "identity vector"
+
+id = IdVec
+i  = 9834987
+id[i] == i # true for any i
+
+See also Julia's `identity` function.
+"""
+struct IdVec
+end
+@inline Base.getindex(A::IdVec,i) = i
+const idvec = IdVec()

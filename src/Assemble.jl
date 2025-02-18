@@ -446,8 +446,8 @@ end
 # out[asm[iasm,iele]] += a      # pick: 'a' is only a part of the element vector (FreqXU)   
 # out[asm[:,   iele]] += a[ia]  # split: parts of 'a' are assembled (DirectXUA)   
 # out[asm[iasm,iele]] += a[ia]  # not used
-function add_value!(out::𝕣1,asm,iele,a::SVector;ia=eachindex(a),iasm=axes(asm,1)) 
-    for (i,iaᵢ) ∈ enumerate(ia)
+function add_value!(out::𝕣1,asm,iele,a::SVector{Na,<:ℝ};ia=1:Na,iasm=idvec) where{Na}
+        for (i,iaᵢ) ∈ enumerate(ia)
         iout = asm[iasm[i],iele]
         if iout≠0 
             out[iout]+=VALUE(a[iaᵢ]) 
@@ -457,23 +457,31 @@ end
 
 
 struct add_∂!{P} end # to allow syntax with type-parameter P
-#function add_∂!{P}(out::Array,asm,iele,a::SVector{Na,∂ℝ{P,Nda,R}},ia=SVector{Na}(1:Na),ida=SVector{Nda}(1:Nda),iasm=SVector{Na}(1:Na),jo=SVector{Nda}(1:Nda)) where{P,Nda,R,Na}
-function add_∂!{P}(out::Array,asm,iele,a::SVector{Na,∂ℝ{P,Nda,R}},ia=SVector{Na}(1:Na),ida=SVector{Nda}(1:Nda)) where{P,Nda,R,Na}
+# function add_∂!{P}(out::Array,asm,iele,a::SVector{Na,∂ℝ{P,Nda,R}},ia=1:Na,ida=1:Nda) where{P,Nda,R,Na}
+#     for (i,iaᵢ) ∈ enumerate(ia), (j,idaⱼ) ∈ enumerate(ida)
+#         k = i+length(ia)*(j-1)
+#         iout = asm[k,iele]
+#         if iout≠0
+#             out[iout]+=a[iaᵢ].dx[idaⱼ]  
+#         end
+#     end
+# end  
+function add_∂!{P}(out::Array,asm,iele,a::SVector{Na,∂ℝ{P,Nda,R}};ia=1:Na,ida=1:Nda,iasm=idvec,idasm=idvec) where{P,Nda,R,Na}
     for (i,iaᵢ) ∈ enumerate(ia), (j,idaⱼ) ∈ enumerate(ida)
-#        k = iasm[i]+length(ia)*(iasm[j]-1)  < this would have to be the V
-        k = i+length(ia)*(j-1)
+        k = iasm[i]+length(ia)*(idasm[j]-1)  
         iout = asm[k,iele]
         if iout≠0
             out[iout]+=a[iaᵢ].dx[idaⱼ]  
         end
     end
 end  
-add_∂!{P}(out::SparseMatrixCSC,args...) where{P}                      = add_∂!{P}(out.nzval,args...)
-add_∂!{P}(out::Array,asm,iele,a::SVector{Na,R},args...) where{P,Na,R}   = nothing
+add_∂!{P}(out::SparseMatrixCSC,args...;kwargs...) where{P}                      = add_∂!{P}(out.nzval,args...;kwargs...)
+add_∂!{P}(out::Array,asm,iele,a::SVector{Na,R},args...;kwargs...) where{P,Na,R}   = nothing
 
 # ia and ida are indices BEFORE transposition
 struct add_∂ᵀ!{P} end 
-function add_∂ᵀ!{P}(out::Array,asm,iele,a::SVector{Na,∂ℝ{P,Nda,R}},ia,ida) where{P,Nda,R,Na}
+#function add_∂ᵀ!{P}(out::Array,asm,iele,a::SVector{Na,∂ℝ{P,Nda,R}},ia=SVector{Na}(1:Na),ida=SVector{Nda}(1:Nda)) where{P,Nda,R,Na}
+function add_∂ᵀ!{P}(out::Array,asm,iele,a::SVector{Na,∂ℝ{P,Nda,R}},ia=idvec,ida=idvec) where{P,Nda,R,Na}
     for (i,iaᵢ) ∈ enumerate(ia), (j,idaⱼ) ∈ enumerate(ida)
         k = j+length(ida)*(i-1)
         iout = asm[k,iele]

@@ -86,7 +86,9 @@ function addin!(out::AssemblyFreqXUrhs{OX,OU},asm,iele,scale,eleobj::Eleobj,  Λ
     nder   = (1 ,OX+1,OU+1)
     Np     = Nx + Nx*(OX+1) + Nu*(OU+1)  # number of partials
     # Partials ARE     in order λ₀,x₀,x₁,x₂,u₀,u₁,u₂
-    #          MUST BE in order λ₀,x₀,u₀,-,x₁,u₁,-,x₂,u₂ (or do add_value! and add_∂! handle non-continuous well?) 
+    #          MUST BE in order λ₀,x₀,u₀,-,x₁,u₁,-,x₂,u₂ (ai that iasm is a range)
+    
+    # computing iasm is a b***h  
     
     Λ∂     =              SVector{Nx}(∂ℝ{1,Np}(Λ[1   ][idof],                           idof, scale.Λ[idof])   for idof=1:Nx)
     X∂     = ntuple(ider->SVector{Nx}(∂ℝ{1,Np}(X[ider][idof],Nx+Nx*(ider-1)            +idof, scale.X[idof])   for idof=1:Nx),OX+1)
@@ -94,7 +96,7 @@ function addin!(out::AssemblyFreqXUrhs{OX,OU},asm,iele,scale,eleobj::Eleobj,  Λ
     L,FB   = getlagrangian(eleobj, Λ∂,X∂,U∂,A ,t,SP,dbg)
     ∇L     = ∂{1,Np}(L) 
     pβ     = 0   # points into the partials, 1 entry before the start of relevant partial derivative in β,ider-loop
-    add_value!(out.L[ider] ,asm,iele,∇L,iβ)
+    add_value!(out.L[ider] ,asm,iele,∇L,iasm=iβ)
     for ider = 1:nder 
         iβ       = pβ.+(1:ndof[β])  # TODO
         pβ      += ndof[β]          # TODO
