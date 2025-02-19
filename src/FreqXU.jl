@@ -1,41 +1,46 @@
-mutable struct AssemblyFreqXUmatrices{OX,OU,TM}  <:Assembly
-    M            :: TM   # a vector of real sparses with M₀,M₁...M₄
+mutable struct AssemblyFreqXUmat{OX,OU}  <:Assembly
+    L2           :: Vector{SparseMatrixCSC{Float64, Int64}}   # a vector of real sparses with L2₀,L2₁...L2₄
     fastresidual :: 𝔹
 end  
-function prepare(::Type{AssemblyFreqXUmatrices{OX,OU}},model,dis;fastresidual=false) where{OX,OU}
+function prepare(::Type{AssemblyFreqXUmat{OX,OU}},model,dis;fastresidual=false) where{OX,OU}
     dofgr           = allΛXUdofs(model,dis)
     ndof            = getndof(dofgr)
     nℓ,neletyp      = 5,getneletyp(model)
-    M               = Vector{SparseMatrixCSC{Float64, Int64}}(undef,nℓ)
-    asmvec          = Vector{𝕫2}(undef,neletyp)    # asmvec[ieletyp][ieledof,iele]
-    asm             = Vector{𝕫2}(undef,neletyp)    # asm   [ieletyp][ieledof,iele]
-    ~               = asmvec!(asmvec,dofgr,dis)    # to set asmvec, just a tool to build the matrix assemble
-    M[1]            = asmmat!(asm,asmvec,asmvec,ndof,ndof) 
+    L2              = Vector{SparseMatrixCSC{Float64, Int64}}(undef,nℓ)
+    asmvec          = Vector{𝕫2}(undef,  neletyp)    # asmvec[         ieletyp][ieledof,iele]
+    asm             = Matrix{𝕫2}(undef,1,neletyp)    # asm   [iarray=1,ieletyp][ieledof,iele]
+    ~               = asmvec!(asmvec,dofgr,dis)      # to set asmvec, just a tool to build the matrix assemble
+    L2[1]           = asmmat!(asm,asmvec,asmvec,ndof,ndof) 
     for ℓ           = 2:nℓ
-        M[ℓ]        = copy(M[1])
+        L2[ℓ]       = copy(L2[1])
     end
-    out             = AssemblyFreqXUmatrices{OX,OU,typeof{M}}(M,fastresidual) 
+    out             = AssemblyFreqXUmat{OX,OU}(L2,fastresidual) 
     return out,asm,dofgr
 end
-function zero!(out::Type{AssemblyFreqXUmatrices})
-    for ℓ∈1:nℓ 
-        zero!.(out.M[ℓ])
-    end
+function zero!(out::AssemblyFreqXUmat)
+    zero!.(out.L2)
 end
-################# TODO ###################
-function addin!(out::AssemblyFreqXUmatrices{OX,OU},asm,iele,scale,eleobj::Eleobj,  Λ::NTuple{1  ,SVector{Nx}},
+
+function addin!(out::AssemblyFreqXUmat{OX,OU},asm,iele,scale,eleobj::Eleobj,  Λ::NTuple{1  ,SVector{Nx}},
                                                                                    X::NTuple{NDX,SVector{Nx}},
                                                                                    U::NTuple{NDU,SVector{Nu}},
-                                                                                   A::           SVector{Na} ,t,SP,dbg) where{OX,OU,Nx,Nu,Na} 
-    ndof   = (Nx, Nx, Nu)
-    nder   = (1,OX+1,OU+1)
-    Np     = Nx + Nx*(OX+1) + Nu*(OU+1)  # number of partials
+                                                                                   A::           SVector{Na} ,t,SP,dbg) where{OX,OU,Nx,Nu,Na,Eleobj} 
+    
+    ox,ou  = 2,2 # specialised code.  Works for OX<2 or OU<2 but not optimal (many partials)
+    @assert NDX==ox+1 @sprintf("got OX=%i and NDX=%i. Expected OX+1==NDX",ox,NDX)
+    @assert NDU==ou+1 @sprintf("got OU=%i and NDU=%i. Expected OU+1==NDU",ou,NDU)
+    Nλ     = Nx
+    ndof   = Nλ+Nx+Nu
+    Np     = Nλ + Nx*(ox+1) + Nu*(ou+1)  # number of partials
 
-    Λ∂ =              SVector{Nx}(∂²ℝ{1,Np}(Λ[1   ][idof],                           idof, scale.Λ[idof])   for idof=1:Nx)
-    X∂ = ntuple(ider->SVector{Nx}(∂²ℝ{1,Np}(X[ider][idof],Nx+Nx*(ider-1)            +idof, scale.X[idof])   for idof=1:Nx),OX+1)
-    U∂ = ntuple(ider->SVector{Nu}(∂²ℝ{1,Np}(U[ider][idof],Nx+Nx*(OX+1)  +Nu*(ider-1)+idof, scale.U[idof])   for idof=1:Nu),OU+1)
-    L,FB = getlagrangian(eleobj, Λ∂,X∂,U∂,A ,t,SP,dbg)
-    ∇L           = ∂{2,Np}(L)
+    # Partials are in order λ₀,x₀,x₁,x₂,u₀,u₁,u₂ , since λ₁=λ₂=0
+    Λ∂     =              SVector{Nλ}(∂²ℝ{1,Np}(Λ[1   ][idof],                           idof, scale.Λ[idof])   for idof=1:Nλ)
+    X∂     = ntuple(ider->SVector{Nx}(∂²ℝ{1,Np}(X[ider][idof],Nλ+Nx*(ider-1)            +idof, scale.X[idof])   for idof=1:Nx),ox+1)
+    U∂     = ntuple(ider->SVector{Nu}(∂²ℝ{1,Np}(U[ider][idof],Nλ+Nx*(ox  +1)+Nu*(ider-1)+idof, scale.U[idof])   for idof=1:Nu),ou+1)
+
+    L,FB   = getlagrangian(eleobj, Λ∂,X∂,U∂,A ,t,SP,dbg)
+    L1     = ∂{2,Np}(L)
+
     pα           = 0   # points into the partials, 1 entry before the start of relevant partial derivative in α,ider-loop
     for α∈λxua, i=1:nder[α]   # we must loop over all time derivatives to correctly point into the adiff-partials...
         iα       = pα.+(1:ndof[α])
@@ -56,53 +61,48 @@ function addin!(out::AssemblyFreqXUmatrices{OX,OU},asm,iele,scale,eleobj::Eleobj
     end
 end
 
-mutable struct AssemblyFreqXUrhs{OX,OU}  <:Assembly
-    L            :: Array{𝕣,3}    # [nt=2nω,ndof,nder] 
+mutable struct AssemblyFreqXUvec{OX,OU}  <:Assembly
+    L1            :: Vector{𝕣1}    # out.L1[nder][ndof] 
     fastresidual :: 𝔹
 end  
-function prepare(::Type{AssemblyFreqXUrhs{OX,OU}},model,dis;fastresidual=false) where{OX,OU}
+function prepare(::Type{AssemblyFreqXUvec{OX,OU}},model,dis;fastresidual=false) where{OX,OU}
     dofgr           = allΛXUdofs(model,dis)
     ndof            = getndof(dofgr)
-    nder,neletyp    = maximum(OX,Ou+1),getneletyp(model)
-    L               = Vector{SparseMatrixCSC{Float64, Int64}}(undef,nde)
-    asmvec          = Vector{𝕫2}(undef,neletyp)    # asmvec[ieletyp][ieledof,iele]
-    L[1]            = asmvec!(asmvec,dofgr,dis) 
+    nder,neletyp    = max(OX,OU)+1,getneletyp(model)
+    L1              = Vector{𝕣1}(undef,nder)  # out.L1[ider][idof]
+    asmvec          = Matrix{𝕫2}(undef,1,neletyp)    # asmvec[iarray=1,ieletyp][ieledof,iele]  L1₀,L1₁,L1₂ use same assembler
+    L1[1]           = asmvec!(asmvec,dofgr,dis) 
     for ider        = 2:nder
-        M[ider]     = copy(L[1])
+        L1[ider]     = copy(L1[1])
     end
-    out             = AssemblyFreqXUrhs{OX,OU}(L,fastresidual) 
-    return out,asm,dofgr
+    out             = AssemblyFreqXUvec{OX,OU}(L1,fastresidual) 
+    return out,asmvec,dofgr
 end
-function zero!(out::Type{AssemblyFreqXUrhs})
-    for ider∈1:nder 
-        zero!.(out.L[ider])
-    end
+function zero!(out::AssemblyFreqXUvec) 
+    zero!.(out.L1)
 end
-function addin!(out::AssemblyFreqXUrhs{OX,OU},asm,iele,scale,eleobj::Eleobj,  Λ::NTuple{1  ,SVector{Nx}},
+function addin!(out::AssemblyFreqXUvec{OX,OU},asm,iele,scale,eleobj::Eleobj,  Λ::NTuple{1  ,SVector{Nx}},
                                                                               X::NTuple{NDX,SVector{Nx}},
                                                                               U::NTuple{NDU,SVector{Nu}},
-                                                                              A::           SVector{Na} ,t,SP,dbg) where{OX,OU,Nx,Nu,Na} 
-    ndof   = (Nx,  Nx, Nu )
-    nder   = (1 ,OX+1,OU+1)
-    Np     = Nx + Nx*(OX+1) + Nu*(OU+1)  # number of partials
-    # Partials ARE     in order λ₀,x₀,x₁,x₂,u₀,u₁,u₂
-    #          MUST BE in order λ₀,x₀,u₀,-,x₁,u₁,-,x₂,u₂ (ai that iasm is a range)
-    
-    # computing iasm is a b***h  
-    
-    Λ∂     =              SVector{Nx}(∂ℝ{1,Np}(Λ[1   ][idof],                           idof, scale.Λ[idof])   for idof=1:Nx)
-    X∂     = ntuple(ider->SVector{Nx}(∂ℝ{1,Np}(X[ider][idof],Nx+Nx*(ider-1)            +idof, scale.X[idof])   for idof=1:Nx),OX+1)
-    U∂     = ntuple(ider->SVector{Nu}(∂ℝ{1,Np}(U[ider][idof],Nx+Nx*(OX  +1)+Nu*(ider-1)+idof, scale.U[idof])   for idof=1:Nu),OU+1)
+                                                                              A::           SVector{Na} ,t,SP,dbg) where{OX,OU,Nx,Nu,Na,Eleobj,NDX,NDU} 
+    # TODO: accelerate elements that implement `residual`, implement use of `fastresidual`  
+    # TODO: this code differentiates as if OX==OU==2, which is not optimal.  General formulation?  
+    ox,ou  = 2,2 # specialised code.  Works for OX<2 or OU<2 but not optimal (many partials)
+    @assert NDX==ox+1 @sprintf("got OX=%i and NDX=%i. Expected OX+1==NDX",ox,NDX)
+    @assert NDU==ou+1 @sprintf("got OU=%i and NDU=%i. Expected OU+1==NDU",ou,NDU)
+    Nλ     = Nx
+    ndof   = Nλ+Nx+Nu
+    Np     = Nλ + Nx*(ox+1) + Nu*(ou+1)  # number of partials
+    # Partials are in order λ₀,x₀,x₁,x₂,u₀,u₁,u₂ , since λ₁=λ₂=0
+    Λ∂     =              SVector{Nλ}(∂ℝ{1,Np}(Λ[1   ][idof],                           idof, scale.Λ[idof])   for idof=1:Nλ)
+    X∂     = ntuple(ider->SVector{Nx}(∂ℝ{1,Np}(X[ider][idof],Nλ+Nx*(ider-1)            +idof, scale.X[idof])   for idof=1:Nx),ox+1)
+    U∂     = ntuple(ider->SVector{Nu}(∂ℝ{1,Np}(U[ider][idof],Nλ+Nx*(ox  +1)+Nu*(ider-1)+idof, scale.U[idof])   for idof=1:Nu),ou+1)
     L,FB   = getlagrangian(eleobj, Λ∂,X∂,U∂,A ,t,SP,dbg)
-    ∇L     = ∂{1,Np}(L) 
-    pβ     = 0   # points into the partials, 1 entry before the start of relevant partial derivative in β,ider-loop
-    add_value!(out.L[ider] ,asm,iele,∇L,iasm=iβ)
-    for ider = 1:nder 
-        iβ       = pβ.+(1:ndof[β])  # TODO
-        pβ      += ndof[β]          # TODO
-        add_value!(out.L[ider] ,asm,iele,∇L,iβ) # TODO add_value! only does out.L[ider]       += ∇L[iβ]
-                                                # TODO we need              out.L[ider][iout] += ∇L[iβ]
-    end
+    L1     = ∂{1,Np}(L) 
+    # ia, iasm, (computed at compile time) encode: L1[1]=[λ₀,x₀,u₀], L1[2]=[0,x₁,u₁], L1[3]=[0,x₂,u₂]
+    add_value!(out.L1[1],asm[1],iele,L1,iasm=    1 :ndof,ia=tuple(collect(1:Nλ)...,collect(Nλ    .+(1:Nx))...,collect(Nλ+3*Nx    .+(1:Nu))...))
+    add_value!(out.L1[2],asm[1],iele,L1,iasm=(Nλ+1):ndof,ia=tuple(                 collect(Nλ+ Nx.+(1:Nx))...,collect(Nλ+3*Nx+ Nu.+(1:Nu))...))
+    add_value!(out.L1[3],asm[1],iele,L1,iasm=(Nλ+1):ndof,ia=tuple(                 collect(Nλ+2Nx.+(1:Nx))...,collect(Nλ+3*Nx+2Nu.+(1:Nu))...))
 end
 """
 	FreqXU{OX,OU}

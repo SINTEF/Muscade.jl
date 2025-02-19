@@ -215,7 +215,6 @@ id[i] == i # true for any i
 
 See also Julia's `identity` function.
 """
-struct IdVec
-end
-@inline Base.getindex(A::IdVec,i) = i
+struct IdVec end
 const idvec = IdVec()
+@inline Base.getindex(::IdVec,i) = i

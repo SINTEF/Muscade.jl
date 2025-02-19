@@ -58,6 +58,9 @@ module Muscade
     include("DirectXUA.jl")
     export DirectXUA
 
+    include("FreqXU.jl")
+    export FreqXU
+
     include("Diagnostic.jl")
     export studyscale,studysingular,describe
 

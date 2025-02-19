@@ -15,9 +15,9 @@ const nclass = length(ind)
 ## Assembly of sparse
 arrnum(α  )  =          α
 arrnum(α,β)  = nclass + β + nclass*(α-1) 
-mutable struct AssemblyDirect{OX,OU,IA,T1,T2}  <:Assembly
-    L1 :: T1   
-    L2 :: T2   
+mutable struct AssemblyDirect{OX,OU,IA}  <:Assembly
+    L1 :: Vector{Vector{Vector{𝕣}}}                          # L1[α][αder]           α∈ λ,x,u,a
+    L2 :: Matrix{Matrix{SparseMatrixCSC{Float64, Int64}}}    # L2[α,β][αder,βder]
     fastresidual :: 𝔹
 end  
 function prepare(::Type{AssemblyDirect{OX,OU,IA}},model,dis;Xwhite=false,XUindep=false,UAindep=false,XAindep=false,fastresidual=false) where{OX,OU,IA}
@@ -26,16 +26,16 @@ function prepare(::Type{AssemblyDirect{OX,OU,IA}},model,dis;Xwhite=false,XUindep
     neletyp  = getneletyp(model)
     asm      = Matrix{𝕫2}(undef,nclass+nclass^2,neletyp)
     nder     = (1,OX+1,OU+1,IA)
-    L1 = Vector{Vector{Vector{𝕣}}}(undef,4)
+    L1       = Vector{Vector{Vector{𝕣}}}(undef,4)
     for α∈λxua
-        nα = nder[α]
-        av = asmvec!(view(asm,arrnum(α),:),dofgr[α],dis)
+        nα   = nder[α]
+        av   = asmvec!(view(asm,arrnum(α),:),dofgr[α],dis)
         L1[α] = Vector{Vector{𝕣}}(undef,nα)
-        for αder=1:nα 
+        for αder = 1:nα 
             L1[α][αder] = copy(av)
         end
     end
-    L2 = Matrix{Matrix{SparseMatrixCSC{Float64, Int64}}}(undef,4,4)
+    L2    = Matrix{Matrix{SparseMatrixCSC{Float64, Int64}}}(undef,4,4)
     for α∈λxua, β∈λxua
         am = asmmat!(view(asm,arrnum(α,β),:),view(asm,arrnum(α),:),view(asm,arrnum(β),:),ndof[α],ndof[β])
         nα,nβ = nder[α], nder[β]
@@ -52,7 +52,7 @@ function prepare(::Type{AssemblyDirect{OX,OU,IA}},model,dis;Xwhite=false,XUindep
             L2[α,β][αder,βder] = copy(am)
         end
     end
-    out      = AssemblyDirect{OX,OU,IA,typeof(L1),typeof(L2)}(L1,L2,fastresidual)
+    out      = AssemblyDirect{OX,OU,IA}(L1,L2,fastresidual)
     return out,asm,dofgr
 end
 function zero!(out::AssemblyDirect)
@@ -63,10 +63,10 @@ function zero!(out::AssemblyDirect)
         end
     end
 end
-function addin!(out::AssemblyDirect{OX,OU,IA,T1,T2},asm,iele,scale,eleobj::Eleobj,  Λ::NTuple{1  ,SVector{Nx}},
+function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::Eleobj,  Λ::NTuple{1  ,SVector{Nx}},
                                                                                          X::NTuple{NDX,SVector{Nx}},
                                                                                          U::NTuple{NDU,SVector{Nu}},
-                                                                                         A::           SVector{Na} ,t,SP,dbg) where{OX,OU,IA,NDX,NDU,T1,T2,Nx,Nu,Na,Eleobj} 
+                                                                                         A::           SVector{Na} ,t,SP,dbg) where{OX,OU,IA,NDX,NDU,Nx,Nu,Na,Eleobj} 
     @assert NDX==OX+1 @sprintf("got OX=%i and NDX=%i. Expected OX+1==NDX",OX,NDX)
     @assert NDX==OX+1 @sprintf("got OU=%i and NDU=%i. Expected OU+1==NDU",OU,NDU)
     ndof   = (Nx, Nx, Nu, Na)
@@ -83,7 +83,7 @@ function addin!(out::AssemblyDirect{OX,OU,IA,T1,T2},asm,iele,scale,eleobj::Eleob
         else
             R,FB = residual(eleobj, X∂,U∂,A ,t,SP,dbg)
         end        
-        hasnan(R,FB) && muscadeerror((dbg...,t=t,SP=SP),@sprintf("residual(%s,...) returned NaN in R, FB or derivatives",Eleobj)) 
+#        hasnan(R,FB) && muscadeerror((dbg...,t=t,SP=SP),@sprintf("residual(%s,...) returned NaN in R, FB or derivatives",Eleobj)) 
         iλ   = 1:ndof[ind.Λ]
         Lλ   = out.L1[ind.Λ]
         add_value!(Lλ[1] ,asm[arrnum(ind.Λ)],iele,R,ia=iλ)
