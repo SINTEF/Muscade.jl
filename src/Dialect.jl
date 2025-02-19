@@ -82,6 +82,8 @@ an alias for `Base.inf`.
 """
 const ∞  = Base.Inf
 
+const Sparse𝕣2 = SparseMatrixCSC{Float64, Int64}
+
 # define arrays of these
 for T in (:𝔹,:ℕ,:ℤ,:ℝ)
     #@eval export $T

@@ -17,8 +17,9 @@ arrnum(α  )  =          α
 arrnum(α,β)  = nclass + β + nclass*(α-1) 
 mutable struct AssemblyDirect{OX,OU,IA}  <:Assembly
     L1 :: Vector{Vector{Vector{𝕣}}}                          # L1[α][αder]           α∈ λ,x,u,a
-    L2 :: Matrix{Matrix{SparseMatrixCSC{Float64, Int64}}}    # L2[α,β][αder,βder]
+    L2 :: Matrix{Matrix{Sparse𝕣2}}    # L2[α,β][αder,βder]
     fastresidual :: 𝔹
+    matrices     :: 𝔹
 end  
 function prepare(::Type{AssemblyDirect{OX,OU,IA}},model,dis;Xwhite=false,XUindep=false,UAindep=false,XAindep=false,fastresidual=false) where{OX,OU,IA}
     dofgr    = (allΛdofs(model,dis),allXdofs(model,dis),allUdofs(model,dis),allAdofs(model,dis))
@@ -35,7 +36,7 @@ function prepare(::Type{AssemblyDirect{OX,OU,IA}},model,dis;Xwhite=false,XUindep
             L1[α][αder] = copy(av)
         end
     end
-    L2    = Matrix{Matrix{SparseMatrixCSC{Float64, Int64}}}(undef,4,4)
+    L2    = Matrix{Matrix{Sparse𝕣2}}(undef,4,4)
     for α∈λxua, β∈λxua
         am = asmmat!(view(asm,arrnum(α,β),:),view(asm,arrnum(α),:),view(asm,arrnum(β),:),ndof[α],ndof[β])
         nα,nβ = nder[α], nder[β]
@@ -47,19 +48,23 @@ function prepare(::Type{AssemblyDirect{OX,OU,IA}},model,dis;Xwhite=false,XUindep
         if XAindep && α==ind.A && β==ind.X nα,nβ=0,0 end   # X-measurements indep of A
         if UAindep && α==ind.U && β==ind.A nα,nβ=0,0 end   # U-load indep of A
         if UAindep && α==ind.A && β==ind.U nα,nβ=0,0 end   # U-load indep of A
-        L2[α,β] = Matrix{SparseMatrixCSC{Float64, Int64}}(undef,nα,nβ)
+        L2[α,β] = Matrix{Sparse𝕣2}(undef,nα,nβ)
         for αder=1:nα,βder=1:nβ
             L2[α,β][αder,βder] = copy(am)
         end
     end
-    out      = AssemblyDirect{OX,OU,IA}(L1,L2,fastresidual)
+    out      = AssemblyDirect{OX,OU,IA}(L1,L2,fastresidual,true)
     return out,asm,dofgr
 end
 function zero!(out::AssemblyDirect)
     for α∈λxua 
         zero!.(out.L1[α])
-        for β∈λxua
-            zero!.(out.L2[α,β])
+    end
+    if out.matrices
+        for α∈λxua 
+            for β∈λxua
+                zero!.(out.L2[α,β])
+            end
         end
     end
 end
@@ -87,18 +92,19 @@ function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::Eleobj,  Λ
         iλ   = 1:ndof[ind.Λ]
         Lλ   = out.L1[ind.Λ]
         add_value!(Lλ[1] ,asm[arrnum(ind.Λ)],iele,R,ia=iλ)
-        pβ       = 0
-        for β∈xua, j=1:nder[β]
-            iβ   = pβ.+(1:ndof[β])
-            pβ  += ndof[β]
-            Lλβ  = out.L2[ind.Λ,β]
-            Lβλ  = out.L2[β,ind.Λ]
-            if j≤size(Lλβ,2) # ...but only add into existing matrices of L2, for better sparsity
-                add_∂!{1           }(Lλβ[1,j],asm[arrnum(ind.Λ,β)],iele,R,ia=iλ,ida=iβ)
-                add_∂!{1,:transpose}(Lβλ[j,1],asm[arrnum(β,ind.Λ)],iele,R,ia=iλ,ida=iβ)
+        if out.matrices
+            pβ       = 0
+            for β∈xua, j=1:nder[β]
+                iβ   = pβ.+(1:ndof[β])
+                pβ  += ndof[β]
+                Lλβ  = out.L2[ind.Λ,β]
+                Lβλ  = out.L2[β,ind.Λ]
+                if j≤size(Lλβ,2) # ...but only add into existing matrices of L2, for better sparsity
+                    add_∂!{1           }(Lλβ[1,j],asm[arrnum(ind.Λ,β)],iele,R,ia=iλ,ida=iβ)
+                    add_∂!{1,:transpose}(Lβλ[j,1],asm[arrnum(β,ind.Λ)],iele,R,ia=iλ,ida=iβ)
+                end
             end
-        end
-
+        end 
     else
         Λ∂ =              SVector{Nx}(∂²ℝ{1,Np}(Λ[1   ][idof],                           idof, scale.Λ[idof])   for idof=1:Nx)
         X∂ = ntuple(ider->SVector{Nx}(∂²ℝ{1,Np}(X[ider][idof],Nx+Nx*(ider-1)            +idof, scale.X[idof])   for idof=1:Nx),OX+1)
@@ -118,13 +124,15 @@ function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::Eleobj,  Λ
             if i≤size(Lα,1)  # ...but only add into existing vectors of L1, for speed
                 add_value!(out.L1[α][i] ,asm[arrnum(α)],iele,∇L,ia=iα)
             end
-            pβ       = 0
-            for β∈λxua, j=1:nder[β]
-                iβ   = pβ.+(1:ndof[β])
-                pβ  += ndof[β]
-                Lαβ = out.L2[α,β]
-                if i≤size(Lαβ,1) && j≤size(Lαβ,2) # ...but only add into existing matrices of L2, for better sparsity
-                    add_∂!{1}(out.L2[α,β][i,j],asm[arrnum(α,β)],iele,∇L,ia=iα,ida=iβ)
+            if out.matrices
+                pβ       = 0
+                for β∈λxua, j=1:nder[β]
+                    iβ   = pβ.+(1:ndof[β])
+                    pβ  += ndof[β]
+                    Lαβ = out.L2[α,β]
+                    if i≤size(Lαβ,1) && j≤size(Lαβ,2) # ...but only add into existing matrices of L2, for better sparsity
+                        add_∂!{1}(out.L2[α,β][i,j],asm[arrnum(α,β)],iele,∇L,ia=iα,ida=iβ)
+                    end
                 end
             end
         end
@@ -134,11 +142,12 @@ end
 ## Assembly of bigsparse
 function makepattern(OX,OU,IA,nstep,out) 
     # Looking at all steps, class, order of fdiff and Δstep, for rows and columns: which blocks are actualy nz?
+    # return a sparse matrix of sparse matrices
     nder     = (1,OX+1,OU+1)
     maxblock = 1 + nstep*90  
     αblk     = 𝕫1(undef,maxblock)
     βblk     = 𝕫1(undef,maxblock)
-    nz       = Vector{SparseMatrixCSC{𝕣,𝕫}}(undef,maxblock)
+    nz       = Vector{Sparse𝕣2}(undef,maxblock)
     nblock   = 0
     for step = 1:nstep
         for     α∈λxu 
@@ -188,7 +197,7 @@ function makepattern(OX,OU,IA,nstep,out)
     return sparse(αblk[u],βblk[u],nz[u])
 end
 function preparebig(OX,OU,IA,nstep,out) 
-        # create an assembler and allocate for the big linear system
+    # create an assembler and allocate for the big linear system
     pattern                  = makepattern(OX,OU,IA,nstep,out)
     Lvv,Lvvasm,Lvasm,Lvdis   = prepare(pattern)
     Lv                       = 𝕣1(undef,size(Lvv,1))
