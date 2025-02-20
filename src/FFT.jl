@@ -1,21 +1,3 @@
-
-## Basic engine
-const 𝑖  = im  # \iti
-const ℜ = real # \Re 
-const ℑ = imag  # \Im
-const expπ𝑖 = cispi  
-"""
-    𝕫log2(i::𝕫)
-
-Compute the integer `log2` of an integer, fails if `i` is not a power of two.
-"""
-function 𝕫log2(i::𝕫) 
-    a = 63-leading_zeros(i)
-    b = trailing_zeros(i) 
-    a==b || error("Input must be a power of 2")
-    return a
-end
-
 #https://en.wikipedia.org/wiki/Bit-reversal_permutation
 function bitreversalpermutation(p) 
     n                           = 2^p

@@ -38,6 +38,16 @@ an alias for abstract type `Real`. For use in dispatching.
 `ℝ11` is an `AbstractVector` of `AbstractVector`.
 """        
 const ℝ  = Real
+"""
+    ℂ (\\bbC)
+
+an alias for abstract type `Complex{<:Real}`. For use in dispatching.
+`ℂ1`... `ℂ4` are `AbstractArrays` of dimensions 1 to 4.
+`ℂ11` is an `AbstractVector` of `AbstractVector`.
+"""        
+const ℂ  = Complex{<:Real}
+
+
 # concrete types for allocation
 """
     𝕓 (\\bbb)
@@ -70,6 +80,14 @@ an alias for `Float64`. For use in `struct` definitions.
 """
 const 𝕣  = Float64
 """
+    𝕔 (\\bbc)
+
+an alias for `Complex{Float64}`. For use in `struct` definitions.
+`𝕔1`... `𝕔4` are `Arrays` of dimensions 1 to 4.
+`𝕔11` is a `Vector` of `Vector`.
+"""
+const 𝕔  = Complex{Float64}
+"""
     ϵ (\\epsilon)
 
 an alias for `Base.eps(𝕣)`. 
@@ -80,12 +98,25 @@ const ϵ  = Base.eps(𝕣)
 
 an alias for `Base.inf`. 
 """
-const ∞  = Base.Inf
+const ∞      = Base.Inf  # \infty
+const 𝑖      = im        # \iti
+const ℜ     =  real     # \Re 
+const ℑ     =  imag     # \Im
+const expπ𝑖 = cispi  
+"""
+    𝕫log2(i::𝕫)
 
-const Sparse𝕣2 = SparseMatrixCSC{Float64, Int64}
+Compute the integer `log2` of an integer, fails if `i` is not a power of two.
+"""
+function 𝕫log2(i::𝕫) 
+    a = 63-leading_zeros(i)
+    b = trailing_zeros(i) 
+    a==b || error("Input must be a power of 2")
+    return a
+end
 
 # define arrays of these
-for T in (:𝔹,:ℕ,:ℤ,:ℝ)
+for T in (:𝔹,:ℕ,:ℤ,:ℝ,:ℂ)
     #@eval export $T
     @eval const  $(Symbol(T,:x)) = AbstractArray{t} where {t<: $T}
     #@eval export $(Symbol(T,:x))  
@@ -95,19 +126,22 @@ for T in (:𝔹,:ℕ,:ℤ,:ℝ)
         #@eval export $TN
     end
 end
-for T in (:𝕓,:𝕟,:𝕫,:𝕣)
+for T in (:𝕓,:𝕟,:𝕫,:𝕣,:𝕔)
     #@eval export $T
-    Ts = Symbol(T,:s)
     for N in (:1,:2,:3,:4)
         TN = Symbol(T,N)
         @eval const  $TN = Array{$T,$N}
         #@eval export $TN
     end
 end
-const ℝ11 = AbstractVector{A} where {A<:ℝ1}
-const ℤ11 = AbstractVector{A} where {A<:ℤ1}
-const 𝕣11 = Vector{Vector{𝕣}}
-const 𝕫11 = Vector{Vector{𝕫}}
+const ℝ11      = AbstractVector{A} where {A<:ℝ1}
+const ℤ11      = AbstractVector{A} where {A<:ℤ1}
+const ℂ11      = AbstractVector{A} where {A<:ℂ1}
+const 𝕣11      = Vector{Vector{𝕣}}
+const 𝕫11      = Vector{Vector{𝕫}}
+const 𝕔11      = Vector{Vector{𝕔}}
+const Sparse𝕣2 = SparseMatrixCSC{𝕣,𝕫}
+const Sparse𝕔2 = SparseMatrixCSC{𝕔,𝕫}
 
 ## Miscellaneous
 subtypeof(a::AbstractVector,b::AbstractVector) = a[a .<: Union{b...}]

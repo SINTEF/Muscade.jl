@@ -131,7 +131,7 @@ Use [`prepare`](@ref) to create `asm`.
 
 See also: [`prepare`](@ref)
 """ 
-function addin!(pgr::𝕫1,out::Vector{Tv},block::Vector{Tv},ibr::𝕫,factor::ℝ=1.) where{Tv}
+function addin!(pgr::𝕫1,out::AbstractVector{Tv},block::Vector{Tv},ibr::𝕫,factor::ℝ=1.) where{Tv}
     for (ilv,igv)∈enumerate(pgr[ibr]:pgr[ibr+1]-1) 
         out[igv] += block[ilv] * factor
     end

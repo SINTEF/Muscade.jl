@@ -186,32 +186,32 @@ function DofGroup(dis::Disassembler,iΛ,iX,iU,iA)
 end
 # use a dof-vector to decrement/increment/set/get the corresponding dofs in a State
 function decrement!(s::State,ider::𝕫,y::AbstractVector{𝕣},gr::DofGroup) 
-    for i ∈ eachindex(gr.iΛ); s.Λ[ider][gr.iΛ[i]] -= y[gr.jΛ[i]] * gr.scaleΛ[i]; end
-    for i ∈ eachindex(gr.iX); s.X[ider][gr.iX[i]] -= y[gr.jX[i]] * gr.scaleX[i]; end
-    for i ∈ eachindex(gr.iU); s.U[ider][gr.iU[i]] -= y[gr.jU[i]] * gr.scaleU[i]; end
-    for i ∈ eachindex(gr.iA); s.A[      gr.iA[i]] -= y[gr.jA[i]] * gr.scaleA[i]; end
+    if ider≤length(s.Λ) for i ∈ eachindex(gr.iΛ); s.Λ[ider][gr.iΛ[i]] -= y[gr.jΛ[i]] * gr.scaleΛ[i]; end end
+    if ider≤length(s.X) for i ∈ eachindex(gr.iX); s.X[ider][gr.iX[i]] -= y[gr.jX[i]] * gr.scaleX[i]; end end
+    if ider≤length(s.U) for i ∈ eachindex(gr.iU); s.U[ider][gr.iU[i]] -= y[gr.jU[i]] * gr.scaleU[i]; end end
+    if ider==1          for i ∈ eachindex(gr.iA); s.A[      gr.iA[i]] -= y[gr.jA[i]] * gr.scaleA[i]; end end
 end
 function increment!(s::State,ider::𝕫,y::AbstractVector{𝕣},gr::DofGroup) 
-    for i ∈ eachindex(gr.iΛ); s.Λ[ider][gr.iΛ[i]] += y[gr.jΛ[i]] * gr.scaleΛ[i]; end
-    for i ∈ eachindex(gr.iX); s.X[ider][gr.iX[i]] += y[gr.jX[i]] * gr.scaleX[i]; end
-    for i ∈ eachindex(gr.iU); s.U[ider][gr.iU[i]] += y[gr.jU[i]] * gr.scaleU[i]; end
-    for i ∈ eachindex(gr.iA); s.A[      gr.iA[i]] += y[gr.jA[i]] * gr.scaleA[i]; end
+    if ider≤length(s.Λ) for i ∈ eachindex(gr.iΛ); s.Λ[ider][gr.iΛ[i]] += y[gr.jΛ[i]] * gr.scaleΛ[i]; end end
+    if ider≤length(s.X) for i ∈ eachindex(gr.iX); s.X[ider][gr.iX[i]] += y[gr.jX[i]] * gr.scaleX[i]; end end
+    if ider≤length(s.U) for i ∈ eachindex(gr.iU); s.U[ider][gr.iU[i]] += y[gr.jU[i]] * gr.scaleU[i]; end end
+    if ider==1          for i ∈ eachindex(gr.iA); s.A[      gr.iA[i]] += y[gr.jA[i]] * gr.scaleA[i]; end end
 end
 function set!(s::State,der::𝕫,y::AbstractVector{𝕣},gr::DofGroup) 
     s.Λ[der+1] .= 0
     s.X[der+1] .= 0
     s.U[der+1] .= 0
     s.A        .= 0
-    for i ∈ eachindex(gr.iΛ); s.Λ[der+1][gr.iΛ[i]] = y[gr.jΛ[i]] * gr.scaleΛ[i]; end
-    for i ∈ eachindex(gr.iX); s.X[der+1][gr.iX[i]] = y[gr.jX[i]] * gr.scaleX[i]; end
-    for i ∈ eachindex(gr.iU); s.U[der+1][gr.iU[i]] = y[gr.jU[i]] * gr.scaleU[i]; end
-    for i ∈ eachindex(gr.iA); s.A[       gr.iA[i]] = y[gr.jA[i]] * gr.scaleA[i]; end
+    if ider≤length(s.Λ) for i ∈ eachindex(gr.iΛ); s.Λ[der+1][gr.iΛ[i]] = y[gr.jΛ[i]] * gr.scaleΛ[i]; end end
+    if ider≤length(s.X) for i ∈ eachindex(gr.iX); s.X[der+1][gr.iX[i]] = y[gr.jX[i]] * gr.scaleX[i]; end end
+    if ider≤length(s.U) for i ∈ eachindex(gr.iU); s.U[der+1][gr.iU[i]] = y[gr.jU[i]] * gr.scaleU[i]; end end
+    if ider==1          for i ∈ eachindex(gr.iA); s.A[       gr.iA[i]] = y[gr.jA[i]] * gr.scaleA[i]; end end
 end
 function getdof!(s::State,der::𝕫,y::AbstractVector{𝕣},gr::DofGroup) 
-    for i ∈ eachindex(gr.iΛ); y[gr.jΛ[i]] = s.Λ[der+1][gr.iΛ[i]] / gr.scaleΛ[i]; end
-    for i ∈ eachindex(gr.iX); y[gr.jX[i]] = s.X[der+1][gr.iX[i]] / gr.scaleX[i]; end
-    for i ∈ eachindex(gr.iU); y[gr.jU[i]] = s.U[der+1][gr.iU[i]] / gr.scaleU[i]; end
-    for i ∈ eachindex(gr.iA); y[gr.jA[i]] = s.A[       gr.iA[i]] / gr.scaleA[i]; end
+    if ider≤length(s.Λ) for i ∈ eachindex(gr.iΛ); y[gr.jΛ[i]] = s.Λ[der+1][gr.iΛ[i]] / gr.scaleΛ[i]; end end
+    if ider≤length(s.X) for i ∈ eachindex(gr.iX); y[gr.jX[i]] = s.X[der+1][gr.iX[i]] / gr.scaleX[i]; end end
+    if ider≤length(s.U) for i ∈ eachindex(gr.iU); y[gr.jU[i]] = s.U[der+1][gr.iU[i]] / gr.scaleU[i]; end end
+    if ider==1          for i ∈ eachindex(gr.iA); y[gr.jA[i]] = s.A[       gr.iA[i]] / gr.scaleA[i]; end end
 end
 # create a tuple (Λ,X,U,A) of indices into the dofgroup - with zeros for modeldofs not in dofgroup
 # so the model's iλ-th Λdof is found in y[Λ[iλ]]
@@ -427,7 +427,7 @@ Set to zero all elements of an arrays. If `a` is sparse,
 the vector `nzval` of values is set to zero and the sparsity structure is unchanged.
 """ 
 
-function zero!(out::DenseArray)
+function zero!(out::AbstractArray)
     for i∈eachindex(out)
         out[i] = 0
     end
