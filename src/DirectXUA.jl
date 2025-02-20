@@ -21,7 +21,7 @@ mutable struct AssemblyDirect{OX,OU,IA}  <:Assembly
     fastresidual :: 𝔹
     matrices     :: 𝔹
 end  
-function prepare(::Type{AssemblyDirect{OX,OU,IA}},model,dis;Xwhite=false,XUindep=false,UAindep=false,XAindep=false,fastresidual=false) where{OX,OU,IA}
+function prepare(::Type{AssemblyDirect{OX,OU,IA}},model,dis;Xwhite=false,XUindep=false,UAindep=false,XAindep=false,fastresidual=false,matrices=true) where{OX,OU,IA}
     dofgr    = (allΛdofs(model,dis),allXdofs(model,dis),allUdofs(model,dis),allAdofs(model,dis))
     ndof     = getndof.(dofgr)
     neletyp  = getneletyp(model)
@@ -53,7 +53,7 @@ function prepare(::Type{AssemblyDirect{OX,OU,IA}},model,dis;Xwhite=false,XUindep
             L2[α,β][αder,βder] = copy(am)
         end
     end
-    out      = AssemblyDirect{OX,OU,IA}(L1,L2,fastresidual,true)
+    out      = AssemblyDirect{OX,OU,IA}(L1,L2,fastresidual,matrices)
     return out,asm,dofgr
 end
 function zero!(out::AssemblyDirect)

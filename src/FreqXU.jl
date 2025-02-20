@@ -5,32 +5,33 @@ function makepattern(out)
     return sparse(α,β,L2.(α,β))  # = [. . .]
 end
 
-const Mder = (((1,1),           ),
-              ((1,2),(2,1)      ),
-              ((1,3),(2,2),(3,1)),
-              ((3,2),(2,3)      ),
-              ((3,3),           ) )
-
-function assemblebigmat!(L2::Vector{Sparse𝕣2},L2bigasm,asm,model,dis,out::AssemblyDirect{OX,OU,0},state,dbg) where{OX,OU}
-    scale = 1 ###########
+function assemblebigmat!(L2::Vector{Sparse𝕣2},L2bigasm,asm,model,dis,out::AssemblyDirect{OX,OU,0},dbg) where{OX,OU}
+    # does not call assemble!: solve has previously called assemble! to prepare bigasm, so out.L2 is already set,
     zero!.(L2)
-    out.matrices = true
-    assemble!(out,asm,dis,model,state,(dbg...,asm=:assemblebigmat!))
-    for  mder ∈ Mder
-        for (ider,mderᵢ)∈enumerate(mder)
-            sgn = isodd(ider) ? +1 : -1
-            for     α ∈ λxu 
-                for β ∈ λxu
-                    Lαβ = out.L2[α,β]
-    
-                    @show size(Lαβ) # by design, unrequired derivatives are not stored.
-                    addin!(L2bigasm,L2[ider],Lαβ[mderᵢ...],α,β,sgn*scale) 
+    for     α ∈ λxu 
+        for β ∈ λxu
+            Lαβ = out.L2[α,β]
+            for     αder = 1:size(Lαβ,1)
+                for βder = 1:size(Lαβ,2)
+                    ider =  αder+βder-1   
+                    sgn  = isodd(αder) ? +1 : -1 
+                    addin!(L2bigasm,L2[ider],Lαβ[αder,βder],α,β,sgn) 
                 end
             end
         end
-    end 
+    end
 end
-
+function assemblebigvec!(L1::Vector{𝕣1},L1bigasm,asm,model,dis,out::AssemblyDirect{OX,OU,0},state,dbg) where{OX,OU}
+    zero!.(L1)
+    out.matrices = false
+    assemble!(out,asm,dis,model,state,(dbg...,asm=:assemblebigmat!))
+    for β ∈ λxu
+        Lβ = out.L1[β]
+        for βder = 1:size(Lβ,1)
+            addin!(L2bigasm,L1[ider],Lβ[βder],β,scale) 
+        end
+    end
+end
 """
 	FreqXU{OX,OU}
 
@@ -38,7 +39,7 @@ end
 struct FreqXU{OX,OU} <: AbstractSolver end 
 
 function solve(::Type{FreqXU{OX,OU}},pstate,verbose::𝕓,dbg;
-    Δt::𝕣, p::𝕫, t₀::𝕣=0., 
+    Δt::𝕣, p::𝕫, t₀::𝕣=0.,tᵣ::𝕣=t₀, 
     initialstate::State,
     fastresidual::𝔹=false,
     kwargs...) where{OX,OU}
@@ -54,24 +55,27 @@ function solve(::Type{FreqXU{OX,OU}},pstate,verbose::𝕓,dbg;
     # State storage
     S                     = State{1,OX+1,OU+1,Nothing}
     pstate[] = state      = Vector{S}(undef,nstep)                                                                           
-    state₁                = State{1,OX+1,OU+1}(copy(initialstate,time=t₀))   
+    stateᵣ                = State{1,OX+1,OU+1}(copy(initialstate,time=tᵣ))   
 
     for (step,timeᵢ)      = enumerate(time)
-        state[step]       = step==1 ? state₁ : State(timeᵢ,deepcopy(state₁.Λ),deepcopy(state₁.X),deepcopy(state₁.U),state₁.A,nothing,state₁.model,state₁.dis)
+        state[step]       = State(timeᵢ,deepcopy(stateᵣ.Λ),deepcopy(stateᵣ.X),deepcopy(stateᵣ.U),stateᵣ.A,nothing,stateᵣ.model,stateᵣ.dis)
     end
     L2                    = Vector{Sparse𝕣2}(undef,5)
 
     # Prepare assembler
     verbose && @printf("\n    Preparing assembler\n")
-    out,asm,dofgr         = prepare(AssemblyDirect{OX,OU,IA},model,dis;fastresidual,kwargs...)      
-    assemble!(out,asm,dis,model,state[1],(dbg...,solver=:DirectXUA,phase=:sparsity))     # assemble all model matrices - in blocks
+    out,asm,dofgr         = prepare(AssemblyDirect{OX,OU,IA},model,dis;fastresidual,kwargs...)   # model assembler for all arrays   
+    assemble!(out,asm,dis,model,stateᵣ,(dbg...,solver=:FreqXU,phase=:matrices))            # assemble all model matrices - in class-blocks
     pattern               = makepattern(out)
-    L2[1],L2bigasm,L1bigasm,L1dis  = prepare(pattern)
-
+    L2[1],L2bigasm,L1bigasm,L1dis  = prepare(pattern)                                            
     for ider = 2:5
         L2[ider] = copy(L2[1])
     end    
-    assemblebigmat!(L2,L2bigasm,asm,model,dis,out,state[1],(dbg...,solver=:FreqXU))
+    assemblebigmat!(L2,L2bigasm,asm,model,dis,out,(dbg...,solver=:FreqXU))              # assemble all model matrices, no blocks
+
+    # out.matrices = false
+    # for (step,timeᵢ)∈enumerate(time)
+    #     assemble!(out,asm,dis,model,state[step],(dbg...,solver=:FreqXU,phase=:matrices))
 
     @show L2[1]
     @show L2[2]
