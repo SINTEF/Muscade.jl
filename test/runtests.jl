@@ -30,6 +30,9 @@ module Runtest
         @testset "TestDirectXUA001" begin
             include("TestDirectXUA001.jl")
         end
+        @testset "TestFreqXU" begin
+            include("TestFreqXU.jl")
+        end
         @testset "TestScale" begin
             include("TestScale.jl")
         end

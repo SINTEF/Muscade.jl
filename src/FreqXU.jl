@@ -72,7 +72,7 @@ function solve(::Type{FreqXU{OX,OU}},pstate,verbose::𝕓,dbg;
     local LU
     model,dis             = initialstate.model, initialstate.dis
     nω                    = 2^(p-1)
-    nstep                 = 2*nω
+    nstep                 = 2nω
     time                  = range(;start=t₀,step=Δt,length=nstep)
     IA                    = 0
 

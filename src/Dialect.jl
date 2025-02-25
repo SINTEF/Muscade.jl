@@ -3,7 +3,7 @@
 #
 # In VScode, use the "Fast Unicode math characters" plugging
 # To interrupt Julia, CTRL-j,k
-using Printf,StaticArrays
+using Printf,StaticArrays,SparseArrays
 import Base.Threads.@spawn, Base.Threads.nthreads
 
 ## Basic types
