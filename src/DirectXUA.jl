@@ -57,13 +57,16 @@ function prepare(::Type{AssemblyDirect{OX,OU,IA}},model,dis;Xwhite=false,XUindep
     return out,asm,dofgr
 end
 function zero!(out::AssemblyDirect)
-    for α∈λxua 
-        zero!.(out.L1[α])
+    for L1∈out.L1 
+        for ℓ1∈L1
+            zero!(ℓ1)
+        end
     end
+
     if out.matrices
-        for α∈λxua 
-            for β∈λxua
-                zero!.(out.L2[α,β])
+        for L2∈out.L2 
+            for ℓ2∈L2
+                zero!(ℓ2)
             end
         end
     end
@@ -88,7 +91,6 @@ function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::Eleobj,  Λ
         else
             R,FB = residual(eleobj, X∂,U∂,A ,t,SP,dbg)
         end        
-#        hasnan(R,FB) && muscadeerror((dbg...,t=t,SP=SP),@sprintf("residual(%s,...) returned NaN in R, FB or derivatives",Eleobj)) 
         iλ   = 1:ndof[ind.Λ]
         Lλ   = out.L1[ind.Λ]
         add_value!(Lλ[1] ,asm[arrnum(ind.Λ)],iele,R,ia=iλ)
