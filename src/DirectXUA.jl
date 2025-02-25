@@ -16,7 +16,7 @@ const nclass = length(ind)
 arrnum(α  )  =          α
 arrnum(α,β)  = nclass + β + nclass*(α-1) 
 mutable struct AssemblyDirect{OX,OU,IA}  <:Assembly
-    L1 :: Vector{Vector{Vector{𝕣}}}                          # L1[α][αder]           α∈ λ,x,u,a
+    L1 :: Vector{Vector{𝕣1      }}    # L1[α  ][αder     ]  α∈ λ,x,u,a
     L2 :: Matrix{Matrix{Sparse𝕣2}}    # L2[α,β][αder,βder]
     fastresidual :: 𝔹
     matrices     :: 𝔹
