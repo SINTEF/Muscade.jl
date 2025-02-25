@@ -14,7 +14,7 @@ const idx    = (:11,:12,:16,:22,:26,:66)
 struct FloaterOnCalmWater <: AbstractElement
     K   :: SMatrix{3,3,𝕣}
     C   :: SMatrix{3,3,𝕣}
-    M   :: SMatrix{3,3,𝕣}S
+    M   :: SMatrix{3,3,𝕣}
 end
 FloaterOnCalmWater(nod::Vector{Node};K,C,M  )  = FloaterOnCalmWater(K,C,M)
 

@@ -59,9 +59,44 @@ end
 """
 	FreqXU{OX,OU}
 
+A linear frequency domain solver for optimisation FEM.
+
+An analysis is carried out by a call with the following syntax:
+
+```
+initialstate    = initialize!(model)
+stateXU         = solve(FreqXU{OX,OU};Δt, p, t₀,tᵣ,initialstate)
+```
+
+The solver linearises the problem (computes the Hessian of the Lagrangian) at `initialstate` with time `tᵣ`, and solves
+it at times `t=range(start=t₀,step=Δt,length=2^p)`. The return
+
+
+# Parameters
+- `OX`                0 for static analysis
+                      1 for first order problems in time (viscosity, friction, measurement of velocity)
+                      2 for second order problems in time (inertia, measurement of acceleration) 
+- `OU`                0 for white noise prior to the unknown load process
+                      2 otherwise
+
+# Named arguments
+- `dbg=(;)`           a named tuple to trace the call tree (for debugging).
+- `verbose=true`      set to false to suppress printed output (for testing).
+- `silenterror=false` set to true to suppress print out of error (for testing) .
+- `fastresidual=false` compute the gradient of the `residual` instead of the Hessian of the `lagrangian`, for element that implement `residual`.
+- `initialstate`      a `State`.
+- `t₀=0.`             time of first step.                      
+- `Δt`                time step.
+- `p`                 `2^p` steps will be analysed.      
+- `tᵣ=t₀`             reference time for linearisation.                       
+
+# Output
+
+A vector of length `2^p` containing the state of the model at each of these steps.                       
+
+See also: [`solve`](@ref), [`initialize!`](@ref), [`studysingular`](@ref), [`SweepX`](@ref), [`DirectXUA`](@ref)
 """
 struct FreqXU{OX,OU} <: AbstractSolver end 
-using GLMakie
 function solve(::Type{FreqXU{OX,OU}},pstate,verbose::𝕓,dbg;
     Δt::𝕣, p::𝕫, t₀::𝕣=0.,tᵣ::𝕣=t₀, 
     initialstate::State,

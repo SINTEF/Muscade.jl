@@ -30,4 +30,12 @@ See the reference manual [`SweepX`](@ref).
 
 See the reference manual [`DirectXUA`](@ref).
 
+## `FreqXU`
 
+`FreqXU` is a solver for *linear*, static (`OX=0`), first order (`OX=1`) or dynamic (`OX=2`), optimisation-FEM problems. The same remarks on "state" variables and the choice of `OX` as for `SweepX` apply here. The same remark on the choice of `OU` as for `DirectXUA` applies here.
+
+"Linear" is to be understood as follows: the solver computes the Hessian (second order derivative) of the Lagrangian at a reference time, and assumes that this Hessian does not vary over time.  This allows to use the Fourier transform to transform the set of differential equations into algegraic equations int he frequency domain: the amplitudes of the ``X``- and ``U``-dofs can be solved for each frequency separately, so that the algorithm is linear in the number of steps.
+
+The Hessian of the Lagrangian include the tangential matrices of the finite element model.  Where costs are interpreted as suprisals, this amounts to approximating probability distributions by a Gauss distribution.
+
+See the reference manual [`FreqXU`](@ref).

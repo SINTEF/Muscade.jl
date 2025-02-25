@@ -143,7 +143,7 @@ states           = solve(SweepX{2};initialstate=initialstate,time=0:10)
 
 A vector of length equal to that of the named input argument `time` containing the states at the time steps.                       
 
-See also: [`solve`](@ref), [`initialize!`](@ref), [`findlastassigned`](@ref), [`studysingular`](@ref) 
+See also: [`solve`](@ref), [`initialize!`](@ref), [`findlastassigned`](@ref), [`studysingular`](@ref), [`DirectXUA`](@ref), [`FreqXU`](@ref)  
 """
 struct        SweepX{ORDER} <: AbstractSolver end
 function solve(SX::Type{SweepX{ORDER}},pstate,verbose,dbg;

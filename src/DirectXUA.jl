@@ -320,6 +320,7 @@ The solver does not yet support interior point methods.
 - `saveiter=false`    set to true so that the output `state` is a vector (over the iterations) of 
                       vectors (over the steps) of `State`s of the model (for debugging 
                       non-convergence). 
+- `fastresidual=false` compute the gradient of the `residual` instead of the Hessian of the `lagrangian`, for element that implement `residual`.
 Setting the following flags to `true` will improve the sparsity of the system. But setting
 a flag to `true` when the condition isn't met causes the Hessian to be wrong, which is detrimental for convergence.                      
 - `Xwhite=false`      `true` if response measurement error is a white noise process.
@@ -331,7 +332,7 @@ a flag to `true` when the condition isn't met causes the Hessian to be wrong, wh
 
 A vector of length equal to that of `time` containing the state of the optimized model at each of these steps.                       
 
-See also: [`solve`](@ref), [`SweepX`](@ref)
+See also: [`solve`](@ref), [`initialize!`](@ref), [`SweepX`](@ref), [`FreqXU`](@ref)
 """
 struct DirectXUA{OX,OU,IA} <: AbstractSolver end 
 function solve(TS::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
