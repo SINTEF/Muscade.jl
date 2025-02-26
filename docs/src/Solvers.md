@@ -1,6 +1,6 @@
 # [Solvers](@id solvers)
 
-## `SweepX`
+## `SweepX`: standard FEM solver
 
 `SweepX{O}` is a non-linear solver for differential equations of order `O` in time. This can be used for static and quasi static problems without hysterertic behaviour (plasticity, friction).
 
@@ -12,9 +12,9 @@
 
 `SweepX` handles inequality constraints (for example defined with the built-in [`DofConstraint`](@ref) element) using a simplified interior point method.
 
-See the reference manual [`SweepX`](@ref).
+See the reference manual [`SweepX`](@ref).   
 
-## `DirectXUA`
+## `DirectXUA`: non-linear inverse solver
 
 `DirectXUA` is a solver for non-linear, static (`OX=0`), first order (`OX=1`) or dynamic (`OX=2`), optimisation-FEM problems. The same remarks on "state" variables and the choice of `OX` as for `SweepX` apply here. 
 
@@ -30,7 +30,7 @@ See the reference manual [`SweepX`](@ref).
 
 See the reference manual [`DirectXUA`](@ref).
 
-## `FreqXU`
+## `FreqXU`: linear inverse solver
 
 `FreqXU` is a solver for *linear*, static (`OX=0`), first order (`OX=1`) or dynamic (`OX=2`), optimisation-FEM problems. The same remarks on "state" variables and the choice of `OX` as for `SweepX` apply here. The same remark on the choice of `OU` as for `DirectXUA` applies here.
 
