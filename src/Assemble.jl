@@ -456,8 +456,8 @@ end
 struct   add_∂!{P,T} end # to allow syntax with type-parameter P: priority, and T (transpose)
 function add_∂!{P,T}(out::Array,asm,iele,a::SVector{Na,∂ℝ{P,Nda,R}};ia=1:Na,ida=1:Nda,iasm=idvec,idasm=idvec) where{P,Nda,R,Na,T}
     for (i,iaᵢ) ∈ enumerate(ia), (j,idaⱼ) ∈ enumerate(ida)
-        k = if T==:transpose iasm[j]+length(ia)*(idasm[i]-1)   
-        else                 iasm[i]+length(ia)*(idasm[j]-1)  
+        k = if T==:transpose idasm[j]+length(ida)*( iasm[i]-1)   
+        else                  iasm[i]+length( ia)*(idasm[j]-1)  
         end
         iout = asm[k,iele]
         if iout≠0
