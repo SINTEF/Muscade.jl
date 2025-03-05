@@ -135,15 +135,15 @@ function solve(::Type{FreqXU{OX,OU}},pstate,verbose::𝕓,dbg;
     assemblebigmat!(L2,L2bigasm,asm,model,dis,out,(dbg...,solver=:FreqXU))              # assemble all complete model matrices into L2
 
     verbose && @printf("    Improving sparsity ")    
-    # sparsity = 𝕓1(undef,nnz(L2[1]))
+    # keep = 𝕓1(undef,nnz(L2[1]))
     # for i ∈ eachindex(L2[1].nzval)
-    #     sparsity[i] = any(abs(L2ⱼ.nzval[i])>droptol for L2ⱼ∈L2)
+    #     keep[i] = any(abs(L2ⱼ.nzval[i])>droptol for L2ⱼ∈L2)
     # end
-    sparsity = [any(abs(L2ⱼ.nzval[i])>droptol for L2ⱼ∈L2) for i∈eachindex(L2[1].nzval)]
+    keep = [any(abs(L2ⱼ.nzval[i])>droptol for L2ⱼ∈L2) for i∈eachindex(L2[1].nzval)]
     for L2ⱼ∈L2
-        sparser!(L2ⱼ,j->sparsity[j])
+        sparser!(L2ⱼ,j->keep[j])
     end
-    verbose && @printf("from %i to %i nz terms\n",length(sparsity),sum(sparsity))    
+    verbose && @printf("from %i to %i nz terms\n",length(keep),sum(keep))    
 
 
     verbose && @printf("    Computing rhs\n")
