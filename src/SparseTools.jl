@@ -140,3 +140,41 @@ end
 # disassemble a block from a big-vector
 disblock(pgc::𝕫1,v::Vector,ibc::𝕫) = view(v,pgc[ibc]:(pgc[ibc+1]-1))
 
+
+"""
+    sparser!(S::SparseMatrixCSC,keep::Function)
+
+Eliminate terms that do not satisfy a criteria from the storage of a sparse matrix.
+`S` will be mutated.
+`keep` is a `Function` which to an index into `S.nzval` associate `true` if storage is to be kept for this term
+and `false` otherwise.
+
+Example
+
+`sparser!(S,i->abs(S.nzval[i])>tol)`
+`sparser!(S,i->pattern[i]         )`
+
+In the first example, the keep function accesses `S.nzval[i]` before the term is mutated by `sparser!`.  If using `sparser!` to
+reduce the storage of a collection of sparses with identical sparsity structure, care must be taken that the function must 
+refer to the original structure of all sparses.  This can be done by creating a vector `pattern`, used in the second example.
+
+"""
+function sparser!(S::SparseMatrixCSC{Tv,Ti},keep::Function) where{Tv,Ti}
+    ndrop               = 0
+    @inbounds for icol  = 1:S.n
+        colptr          = S.colptr[icol]
+        S.colptr[icol] -= ndrop
+        for inz         = colptr:S.colptr[icol+1]-1
+            if keep(inz)
+                S.nzval[ inz-ndrop] = S.nzval[ inz]
+                S.rowval[inz-ndrop] = S.rowval[inz]
+            else    
+                ndrop  += 1
+            end
+        end
+    end
+    @inbounds S.colptr[S.n+1] -= ndrop
+    nnz                 = length(S.nzval)
+    resize!(S.nzval ,nnz-ndrop)
+    resize!(S.rowval,nnz-ndrop)
+end

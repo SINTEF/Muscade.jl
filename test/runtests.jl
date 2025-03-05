@@ -51,8 +51,8 @@ module Runtest
         @testset "TestUnit" begin
             include("TestUnit.jl")
         end
-        @testset "TestBlockSparse" begin
-            include("TestBlockSparse.jl")
+        @testset "TestSparseTools" begin
+            include("TestSparseTools.jl")
         end
         @testset "TestFFT" begin
             include("TestFFT.jl")
