@@ -51,7 +51,7 @@ Muscade.@DiffRule1(sinc1‴,              sinc1⁗( a.x)                * a.dx )
 Muscade.@DiffRule1(sinc1⁗,              sinc1⁗′(a.x)                * a.dx )
 
 
-# sinc1(acos(x)), differentiable to fourth order over ]-1,1] 
+## sinc1(acos(x)), differentiable to fourth order over ]-1,1] 
 """
     BeamElements.scac(x)
 
@@ -124,7 +124,7 @@ Compute a unit vector of same direction as `v`.  Fails
 if `|v|==0`.
 """
 normalize(v)     = v/norm(v)
-# create a rotation vector that acts on u to make it colinear with v.  Fails if |u|=0, |v|=0 or θ=π
+## create a rotation vector that acts on u to make it colinear with v.  Fails if |u|=0, |v|=0 or θ=π
 """
     M = BeamElements.adjust(u::SVector{3},v::SVector{3})
 
@@ -139,4 +139,4 @@ function adjust(u::Vec3{R},v::Vec3{R}) where{R}
     s   = norm(w)
     θ   = atan(s,c)
     return w/sinc1(θ)
-end
+end;
