@@ -73,7 +73,7 @@ See also: [`addnode!`](@ref), [`addelement!`](@ref), [`describe`](@ref), [`solve
 """
 coord(nod::AbstractVector{Node}) = [n.coord for n∈nod]
 
-struct motion{P,D}      end 
+struct motion{P}      end 
 struct motion_{P,Q}     end 
 """
     P = constants(X,U,A,t)
@@ -95,73 +95,72 @@ Some principles of safe automatic differentiation must be adhered to:
 
 See [`Muscade.position`](@ref), [`Muscade.velocity`](@ref), [`Muscade.acceleration`](@ref)
 """
-motion{ P,D}(  a::NTuple{D,SV{N,R}}) where{D,P,N,R        } = SV{N}(motion_{P,P+D-1}(ntuple(j->a[j][i],D)) for i=1:N)
-motion_{P,Q  }(a::NTuple{D,     R }) where{D,P  ,R<:Real,Q} = ∂ℝ{Q,1}(motion_{P,Q-1}(a),SV(motion_{P,Q-1}(a[2:D]))) 
-motion_{P,P  }(a::NTuple{D,     R }) where{D,P  ,R<:Real  } = a[1]
-struct position{P,Q}     end 
-struct velocity{P,Q}     end 
-struct acceleration{P,Q} end 
+motion{ P    }(a::NTuple{ND,SV{N,R}}) where{ND,P,N,R        } = SV{N}(motion_{P,P+ND-1}(ntuple(j->a[j][i],ND)) for i=1:N)
+motion_{P,Q  }(a::NTuple{D,      R }) where{D ,P  ,R<:Real,Q} = ∂ℝ{Q,1}(motion_{P,Q-1}(a),SV(motion_{P,Q-1}(a[2:D]))) 
+motion_{P,P  }(a::NTuple{D,      R }) where{D ,P  ,R<:Real  } = a[1]
+struct position{P,ND}     end 
+struct velocity{P,ND}     end 
+struct acceleration{P,ND} end 
 
 """
-    P = constants(X,U,A,t)
-    N = length(X)
-    x = Muscade.motion{P,ND}(X)
-    E = f(x)    
-    ε = Muscade.position{P,N}(E)
+    P  = constants(X,U,A,t)
+    ND = length(X)
+    x  = Muscade.motion{P,ND}(X)
+    E  = f(x)    
+    ε  = Muscade.position{P,ND}(E)
 
 Extract the position from a variable that is a function of the output of `Muscade.motion`.
 
 See [`Muscade.motion`](@ref), [`Muscade.velocity`](@ref), [`Muscade.acceleration`](@ref)
 """
-function position{P,Q}(a::ℝ) where{P,Q}
-    if     Q==1                            a 
-    elseif Q==2               value{P+Q-1}(a)
-    elseif Q==3  value{P+Q-2}(value{P+Q-1}(a))
-    else muscadeerror((P=P,Q=Q,a=typeof(a)),"'position' requires Q∈{1,2,3}")
+function position{P,ND}(a::ℝ) where{P,ND}
+    if     ND==1                            a 
+    elseif ND==2                value{P+ND-1}(a)
+    elseif ND==3  value{P+ND-2}(value{P+ND-1}(a))
+    else muscadeerror((P=P,ND=ND,a=typeof(a)),"'position' requires ND∈{1,2,3}")
     end
 end
   
 """
-    P = constants(X,U,A,t)
-    N = length(X)
-    x = Muscade.motion{P,N}(X)
-    E = f(x)    
-    ̇ε = Muscade.velocity{P,N}(E)
+    P  = constants(X,U,A,t)
+    ND = length(X)
+    x  = Muscade.motion{P,ND}(X)
+    E  = f(x)    
+    ̇ε  = Muscade.velocity{P,ND}(E)
 
 Extract the velocity or rate from a variable that is a function of the output of `Muscade.motion`.
 
 See [`Muscade.motion`](@ref), [`Muscade.position`](@ref), [`Muscade.acceleration`](@ref)
 """
-function velocity{P,Q}(a::ℝ) where{P,Q}
-    if     Q==1                          0.   
-    elseif Q==2               ∂{P+Q-1,1}(a)[1]
-    elseif Q==3  value{P+Q-2}(∂{P+Q-1,1}(a)[1]) 
-    else muscadeerror((P=P,Q=Q,a=typeof(a)),"'velocity' requires Q∈{1,2,3}")
+function velocity{P,ND}(a::ℝ) where{P,ND}
+    if     ND==1                          0.   
+    elseif ND==2               ∂{P+ND-1,1}(a)[1]
+    elseif ND==3  value{P+ND-2}(∂{P+ND-1,1}(a)[1]) 
+    else muscadeerror((P=P,ND=ND,a=typeof(a)),"'velocity' requires ND∈{1,2,3}")
     end
 end  
 """
     P = constants(X,U,A,t)
-    N = length(X)
-    x = Muscade.motion{P,N}(X)
+    ND = length(X)
+    x = Muscade.motion{P,ND}(X)
     E = f(x)    
-    ̈ε = Muscade.acceleration{P,N}(E)
+    ̈ε = Muscade.acceleration{P,ND}(E)
 
 Extract the velocity or rate from a variable that is a function of the output of `Muscade.motion`.
 
 See [`Muscade.motion`](@ref), [`Muscade.position`](@ref), [`Muscade.velocity`](@ref)
 """
-function acceleration{P,Q}(a::ℝ) where{P,Q}
-    if     Q==1                        0.
-    elseif Q==2                        0.
-    elseif Q==3  ∂{P+Q-2,1}(∂{P+Q-1,1}(a)[1])[1]
-    else muscadeerror((P=P,Q=Q,a=typeof(a)),"'acceleration' requires Q∈{1,2,3}")
+function acceleration{P,ND}(a::ℝ) where{P,ND}
+    if     ND==1                        0.
+    elseif ND==2                        0.
+    elseif ND==3  ∂{P+ND-2,1}(∂{P+ND-1,1}(a)[1])[1]
+    else muscadeerror((P=P,ND=ND,a=typeof(a)),"'acceleration' requires ND∈{1,2,3}")
     end
 end  
 
-#acceleration{P,Q}(a::ℝ) where{P,Q} = ∂{P+Q-2,1}(∂{P+Q-1,1}(a)[1])[1]
-position{P,Q}(    a::AbstractVector) where{P,Q} = position{P,Q}.(a)
-velocity{P,Q}(    a::AbstractVector) where{P,Q} = velocity{P,Q}.(a)
-acceleration{P,Q}(a::AbstractVector) where{P,Q} = acceleration{P,Q}.(a)
+position{P,ND}(    a::AbstractArray) where{P,ND} = position{P,ND}.(a)
+velocity{P,ND}(    a::AbstractArray) where{P,ND} = velocity{P,ND}.(a)
+acceleration{P,ND}(a::AbstractArray) where{P,ND} = acceleration{P,ND}.(a)
 
 
 """

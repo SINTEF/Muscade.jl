@@ -142,7 +142,7 @@ const v3   = SVector{3};
     ζgp,ζnod,dL      = o.ζgp,o.ζnod,o.dL        # Gauss points coordinates, node coordinates and length associated to each Gauss point
     ## In the following, the goal is to compute the Jacobian T transforming quantities from/to local/global coordinate systems using automatic differentiation
     P = constants(X,U,A,t)
-    X_ = Muscade.motion{P,length(X)}(X)
+    X_ = Muscade.motion{P}(X)
     ## δX_l and T contain time derivatives, cₛ,rₛₘ do not
     δXₗ,T,cₛ,rₛₘ = coordinateTransform(X_,o)
     ## Compute local load contributions at each Gauss point
