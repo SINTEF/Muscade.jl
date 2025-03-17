@@ -88,7 +88,7 @@ Some principles of safe automatic differentiation must be adhered to:
 - the function that uses `Muscade.motion` must also 'unpack' : no variable that is touched by 
   the output of `Muscade.motion` must be returned by the function without having been unpacked
   by `Muscade.position`, `Muscade.velocity` or `Muscade.acceleration`.
-- The precendence `P` must be calculated using `constants` with all variables that are input to 
+- The precedence `P` must be calculated using `constants` with all variables that are input to 
   the function and may be differentiated.
 - If other levels of automatic differentiation are introduced within the function, unpack in reverse
   order of packing.    
@@ -105,7 +105,7 @@ struct acceleration{P,Q} end
 """
     P = constants(X,U,A,t)
     N = length(X)
-    x = Muscade.motion{P,ND}(X)
+    x = Muscade.motion{P,N}(X)
     E = f(x)    
     ε = Muscade.position{P,N}(E)
 

@@ -2,9 +2,7 @@
 #= 
 
 TODO 
-
-Faster LU decomposition
-    sparsify L2 (find entries that are zero in L2ᵢ ∀i, and update the sparsity structure)
+Does FFT take significant time? If so:
 
 Avoid FFT of zeros, and addition of zeros
     find L1ᵢ that are all zero
@@ -135,10 +133,6 @@ function solve(::Type{FreqXU{OX,OU}},pstate,verbose::𝕓,dbg;
     assemblebigmat!(L2,L2bigasm,asm,model,dis,out,(dbg...,solver=:FreqXU))              # assemble all complete model matrices into L2
 
     verbose && @printf("    Improving sparsity ")    
-    # keep = 𝕓1(undef,nnz(L2[1]))
-    # for i ∈ eachindex(L2[1].nzval)
-    #     keep[i] = any(abs(L2ⱼ.nzval[i])>droptol for L2ⱼ∈L2)
-    # end
     keep = [any(abs(L2ⱼ.nzval[i])>droptol for L2ⱼ∈L2) for i∈eachindex(L2[1].nzval)]
     for L2ⱼ∈L2
         sparser!(L2ⱼ,j->keep[j])
