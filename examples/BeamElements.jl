@@ -119,31 +119,21 @@ const v3   = SVector{3};
         ## We are going do differentiate wrt X (to get the Jacobian T for example). 
         ## Describe here the content of ΔX contains (zeros and ones)
         ΔX               = variate{P,ndof}(∂0(X))
-        # ## Note that X is a tuple containing (positions, velocities, accelerations) and ∂0(X) returns only positions
-        # ## X is not an adiff with respect to time. Use motions to go from tuple to adiff. Do not forget constants, ses motions doc. 
-        # ## Fetch the nodal displacements uᵧ₁ uᵧ₂ and rotations vᵧ₁, vᵧ₂ from X, expressed in the global coordinate system
-        # uᵧ₁,vᵧ₁,uᵧ₂,vᵧ₂  = SVector{3}(ΔX[i] for i∈1:3), SVector{3}(ΔX[i] for i∈4:6),SVector{3}(ΔX[i] for i∈7:9),SVector{3}(ΔX[i] for i∈10:12)
-        # ## Conversion to the local coordinate system
-        # cₛ               = (uᵧ₁+uᵧ₂)/2
-        # rₛ               = Rodrigues((vᵧ₁+vᵧ₂)/2)
-        # rₛ               = Rodrigues(adjust(rₛ∘tgₘ,tgₘ+uᵧ₂-uᵧ₁))∘rₛ   
-        # rₛₘ              = rₛ∘rₘ
-        # uₗ₁              = rₛₘ'∘(uᵧ₁+tgₘ*ζnod[1]-cₛ)-tgₑ*ζnod[1]    #Local displacement of node 1
-        # uₗ₂              = rₛₘ'∘(uᵧ₂+tgₘ*ζnod[2]-cₛ)-tgₑ*ζnod[2]    #Local displacement of node 2
-        # vₗ₁              = Rodrigues⁻¹(rₛₘ'∘Rodrigues(vᵧ₁)∘rₘ)      #Local rotation of node 1
-        # vₗ₂              = Rodrigues⁻¹(rₛₘ'∘Rodrigues(vᵧ₂)∘rₘ)      #Local rotation of node 2
-        # ## δXₗ contains all local displacements and partial derivatives with respect to ΔX
-        # δXₗ,T            = value_∂{P,ndof}(SVector(uₗ₁...,vₗ₁...,uₗ₂...,vₗ₂...))
-        δXₗ,~,~           = coordinatetransformation(ΔX,rₘ,tgₘ,ζnod,tgₑ)
-        T                = ∂{P,ndof}(δXₗ)
-
-        ΔX_               = ∂0(X)
-        uᵧ₁,vᵧ₁,uᵧ₂,vᵧ₂  = SVector{3}(ΔX_[i] for i∈1:3), SVector{3}(ΔX_[i] for i∈4:6),SVector{3}(ΔX_[i] for i∈7:9),SVector{3}(ΔX_[i] for i∈10:12)
+        ## Note that X is a tuple containing (positions, velocities, accelerations) and ∂0(X) returns only positions
+        ## X is not an adiff with respect to time. Use motions to go from tuple to adiff. Do not forget constants, ses motions doc. 
+        ## Fetch the nodal displacements uᵧ₁ uᵧ₂ and rotations vᵧ₁, vᵧ₂ from X, expressed in the global coordinate system
+        uᵧ₁,vᵧ₁,uᵧ₂,vᵧ₂  = SVector{3}(ΔX[i] for i∈1:3), SVector{3}(ΔX[i] for i∈4:6),SVector{3}(ΔX[i] for i∈7:9),SVector{3}(ΔX[i] for i∈10:12)
+        ## Conversion to the local coordinate system
         cₛ               = (uᵧ₁+uᵧ₂)/2
         rₛ               = Rodrigues((vᵧ₁+vᵧ₂)/2)
         rₛ               = Rodrigues(adjust(rₛ∘tgₘ,tgₘ+uᵧ₂-uᵧ₁))∘rₛ   
         rₛₘ              = rₛ∘rₘ
-
+        uₗ₁              = rₛₘ'∘(uᵧ₁+tgₘ*ζnod[1]-cₛ)-tgₑ*ζnod[1]    #Local displacement of node 1
+        uₗ₂              = rₛₘ'∘(uᵧ₂+tgₘ*ζnod[2]-cₛ)-tgₑ*ζnod[2]    #Local displacement of node 2
+        vₗ₁              = Rodrigues⁻¹(rₛₘ'∘Rodrigues(vᵧ₁)∘rₘ)      #Local rotation of node 1
+        vₗ₂              = Rodrigues⁻¹(rₛₘ'∘Rodrigues(vᵧ₂)∘rₘ)      #Local rotation of node 2
+        ## δXₗ contains all local displacements and partial derivatives with respect to ΔX
+        δXₗ,T            = value_∂{P,ndof}(SVector(uₗ₁...,vₗ₁...,uₗ₂...,vₗ₂...))
     ## Compute local load contributions at each Gauss point
     gp              = ntuple(ngp) do igp
         ☼ε,☼κ,☼uₗ    = Nε[igp]∘δXₗ, Nκ[igp]∘δXₗ, Nu[igp]∘δXₗ   # axial strain, curvatures, displacement - all local
@@ -155,18 +145,4 @@ const v3   = SVector{3};
     ## Summation of local load contributions from each Gauss point, and transformation to the global coordinate system. 
     R  = sum(gpᵢ.Rₗ for gpᵢ∈gp) ∘ T 
     return R,noFB  
-end
-
-function coordinatetransformation(X,rₘ,tgₘ,ζnod,tgₑ)  # X is only position
-    uᵧ₁,vᵧ₁,uᵧ₂,vᵧ₂  = SVector{3}(X[i] for i∈1:3), SVector{3}(X[i] for i∈4:6),SVector{3}(X[i] for i∈7:9),SVector{3}(X[i] for i∈10:12)
-    cₛ               = (uᵧ₁+uᵧ₂)/2
-    rₛ               = Rodrigues((vᵧ₁+vᵧ₂)/2)
-    rₛ               = Rodrigues(adjust(rₛ∘tgₘ,tgₘ+uᵧ₂-uᵧ₁))∘rₛ   
-    rₛₘ              = rₛ∘rₘ
-    uₗ₁              = rₛₘ'∘(uᵧ₁+tgₘ*ζnod[1]-cₛ)-tgₑ*ζnod[1]
-    uₗ₂              = rₛₘ'∘(uᵧ₂+tgₘ*ζnod[2]-cₛ)-tgₑ*ζnod[2]
-    vₗ₁              = Rodrigues⁻¹(rₛₘ'∘Rodrigues(vᵧ₁)∘rₘ)     
-    vₗ₂              = Rodrigues⁻¹(rₛₘ'∘Rodrigues(vᵧ₂)∘rₘ)
-    δXₗ              = SVector(uₗ₁...,vₗ₁...,uₗ₂...,vₗ₂...)
-    return δXₗ,cₛ,rₛₘ
 end
