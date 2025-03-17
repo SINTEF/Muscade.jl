@@ -11,13 +11,40 @@ struct BeamCrossSection
     EI :: 𝕣
     GJ :: 𝕣
 end
+    # ρ  :: 𝕣 
+    # μ  :: 𝕣 
+    # Rotation about x.... moment of inertia?
+    # Cd :: SVector{3,𝕣}
+    # Ca :: SVector{3,𝕣}
+    # A  :: SVector{3,𝕣}
+
 BeamCrossSection(;EA=EA,EI=EI,GJ=GJ) = BeamCrossSection(EA,EI,GJ);
 
 # Resultant function that computes the internal loads from the strains and curvatures, and external loads on the element. 
 @espy function resultants(o::BeamCrossSection,ε,κ,xᵧ,rot)
-    ☼f₁ = o.EA*ε
-    ☼m  = SVector(o.GJ*κ[1],o.EI*κ[2],o.EI*κ[3])
-    ☼fₑ = SVector(0.,0.,0.) # external forces at Gauss point (no external moment/torque/... so far). fₑ is in local coordinates
+    ε₀ = Muscade.position{precedence(ε),length(ε)}(ε) 
+    ## change prototype of position/vel/acc (remove need for precedence and length)
+    ## ε₁ = Muscade.velocity{precedence(ε),length(ε)}(ε)  
+    ## ε₂ = Muscade.acceleration{precedence(ε),length(ε)}(ε) 
+    κ₀ = Muscade.position{precedence(κ),length(κ)}(κ) 
+    ## κ₁ = Muscade.velocity{precedence(κ),length(κ)}(κ)
+    ## κ₂ = Muscade.acceleration{precedence(κ),length(κ)}(κ) 
+    xᵧ₀ = Muscade.position{precedence(xᵧ),length(xᵧ)}(xᵧ) 
+    xᵧ₁ = Muscade.velocity{precedence(xᵧ),length(xᵧ)}(xᵧ) 
+    xᵧ₂ = Muscade.acceleration{precedence(xᵧ),length(xᵧ)}(xᵧ)
+    xₗ₁ = xᵧ₁ ∘ rot
+    xₗ₂ = xᵧ₂ ∘ rot
+    ρ = 1025.0
+    Cd = SVector(0.0,1.0,1.0)
+    A  = SVector(0.0,1.0,1.0)
+    fd = .5 * ρ .* A .* Cd .* xₗ₁ .* abs.(xₗ₁) #mind the sign: forces exerted by element on its environment
+    μ   = 1.0
+    fi = μ * xₗ₂ 
+    Ca = SVector(0.0,1.0,1.0)
+    fa = ρ * Ca .* xₗ₂
+    ☼f₁ = o.EA*ε₀ # replace by ε₀
+    ☼m  = SVector(o.GJ*κ₀[1],o.EI*κ₀[2],o.EI*κ₀[3])# replace by κ₀ 
+    ☼fₑ = fd+fi+fa # SVector(0.,0.,0.) # external forces at Gauss point (no external moment/torque/... so far). fₑ is in local coordinates # add inertia and drag
     return f₁,m,fₑ
 end;
 
@@ -59,7 +86,7 @@ struct EulerBeam3D{Mat} <: AbstractElement
     Nκ       :: SVector{ngp,SMatrix{ndim,ndof,𝕣,ndim*ndof}} # curvatures at the Gauss points
     Nu       :: SVector{ngp,SMatrix{ndim,ndof,𝕣,ndim*ndof}} # coordinates of the Gauss points
     dL       :: SVector{ngp,𝕣}  # length associated to each Gauss point
-    mat      :: Mat # Used to store material properties (BeamCrossSection)
+    mat      :: Mat # Used to store material properties (BeamCrossSection, for example)
 end
 
 # Define nodes, classes, and field names for Muscade
@@ -114,29 +141,13 @@ const v3   = SVector{3};
     Nε,Nκ,Nu         = o.Nε,o.Nκ,o.Nu           # From shape functions
     ζgp,ζnod,dL      = o.ζgp,o.ζnod,o.dL        # Gauss points coordinates, node coordinates and length associated to each Gauss point
     ## In the following, the goal is to compute the Jacobian T transforming quantities from/to local/global coordinate systems using automatic differentiation
-        ## P is an integer that enables variate to keep track with respect to what X,U,A,t have been differentated before. Note that P is defined at compilation time. No run time. 
-        P                = constants(X,U,A,t)  
-        ## We are going do differentiate wrt X (to get the Jacobian T for example). 
-        ## Describe here the content of ΔX contains (zeros and ones)
-        ΔX               = variate{P,ndof}(∂0(X))
-        ## Note that X is a tuple containing (positions, velocities, accelerations) and ∂0(X) returns only positions
-        ## X is not an adiff with respect to time. Use motions to go from tuple to adiff. Do not forget constants, ses motions doc. 
-        ## Fetch the nodal displacements uᵧ₁ uᵧ₂ and rotations vᵧ₁, vᵧ₂ from X, expressed in the global coordinate system
-        uᵧ₁,vᵧ₁,uᵧ₂,vᵧ₂  = SVector{3}(ΔX[i] for i∈1:3), SVector{3}(ΔX[i] for i∈4:6),SVector{3}(ΔX[i] for i∈7:9),SVector{3}(ΔX[i] for i∈10:12)
-        ## Conversion to the local coordinate system
-        cₛ               = (uᵧ₁+uᵧ₂)/2
-        rₛ               = Rodrigues((vᵧ₁+vᵧ₂)/2)
-        rₛ               = Rodrigues(adjust(rₛ∘tgₘ,tgₘ+uᵧ₂-uᵧ₁))∘rₛ   
-        rₛₘ              = rₛ∘rₘ
-        uₗ₁              = rₛₘ'∘(uᵧ₁+tgₘ*ζnod[1]-cₛ)-tgₑ*ζnod[1]    #Local displacement of node 1
-        uₗ₂              = rₛₘ'∘(uᵧ₂+tgₘ*ζnod[2]-cₛ)-tgₑ*ζnod[2]    #Local displacement of node 2
-        vₗ₁              = Rodrigues⁻¹(rₛₘ'∘Rodrigues(vᵧ₁)∘rₘ)      #Local rotation of node 1
-        vₗ₂              = Rodrigues⁻¹(rₛₘ'∘Rodrigues(vᵧ₂)∘rₘ)      #Local rotation of node 2
-        ## δXₗ contains all local displacements and partial derivatives with respect to ΔX
-        δXₗ,T            = value_∂{P,ndof}(SVector(uₗ₁...,vₗ₁...,uₗ₂...,vₗ₂...))
+    P = constants(X,U,A,t)
+    X_ = Muscade.motion{P,length(X)}(X)
+    ## δX_l and T contain time derivatives, cₛ,rₛₘ do not
+    δXₗ,T,cₛ,rₛₘ = coordinateTransform(X_,o)
     ## Compute local load contributions at each Gauss point
     gp              = ntuple(ngp) do igp
-        ☼ε,☼κ,☼uₗ    = Nε[igp]∘δXₗ, Nκ[igp]∘δXₗ, Nu[igp]∘δXₗ   # axial strain, curvatures, displacement - all local
+        ☼ε,☼κ,☼uₗ    = Nε[igp]∘δXₗ, Nκ[igp]∘δXₗ, Nu[igp]∘δXₗ   # axial strain, curvatures, displacement - all local (including their time derivatives)
         ☼x          = rₛₘ∘(tgₑ*ζgp[igp]+uₗ)+cₛ+cₘ             # [ndim], global coordinates of Gauss points
         f₁,m,fₑ     = ☼resultants(o.mat,ε,κ,x,rₛₘ)          # call the "resultant" function to compute loads (local coordinates) from strains/curvatures/etc. using material properties. Note that output is dual of input. 
         Rₗ           = (f₁ ∘₀ Nε[igp] + m∘Nκ[igp] + fₑ∘Nu[igp])*dL[igp]     # Contribution to the local nodal load of this Gauss point  [ndof] = scalar*[ndof] + [ndim]⋅[ndim,ndof] + [ndim]⋅[ndim,ndof]
@@ -145,4 +156,31 @@ const v3   = SVector{3};
     ## Summation of local load contributions from each Gauss point, and transformation to the global coordinate system. 
     R  = sum(gpᵢ.Rₗ for gpᵢ∈gp) ∘ T 
     return R,noFB  
+end
+
+
+function coordinateTransform(X,o::EulerBeam3D)
+    ## P is an integer that enables variate to keep track with respect to what X,U,A,t have been differentated before. Note that P is defined at compilation time. No run time. 
+    P                = constants(X) 
+    ## We are going do differentiate wrt X (to get the Jacobian T for example). 
+    ## Describe here the content of ΔX contains (zeros and ones)
+    ΔX               = variate{P,ndof}(X)
+    ## Note that X is a tuple containing (positions, velocities, accelerations) and ∂0(X) returns only positions
+    ## X is not an adiff with respect to time. Use motions to go from tuple to adiff. Do not forget constants, ses motions doc. 
+    ## Fetch the nodal displacements uᵧ₁ uᵧ₂ and rotations vᵧ₁, vᵧ₂ from X, expressed in the global coordinate system
+    uᵧ₁,vᵧ₁,uᵧ₂,vᵧ₂  = SVector{3}(ΔX[i] for i∈1:3), SVector{3}(ΔX[i] for i∈4:6),SVector{3}(ΔX[i] for i∈7:9),SVector{3}(ΔX[i] for i∈10:12)
+    ## Conversion to the local coordinate system
+    cₛ               = (uᵧ₁+uᵧ₂)/2
+    rₛ               = Rodrigues((vᵧ₁+vᵧ₂)/2)
+    rₛ               = Rodrigues(adjust(rₛ∘o.tgₘ,o.tgₘ+uᵧ₂-uᵧ₁))∘rₛ   
+    rₛₘ              = rₛ∘o.rₘ
+    uₗ₁              = rₛₘ'∘(uᵧ₁+o.tgₘ*o.ζnod[1]-cₛ)-o.tgₑ*o.ζnod[1]    #Local displacement of node 1
+    uₗ₂              = rₛₘ'∘(uᵧ₂+o.tgₘ*o.ζnod[2]-cₛ)-o.tgₑ*o.ζnod[2]    #Local displacement of node 2
+    vₗ₁              = Rodrigues⁻¹(rₛₘ'∘Rodrigues(vᵧ₁)∘o.rₘ)      #Local rotation of node 1
+    vₗ₂              = Rodrigues⁻¹(rₛₘ'∘Rodrigues(vᵧ₂)∘o.rₘ)      #Local rotation of node 2
+    ## δXₗ contains all local displacements ("value") and partial derivatives ("δ") with respect to ΔX
+    δXₗ,T            = value_∂{P,ndof}(SVector(uₗ₁...,vₗ₁...,uₗ₂...,vₗ₂...))
+    cₛ               = value{P}(cₛ)
+    rₛₘ              = value{P}(rₛₘ)
+    return δXₗ,T,cₛ,rₛₘ 
 end

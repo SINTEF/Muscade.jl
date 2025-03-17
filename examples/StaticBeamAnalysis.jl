@@ -32,17 +32,17 @@ V = q*L*(1.0 .- 2.0*x/L) / 2.0;
 
 # Create the model 
 nel         = 20
-nnod        = nel+1   
-nodeCoord   = hcat((0:L/nel:L),zeros(Float64,nnod,2))
+nnodes        = nel+1   
+nodeCoord   = hcat((0:L/nel:L),zeros(Float64,nnodes,2))
 mat         = BeamCrossSection(EA=EA,EI=EI,GJ=GJ)
 model       = Model(:TestModel)
 nodid       = addnode!(model,nodeCoord)
-mesh        = hcat(nodid[1:nnod-1],nodid[2:nnod])
+mesh        = hcat(nodid[1:nnodes-1],nodid[2:nnodes])
 eleid       = addelement!(model,EulerBeam3D,mesh;mat=mat,orient2=SVector(0.,1.,0.))
 
 [addelement!(model,Hold,[nodid[1]]  ;field) for field∈[:t1,:t2,:t3,:r1,:r2,:r3]]                                # Clamp end 1
 [addelement!(model,Hold,[nodid[end]];field) for field∈[:t1,:t2,:t3,:r1,:r2,:r3]]                                # Clamp end 2
-[addelement!(model,DofLoad,[nodid[nodeidx]];field=:t2,value=t->-min(1,t)*q*L/nnod) for nodeidx=1:nnod];          # Distributed vertical load q
+[addelement!(model,DofLoad,[nodid[nodeidx]];field=:t2,value=t->-min(1,t)*q*L/nnodes) for nodeidx=1:nnodes];          # Distributed vertical load q
 #src # addelement!(model,DofLoad,[nodid[end]];field=:t2,value=t->min(1,t)*Fv)                                        # Vertical force Fv on last node
 #src # addelement!(model,DofLoad,[nodid[end]];field=:t1,value=t->min(1,t)*Fh)                                          # Horizontal force Fh on last node
 
@@ -51,8 +51,8 @@ initialstate    = initialize!(model);
 state           = solve(SweepX{0};initialstate,time=[0.,1.])
 
 # Fetch results
-w_ = getdof(state[2];field=:t2,nodID=nodid[1:nnod])
-θ_ = getdof(state[2];field=:r3,nodID=nodid[1:nnod])
+w_ = getdof(state[2];field=:t2,nodID=nodid[1:nnodes])
+θ_ = getdof(state[2];field=:r3,nodID=nodid[1:nnodes])
 req = @request gp(resultants(m))
 out = getresult(state[2],req,eleid)
 Mgp1_ = [ out[idxEl].gp[1][:resultants][:m][2] for idxEl ∈ 1:nel]
