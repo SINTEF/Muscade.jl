@@ -21,17 +21,10 @@ end
 BeamCrossSection(;EA=EA,EI=EI,GJ=GJ) = BeamCrossSection(EA,EI,GJ);
 
 # Resultant function that computes the internal loads from the strains and curvatures, and external loads on the element. 
-@espy function resultants(o::BeamCrossSection,ε,κ,xᵧ,rot)
-    ε₀ = Muscade.position{precedence(ε),length(ε)}(ε) 
-    ## change prototype of position/vel/acc (remove need for precedence and length)
-    ## ε₁ = Muscade.velocity{precedence(ε),length(ε)}(ε)  
-    ## ε₂ = Muscade.acceleration{precedence(ε),length(ε)}(ε) 
-    κ₀ = Muscade.position{precedence(κ),length(κ)}(κ) 
-    ## κ₁ = Muscade.velocity{precedence(κ),length(κ)}(κ)
-    ## κ₂ = Muscade.acceleration{precedence(κ),length(κ)}(κ) 
-    xᵧ₀ = Muscade.position{precedence(xᵧ),length(xᵧ)}(xᵧ) 
-    xᵧ₁ = Muscade.velocity{precedence(xᵧ),length(xᵧ)}(xᵧ) 
-    xᵧ₂ = Muscade.acceleration{precedence(xᵧ),length(xᵧ)}(xᵧ)
+@espy function resultants(o::BeamCrossSection,ε,κ,xᵧ,rot,::Val{P},::Val{ND}) where{P,ND}
+    ε₀          = Muscade.position{P,ND}(ε) 
+    κ₀          = Muscade.position{P,ND}(κ) 
+    xᵧ₀,xᵧ₁,xᵧ₂ = Muscade.posVelAcc{P,ND}(xᵧ)
     xₗ₁ = xᵧ₁ ∘ rot
     xₗ₂ = xᵧ₂ ∘ rot
     ρ = 1025.0
@@ -84,7 +77,7 @@ struct EulerBeam3D{Mat} <: AbstractElement
     tgₑ      :: SVector{ndim,𝕣} # Vector connecting the nodes of the element in the local coordinate system
     Nε       :: SVector{ngp,SVector{     ndof,𝕣}}           # strain at the Gauss points
     Nκ       :: SVector{ngp,SMatrix{ndim,ndof,𝕣,ndim*ndof}} # curvatures at the Gauss points
-    Nu       :: SVector{ngp,SMatrix{ndim,ndof,𝕣,ndim*ndof}} # coordinates of the Gauss points
+    Nδx      :: SVector{ngp,SMatrix{ndim,ndof,𝕣,ndim*ndof}} # coordinates of the Gauss points
     dL       :: SVector{ngp,𝕣}  # length associated to each Gauss point
     mat      :: Mat # Used to store material properties (BeamCrossSection, for example)
 end
@@ -125,10 +118,10 @@ function EulerBeam3D(nod::Vector{Node};mat,orient2::SVector{ndim,𝕣}=SVector(0
                                      0         Bᵤ₁(ζᵢ)/L² 0          0          0           Bᵥ₁(ζᵢ)/L 0         Bᵤ₂(ζᵢ)/L² 0           0           0           Bᵥ₂(ζᵢ)/L;
                                      0         0          Bᵤ₁(ζᵢ)/L² 0          -Bᵥ₁(ζᵢ)/L 0          0         0          Bᵤ₂(ζᵢ)/L²  0           -Bᵥ₂(ζᵢ)/L  0         ] for ζᵢ∈ζgp) # Nκ[igp][idim,idof]
     ## Using the shape functions to get the coordinates of the Gauss points
-    Nu      = SVector{ngp}(@SMatrix [Nₐ₁(ζᵢ)   0          0          0          0           0          Nₐ₂(ζᵢ)   0          0           0           0           0         ;
+    Nδx      = SVector{ngp}(@SMatrix [Nₐ₁(ζᵢ)   0          0          0          0           0          Nₐ₂(ζᵢ)   0          0           0           0           0         ;
                                      0         Nᵤ₁(ζᵢ)    0          0          0           Nᵥ₁(ζᵢ)    0         Nᵤ₂(ζᵢ)    0           0           0           Nᵥ₂(ζᵢ)   ;
-                                     0         0          Nᵤ₁(ζᵢ)    0          -Nᵥ₁(ζᵢ)    0          0         0          Nᵤ₂(ζᵢ)     0           -Nᵥ₂(ζᵢ)    0         ] for ζᵢ∈ζgp) # Nu[igp][idim,idof]
-    return EulerBeam3D(cₘ,rₘ,ζgp,ζnod,tgₘ,tgₑ,Nε,Nκ,Nu,dL,mat)
+                                     0         0          Nᵤ₁(ζᵢ)    0          -Nᵥ₁(ζᵢ)    0          0         0          Nᵤ₂(ζᵢ)     0           -Nᵥ₂(ζᵢ)    0         ] for ζᵢ∈ζgp) # Nδx[igp][idim,idof]
+    return EulerBeam3D(cₘ,rₘ,ζgp,ζnod,tgₘ,tgₑ,Nε,Nκ,Nδx,dL,mat)
 end
 
 const saco = StaticArrays.sacollect
@@ -138,19 +131,20 @@ const v3   = SVector{3};
 @espy function Muscade.residual(o::EulerBeam3D,   X,U,A,t,SP,dbg) 
     ## Fetch the element properties 
     cₘ,rₘ,tgₘ,tgₑ     = o.cₘ,o.rₘ,o.tgₘ,o.tgₑ   # As-meshed element coordinates and describing tangential vector
-    Nε,Nκ,Nu         = o.Nε,o.Nκ,o.Nu           # From shape functions
+    Nε,Nκ,Nδx         = o.Nε,o.Nκ,o.Nδx           # From shape functions
     ζgp,ζnod,dL      = o.ζgp,o.ζnod,o.dL        # Gauss points coordinates, node coordinates and length associated to each Gauss point
     ## In the following, the goal is to compute the Jacobian T transforming quantities from/to local/global coordinate systems using automatic differentiation
-    P = constants(X,U,A,t)
-    X_ = Muscade.motion{P}(X)
+    P                = constants(X)
+    ND               = length(X)
+    X_               = Muscade.motion{P}(X)
     ## δX_l and T contain time derivatives, cₛ,rₛₘ do not
     δXₗ,T,cₛ,rₛₘ = coordinateTransform(X_,o)
     ## Compute local load contributions at each Gauss point
     gp              = ntuple(ngp) do igp
-        ☼ε,☼κ,☼uₗ    = Nε[igp]∘δXₗ, Nκ[igp]∘δXₗ, Nu[igp]∘δXₗ   # axial strain, curvatures, displacement - all local (including their time derivatives)
-        ☼x          = rₛₘ∘(tgₑ*ζgp[igp]+uₗ)+cₛ+cₘ             # [ndim], global coordinates of Gauss points
-        f₁,m,fₑ     = ☼resultants(o.mat,ε,κ,x,rₛₘ)          # call the "resultant" function to compute loads (local coordinates) from strains/curvatures/etc. using material properties. Note that output is dual of input. 
-        Rₗ           = (f₁ ∘₀ Nε[igp] + m∘Nκ[igp] + fₑ∘Nu[igp])*dL[igp]     # Contribution to the local nodal load of this Gauss point  [ndof] = scalar*[ndof] + [ndim]⋅[ndim,ndof] + [ndim]⋅[ndim,ndof]
+        ☼ε,☼κ,☼δxₗ   = Nε[igp]∘δXₗ, Nκ[igp]∘δXₗ, Nδx[igp]∘δXₗ   # axial strain, curvatures, displacement - all local (including their time derivatives)
+        ☼x          = rₛₘ∘(tgₑ*ζgp[igp]+δxₗ)+cₛ+cₘ             # [ndim], global coordinates of Gauss points
+        f₁,m,fₑ     = ☼resultants(o.mat,ε,κ,x,rₛₘ,Val(P),Val(ND))          # call the "resultant" function to compute loads (local coordinates) from strains/curvatures/etc. using material properties. Note that output is dual of input. 
+        Rₗ           = (f₁ ∘₀ Nε[igp] + m∘Nκ[igp] + fₑ∘Nδx[igp])*dL[igp]     # Contribution to the local nodal load of this Gauss point  [ndof] = scalar*[ndof] + [ndim]⋅[ndim,ndof] + [ndim]⋅[ndim,ndof]
         @named(Rₗ)
     end
     ## Summation of local load contributions from each Gauss point, and transformation to the global coordinate system. 

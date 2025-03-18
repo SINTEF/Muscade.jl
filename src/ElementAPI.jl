@@ -101,6 +101,7 @@ motion_{P,P  }(a::NTuple{D,      R }) where{D ,P  ,R<:Real  } = a[1]
 struct position{P,ND}     end 
 struct velocity{P,ND}     end 
 struct acceleration{P,ND} end 
+struct posVelAcc{P,ND}    end 
 
 """
     P  = constants(X,U,A,t)
@@ -133,8 +134,8 @@ Extract the velocity or rate from a variable that is a function of the output of
 See [`Muscade.motion`](@ref), [`Muscade.position`](@ref), [`Muscade.acceleration`](@ref)
 """
 function velocity{P,ND}(a::ℝ) where{P,ND}
-    if     ND==1                          0.   
-    elseif ND==2               ∂{P+ND-1,1}(a)[1]
+    if     ND==1                            0.   
+    elseif ND==2                ∂{P+ND-1,1}(a)[1]
     elseif ND==3  value{P+ND-2}(∂{P+ND-1,1}(a)[1]) 
     else muscadeerror((P=P,ND=ND,a=typeof(a)),"'velocity' requires ND∈{1,2,3}")
     end
@@ -151,8 +152,8 @@ Extract the velocity or rate from a variable that is a function of the output of
 See [`Muscade.motion`](@ref), [`Muscade.position`](@ref), [`Muscade.velocity`](@ref)
 """
 function acceleration{P,ND}(a::ℝ) where{P,ND}
-    if     ND==1                        0.
-    elseif ND==2                        0.
+    if     ND==1                          0.
+    elseif ND==2                          0.
     elseif ND==3  ∂{P+ND-2,1}(∂{P+ND-1,1}(a)[1])[1]
     else muscadeerror((P=P,ND=ND,a=typeof(a)),"'acceleration' requires ND∈{1,2,3}")
     end
@@ -161,7 +162,7 @@ end
 position{P,ND}(    a::AbstractArray) where{P,ND} = position{P,ND}.(a)
 velocity{P,ND}(    a::AbstractArray) where{P,ND} = velocity{P,ND}.(a)
 acceleration{P,ND}(a::AbstractArray) where{P,ND} = acceleration{P,ND}.(a)
-
+posVelAcc{P,ND}(   a               ) where{P,ND} = position{P,ND}(a),position{P,ND}(a),acceleration{P,ND}(a)
 
 """
     Muscade.doflist(::Type{E<:AbstractElement})
