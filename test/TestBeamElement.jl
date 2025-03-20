@@ -91,6 +91,22 @@ R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg)
     @test R        ≈ [0.0, 0.0, 0.0, -0.40000000000000124, 0.0, 0.0, 0.0, 0.0, 0.0, 0.40000000000000135, 0.0, 0.0]
     @test FB === nothing
 end
+using Printf
+X = (x,)
+out = diffed_residual(beam; X,U,A,t,SP)
+# @printf "\nR\n"
+# print_element_array(beam,:X,out.R)    #  R
+# @printf "\nK=∂R/∂X₀\n"
+# print_element_array(beam,:X,out.∇R[2][1])  # K
+
+# X = (x,x,x)
+# out = diffed_residual(beam; X,U,A,t,SP)
+# @printf "\nC=∂R/∂X₁\n"
+# print_element_array(beam,:X,out.∇R[2][2])  # C
+# @printf "\nM=∂R/∂X₂\n"
+# print_element_array(beam,:X,out.∇R[2][3])  # M
+
 
 
 end
+

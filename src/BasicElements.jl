@@ -347,10 +347,10 @@ struct DofConstraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λi
     mode     :: Tmode # mode(t)->symbol, or Symbol for Aconstraints
 end
 function DofConstraint(nod::Vector{Node};xinod::NTuple{Nx,𝕫}=(),xfield::NTuple{Nx,Symbol}=(),
-                                      uinod::NTuple{Nu,𝕫}=(),ufield::NTuple{Nu,Symbol}=(),
-                                      ainod::NTuple{Na,𝕫}=(),afield::NTuple{Na,Symbol}=(),
-                                      λinod::𝕫, λclass::Symbol, λfield::Symbol,
-                                      gap::Function ,gargs=(),mode::Function) where{Nx,Nu,Na} 
+                                         uinod::NTuple{Nu,𝕫}=(),ufield::NTuple{Nu,Symbol}=(),
+                                         ainod::NTuple{Na,𝕫}=(),afield::NTuple{Na,Symbol}=(),
+                                         λinod::𝕫, λclass::Symbol, λfield::Symbol,
+                                         gap::Function ,gargs=(),mode::Function) where{Nx,Nu,Na} 
     (λclass==:X && (Nu>0||Na>0)) && muscadeerror("Constraints with λclass=:X must have zero U-dofs and zero A-dofs") 
     (λclass==:A && (Nx>0||Nu>0)) && muscadeerror("Constraints with λclass=:A must have zero X-dofs and zero U-dofs") 
     return DofConstraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,
