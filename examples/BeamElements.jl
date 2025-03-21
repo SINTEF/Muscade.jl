@@ -28,12 +28,14 @@ BeamCrossSection(;EA=EA,EI=EI,GJ=GJ) = BeamCrossSection(EA,EI,GJ);
     xₗ₁ = xᵧ₁ ∘ rot
     xₗ₂ = xᵧ₂ ∘ rot
     ρ = 1025.0
-    Cd = SVector(0.0,1.0,1.0)
+    # Cd = SVector(0.0,1.0,1.0)
+    Cd = SVector(0.0,0.0,0.0)
     A  = SVector(0.0,1.0,1.0)
     fd = .5 * ρ .* A .* Cd .* xₗ₁ .* abs.(xₗ₁) #mind the sign: forces exerted by element on its environment
     μ   = 1.0
     fi = μ * xₗ₂ 
-    Ca = SVector(0.0,1.0,1.0)
+    # Ca = SVector(0.0,1.0,1.0)
+    Ca = SVector(0.0,0.0,0.0)
     fa = ρ * Ca .* xₗ₂
     ☼f₁ = o.EA*ε₀ # replace by ε₀
     ☼m  = SVector(o.GJ*κ₀[1],o.EI*κ₀[2],o.EI*κ₀[3])# replace by κ₀ 
@@ -137,8 +139,10 @@ const v3   = SVector{3};
     P                = constants(X)
     ND               = length(X)
     X_               = Muscade.motion{P}(X)
+    X__               = Muscade.position{P,ND}(X_)
+    # @show X__
     ## δX_l and T contain time derivatives, cₛ,rₛₘ do not
-    δXₗ,T,cₛ,rₛₘ = coordinateTransform(X_,o)
+    δXₗ,T,cₛ,rₛₘ = coordinateTransform(X__,o)
     ## Compute local load contributions at each Gauss point
     gp              = ntuple(ngp) do igp
         ☼ε,☼κ,☼δxₗ   = Nε[igp]∘δXₗ, Nκ[igp]∘δXₗ, Nδx[igp]∘δXₗ   # axial strain, curvatures, displacement - all local (including their time derivatives)
