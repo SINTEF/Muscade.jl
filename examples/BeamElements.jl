@@ -75,8 +75,8 @@ struct EulerBeam3D{Mat} <: AbstractElement
     rₘ       :: Mat33{𝕣}        # Orientation of the element (see code)
     ζgp      :: SVector{ngp,𝕣}  # Location of the Gauss points for the normalized element with length 1
     ζnod     :: SVector{nnod,𝕣} # Location of the nodes for the normalized element with length 1
-    tgₘ      :: SVector{ndim,𝕣} # Vector connecting the nodes of the element in the global coordinate system
-    tgₑ      :: SVector{ndim,𝕣} # Vector connecting the nodes of the element in the local coordinate system
+    tgₘ      :: SVector{ndim,𝕣} # Tangent vector connecting the nodes of the element in the global coordinate system at mesh time
+    tgₑ      :: SVector{ndim,𝕣} # Tangent vector connecting the nodes of the element in the local coordinate system (element coordinate system)
     Nε       :: SVector{ngp,SVector{     ndof,𝕣}}           # strain at the Gauss points
     Nκ       :: SVector{ngp,SMatrix{ndim,ndof,𝕣,ndim*ndof}} # curvatures at the Gauss points
     Nδx      :: SVector{ngp,SMatrix{ndim,ndof,𝕣,ndim*ndof}} # coordinates of the Gauss points
@@ -171,14 +171,17 @@ function coordinateTransform(X,o::EulerBeam3D)
     uᵧ₁,vᵧ₁,uᵧ₂,vᵧ₂  = SVector{3}(ΔX[i] for i∈1:3), SVector{3}(ΔX[i] for i∈4:6),SVector{3}(ΔX[i] for i∈7:9),SVector{3}(ΔX[i] for i∈10:12)
     ## Conversion to the local coordinate system
     cₛ               = (uᵧ₁+uᵧ₂)/2
+    # From rotation vector to rotation matrix
     rₛ               = Rodrigues((vᵧ₁+vᵧ₂)/2)
+    # The following accounts for the fact that the element when rotations. Ensures that the x is colinear with the vector joining the two nodes
     rₛ               = Rodrigues(adjust(rₛ∘o.tgₘ,o.tgₘ+uᵧ₂-uᵧ₁))∘rₛ   
+    # Total rotation of the element (as meshed to now)
     rₛₘ              = rₛ∘o.rₘ
-    uₗ₁              = rₛₘ'∘(uᵧ₁+o.tgₘ*o.ζnod[1]-cₛ)-o.tgₑ*o.ζnod[1]    #Local displacement of node 1
+    uₗ₁              = rₛₘ'∘(uᵧ₁+o.tgₘ*o.ζnod[1]-cₛ)-o.tgₑ*o.ζnod[1]    #Local displacement of node 1. o.tgₘ*o.ζnod[1] connects the middle of the element to node 1 at mesh time. u\gamma_1 - c_s instantaneous displacement
     uₗ₂              = rₛₘ'∘(uᵧ₂+o.tgₘ*o.ζnod[2]-cₛ)-o.tgₑ*o.ζnod[2]    #Local displacement of node 2
     vₗ₁              = Rodrigues⁻¹(rₛₘ'∘Rodrigues(vᵧ₁)∘o.rₘ)      #Local rotation of node 1
     vₗ₂              = Rodrigues⁻¹(rₛₘ'∘Rodrigues(vᵧ₂)∘o.rₘ)      #Local rotation of node 2
-    ## δXₗ contains all local displacements ("value") and partial derivatives ("δ") with respect to ΔX
+    ## δXₗ contains all local displacements ("value") and partial derivatives ("δ") with respect to ΔX, T=∂Xₗ/∂ΔX
     δXₗ,T            = value_∂{P,ndof}(SVector(uₗ₁...,vₗ₁...,uₗ₂...,vₗ₂...))
     cₛ               = value{P}(cₛ)
     rₛₘ              = value{P}(rₛₘ)
