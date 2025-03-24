@@ -138,7 +138,7 @@ const v3   = SVector{3};
     ND               = length(X)
     X_               = Muscade.motion{P}(X)
     ## δX_l and T contain time derivatives, cₛ,rₛₘ do not
-    δXₗ,T,cₛ,rₛₘ = coordinateTransform(X_,o)
+    δXₗ,T,cₛ,rₛₘ      = coordinateTransform(X_,o)
     ## Compute local load contributions at each Gauss point
     gp              = ntuple(ngp) do igp
         ☼ε,☼κ,☼δxₗ   = Nε[igp]∘δXₗ, Nκ[igp]∘δXₗ, Nδx[igp]∘δXₗ   # axial strain, curvatures, displacement - all local (including their time derivatives)
@@ -173,7 +173,7 @@ function coordinateTransform(X,o::EulerBeam3D)
     vₗ₁              = Rodrigues⁻¹(rₛₘ'∘Rodrigues(vᵧ₁)∘o.rₘ)      #Local rotation of node 1
     vₗ₂              = Rodrigues⁻¹(rₛₘ'∘Rodrigues(vᵧ₂)∘o.rₘ)      #Local rotation of node 2
     ## δXₗ contains all local displacements ("value") and partial derivatives ("δ") with respect to ΔX
-    δXₗ,T            = value_∂{P,ndof}(SVector(uₗ₁...,vₗ₁...,uₗ₂...,vₗ₂...))
+    δXₗ,T            = value_∂{P,ndof}(SVector(uₗ₁...,vₗ₁...,uₗ₂...,vₗ₂...)) #  δXₗ , T = ∂ δXₗ / ∂ ΔX
     cₛ               = value{P}(cₛ)
     rₛₘ              = value{P}(rₛₘ)
     return δXₗ,T,cₛ,rₛₘ 

@@ -13,6 +13,7 @@ module Muscade
     export  variate,δ,directional # \delta
     export  value,VALUE,∂,value_∂ # \partial, \nabla
     export  constants,precedence,npartial,norm
+    export  Taylor
 
     include("Dots.jl")
     export dots,∘₀,∘₁,∘₂,⊗

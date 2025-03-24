@@ -107,6 +107,7 @@ out = diffed_residual(beam; X,U,A,t,SP)
 # print_element_array(beam,:X,out.∇R[2][3])  # M
 
 
-
 end
+
+
 
