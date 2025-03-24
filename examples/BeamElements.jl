@@ -141,10 +141,7 @@ const v3   = SVector{3};
     X_               = Muscade.motion{P}(X)
     X__               = Muscade.position{P,ND}(X_)
     ## δX_l and T contain time derivatives, cₛ,rₛₘ do not
-    @show typeof(X__)
-    δXₗ,T,cₛ,rₛₘ = coordinateTransform(X__,o)
-    @show typeof(T)
-    δXₗ = T ∘  X_
+    δXₗ,T,cₛ,rₛₘ      = coordinateTransform(X_,o)
     ## Compute local load contributions at each Gauss point
     gp              = ntuple(ngp) do igp
         ☼ε,☼κ,☼δxₗ   = Nε[igp]∘δXₗ, Nκ[igp]∘δXₗ, Nδx[igp]∘δXₗ   # axial strain, curvatures, displacement - all local (including their time derivatives)
