@@ -28,9 +28,9 @@ BeamCrossSection(;EA=EA,EI=EI,GJ=GJ) = BeamCrossSection(EA,EI,GJ);
     xₗ₁ = xᵧ₁ ∘ rot
     xₗ₂ = xᵧ₂ ∘ rot
     ρ = 1025.0
-    # Cd = SVector(0.0,1.0,1.0)
-    Cd = SVector(0.0,0.0,0.0)
     A  = SVector(0.0,1.0,1.0)
+    Cd = SVector(0.0,1.0,1.0)
+    # Cd = SVector(0.0,0.0,0.0)
     fd = .5 * ρ .* A .* Cd .* xₗ₁ .* abs.(xₗ₁) #mind the sign: forces exerted by element on its environment
     μ   = 1.0
     fi = μ * xₗ₂ 
