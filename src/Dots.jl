@@ -71,4 +71,7 @@ dots(a::AbstractVector{Ta},b::AbstractMatrix{Tb},::Val{1}) where {Ta<:Number,Tb<
 dots(a::AbstractMatrix{Ta},b::AbstractVector{Tb},::Val{1}) where {Ta<:Number,Tb<:Number      } = a*b
 dots(a::AbstractVector{Ta},b::AbstractVector{Tb},::Val{0}) where {Ta<:Number,Tb<:Number      } = a*b'
 
-
+# Tuples
+dots(a::Tuple,b       ,::Val{N}) where{N} = Tuple(dots(aᵢ  ,b   ,Val(N)) for aᵢ∈a)
+dots(a       ,b::Tuple,::Val{N}) where{N} = Tuple(dots(a   ,bᵢ  ,Val(N)) for bᵢ∈b)
+dots(a::Tuple,b::Tuple,::Val{N}) where{N} = Tuple(dots(a[i],b[i],Val(N)) for i∈eachindex(a))
