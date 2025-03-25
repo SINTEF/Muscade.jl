@@ -21,7 +21,8 @@ end
 BeamCrossSection(;EA=EA,EI=EI,GJ=GJ) = BeamCrossSection(EA,EI,GJ);
 
 # Resultant function that computes the internal loads from the strains and curvatures, and external loads on the element. 
-@espy function resultants(o::BeamCrossSection,ε,κ) where{P,ND}
+@espy function resultants(o::BeamCrossSection,ε,κ,xᵧ,rot) 
+    @show eltype(ε)
     ☼f₁ = o.EA*ε # replace by ε₀
     ☼m  = SVector(o.GJ*κ[1],o.EI*κ[2],o.EI*κ[3])# replace by κ₀ 
     ☼fₑ = SVector(0.,0.,0.) # external forces at Gauss point (no external moment/torque/... so far). fₑ is in local coordinates # add inertia and drag
@@ -124,31 +125,36 @@ const v3   = SVector{3};
     Nε,Nκ,Nδx       = o.Nε,o.Nκ,o.Nδx           # From shape functions
     ζgp,ζnod,dL     = o.ζgp,o.ζnod,o.dL        # Gauss points coordinates, node coordinates and length associated to each Gauss point
     X₀              = ∂0(X)
-    P               = 1+min(2,precedence(Xₒ))
-    δXₗ,rₛₘ,cₛ        = Taylor{P}(X->global2local(X,o),X₀)(X₀)
-    T               = ∂{precedence(δXₗ)}(δXₗ)
+    P               = min(2,precedence(X₀)+1)
+    @show P
+    g2ℓ             = Taylor{P}(X->global2local(o,X),X₀)
+    δXₗ,rₛₘ,cₛ        = g2ℓ(X₀)
+    T               = ∂(g2ℓ)(X₀)[1]
+    @show eltype(δXₗ)
+    @show eltype(rₛₘ)
+    @show eltype(cₛ)
+    @show eltype(T)
     gp              = ntuple(ngp) do igp
-        ☼ε,☼κ,☼δxₗ   = Nε[igp]∘δXₗ, Nκ[igp]∘δXₗ, Nδx[igp]∘δXₗ   # axial strain, curvatures, displacement - all local (including their time derivatives)
-        ☼x          = rₛₘ∘(tgₑ*ζgp[igp]+δxₗ)+cₛ+cₘ             # [ndim], global coordinates of Gauss points
-        f₁,m,fₑ     = ☼resultants(o.mat,ε,κ,x,rₛₘ)          # call the "resultant" function to compute loads (local coordinates) from strains/curvatures/etc. using material properties. Note that output is dual of input. 
-        Rₗ           = (f₁ ∘₀ Nε[igp] + m∘Nκ[igp] + fₑ∘Nδx[igp])*dL[igp]     # Contribution to the local nodal load of this Gauss point  [ndof] = scalar*[ndof] + [ndim]⋅[ndim,ndof] + [ndim]⋅[ndim,ndof]
+        ☼ε,☼κ,☼δxₗ   = Nε[igp]∘₁δXₗ, Nκ[igp]∘₁δXₗ, Nδx[igp]∘₁δXₗ   # axial strain, curvatures, displacement - all local (including their time derivatives)
+        ☼xᵧ         = rₛₘ∘₁(tgₑ*ζgp[igp]+δxₗ)+cₛ+cₘ             # [ndim], global coordinates of Gauss points
+        f₁,m,fₑ     = ☼resultants(o.mat,ε,κ,xᵧ,rₛₘ)          # call the "resultant" function to compute loads (local coordinates) from strains/curvatures/etc. using material properties. Note that output is dual of input. 
+        Rₗ           = (f₁ ∘₀ Nε[igp] + m∘₁Nκ[igp] + fₑ∘₁Nδx[igp])*dL[igp]     # Contribution to the local nodal load of this Gauss point  [ndof] = scalar*[ndof] + [ndim]⋅[ndim,ndof] + [ndim]⋅[ndim,ndof]
         @named(Rₗ)
     end
-    R  = sum(gpᵢ.Rₗ for gpᵢ∈gp) ∘ T 
+    R  = sum(gpᵢ.Rₗ for gpᵢ∈gp) ∘₁ T 
     return R,noFB  
 end
 
-
-function global2local(X,o::EulerBeam3D)
-    uᵧ₁,vᵧ₁,uᵧ₂,vᵧ₂  = SVector{3}(ΔX[i] for i∈1:3), SVector{3}(ΔX[i] for i∈4:6),SVector{3}(ΔX[i] for i∈7:9),SVector{3}(ΔX[i] for i∈10:12)
+function global2local(o::EulerBeam3D,X)
+    uᵧ₁,vᵧ₁,uᵧ₂,vᵧ₂  = SVector{3}(X[i] for i∈1:3), SVector{3}(X[i] for i∈4:6),SVector{3}(X[i] for i∈7:9),SVector{3}(X[i] for i∈10:12)
     rₛ               = Rodrigues((vᵧ₁+vᵧ₂)/2)
-    rₛ               = Rodrigues(adjust(rₛ∘o.tgₘ,o.tgₘ+uᵧ₂-uᵧ₁))∘rₛ   
-    rₛₘ              = rₛ∘o.rₘ
+    rₛ               = Rodrigues(adjust(rₛ∘₁o.tgₘ,o.tgₘ+uᵧ₂-uᵧ₁))∘₁rₛ   
+    rₛₘ              = rₛ∘₁o.rₘ
     cₛ               = (uᵧ₁+uᵧ₂)/2
-    uₗ₁              = rₛₘ'∘(uᵧ₁+o.tgₘ*o.ζnod[1]-cₛ)-o.tgₑ*o.ζnod[1]    #Local displacement of node 1
-    uₗ₂              = rₛₘ'∘(uᵧ₂+o.tgₘ*o.ζnod[2]-cₛ)-o.tgₑ*o.ζnod[2]    #Local displacement of node 2
-    vₗ₁              = Rodrigues⁻¹(rₛₘ'∘Rodrigues(vᵧ₁)∘o.rₘ)      #Local rotation of node 1
-    vₗ₂              = Rodrigues⁻¹(rₛₘ'∘Rodrigues(vᵧ₂)∘o.rₘ)      #Local rotation of node 2
+    uₗ₁              = rₛₘ'∘₁(uᵧ₁+o.tgₘ*o.ζnod[1]-cₛ)-o.tgₑ*o.ζnod[1]    #Local displacement of node 1
+    uₗ₂              = rₛₘ'∘₁(uᵧ₂+o.tgₘ*o.ζnod[2]-cₛ)-o.tgₑ*o.ζnod[2]    #Local displacement of node 2
+    vₗ₁              = Rodrigues⁻¹(rₛₘ'∘₁Rodrigues(vᵧ₁)∘₁o.rₘ)      #Local rotation of node 1
+    vₗ₂              = Rodrigues⁻¹(rₛₘ'∘₁Rodrigues(vᵧ₂)∘₁o.rₘ)      #Local rotation of node 2
     δXₗ              = SVector(uₗ₁...,vₗ₁...,uₗ₂...,vₗ₂...) #  δXₗ , T = ∂ δXₗ / ∂ ΔX
     return δXₗ,rₛₘ,cₛ
 end

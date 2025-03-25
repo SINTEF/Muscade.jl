@@ -26,9 +26,9 @@ Muscade.doflist(::Type{<:FloaterOnCalmWater}) = (inod  = (ntuple(i-> 1,3)...,ntu
     x,x′,x″    = ∂0(X),∂1(X),∂2(X)   
     ☼u         = ∂0(U)
     a          = exp10.(A)
-    ☼r₂        = (o.M.*fold(a[@SVector [i for i∈1:6 ]]))∘x″
-    ☼r₁        = (o.C.*fold(a[@SVector [i for i∈7:12]]))∘x′
-    ☼r₀        = o.K∘x
+    ☼r₂        = (o.M.*fold(a[@SVector [i for i∈1:6 ]]))∘₁x″
+    ☼r₁        = (o.C.*fold(a[@SVector [i for i∈7:12]]))∘₁x′
+    ☼r₀        = o.K∘₁x
     return r₀+r₁+r₂-u,  noFB
 end
 

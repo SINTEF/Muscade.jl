@@ -18,7 +18,6 @@ Compute the double-dot product of two arrays, so that `cᵢⱼ=Σₖₗ aᵢₖ�
 See also: [`∘₁`](@ref),[`⊗`](@ref)
 """     
 ∘₂(a,b) = dots(a,b,Val(2))
-Base. ∘(a::AbstractArray,b::AbstractArray) = dots(a,b,Val(1))
 
 """
     c = a⊗b
@@ -37,7 +36,7 @@ See also: [`∘₁`](@ref),[`∘₂`](@ref)
     Nloop  = Nc + ndot
     Tc     = promote_type(Ta,Tb)
 
-    if Nc > 0
+    if Nc > 0  # NB: output is an Array, not StaticArray
         return quote
             sc = Base.@ntuple $Nc i -> begin
                 i <= $Nar ? size(a)[i] : size(b)[i - $Nar + $ndot]
@@ -64,6 +63,11 @@ end
 dots(a::              Ta    ,b::AbstractArray{Tb,Nb},::Val{0}) where {Ta<:Number,Tb<:Number   ,Nb} = a*b
 dots(a::AbstractArray{Ta,Na},b::              Tb    ,::Val{0}) where {Ta<:Number,Tb<:Number,Na   } = a*b
 dots(a::              Ta    ,b::              Tb    ,::Val{0}) where {Ta<:Number,Tb<:Number      } = a*b
+
+dots(a::SArray{Tuple{M1,M2,M3   }},b::SVector{M3},::Val{1}) where{M1,M2,M3   } = 
+      SMatrix{M1,M2}(sum(a[i,j,k]*b[k] for k∈1:M3) for i∈1:M1,j∈1:M2)
+dots(a::SArray{Tuple{M1,M2,M3,M4}},b::SVector{M4},::Val{1}) where{M1,M2,M3,M4} = 
+      SArray{Tuple{M1,M2,M3}}(sum(a[i,j,k,ℓ]*b[ℓ] for ℓ∈1:M4) for i∈1:M1,j∈1:M2,k∈1:M3)
 
 # Accelerators
 dots(a::AbstractMatrix{Ta},b::AbstractMatrix{Tb},::Val{1}) where {Ta<:Number,Tb<:Number      } = a*b

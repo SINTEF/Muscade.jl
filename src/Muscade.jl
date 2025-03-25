@@ -13,6 +13,8 @@ module Muscade
     export  variate,δ,directional # \delta
     export  value,VALUE,∂,value_∂ # \partial, \nabla
     export  constants,precedence,npartial,norm
+
+    include("Taylor.jl")
     export  Taylor
 
     include("Dots.jl")
@@ -24,7 +26,6 @@ module Muscade
 
     include("Exceptions.jl")
     export muscadeerror
-
 
     include("ModelDescription.jl")
     export AbstractElement
