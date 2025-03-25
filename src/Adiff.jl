@@ -347,7 +347,7 @@ or
 (without specifying the order) computes a Taylor development of order equal to `precedence(x₀)`    
  
 """
-Taylor(f::Function,X::SVector{Nx,R}) where{Nx,R<:Real} = Taylor{precedence(R)}(f,X) 
+Taylor(f::Function,X::SVector{Nx,R}) where{Nx,R<:Real} = Taylor{min(precedence(R),2)}(f,X) 
 function Taylor{0}(f::Function,X::SVector{Nx,R}) where{Nx,R<:Real}
     x  = VALUE(X)
     y  = f(x)
