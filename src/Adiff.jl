@@ -2,9 +2,6 @@
 # implement sincos
 # differentiate x^0 at x=0
 
-
-
-
 using   StaticArrays
 using   SpecialFunctions
 using   Printf
@@ -155,6 +152,7 @@ See also: [`constants`](@ref), [`variate`](@ref), [`δ`](@ref), [`∂`](@ref), [
 value{P}(a::∂ℝ{P,N,R}) where{P,N,R   } = a.x
 value{P}(a::R        ) where{P  ,R<:ℝ} = a
 value{P}(a::SA       ) where{P       } = value{P}.(a)
+value{P}(a::Tuple    ) where{P       } = Tuple(value{P}(aᵢ) for aᵢ∈a) 
 
 # ∂{P}(a) is handled as ∂{P,1}(a) and returns a scalar 
 """
@@ -179,10 +177,13 @@ See also: [`constants`](@ref), [`variate`](@ref), [`δ`](@ref), [`value`](@ref),
 ∂{P  }(a::SV{N,∂ℝ{P,1,R}}) where{  P,N,R   } = SV{  N,R}(a[i].dx[1] for i=1:N     ) # ∂(a,x)[i]    = ∂a[i]/∂x
 
 # SArray was designed before Julia allowed Tuples (here: M) as type parameters.  Hence they used Tuple{M} instead
-∂{P,N}(a::SM{M1,M2   ,∂ℝ{P,N,R}}) where{M1,M2,P,N,R} = SA{Tuple{M1,M2,N},R}(a[i].dx[j] for i∈eachindex(a),j∈1:N) # ∂(a,x)[i,...,j] = ∂a[i,...]/∂x[j]
-∂{P,N}(a::SM{M1,M2   ,       R }) where{M1,M2,P,N,R} = SA{Tuple{M1,M2,N},R}(zero(R)    for i∈eachindex(a),j∈1:N)
-∂{P,N}(a::SA{Tuple{M},∂ℝ{P,N,R}}) where{M    ,P,N,R} = SA{Tuple{M... ,N},R}(a[i].dx[j] for i∈eachindex(a),j∈1:N) # ∂(a,x)[i,...,j] = ∂a[i,...]/∂x[j]
-∂{P,N}(a::SA{Tuple{M},       R }) where{M    ,P,N,R} = SA{Tuple{M... ,N},R}(zero(R)    for i∈eachindex(a),j∈1:N)
+∂{P,N}(a::SM{      M1,M2       ,∂ℝ{P,N,R}}) where{M1,M2      ,P,N,R} = SA{Tuple{M1,M2,N       },R}(a[i].dx[j] for i∈eachindex(a),j∈1:N) # ∂(a,x)[i,...,j] = ∂a[i,...]/∂x[j]
+∂{P,N}(a::SM{      M1,M2       ,       R }) where{M1,M2      ,P,N,R} = SA{Tuple{M1,M2,N       },R}(zero(R)    for i∈eachindex(a),j∈1:N)
+∂{P,N}(a::SA{Tuple{M1,M2,M3   },∂ℝ{P,N,R}}) where{M1,M2,M3   ,P,N,R} = SA{Tuple{M1,M2,M3    ,N},R}(a[i].dx[j] for i∈eachindex(a),j∈1:N) # ∂(a,x)[i,...,j] = ∂a[i,...]/∂x[j]
+∂{P,N}(a::SA{Tuple{M1,M2,M3   },       R }) where{M1,M2,M3   ,P,N,R} = SA{Tuple{M1,M2,M3    ,N},R}(zero(R)    for i∈eachindex(a),j∈1:N)
+∂{P,N}(a::SA{Tuple{M1,M2,M3,M4},∂ℝ{P,N,R}}) where{M1,M2,M3,M4,P,N,R} = SA{Tuple{M1,M2,M3,M4 ,N},R}(a[i].dx[j] for i∈eachindex(a),j∈1:N) # ∂(a,x)[i,...,j] = ∂a[i,...]/∂x[j]
+∂{P,N}(a::SA{Tuple{M1,M2,M3,M4},       R }) where{M1,M2,M3,M4,P,N,R} = SA{Tuple{M1,M2,M3,M4 ,N},R}(zero(R)    for i∈eachindex(a),j∈1:N)
+∂{P,N}(a::Tuple                           ) where{            P,N  } = Tuple(∂{P,N}(aᵢ) for aᵢ∈a) 
 """
     y,yₓ = value_∂{P,N}(Y)
     y,y′ = value_∂{P  }(Y)
@@ -322,57 +323,4 @@ function hasnan(a::AbstractArray)
     return false
 end
 
-# Taylor expansions, a tool for composition
-
-
-struct Taylor{O,Nx,TA}
-    x::SVector{Nx,𝕣}
-    A::TA
-end
-
-"""
-    taylor = Taylor{O}(f,x₀)
-    y      = taylor(x₁)
-
-or    
-
-    y      = Taylor{O}(f,x₀)(x₁)      
-
- - O ∈ {0,1,2}  is the order of the Taylor development
- - `f` must be a `SVector`-valued function of a  `SVector`
- - `x₀` is the `SVector` at which the development is done.
- 
-    y      = Taylor(f,x₀)(x₁) 
-    
-(without specifying the order) computes a Taylor development of order equal to `precedence(x₀)`    
- 
-"""
-Taylor(f::Function,X::SVector{Nx,R}) where{Nx,R<:Real} = Taylor{precedence(R)}(f,X) 
-function Taylor{0}(f::Function,X::SVector{Nx,R}) where{Nx,R<:Real}
-    x  = VALUE(X)
-    y  = f(x)
-    A  = (y,)
-    return Taylor{1,Nx,typeof(A)}(x,A)
-end    
-function Taylor{1}(f::Function,X::SVector{Nx,R}) where{Nx,R<:Real}
-    x  = VALUE(X)
-    y  = f(variate{1,Nx}(x))
-    A  = value_∂{1,Nx}(y)  # 
-    return Taylor{1,Nx,typeof(A)}(x,A)
-end    
-function Taylor{2}(f::Function,X::SVector{Nx,R}) where{Nx,R<:Real}
-    x  = VALUE(X)
-    y  = f(variate{2,Nx}(variate{1,Nx}(x)))
-    A  = (value{1}(value{2}(y)), 
-          ∂{1,Nx}( value{2}(y)), 
-          ∂{1,Nx}(∂{2,Nx}(y))/2)
-    return Taylor{2,Nx,typeof(A)}(x,A)
-end    
-
-(te::Taylor{0,Nx,TA})(X::SVector{Nx,R}) where{Nx,R<:Real,TA} = te.A[1]
-(te::Taylor{1,Nx,TA})(X::SVector{Nx,R}) where{Nx,R<:Real,TA} = (te.A[2])∘(X-te.x)+te.A[1]
-function (te::Taylor{2,Nx,TA})(X::SVector{Nx,R}) where{Nx,R<:Real,TA}
-    dX = X-te.x
-    return (te.A[3]∘dX + te.A[2])∘dX+te.A[1]
-end
 

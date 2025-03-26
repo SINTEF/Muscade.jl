@@ -133,56 +133,39 @@ const saco = StaticArrays.sacollect
 const v3   = SVector{3};
 
 # Define now the residual function for the EulerBeam3D element.
+
+# Two simplifications:
+# 1) static
+# 2) no GP coordinates and orientation
 @espy function Muscade.residual(o::EulerBeam3D,   X,U,A,t,SP,dbg) 
-    ## Fetch the element properties 
-    cₘ,rₘ,tgₘ,tgₑ    = o.cₘ,o.rₘ,o.tgₘ,o.tgₑ   # As-meshed element coordinates, orientation, and describing tangential vector
-    Nε,Nκ,Nδx        = o.Nε,o.Nκ,o.Nδx           # From shape functions
-    ζgp,ζnod,dL      = o.ζgp,o.ζnod,o.dL        # Gauss points coordinates, node coordinates and length associated to each Gauss point
-    ## Compute the Jacobian T transforming quantities from/to local/global coordinate systems using automatic differentiation
-    P                = constants(X)
-    ND               = length(X)
-    X_               = Muscade.motion{P}(X)
-    ## Note that X is a tuple containing (positions, velocities, accelerations) and ∂0(X) returns only positions
-    ## X is not an adiff with respect to time. Use motions to go from tuple to adiff. Do not forget constants, ses motions doc. 
-    ## X__              = Muscade.position{P,ND}(X_) ## Uncomment this and use X__ instead of X_ below, to avoid passing time derivatives to coordinateTransform
-    δXₗ,T,cₛ,rₛₘ      = coordinateTransform(X_,o)      ## δX_l and T contain time derivatives, cₛ,rₛₘ do not
-    ## Compute local load contributions at each Gauss point
+    cₘ,rₘ,tgₘ,tgₑ    = o.cₘ,o.rₘ,o.tgₘ,o.tgₑ   # As-meshed element coordinates and describing tangential vector
+    Nε,Nκ,Nδx       = o.Nε,o.Nκ,o.Nδx           # From shape functions
+    ζgp,ζnod,dL     = o.ζgp,o.ζnod,o.dL        # Gauss points coordinates, node coordinates and length associated to each Gauss point
+    X₀              = ∂0(X)
+    P               = min(2,precedence(X₀)+1) 
+    TδXₗ,Trₛₘ,Tcₛ     = Taylor{P}(X->global2local(o,X),X₀)
+    δXₗ,rₛₘ,cₛ        = TδXₗ(X₀),Trₛₘ(X₀),Tcₛ(X₀)
+    T               = ∂(TδXₗ)(X₀)
     gp              = ntuple(ngp) do igp
-        ☼ε,☼κ,☼δxₗ   = Nε[igp]∘δXₗ, Nκ[igp]∘δXₗ, Nδx[igp]∘δXₗ   # axial strain, curvatures, displacement - all local (including their time derivatives)
-        ☼x          = rₛₘ∘(tgₑ*ζgp[igp]+δxₗ)+cₛ+cₘ             # [ndim], global coordinates of Gauss points
-        f₁,m,fₑ     = ☼resultants(o.mat,ε,κ,x,rₛₘ,Val(P),Val(ND))          # call the "resultant" function to compute loads (local coordinates) from strains/curvatures/etc. using material properties. Note that output is dual of input. 
-        Rₗ           = (f₁ ∘₀ Nε[igp] + m∘Nκ[igp] + fₑ∘Nδx[igp])*dL[igp]     # Contribution to the local nodal load of this Gauss point  [ndof] = scalar*[ndof] + [ndim]⋅[ndim,ndof] + [ndim]⋅[ndim,ndof]
+        ☼ε,☼κ,☼δxₗ   = Nε[igp]∘₁δXₗ, Nκ[igp]∘₁δXₗ, Nδx[igp]∘₁δXₗ   # axial strain, curvatures, displacement - all local (including their time derivatives)
+        ☼xᵧ         = rₛₘ∘₁(tgₑ*ζgp[igp]+δxₗ)+cₛ+cₘ             # [ndim], global coordinates of Gauss points
+        f₁,m,fₑ     = ☼resultants(o.mat,ε,κ,xᵧ,rₛₘ)          # call the "resultant" function to compute loads (local coordinates) from strains/curvatures/etc. using material properties. Note that output is dual of input. 
+        Rₗ           = (f₁ ∘₀ Nε[igp] + m∘₁Nκ[igp] + fₑ∘₁Nδx[igp])*dL[igp]     # Contribution to the local nodal load of this Gauss point  [ndof] = scalar*[ndof] + [ndim]⋅[ndim,ndof] + [ndim]⋅[ndim,ndof]
         @named(Rₗ)
     end
-    ## Summation of local load contributions from each Gauss point, and transformation to the global coordinate system. 
-    R  = sum(gpᵢ.Rₗ for gpᵢ∈gp) ∘ T 
+    R  = sum(gpᵢ.Rₗ for gpᵢ∈gp) ∘₁ T 
     return R,noFB  
 end
-
-
-function coordinateTransform(X,o::EulerBeam3D)
-    ## P is an integer that enables variate to keep track with respect to what X,U,A,t have been differentated before. Note that P is defined at compilation time, not run time. 
-    P                = constants(X) 
-    ## We are going do differentiate wrt X (to get the Jacobian T=∂Xₗ/∂X for example). 
-    ## TODO: describe here the content of ΔX (zeros and ones)
-    ΔX               = variate{P,ndof}(X)
-    ## Fetch the node displacements uᵧ₁ uᵧ₂ and rotations vᵧ₁, vᵧ₂ from X, expressed in the global coordinate system
-    uᵧ₁,vᵧ₁,uᵧ₂,vᵧ₂  = SVector{3}(ΔX[i] for i∈1:3), SVector{3}(ΔX[i] for i∈4:6),SVector{3}(ΔX[i] for i∈7:9),SVector{3}(ΔX[i] for i∈10:12)
-    ## Average displacement to compute the origin of the shadow basis cₘ+cₛ. 
-    cₛ               = (uᵧ₁+uᵧ₂)/2
-    ## Compute the orientation of the shadow basis rₛₘ. Rodrigues function links rotation vector to rotation matrix
-    ## The second line ensures that the x is colinear with the vector joining the two nodes. If not, an equal rotation of both nodes (without displacement) could lead to zero curvature, hence no bending moment...and instability.
+function global2local(o::EulerBeam3D,X)  
+    uᵧ₁,vᵧ₁,uᵧ₂,vᵧ₂  = SVector{3}(X[i] for i∈1:3), SVector{3}(X[i] for i∈4:6),SVector{3}(X[i] for i∈7:9),SVector{3}(X[i] for i∈10:12)
     rₛ               = Rodrigues((vᵧ₁+vᵧ₂)/2)
-    rₛ               = Rodrigues(adjust(rₛ∘o.tgₘ,o.tgₘ+uᵧ₂-uᵧ₁))∘rₛ   
-    rₛₘ              = rₛ∘o.rₘ
-    ## Nodal displacements and rotations (from as-meshed to actual) expressed in the local element basis. 
-    uₗ₁              = rₛₘ'∘(uᵧ₁-cₛ+o.tgₘ*o.ζnod[1])-o.tgₑ*o.ζnod[1]    #Local displacement of node 1. o.tgₘ*o.ζnod[1] connects the middle of the element to node 1 at mesh time. uᵧ₁-cₛ is the instantaneous displacement.
-    uₗ₂              = rₛₘ'∘(uᵧ₂-cₛ+o.tgₘ*o.ζnod[2])-o.tgₑ*o.ζnod[2]    #Local displacement of node 2
-    vₗ₁              = Rodrigues⁻¹(rₛₘ'∘Rodrigues(vᵧ₁)∘o.rₘ)      #Local rotation of node 1
-    vₗ₂              = Rodrigues⁻¹(rₛₘ'∘Rodrigues(vᵧ₂)∘o.rₘ)      #Local rotation of node 2
-    ## δXₗ contains all local displacements ("value") and partial derivatives ("δ") with respect to X, T=∂Xₗ/∂X
-    δXₗ,T            = value_∂{P,ndof}(SVector(uₗ₁...,vₗ₁...,uₗ₂...,vₗ₂...))
-    cₛ               = value{P}(cₛ)
-    rₛₘ              = value{P}(rₛₘ)
-    return δXₗ,T,cₛ,rₛₘ 
+    rₛ               = Rodrigues(adjust(rₛ∘₁o.tgₘ,o.tgₘ+uᵧ₂-uᵧ₁))∘₁rₛ   
+    rₛₘ              = rₛ∘₁o.rₘ
+    cₛ               = (uᵧ₁+uᵧ₂)/2
+    uₗ₁              = rₛₘ'∘₁(uᵧ₁+o.tgₘ*o.ζnod[1]-cₛ)-o.tgₑ*o.ζnod[1]    #Local displacement of node 1
+    uₗ₂              = rₛₘ'∘₁(uᵧ₂+o.tgₘ*o.ζnod[2]-cₛ)-o.tgₑ*o.ζnod[2]    #Local displacement of node 2
+    vₗ₁              = Rodrigues⁻¹(rₛₘ'∘₁Rodrigues(vᵧ₁)∘₁o.rₘ)      #Local rotation of node 1
+    vₗ₂              = Rodrigues⁻¹(rₛₘ'∘₁Rodrigues(vᵧ₂)∘₁o.rₘ)      #Local rotation of node 2
+    δXₗ              = SVector(uₗ₁...,vₗ₁...,uₗ₂...,vₗ₂...) #  δXₗ , T = ∂ δXₗ / ∂ ΔX
+    return δXₗ,rₛₘ,cₛ
 end

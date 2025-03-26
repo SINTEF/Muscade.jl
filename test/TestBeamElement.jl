@@ -1,4 +1,4 @@
-module TestBeamElements
+#module TestBeamElements
 
 using Test, Muscade, StaticArrays, LinearAlgebra
 include("../examples/BeamElements.jl")
@@ -74,14 +74,14 @@ end
 x = SVector(0.,0.,0.,0.,0.,0.,0.,0.1,0.,0.,0.,0.); X = (x,)
 R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg) 
 @testset "residual flex" begin
-    @test R        ≈  [0.3060756163942789, -3.5619999527338777, 0.0, 0.0, 0.0, -1.7963037571866531, -0.3060756163942789, 3.5619999527338777, 0.0, 0.0, 0.0, -1.7963037571866531]
+    @test R        ≈  [0.305626505038752, -3.557508839178609, 0.0, 0.0, 0.0, -1.7940357448412423, -0.305626505038752, 3.557508839178609, 0.0, 0.0, 0.0, -1.7940357448412423]
     @test FB === nothing
 end
 
 x = SVector(0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.1); X = (x,)
 R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg) 
 @testset "residual flex" begin
-    @test R        ≈  [0.0, 1.8039544753088794, 0.0, 0.0, 0.0, 0.5980227623456932, 0.0, -1.8039544753088794, 0.0, 0.0, 0.0, 1.2059317129631868]
+    @test R        ≈  [0.0, 1.8000000000002365, 0.0, 0.0, 0.0, 0.6000000000000143, 0.0, -1.8000000000002365, 0.0, 0.0, 0.0, 1.2000000000002227]
     @test FB === nothing
 end
 
@@ -94,6 +94,20 @@ end
 using Printf
 X = (x,)
 out = diffed_residual(beam; X,U,A,t,SP)
+
+# using Profile,ProfileView,BenchmarkTools
+# mission = :profile
+# if  mission == :time
+#     @btime out = diffed_residual(beam; X,U,A,t,SP)
+# elseif mission == :profile
+#     Profile.clear()
+#     Profile.@profile for i=1:10000
+#         out = diffed_residual(beam; X,U,A,t,SP)
+#     end
+#     ProfileView.view(fontsize=30);
+# end
+;
+
 # @printf "\nR\n"
 # print_element_array(beam,:X,out.R)    #  R
 # @printf "\nK=∂R/∂X₀\n"
@@ -107,7 +121,7 @@ out = diffed_residual(beam; X,U,A,t,SP)
 # print_element_array(beam,:X,out.∇R[2][3])  # M
 
 
-end
+#end
 
 
 

@@ -239,7 +239,7 @@ R .= 0
 for igp = 1:ngp
     F  = ...
     Σ  = ...
-    R += F ∘ Σ ∘ ∇N * dV
+    R += F ∘₁ Σ ∘₁ ∇N * dV
 end
 ```
 
@@ -250,7 +250,7 @@ shows that `R` is mutated. For the extraction of results from a loop, the follow
     t = ntuple(ngp) do igp
         ☼F = ...
         ☼Σ = ...
-        r  = F ∘ Σ ∘ ∇N * dV
+        r  = F ∘₁ Σ ∘₁ ∇N * dV
         @named(r)
     end
     R = sum(   igp->t[igp].r,ngp)
@@ -296,7 +296,7 @@ The macro `@named` is peculiar in that neither Julia nor `Muscade` defines a `ma
     R = sum(1:ngp) do igp
         ☼F = ...
         ☼Σ = ...
-        F ∘ Σ ∘ ∇N * dV
+        F ∘₁ Σ ∘₁ ∇N * dV
     end
     return R,...
 end
