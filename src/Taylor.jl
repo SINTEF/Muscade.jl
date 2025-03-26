@@ -23,12 +23,7 @@ or
     y      = Taylor(f,x₀)(x₁) 
     
 (without specifying the order) computes a Taylor development of order equal to `precedence(x₀)`    
- 
 """
-# TODO: return a tuple of expansions, not an expansion of a tuple  DONE
-# TODO: Taylor stores Adiff objects. 
-# TODO Dots: no need to operate on Tuples DONE
-
 Taylor(f::Function,X::SVector{Nx,R}) where{Nx,R<:Real} = Taylor{min(precedence(R),2)}(f,X) 
 function Taylor{0}(f::Function,X::SVector{Nx,R}) where{Nx,R<:Real}
     x  = VALUE(X)
@@ -58,4 +53,8 @@ end
 
 ∂(t::Taylor{O,Nx}) where{O,Nx} = Taylor{O-1}(t.x,∂{O,Nx}(t.y))
 ∂(t::Taylor{0   }) where{O   } = MuscadeError("Tried to differentiate a 0th order Taylor")
+
+# TODO: return a tuple of expansions, not an expansion of a tuple  DONE
+# TODO: Taylor stores Adiff objects. 
+# TODO Dots: no need to operate on Tuples DONE
 
