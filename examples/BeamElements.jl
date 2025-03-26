@@ -20,29 +20,30 @@ end
 BeamCrossSection(;EA=EA,EI=EI,GJ=GJ) = BeamCrossSection(EA,EI,GJ);
 
 # Resultant function that computes the internal loads from the strains and curvatures, and external loads on the element. 
-@espy function resultants(o::BeamCrossSection,ε,κ,xᵧ,rot,::Val{P},::Val{ND}) where{P,ND}
+@espy function resultants(o::BeamCrossSection,ε,κ,xᵧ,rot)
+    ## @espy function resultants(o::BeamCrossSection,ε,κ,xᵧ,rot,::Val{P},::Val{ND}) where{P,ND}
     ## Only the instantaneous value of the strain and curvature matter, no viscosity in the material
-    ε₀          = Muscade.position{P,ND}(ε) 
-    κ₀          = Muscade.position{P,ND}(κ) 
-    ## Compute the position, velocity and acceleration of the Gauss point in the local coordinate system
-    xᵧ₀,xᵧ₁,xᵧ₂ = Muscade.posVelAcc{P,ND}(xᵧ)
-    xₗ₁ = xᵧ₁ ∘ rot
-    xₗ₂ = xᵧ₂ ∘ rot
-    ## Compute drag force (hard-coded parameters so far)
-    ρ = 1025.0
-    A  = SVector(0.0,1.0,1.0)
-    Cd = SVector(0.0,1.0,1.0) # SVector(0.0,0.0,0.0)
-    fd = .5 * ρ .* A .* Cd .* xₗ₁ .* abs.(xₗ₁) #mind the sign: forces exerted by element on its environment
-    ## Compute inertia force (hard-coded parameter so far)
-    μ   = 1.0
-    fi = μ * xₗ₂ 
-    ## Compute added mass force (hard-coded parameter so far)
-    Ca = SVector(0.0,0.0,0.0)
-    fa = ρ * Ca .* xₗ₂
+    ## ε₀          = Muscade.position{P,ND}(ε) 
+    ## κ₀          = Muscade.position{P,ND}(κ) 
+    ## ## Compute the position, velocity and acceleration of the Gauss point in the local coordinate system
+    ## xᵧ₀,xᵧ₁,xᵧ₂ = Muscade.posVelAcc{P,ND}(xᵧ)
+    ## xₗ₁ = xᵧ₁ ∘ rot
+    ## xₗ₂ = xᵧ₂ ∘ rot
+    ## ## Compute drag force (hard-coded parameters so far)
+    ## ρ = 1025.0
+    ## A  = SVector(0.0,1.0,1.0)
+    ## Cd = SVector(0.0,1.0,1.0) # SVector(0.0,0.0,0.0)
+    ## fd = .5 * ρ .* A .* Cd .* xₗ₁ .* abs.(xₗ₁) #mind the sign: forces exerted by element on its environment
+    ## ## Compute inertia force (hard-coded parameter so far)
+    ## μ   = 1.0
+    ## fi = μ * xₗ₂ 
+    ## ## Compute added mass force (hard-coded parameter so far)
+    ## Ca = SVector(0.0,0.0,0.0)
+    ## fa = ρ * Ca .* xₗ₂
     ## Compute axial force, torsion and bending moments and external loads at Gauss points. 
-    ☼f₁ = o.EA*ε₀ 
-    ☼m  = SVector(o.GJ*κ₀[1],o.EI*κ₀[2],o.EI*κ₀[3])
-    ☼fₑ = fd+fi+fa # SVector(0.,0.,0.) # external forces at Gauss point (no external moment/torque/... so far). fₑ is in local coordinates 
+    ☼f₁ = o.EA*ε 
+    ☼m  = SVector(o.GJ*κ[1],o.EI*κ[2],o.EI*κ[3])
+    ☼fₑ = SVector(0.,0.,0.) # external forces at Gauss point (no external moment/torque/... so far). fₑ is in local coordinates 
     return f₁,m,fₑ
 end;
 
@@ -157,15 +158,21 @@ const v3   = SVector{3};
     return R,noFB  
 end
 function global2local(o::EulerBeam3D,X)  
+     ## Fetch the node displacements uᵧ₁ uᵧ₂ and rotations vᵧ₁, vᵧ₂ from X, expressed in the global coordinate system
     uᵧ₁,vᵧ₁,uᵧ₂,vᵧ₂  = SVector{3}(X[i] for i∈1:3), SVector{3}(X[i] for i∈4:6),SVector{3}(X[i] for i∈7:9),SVector{3}(X[i] for i∈10:12)
+    ## Compute the orientation of the shadow basis rₛₘ. Rodrigues function links rotation vector to rotation matrix
+    ## The second line ensures that the x is colinear with the vector joining the two nodes. If not, an equal rotation of both nodes (without displacement) could lead to zero curvature, hence no bending moment...and instability.
     rₛ               = Rodrigues((vᵧ₁+vᵧ₂)/2)
     rₛ               = Rodrigues(adjust(rₛ∘₁o.tgₘ,o.tgₘ+uᵧ₂-uᵧ₁))∘₁rₛ   
     rₛₘ              = rₛ∘₁o.rₘ
+    ## Average displacement to compute the origin of the shadow basis cₘ+cₛ. 
     cₛ               = (uᵧ₁+uᵧ₂)/2
+    ## Nodal displacements and rotations (from as-meshed to actual) expressed in the local element basis. 
     uₗ₁              = rₛₘ'∘₁(uᵧ₁+o.tgₘ*o.ζnod[1]-cₛ)-o.tgₑ*o.ζnod[1]    #Local displacement of node 1
     uₗ₂              = rₛₘ'∘₁(uᵧ₂+o.tgₘ*o.ζnod[2]-cₛ)-o.tgₑ*o.ζnod[2]    #Local displacement of node 2
     vₗ₁              = Rodrigues⁻¹(rₛₘ'∘₁Rodrigues(vᵧ₁)∘₁o.rₘ)      #Local rotation of node 1
     vₗ₂              = Rodrigues⁻¹(rₛₘ'∘₁Rodrigues(vᵧ₂)∘₁o.rₘ)      #Local rotation of node 2
-    δXₗ              = SVector(uₗ₁...,vₗ₁...,uₗ₂...,vₗ₂...) #  δXₗ , T = ∂ δXₗ / ∂ ΔX
+    ## δXₗ contains all local displacements 
+    δXₗ              = SVector(uₗ₁...,vₗ₁...,uₗ₂...,vₗ₂...) 
     return δXₗ,rₛₘ,cₛ
 end

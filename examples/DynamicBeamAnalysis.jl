@@ -48,11 +48,11 @@ U = (SVector{0,Float64}(),)
 A = SVector{0,Float64}()
 R,FB = Muscade.residual(model.eleobj[1][1],   X,U,A,t,SP,dbg)
 
-# out2 = diffed_residual(model.eleobj[1][1]; X,U,A)
-# @printf "\nR\n"
-# print_element_array(model.eleobj[1][1],:X,out2.R)
-# @printf "\n∂R/∂X₀\n"
-# print_element_array(model.eleobj[1][1],:X,out2.∇R[2][3])
+out2 = diffed_residual(model.eleobj[1][1]; X,U,A)
+@printf "\nR\n"
+print_element_array(model.eleobj[1][1],:X,out2.R)
+@printf "\n∂R/∂X₀\n"
+print_element_array(model.eleobj[1][1],:X,out2.∇R[2][1])
 # @test out2.R   ≈ [-1.]
 # @test out2.∇R[2][1] ≈ [0.;;]
 
