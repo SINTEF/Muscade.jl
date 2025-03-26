@@ -22,7 +22,6 @@ BeamCrossSection(;EA=EA,EI=EI,GJ=GJ) = BeamCrossSection(EA,EI,GJ);
 
 # Resultant function that computes the internal loads from the strains and curvatures, and external loads on the element. 
 @espy function resultants(o::BeamCrossSection,ε,κ,xᵧ,rot) 
-    @show eltype(ε)
     ☼f₁ = o.EA*ε # replace by ε₀
     ☼m  = SVector(o.GJ*κ[1],o.EI*κ[2],o.EI*κ[3])# replace by κ₀ 
     ☼fₑ = SVector(0.,0.,0.) # external forces at Gauss point (no external moment/torque/... so far). fₑ is in local coordinates # add inertia and drag
@@ -125,15 +124,10 @@ const v3   = SVector{3};
     Nε,Nκ,Nδx       = o.Nε,o.Nκ,o.Nδx           # From shape functions
     ζgp,ζnod,dL     = o.ζgp,o.ζnod,o.dL        # Gauss points coordinates, node coordinates and length associated to each Gauss point
     X₀              = ∂0(X)
-    P               = min(2,precedence(X₀)+1)
-    @show P
-    g2ℓ             = Taylor{P}(X->global2local(o,X),X₀)
-    δXₗ,rₛₘ,cₛ        = g2ℓ(X₀)
-    T               = ∂(g2ℓ)(X₀)[1]
-    @show eltype(δXₗ)
-    @show eltype(rₛₘ)
-    @show eltype(cₛ)
-    @show eltype(T)
+    P               = min(2,precedence(X₀)+1) 
+    TδXₗ,Trₛₘ,Tcₛ     = Taylor{P}(X->global2local(o,X),X₀)
+    δXₗ,rₛₘ,cₛ        = TδXₗ(X₀),Trₛₘ(X₀),Tcₛ(X₀)
+    T               = ∂(TδXₗ)(X₀)
     gp              = ntuple(ngp) do igp
         ☼ε,☼κ,☼δxₗ   = Nε[igp]∘₁δXₗ, Nκ[igp]∘₁δXₗ, Nδx[igp]∘₁δXₗ   # axial strain, curvatures, displacement - all local (including their time derivatives)
         ☼xᵧ         = rₛₘ∘₁(tgₑ*ζgp[igp]+δxₗ)+cₛ+cₘ             # [ndim], global coordinates of Gauss points
@@ -144,8 +138,7 @@ const v3   = SVector{3};
     R  = sum(gpᵢ.Rₗ for gpᵢ∈gp) ∘₁ T 
     return R,noFB  
 end
-
-function global2local(o::EulerBeam3D,X)
+function global2local(o::EulerBeam3D,X)  
     uᵧ₁,vᵧ₁,uᵧ₂,vᵧ₂  = SVector{3}(X[i] for i∈1:3), SVector{3}(X[i] for i∈4:6),SVector{3}(X[i] for i∈7:9),SVector{3}(X[i] for i∈10:12)
     rₛ               = Rodrigues((vᵧ₁+vᵧ₂)/2)
     rₛ               = Rodrigues(adjust(rₛ∘₁o.tgₘ,o.tgₘ+uᵧ₂-uᵧ₁))∘₁rₛ   

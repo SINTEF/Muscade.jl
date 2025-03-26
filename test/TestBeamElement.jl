@@ -94,6 +94,20 @@ end
 using Printf
 X = (x,)
 out = diffed_residual(beam; X,U,A,t,SP)
+
+# using Profile,ProfileView,BenchmarkTools
+# mission = :profile
+# if  mission == :time
+#     @btime out = diffed_residual(beam; X,U,A,t,SP)
+# elseif mission == :profile
+#     Profile.clear()
+#     Profile.@profile for i=1:10000
+#         out = diffed_residual(beam; X,U,A,t,SP)
+#     end
+#     ProfileView.view(fontsize=30);
+# end
+;
+
 # @printf "\nR\n"
 # print_element_array(beam,:X,out.R)    #  R
 # @printf "\nK=∂R/∂X₀\n"

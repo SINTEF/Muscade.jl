@@ -2,9 +2,6 @@
 # implement sincos
 # differentiate x^0 at x=0
 
-
-
-
 using   StaticArrays
 using   SpecialFunctions
 using   Printf

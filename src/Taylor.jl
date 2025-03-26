@@ -1,9 +1,13 @@
 
-struct Taylor{O,Nx,TA}
+struct Taylor{O,Nx,Ty}
     x::SVector{Nx,𝕣}
-    A::TA
+    y::Ty
 end
-Taylor{O}(x::SVector{Nx,𝕣},A::TA) where{O,Nx,TA} = Taylor{O,Nx,TA}(x,A)
+Taylor{O}(x::SVector{Nx,𝕣},y::Ty) where{O,Nx,Ty<:AbstractArray} =       Taylor{O,Nx,Ty        }(x,y )
+Taylor{O}(x::SVector{Nx,𝕣},y::Ty) where{O,Nx,Ty<:Tuple        } = Tuple(Taylor{O,Nx,typeof(yᵢ)}(x,yᵢ) for yᵢ∈y)
+Taylor{O}(x::SVector{Nx,𝕣},y::Tuple{A    }) where{O,Nx,A    }   = tuple(Taylor{O}(x,y[1]))
+Taylor{O}(x::SVector{Nx,𝕣},y::Tuple{A,B  }) where{O,Nx,A,B  }   = tuple(Taylor{O}(x,y[1]),Taylor{O}(x,y[2]))
+Taylor{O}(x::SVector{Nx,𝕣},y::Tuple{A,B,C}) where{O,Nx,A,B,C}   = tuple(Taylor{O}(x,y[1]),Taylor{O}(x,y[2]),Taylor{O}(x,y[3]))
 """
     taylor = Taylor{O}(f,x₀)
     y      = taylor(x₁)
@@ -21,34 +25,37 @@ or
 (without specifying the order) computes a Taylor development of order equal to `precedence(x₀)`    
  
 """
+# TODO: return a tuple of expansions, not an expansion of a tuple  DONE
+# TODO: Taylor stores Adiff objects. 
+# TODO Dots: no need to operate on Tuples DONE
+
 Taylor(f::Function,X::SVector{Nx,R}) where{Nx,R<:Real} = Taylor{min(precedence(R),2)}(f,X) 
 function Taylor{0}(f::Function,X::SVector{Nx,R}) where{Nx,R<:Real}
     x  = VALUE(X)
     y  = f(x)
-    A  = (y,)
-    return Taylor{0}(x,A)
+    return Taylor{0}(x,y)
 end    
 function Taylor{1}(f::Function,X::SVector{Nx,R}) where{Nx,R<:Real}
     x  = VALUE(X)
     y  = f(variate{1,Nx}(x))
-    A  = value_∂{1,Nx}(y)  # 
-    return Taylor{1}(x,A)
+    return Taylor{1}(x,y)
 end    
 function Taylor{2}(f::Function,X::SVector{Nx,R}) where{Nx,R<:Real}
     x  = VALUE(X)
     y  = f(variate{2,Nx}(variate{1,Nx}(x)))
-    A  = (value{1}(value{2}(y)), 
-          ∂{1,Nx}( value{2}(y)), 
-          ∂{1,Nx}(∂{2,Nx}(y))/2)
-    return Taylor{2}(x,A)
+    return Taylor{2}(x,y)
 end    
 
-(te::Taylor{0,Nx,TA})(X::SVector{Nx,R}) where{Nx,R<:Real,TA} = te.A[1]
-(te::Taylor{1,Nx,TA})(X::SVector{Nx,R}) where{Nx,R<:Real,TA} = (te.A[2])∘₁(X-te.x).+te.A[1]
-function (te::Taylor{2,Nx,TA})(X::SVector{Nx,R}) where{Nx,R<:Real,TA}
-    dX = X-te.x
-    return (te.A[3]∘₁dX .+ te.A[2])∘₁dX.+te.A[1]
+(te::Taylor{0,Nx,Ty})(X::SVector{Nx,R}) where{Nx,R<:Real,Ty} = te.y 
+function (te::Taylor{1,Nx,Ty})(X::SVector{Nx,R}) where{R<:Real,S,Nx,Ty<:SArray{S}}
+    ΔX = X-te.x
+    SArray{S}(yᵢ.x + yᵢ.dx∘₁ΔX  for yᵢ∈ te.y)
+end
+function (te::Taylor{2,Nx,Ty})(X::SVector{Nx,R}) where{R<:Real,S,Nx,Ty<:SArray{S}}
+    ΔX = X-te.x   
+    SArray{S}(yᵢ.x.x + sum(    (yᵢ.dx[j].x + .5*(yᵢ.dx[j].dx ∘₁ ΔX)) *ΔX[j] for j∈eachindex(ΔX))  for yᵢ∈ te.y)  
 end
 
-∂(t::Taylor{O}) where{O} = Taylor{O-1}(t.x,t.A[2:end])
-∂(t::Taylor{0}) where{O} = MuscadeError("Tried to differentiate a 0th order Taylor")
+∂(t::Taylor{O,Nx}) where{O,Nx} = Taylor{O-1}(t.x,∂{O,Nx}(t.y))
+∂(t::Taylor{0   }) where{O   } = MuscadeError("Tried to differentiate a 0th order Taylor")
+

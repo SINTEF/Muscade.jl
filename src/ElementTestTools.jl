@@ -121,7 +121,6 @@ function diffed_residual(ele::eletyp; X,U,A, t::𝕣=0.,SP=nothing) where{eletyp
     ndof      = (0, Nx,   Nu, Na)
     nder      = (0 ,OX+1, OU+1, IA)
     Np        = Nx*(OX+1) + Nu*(OU+1) + Na*IA # number of partials 
-    @show Np
     X∂        = ntuple(ider->SVector{Nx}(∂ℝ{1,Np}(X[ider][idof],Nx*(ider-1)            +idof)   for idof=1:Nx),OX+1)
     U∂        = ntuple(ider->SVector{Nu}(∂ℝ{1,Np}(U[ider][idof],Nx*(OX+1)  +Nu*(ider-1)+idof)   for idof=1:Nu),OU+1)
     A∂        =              SVector{Na}(∂ℝ{1,Np}(A[      idof],Nx*(OX+1)  +Nu*(OU+1)  +idof)   for idof=1:Na)
