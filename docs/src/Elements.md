@@ -370,17 +370,25 @@ In many cases, drawing provides a graphical representation of element-results (s
 
 Element constructors can use function [`coord`](@ref) to extract the coordinates fron the `Vector{Node}` they get as first argument.
 
-`Muscade.residual` and `Muscade.lagrangian` **must** use [`∂0`](@ref), [`∂1`](@ref) and [`∂2`](@ref) when extracting the zeroth, first and second time derivatives from arguments `X` and `U`.
+`Muscade.residual` and `Muscade.lagrangian` **must** use [`∂0`](@ref), [`∂1`](@ref) and [`∂2`](@ref) when extracting the zeroth, first and second time derivatives from arguments `X` and `U`. These functions ensures that a `SVector` of zeros is returned if for example, an element that handles accelerations is called by a static solver.
 
 Constant [`noFB`](@ref) (which have value `nothing`) can be used by elements that do not have feedback to the solving procedure.
-
-It is sometimes convenient to handle time derivatives using automatic differentiation: elements with corotated reference systems can thus handle a moving corotated system, and thus centripetal and Coriolis forces.  See [`examples/BeamElements.jl`](StaticBeamAnalysis.md) for an example. Helper functions [`Muscade.motion`](@ref), [`Muscade.position`](@ref), [`Muscade.velocity`](@ref) and [`Muscade.acceleration`](@ref) are provided. These helper functions are not exported by `Muscade`, so their invocation must be qualified with `Muscade.`.
-
-See [`diffed_residual`](@ref) and [`diffed_lagrangian`](@ref) to compute the derivatives of `R` and `L` returned by `residual` and `lagrangian` respectively. 
 
 For those prefering to think in terms of Cartesian tensor algebra, rather than matrix algebra, operators [`⊗`](@ref), [`∘₁`](@ref) and [`∘₂`](@ref) provide the exterior product, the single dot product and the double dot product respectively.
 
 Elements with a corotated reference system, can make use of [`examples/Rotations.jl`](StaticBeamAnalysis.md) that provides functionality to handle rotations in ℝ³.  See [`examples/BeamElements.jl`](StaticBeamAnalysis.md) for an example.
 
+An advanced automatic-differentiation technique to improve performance is to identify a part of `residual` or `lagrangian` which
+- takes a single, `SVector` as an input.  A vector shorter than the list of dofs differentiated by the solver will accelerate computations.
+- optionaly: has 2nd order derivatives that can be ignored (use wisely!)
+and create a Taylor development of it using [`Taylor`](@ref), which is then evaluated. In [`examples/BeamElements.jl`](StaticBeamAnalysis.md) this is used to improve performance when automatic differentiation is used within the element to compute the transformation of nodal forces from the element's corotated reference system back to the global one.
+
+It is sometimes convenient to handle time derivatives using automatic differentiation: elements with corotated reference systems can thus handle a moving corotated system, and thus centripetal and Coriolis forces.  See [`examples/BeamElements.jl`](StaticBeamAnalysis.md) for an example. Helper functions [`Muscade.motion`](@ref), [`Muscade.position`](@ref), [`Muscade.velocity`](@ref) and [`Muscade.acceleration`](@ref) are provided. These helper functions are not exported by `Muscade`, so their invocation must be qualified with `Muscade.`.
+
+## Testing elements
+
+When developing a new element, it is advisable to test the constructor, and `residual` or `lagrangian` in a direct call (outside of any Muscade solver), and examine the returned outputs.
+
+Generaly, automatic differentiation is unproblematic, but when advanced tools are used (e.g. [`Taylor`](@ref)) with reduced order, then the derivatives should be inspected.  See [`diffed_residual`](@ref) and [`diffed_lagrangian`](@ref) to compute the derivatives of `R` and `L` returned by `residual` and `lagrangian` respectively. 
 
 
