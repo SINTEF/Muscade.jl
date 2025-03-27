@@ -36,7 +36,10 @@ DryFriction(nod::Vector{Node};fieldx::Symbol,fieldf::Symbol=:f,
            friction::𝕣,Δx::𝕣=0.,x′scale::𝕣=1.) =
            DryFriction{fieldx,fieldf}(friction,x′scale,Δx/friction)
 # ## `residual`
-# The `residual` function is prepended by `@espy` to facilitate the extraction of element-results (see [`getresults`(@ref)).
+# The `residual` function is prepended by `@espy` to facilitate the extraction of element-results . 
+# Variables `old` and `new` are prepended by `☼` (`\sun`), to tell `@espy` the values of these variables can
+# be requested using [`getresult`](@ref). 
+#
 # The full name `Muscade.residual` must be used, because we are adding a method to a function defined in the `module` `Muscade`.
 @espy function Muscade.residual(o::DryFriction, X,U,A, t,SP,dbg) 
     x,x′,f,f′ = ∂0(X)[1],∂1(X)[1], ∂0(X)[2], ∂1(X)[2]       
@@ -65,8 +68,6 @@ end;
 # The second residual corresponds to dof `fieldf`.  Importantly, this later dof must not be shared with any other element, so the that solver will set 
 # the second residual to zero in this iteration: depending on `new`, this will enforce `slip==0` or `stick==0`. The relevant condition will
 # be enforced exactly (to rounding errors) because both conditions are linear in `X`.
-#
-# Variables `old` and `new` are prepended by `☼` (`\sun`), to tell `@espy` this is an element-result. 
 #
 # ## `doflist`
 # Another function that must be overloaded, in order to tell `Muscade` what dofs the element provides. Note that this is a function of the element *type*, not
