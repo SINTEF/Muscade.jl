@@ -76,3 +76,7 @@ end
 ∂(t::Taylor{O,Nx}) where{O,Nx} = Taylor{O-1}(t.x,∂{O,Nx}(t.y))
 ∂(t::Taylor{0   }) where{O   } = muscadeerror("Tried to differentiate a 0th order Taylor expansion")
 
+# TODO: return a tuple of expansions, not an expansion of a tuple  DONE
+# TODO: Taylor stores Adiff objects. 
+# TODO Dots: no need to operate on Tuples DONE
+
