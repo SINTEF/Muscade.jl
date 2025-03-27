@@ -40,14 +40,14 @@ DryFriction(nod::Vector{Node};fieldx::Symbol,fieldf::Symbol=:f,
 # The full name `Muscade.residual` must be used, because we are adding a method to a function defined in the `module` `Muscade`.
 @espy function Muscade.residual(o::DryFriction, X,U,A, t,SP,dbg) 
     x,x′,f,f′ = ∂0(X)[1],∂1(X)[1], ∂0(X)[2], ∂1(X)[2]       
-    conds     = (stick = (x′-o.k⁻¹*f′)/o.x′scale,           
-                 slip  =  abs(f)/o.fric -1      )                      
-    ☼old      = argmin(map(abs,conds))                      
+    stick = (x′-o.k⁻¹*f′)/o.x′scale           
+    slip  = abs(f)/o.fric -1                               
+    ☼old  = abs(slip)<abs(stick) ? :slip : :stick                      
     if        old==:stick && abs(f)>o.fric   ☼new = :slip   
     elseif    old==:slip  && f*x′<0          ☼new = :stick  
-    else                                     ☼new =  old    
-    end        
-    return SVector(f,conds[new]), noFB
+    else                                     ☼new = old    
+    end  
+    return (new==:slip ? SVector(f,slip) : SVector(f,stick)), noFB
 end
 # In the above `f` (a force) uses the "nod-on-el" convention (force exterted by the element's node on the element), so the sign is unusual.
 #
