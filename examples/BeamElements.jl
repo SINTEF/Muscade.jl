@@ -20,30 +20,38 @@ end
 BeamCrossSection(;EA=EA,EI=EI,GJ=GJ) = BeamCrossSection(EA,EI,GJ);
 
 # Resultant function that computes the internal loads from the strains and curvatures, and external loads on the element. 
-@espy function resultants(o::BeamCrossSection,ε,κ,xᵧ,rot)
-    ## @espy function resultants(o::BeamCrossSection,ε,κ,xᵧ,rot,::Val{P},::Val{ND}) where{P,ND}
+# @espy function resultants(o::BeamCrossSection,ε,κ,xᵧ,rot)
+@espy function resultants(o::BeamCrossSection,ε,κ,xᵧ,rot,::Val{P},::Val{ND}) where{P,ND}
     ## Only the instantaneous value of the strain and curvature matter, no viscosity in the material
-    ## ε₀          = Muscade.position{P,ND}(ε) 
-    ## κ₀          = Muscade.position{P,ND}(κ) 
-    ## ## Compute the position, velocity and acceleration of the Gauss point in the local coordinate system
-    ## xᵧ₀,xᵧ₁,xᵧ₂ = Muscade.posVelAcc{P,ND}(xᵧ)
-    ## xₗ₁ = xᵧ₁ ∘ rot
-    ## xₗ₂ = xᵧ₂ ∘ rot
-    ## ## Compute drag force (hard-coded parameters so far)
-    ## ρ = 1025.0
-    ## A  = SVector(0.0,1.0,1.0)
-    ## Cd = SVector(0.0,1.0,1.0) # SVector(0.0,0.0,0.0)
-    ## fd = .5 * ρ .* A .* Cd .* xₗ₁ .* abs.(xₗ₁) #mind the sign: forces exerted by element on its environment
-    ## ## Compute inertia force (hard-coded parameter so far)
-    ## μ   = 1.0
-    ## fi = μ * xₗ₂ 
-    ## ## Compute added mass force (hard-coded parameter so far)
-    ## Ca = SVector(0.0,0.0,0.0)
-    ## fa = ρ * Ca .* xₗ₂
+    ε₀          = Muscade.position{P,ND}(ε) 
+    κ₀          = Muscade.position{P,ND}(κ) 
+    ## Compute the position, velocity and acceleration of the Gauss point in the local coordinate system
+    xᵧ₀,xᵧ₁,xᵧ₂ = Muscade.posVelAcc{P,ND}(xᵧ)
+    @show xᵧ₀
+    @show xᵧ₁
+    @show xᵧ₂
+    xₗ₁ = xᵧ₁ ∘₁ rot
+    xₗ₂ = xᵧ₂ ∘₁ rot
+    
+    # ## Compute drag force (hard-coded parameters so far)
+    ρ = 1025.0
+    A  = SVector(0.0,1.0,1.0)
+    Cd = SVector(0.0,1.0,1.0) # SVector(0.0,0.0,0.0)
+    fd = .5 * ρ * A .* Cd .* xₗ₁ .* abs.(xₗ₁) #mind the sign: forces exerted by element on its environment
+    # @show fd
+    
+    ## Compute inertia force (hard-coded parameter so far)
+    μ   = 1.0
+    fi = μ * xₗ₂ 
+    
+    ## Compute added mass force (hard-coded parameter so far)
+    Ca = SVector(0.0,1.0,1.0)
+    fa = ρ * Ca .* xₗ₂
+
     ## Compute axial force, torsion and bending moments and external loads at Gauss points. 
-    ☼f₁ = o.EA*ε 
-    ☼m  = SVector(o.GJ*κ[1],o.EI*κ[2],o.EI*κ[3])
-    ☼fₑ = SVector(0.,0.,0.) # external forces at Gauss point (no external moment/torque/... so far). fₑ is in local coordinates 
+    ☼f₁ = o.EA*ε₀
+    ☼m  = SVector(o.GJ*κ₀[1],o.EI*κ₀[2],o.EI*κ₀[3])
+    ☼fₑ = fd+fa+fi #SVector(0.,0.,0.) # external forces at Gauss point (no external moment/torque/... so far). fₑ is in local coordinates 
     return f₁,m,fₑ
 end;
 
@@ -145,12 +153,15 @@ const v3   = SVector{3};
     X₀              = ∂0(X)
     P               = min(2,precedence(X₀)+1) 
     TδXₗ,Trₛₘ,Tcₛ     = Taylor{P}(X->global2local(o,X),X₀)
-    δXₗ,rₛₘ,cₛ        = TδXₗ(X₀),Trₛₘ(X₀),Tcₛ(X₀)
+    P1               = constants(X)
+    X_              = Muscade.motion{P1}(X)
+    δXₗ,rₛₘ,cₛ        = TδXₗ(X_),Trₛₘ(X_),Tcₛ(X_)
     T               = ∂(TδXₗ)(X₀)
+    ND               = length(X)
     gp              = ntuple(ngp) do igp
         ☼ε,☼κ,☼δxₗ   = Nε[igp]∘₁δXₗ, Nκ[igp]∘₁δXₗ, Nδx[igp]∘₁δXₗ   # axial strain, curvatures, displacement - all local (including their time derivatives)
         ☼xᵧ         = rₛₘ∘₁(tgₑ*ζgp[igp]+δxₗ)+cₛ+cₘ             # [ndim], global coordinates of Gauss points
-        f₁,m,fₑ     = ☼resultants(o.mat,ε,κ,xᵧ,rₛₘ)          # call the "resultant" function to compute loads (local coordinates) from strains/curvatures/etc. using material properties. Note that output is dual of input. 
+        f₁,m,fₑ     = ☼resultants(o.mat,ε,κ,xᵧ,rₛₘ,Val(P1),Val(ND))          # call the "resultant" function to compute loads (local coordinates) from strains/curvatures/etc. using material properties. Note that output is dual of input. 
         Rₗ           = (f₁ ∘₀ Nε[igp] + m∘₁Nκ[igp] + fₑ∘₁Nδx[igp])*dL[igp]     # Contribution to the local nodal load of this Gauss point  [ndof] = scalar*[ndof] + [ndim]⋅[ndim,ndof] + [ndim]⋅[ndim,ndof]
         @named(Rₗ)
     end

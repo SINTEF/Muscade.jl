@@ -42,11 +42,12 @@ eleid       = addelement!(model,EulerBeam3D,mesh;mat=mat,orient2=SVector(0.,1.,0
 t= 0.
 SP = (;)
 dbg  = (status=:testing,)
-x = SVector(0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.)
+x = SVector(0.,1.,0.,0.,0.,0.,
+            0.,1.,0.,0.,0.,0.)
 X = (x,x,x)
 U = (SVector{0,Float64}(),)
 A = SVector{0,Float64}()
-R,FB = Muscade.residual(model.eleobj[1][1],   X,U,A,t,SP,dbg)
+# R,FB = Muscade.residual(model.eleobj[1][1],   X,U,A,t,SP,dbg)
 
 out2 = diffed_residual(model.eleobj[1][1]; X,U,A)
 @printf "\nR\n"
@@ -55,6 +56,8 @@ print_element_array(model.eleobj[1][1],:X,out2.R)
 print_element_array(model.eleobj[1][1],:X,out2.∇R[2][1])
 # @test out2.R   ≈ [-1.]
 # @test out2.∇R[2][1] ≈ [0.;;]
+@printf "\n∂R/∂X₂\n"
+print_element_array(model.eleobj[1][1],:X,out2.∇R[2][3])
 
 
 # # Solve the static analysis problem 
