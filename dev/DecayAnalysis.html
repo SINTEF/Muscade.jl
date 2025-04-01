@@ -23,9 +23,9 @@ Muscade.doflist(::Type{&lt;:FloaterOnCalmWater}) = (inod  = (ntuple(i-&gt; 1,3).
     x,x′,x″    = ∂0(X),∂1(X),∂2(X)
     ☼u         = ∂0(U)
     a          = exp10.(A)
-    ☼r₂        = (o.M.*fold(a[@SVector [i for i∈1:6 ]]))∘x″
-    ☼r₁        = (o.C.*fold(a[@SVector [i for i∈7:12]]))∘x′
-    ☼r₀        = o.K∘x
+    ☼r₂        = (o.M.*fold(a[@SVector [i for i∈1:6 ]]))∘₁x″
+    ☼r₁        = (o.C.*fold(a[@SVector [i for i∈7:12]]))∘₁x′
+    ☼r₀        = o.K∘₁x
     return r₀+r₁+r₂-u,  noFB
 end</code></pre><p>This is a tailor-made cost element where the cost is made dependent on the iteration number. In practice, this is used to first solve an XU problem (costs on A are prohibitive) before solving the actual XUA problem.</p><pre><code class="language-julia hljs">struct SingleDecayAcost{Field,Tcost,Tcostargs} &lt;: AbstractElement
     cost     :: Tcost
@@ -87,110 +87,103 @@ stateXUA         = solve(DirectXUA{2,0,1};initialstate=initialstateXUA,time=T,
 
     Iteration   1
         Assembling, solving, decrementing.
-        maxₜ(|ΔΛ|)=6.5e+02 ≤     Inf
+        maxₜ(|ΔΛ|)=6.3e+02 ≤     Inf
         maxₜ(|ΔX|)=2.2e+00 ≤ 1.0e-05
         maxₜ(|ΔU|)=1.6e+00 ≤ 1.0e-05
              |ΔA| =0.0e+00 ≤ 1.0e-05
 
     Iteration   2
         Assembling, solving, decrementing.
-        maxₜ(|ΔΛ|)=5.3e+02 ≤     Inf
-        maxₜ(|ΔX|)=9.2e-01 ≤ 1.0e-05
-        maxₜ(|ΔU|)=4.9e-01 ≤ 1.0e-05
-             |ΔA| =2.3e-01 ≤ 1.0e-05
+        maxₜ(|ΔΛ|)=3.8e+02 ≤     Inf
+        maxₜ(|ΔX|)=1.4e+00 ≤ 1.0e-05
+        maxₜ(|ΔU|)=7.1e-01 ≤ 1.0e-05
+             |ΔA| =2.2e-01 ≤ 1.0e-05
 
     Iteration   3
         Assembling, solving, decrementing.
-        maxₜ(|ΔΛ|)=2.6e+02 ≤     Inf
-        maxₜ(|ΔX|)=2.3e+00 ≤ 1.0e-05
-        maxₜ(|ΔU|)=1.4e+00 ≤ 1.0e-05
-             |ΔA| =2.9e-01 ≤ 1.0e-05
+        maxₜ(|ΔΛ|)=2.0e+02 ≤     Inf
+        maxₜ(|ΔX|)=1.8e+00 ≤ 1.0e-05
+        maxₜ(|ΔU|)=9.8e-01 ≤ 1.0e-05
+             |ΔA| =3.1e-01 ≤ 1.0e-05
 
     Iteration   4
         Assembling, solving, decrementing.
-        maxₜ(|ΔΛ|)=1.5e+02 ≤     Inf
-        maxₜ(|ΔX|)=1.3e+00 ≤ 1.0e-05
-        maxₜ(|ΔU|)=4.1e-01 ≤ 1.0e-05
-             |ΔA| =6.1e-01 ≤ 1.0e-05
+        maxₜ(|ΔΛ|)=2.0e+02 ≤     Inf
+        maxₜ(|ΔX|)=1.2e+00 ≤ 1.0e-05
+        maxₜ(|ΔU|)=3.7e-01 ≤ 1.0e-05
+             |ΔA| =5.7e-01 ≤ 1.0e-05
 
     Iteration   5
         Assembling, solving, decrementing.
-        maxₜ(|ΔΛ|)=2.6e+02 ≤     Inf
-        maxₜ(|ΔX|)=9.0e-01 ≤ 1.0e-05
-        maxₜ(|ΔU|)=2.9e-01 ≤ 1.0e-05
-             |ΔA| =6.2e-01 ≤ 1.0e-05
+        maxₜ(|ΔΛ|)=2.1e+02 ≤     Inf
+        maxₜ(|ΔX|)=8.3e-01 ≤ 1.0e-05
+        maxₜ(|ΔU|)=1.9e-01 ≤ 1.0e-05
+             |ΔA| =6.1e-01 ≤ 1.0e-05
 
     Iteration   6
         Assembling, solving, decrementing.
-        maxₜ(|ΔΛ|)=1.8e+02 ≤     Inf
-        maxₜ(|ΔX|)=6.7e-01 ≤ 1.0e-05
-        maxₜ(|ΔU|)=2.4e-01 ≤ 1.0e-05
-             |ΔA| =5.4e-01 ≤ 1.0e-05
+        maxₜ(|ΔΛ|)=2.0e+02 ≤     Inf
+        maxₜ(|ΔX|)=7.2e-01 ≤ 1.0e-05
+        maxₜ(|ΔU|)=2.5e-01 ≤ 1.0e-05
+             |ΔA| =5.9e-01 ≤ 1.0e-05
 
     Iteration   7
         Assembling, solving, decrementing.
         maxₜ(|ΔΛ|)=2.1e+02 ≤     Inf
-        maxₜ(|ΔX|)=3.6e-01 ≤ 1.0e-05
-        maxₜ(|ΔU|)=1.7e-01 ≤ 1.0e-05
-             |ΔA| =3.4e-01 ≤ 1.0e-05
+        maxₜ(|ΔX|)=4.7e-01 ≤ 1.0e-05
+        maxₜ(|ΔU|)=1.6e-01 ≤ 1.0e-05
+             |ΔA| =3.8e-01 ≤ 1.0e-05
 
     Iteration   8
         Assembling, solving, decrementing.
         maxₜ(|ΔΛ|)=2.2e+02 ≤     Inf
-        maxₜ(|ΔX|)=1.9e-01 ≤ 1.0e-05
-        maxₜ(|ΔU|)=8.4e-02 ≤ 1.0e-05
+        maxₜ(|ΔX|)=1.1e-01 ≤ 1.0e-05
+        maxₜ(|ΔU|)=4.4e-02 ≤ 1.0e-05
              |ΔA| =1.9e-01 ≤ 1.0e-05
 
     Iteration   9
         Assembling, solving, decrementing.
         maxₜ(|ΔΛ|)=2.2e+02 ≤     Inf
-        maxₜ(|ΔX|)=4.8e-02 ≤ 1.0e-05
-        maxₜ(|ΔU|)=2.5e-02 ≤ 1.0e-05
-             |ΔA| =1.3e-01 ≤ 1.0e-05
+        maxₜ(|ΔX|)=6.9e-02 ≤ 1.0e-05
+        maxₜ(|ΔU|)=1.9e-02 ≤ 1.0e-05
+             |ΔA| =1.2e-01 ≤ 1.0e-05
 
     Iteration  10
         Assembling, solving, decrementing.
         maxₜ(|ΔΛ|)=2.2e+02 ≤     Inf
-        maxₜ(|ΔX|)=5.4e-03 ≤ 1.0e-05
-        maxₜ(|ΔU|)=4.1e-03 ≤ 1.0e-05
-             |ΔA| =1.2e-02 ≤ 1.0e-05
+        maxₜ(|ΔX|)=4.9e-03 ≤ 1.0e-05
+        maxₜ(|ΔU|)=3.2e-03 ≤ 1.0e-05
+             |ΔA| =1.0e-02 ≤ 1.0e-05
 
     Iteration  11
         Assembling, solving, decrementing.
         maxₜ(|ΔΛ|)=2.2e+02 ≤     Inf
-        maxₜ(|ΔX|)=5.7e-04 ≤ 1.0e-05
-        maxₜ(|ΔU|)=4.4e-04 ≤ 1.0e-05
-             |ΔA| =2.1e-03 ≤ 1.0e-05
+        maxₜ(|ΔX|)=5.0e-04 ≤ 1.0e-05
+        maxₜ(|ΔU|)=2.6e-04 ≤ 1.0e-05
+             |ΔA| =1.4e-03 ≤ 1.0e-05
 
     Iteration  12
         Assembling, solving, decrementing.
         maxₜ(|ΔΛ|)=2.2e+02 ≤     Inf
-        maxₜ(|ΔX|)=9.8e-05 ≤ 1.0e-05
-        maxₜ(|ΔU|)=1.2e-04 ≤ 1.0e-05
-             |ΔA| =4.5e-04 ≤ 1.0e-05
+        maxₜ(|ΔX|)=7.8e-05 ≤ 1.0e-05
+        maxₜ(|ΔU|)=5.6e-05 ≤ 1.0e-05
+             |ΔA| =2.4e-04 ≤ 1.0e-05
 
     Iteration  13
         Assembling, solving, decrementing.
         maxₜ(|ΔΛ|)=2.2e+02 ≤     Inf
-        maxₜ(|ΔX|)=1.9e-05 ≤ 1.0e-05
-        maxₜ(|ΔU|)=2.6e-05 ≤ 1.0e-05
-             |ΔA| =9.8e-05 ≤ 1.0e-05
+        maxₜ(|ΔX|)=1.3e-05 ≤ 1.0e-05
+        maxₜ(|ΔU|)=7.9e-06 ≤ 1.0e-05
+             |ΔA| =4.0e-05 ≤ 1.0e-05
 
     Iteration  14
         Assembling, solving, decrementing.
         maxₜ(|ΔΛ|)=2.2e+02 ≤     Inf
-        maxₜ(|ΔX|)=3.8e-06 ≤ 1.0e-05
-        maxₜ(|ΔU|)=6.1e-06 ≤ 1.0e-05
-             |ΔA| =2.2e-05 ≤ 1.0e-05
-
-    Iteration  15
-        Assembling, solving, decrementing.
-        maxₜ(|ΔΛ|)=2.2e+02 ≤     Inf
-        maxₜ(|ΔX|)=7.9e-07 ≤ 1.0e-05
+        maxₜ(|ΔX|)=2.2e-06 ≤ 1.0e-05
         maxₜ(|ΔU|)=1.4e-06 ≤ 1.0e-05
-             |ΔA| =5.2e-06 ≤ 1.0e-05
+             |ΔA| =7.1e-06 ≤ 1.0e-05
 
-    Converged in  15 iterations.
+    Converged in  14 iterations.
     nel=19, nvar=2262, nstep=250
     DirectXUA{2, 0, 1} time:   17 [s]
 <span class="sgr36"><span class="sgr1">Muscade done.</span></span></code></pre><p>Fetch and display estimated model parameters</p><pre><code class="language-julia hljs">lastIter = findlastassigned(stateXUA); niter = lastIter;
@@ -271,4 +264,4 @@ if occursin(&quot;build&quot;, currentDir)
     save(normpath(joinpath(currentDir,&quot;..&quot;,&quot;src&quot;,&quot;assets&quot;,&quot;decay.png&quot;)),fig)
 elseif occursin(&quot;examples&quot;, currentDir)
     save(normpath(joinpath(currentDir,&quot;decay.png&quot;)),fig)
-end</code></pre><p><img src="assets/decay.png" alt="Result"/></p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="StaticBeamAnalysis.html">« Static analysis of a beam</a><a class="docs-footer-nextpage" href="DryFriction.html">DryFriction »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.8.1 on <span class="colophon-date" title="Wednesday 26 February 2025 08:11">Wednesday 26 February 2025</span>. Using Julia version 1.10.8.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+end</code></pre><p><img src="assets/decay.png" alt="Result"/></p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="StaticBeamAnalysis.html">« Static analysis of a beam</a><a class="docs-footer-nextpage" href="DryFriction.html">DryFriction »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.10.1 on <span class="colophon-date" title="Tuesday 1 April 2025 08:28">Tuesday 1 April 2025</span>. Using Julia version 1.10.9.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
