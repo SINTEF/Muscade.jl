@@ -1,4 +1,4 @@
-#module TestBeamElements
+module TestBeamElements
 
 using Test, Muscade, StaticArrays, LinearAlgebra
 include("../examples/BeamElements.jl")
@@ -22,9 +22,9 @@ w2,w∂v2 = value_∂{1,3}(Rodrigues⁻¹(M2))
     @test r ≈ [0.0, -1.1107207345395913, 1.1107207345395913]
     @test u ≈ [2.220446049250313e-16, 0.7071067811865476, 0.7071067811865476]
     @test v1 ≈ w1
-    @test w∂v1 ≈ I#[1 0 0;0 1 0;0 0 1]
+    @test w∂v1 ≈ LinearAlgebra.I#[1 0 0;0 1 0;0 0 1]
     @test v2 ≈ w2
-    @test w∂v2 ≈ I#[1 0 0;0 1 0;0 0 1]
+    @test w∂v2 ≈ LinearAlgebra.I#[1 0 0;0 1 0;0 0 1]
 end
 
 ###
@@ -121,7 +121,7 @@ out = diffed_residual(beam; X,U,A,t,SP)
 # print_element_array(beam,:X,out.∇R[2][3])  # M
 
 
-#end
+end
 
 
 

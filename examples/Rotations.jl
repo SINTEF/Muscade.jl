@@ -115,7 +115,7 @@ See also [`spin`](@ref), [`spin⁻¹`](@ref), [`Rodrigues⁻¹`](@ref), [`adjust
 function Rodrigues(v::Vec3) 
     S = spin(v)
     θ = norm(v)
-    return I + sinc1(θ)*S + sinc1(θ/2)^2/2*S*S  
+    return LinearAlgebra.I + sinc1(θ)*S + sinc1(θ/2)^2/2*S*S  
 end
 """
     v1 = BeamElements.normalize(v::SVector{3})

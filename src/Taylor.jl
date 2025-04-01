@@ -1,4 +1,3 @@
-
 struct Taylor{O,Nx,Ty}
     x::SVector{Nx,𝕣}
     y::Ty
@@ -74,7 +73,7 @@ function (te::Taylor{2,Nx,Ty})(X::SVector{Nx,R}) where{R<:Real,Nx,Ty<:∂ℝ}   
 end
 
 ∂(t::Taylor{O,Nx}) where{O,Nx} = Taylor{O-1}(t.x,∂{O,Nx}(t.y))
-∂(t::Taylor{0   }) where{O   } = muscadeerror("Tried to differentiate a 0th order Taylor expansion")
+∂(t::Taylor{0   })             = muscadeerror("Tried to differentiate a 0th order Taylor expansion")
 
 # TODO: return a tuple of expansions, not an expansion of a tuple  DONE
 # TODO: Taylor stores Adiff objects. 
