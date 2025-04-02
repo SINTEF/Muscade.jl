@@ -218,9 +218,14 @@ end
 
 """
     δω=getδω(n,δt) = 2π/(n*δt)
+
+    `n` is the length of the time series
 """
 getδω(n,δt)    =  2π/(n*δt)
 """
     getδt(n,δω) = 2π/(n*δω)
+ 
+    `n` is the length of the time series
+
 """
 getδt(n,δω) = 2π/(n*δω)

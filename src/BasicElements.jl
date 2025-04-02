@@ -570,12 +570,12 @@ another element, during an analysis.
 Instead of adding the element to be monitored directly into the model,
 add this element with the element to be monitored as argument.
 
-Inputs and outs get @show'n to screen
+Inputs and outputs are @show'n. 
 
 # Named arguments to the constructor
 
 - `ElementType`         The the type of element to be monitored-
-- `trigger`            A function that takes `dbg` as an input and returns a boolean 
+- `trigger`             A function that takes `dbg` as an input and returns a boolean 
                         (`true`) to printout.
 - `elementkwargs`       a `NamedTuple` containing the named arguments of the `ElementType` constructor.
 

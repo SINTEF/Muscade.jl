@@ -6,7 +6,7 @@ module Muscade
     export ℝ1,ℤ1,𝕣1,𝕫1,𝔹1,𝕓1
     export ℝ2,ℤ2,𝕣2,𝕫2,𝔹2,𝕓2
     export ℝ11,ℤ11,𝕣11,𝕫11,𝔹11,𝕓11
-    export toggle,@once,default
+    export toggle,default,@once
 
     include("Adiff.jl")
     export  ∂ℝ #\partial \bbR
@@ -16,6 +16,9 @@ module Muscade
 
     include("Taylor.jl")
     export  Taylor
+
+    include("Functors.jl")
+    export QuadraticFunction,FunctionFromVector 
 
     include("Dots.jl")
     export dots,∘₀,∘₁,∘₂,⊗

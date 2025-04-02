@@ -385,6 +385,10 @@ and create a Taylor development of it using [`Taylor`](@ref), which is then eval
 
 It is sometimes convenient to handle time derivatives using automatic differentiation: elements with corotated reference systems can thus handle a moving corotated system, and thus centripetal and Coriolis forces.  See [`examples/BeamElements.jl`](StaticBeamAnalysis.md) for an example. Helper functions [`Muscade.motion`](@ref), [`Muscade.position`](@ref), [`Muscade.velocity`](@ref) and [`Muscade.acceleration`](@ref) are provided. These helper functions are not exported by `Muscade`, so their invocation must be qualified with `Muscade.`.
 
+## Defining functions in scripts
+
+xxxxxxxxxxxxxx
+
 ## Testing elements
 
 When developing a new element, it is advisable to test the constructor, and `residual` or `lagrangian` in a direct call (outside of any Muscade solver), and examine the returned outputs.
