@@ -89,7 +89,7 @@ struct motion_{P,Q}       end
 struct motion⁻¹{P,ND,OD}  end 
 """
     P  = constants(X,U,A,t)
-    X_ = Muscade.motion{P}(X)
+    X_ = motion{P}(X)
 
 Transform a `NTuple` of `SVector`s, for example the vector `X` provided as an input to
 `residual` or `Lagrangian` into a `SVector` of `∂ℝ`.  This can be used by an element to 
@@ -97,15 +97,15 @@ compute time derivatives, for example Euler, Coriolis and centrifugal accelerati
 or strain rates.
 
 Some principles of safe automatic differentiation must be adhered to:
-- the function that uses `Muscade.motion` must also 'unpack' : no variable that is touched by 
-  the output of `Muscade.motion` must be returned by the function without having been unpacked
-  by `Muscade.position`, `Muscade.velocity` or `Muscade.acceleration`.
+- the function that uses `motion` must also 'unpack' : no variable that is touched by 
+  the output of `motion` must be returned by the function without having been unpacked
+  by `motion⁻¹`.
 - The precendence `P` must be calculated using `constants` with all variables that are input to 
   the function and may be differentiated.
 - If other levels of automatic differentiation are introduced within the function, unpack in reverse
   order of packing.    
 
-See [`Muscade.motion⁻¹`](@ref)
+See [`motion⁻¹`](@ref)
 """
 motion{ P    }(a::NTuple{ND,SV{N,R}}) where{ND,P,N,R        } = SV{N}(motion_{P,P+ND-1}(ntuple(j->a[j][i],ND)) for i=1:N)
 motion_{P,Q  }(a::NTuple{D,      R }) where{D ,P  ,R<:Real,Q} = ∂ℝ{Q,1}(motion_{P,Q-1}(a),SV(motion_{P,Q-1}(a[2:D]))) 
@@ -114,19 +114,18 @@ motion_{P,P  }(a::NTuple{D,      R }) where{D ,P  ,R<:Real  } = a[1]
 """
     P  = constants(X,U,A,t)
     ND = length(X)
-    X_  = Muscade.motion{P,ND}(X)
+    X_  = motion{P,ND}(X)
     Y_  = f(Y_)    
-    Y₀ = Muscade.motion⁻¹{P,ND,0}(Y_)
-    Y₁ = Muscade.motion⁻¹{P,ND,1}(Y_)
-    Y₂ = Muscade.motion⁻¹{P,ND,2}(Y_)
-    Y  = Muscade.motion⁻¹{P,ND  }(Y) 
+    Y₀ = motion⁻¹{P,ND,0}(Y_)
+    Y₁ = motion⁻¹{P,ND,1}(Y_)
+    Y₂ = motion⁻¹{P,ND,2}(Y_)
+    Y  = motion⁻¹{P,ND  }(Y) 
 
-Extract the value and time derivatives from a variable that is a function of the output of `Muscade.motion`.
+Extract the value and time derivatives from a variable that is a function of the output of `motion`.
 In the above `Y` is a tuple of same length as `X`.  One can use `∂0`,`∂1` and `∂2` to unpack `Y`.    
 
-See [`Muscade.motion`](@ref)
+See [`motion`](@ref)
 """
-# positions
 motion⁻¹{P,1,0}(a::ℝ) where{P} =                             a
 motion⁻¹{P,2,0}(a::ℝ) where{P} =              value{P+2-1  }(a)
 motion⁻¹{P,3,0}(a::ℝ) where{P} = value{P+3-2}(value{P+3-1  }(a))
@@ -145,61 +144,5 @@ motion⁻¹{P,1    }(a               ) where{P   } = (motion⁻¹{P,1,0}(a),)
 motion⁻¹{P,2    }(a               ) where{P   } = (motion⁻¹{P,2,0}(a),motion⁻¹{P,2,1}(a))
 motion⁻¹{P,3    }(a               ) where{P   } = (motion⁻¹{P,3,0}(a),motion⁻¹{P,3,1}(a),motion⁻¹{P,3,2}(a))
 
-
-
-# """
-#     P  = constants(X,U,A,t)
-#     ND = length(X)
-#     x  = Muscade.motion{P,ND}(X)
-#     E  = f(x)    
-#     ε  = Muscade.position{P,ND}(E)
-
-# Extract the position from a variable that is a function of the output of `Muscade.motion`.
-
-# See [`Muscade.motion`](@ref), [`Muscade.velocity`](@ref), [`Muscade.acceleration`](@ref)
-# """
-# function motion⁻¹{P,ND,0}(a::ℝ) where{P,ND}
-#     if     ND==1                            a 
-#     elseif ND==2                value{P+ND-1}(a)
-#     elseif ND==3  value{P+ND-2}(value{P+ND-1}(a))
-#     else muscadeerror((P=P,ND=ND,a=typeof(a)),"'position' requires ND∈{1,2,3}")
-#     end
-# end
-# """
-#     P  = constants(X,U,A,t)
-#     ND = length(X)
-#     x  = Muscade.motion{P,ND}(X)
-#     E  = f(x)    
-#     ̇ε  = Muscade.velocity{P,ND}(E)
-
-# Extract the velocity or rate from a variable that is a function of the output of `Muscade.motion`.
-
-# See [`Muscade.motion`](@ref), [`Muscade.position`](@ref), [`Muscade.acceleration`](@ref)
-# """
-# function motion⁻¹{P,ND,1}(a::ℝ) where{P,ND}
-#     if     ND==1                            0.   
-#     elseif ND==2                ∂{P+ND-1,1}(a)[1]
-#     elseif ND==3  value{P+ND-2}(∂{P+ND-1,1}(a)[1]) 
-#     else muscadeerror((P=P,ND=ND,a=typeof(a)),"'velocity' requires ND∈{1,2,3}")
-#     end
-# end  
-# """
-#     P = constants(X,U,A,t)
-#     ND = length(X)
-#     x = Muscade.motion{P,ND}(X)
-#     E = f(x)    
-#     ̈ε = Muscade.acceleration{P,ND}(E)
-
-# Extract the velocity or rate from a variable that is a function of the output of `Muscade.motion`.
-
-# See [`Muscade.motion`](@ref), [`Muscade.position`](@ref), [`Muscade.velocity`](@ref)
-# """
-# function motion⁻¹{P,ND,2}(a::ℝ) where{P,ND}
-#     if     ND==1                          0.
-#     elseif ND==2                          0.
-#     elseif ND==3  ∂{P+ND-2,1}(∂{P+ND-1,1}(a)[1])[1]
-#     else muscadeerror((P=P,ND=ND,a=typeof(a)),"'acceleration' requires ND∈{1,2,3}")
-#     end
-# end  
 
 

@@ -100,9 +100,9 @@ e4        = [addelement!(modelXUA,SingleDecayAcost  ,[n1];          field=f,fac,
 surgeInt    = linear_interpolation(T, surgeMeas)
 swayInt     = linear_interpolation(T, swayMeas)
 yawInt      = linear_interpolation(T, yawMeas)
-@once devSurge(surge,t)     = 1e-1 ^-2 * (surge-surgeInt(t))^2
-@once devSway(sway,t)       = 1e-1 ^-2 * (sway-swayInt(t))^2
-@once devYaw(yaw,t)         = 1e-1 ^-2 * (yaw-yawInt(t))^2
+@once surge devSurge(surge,t)     = 1e-1 ^-2 * (surge-surgeInt(t))^2
+@once sway devSway(sway,t)       = 1e-1 ^-2 * (sway-swayInt(t))^2
+@once yaw devYaw(yaw,t)         = 1e-1 ^-2 * (yaw-yawInt(t))^2
 e5             = addelement!(modelXUA,SingleDofCost,[n1];class=:X,field=:surge,    cost=devSurge)
 e6             = addelement!(modelXUA,SingleDofCost,[n1];class=:X,field=:sway,     cost=devSway)
 e7             = addelement!(modelXUA,SingleDofCost,[n1];class=:X,field=:yaw,      cost=devYaw);

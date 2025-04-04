@@ -61,8 +61,8 @@ xgp1 = (L/nel)*((0.5-1.0/(2*sqrt(3))):1:nel)
 xgp2 = (L/nel)*((0.5+1.0/(2*sqrt(3))):1:nel)
 req = @request gp(κ)
 out = getresult(state[2],req,eleid)
-κgp1_ = [ out[idxEl].gp[1][:κ][2] for idxEl ∈ 1:nel]
-κgp2_ = [ out[idxEl].gp[2][:κ][2] for idxEl ∈ 1:nel];
+κgp1_ = [ out[idxEl].gp[1].κ[1][2] for idxEl ∈ 1:nel]
+κgp2_ = [ out[idxEl].gp[2].κ[1][2] for idxEl ∈ 1:nel];
 
 # Display results
 fig      = Figure(size = (1000,1000))

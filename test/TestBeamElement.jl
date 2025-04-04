@@ -95,10 +95,7 @@ x = SVector(0.,0.,0.,0.,0.,0.,0.1,0.0,0.,0.,0.,0.); X = (x,)
 using Printf
 X = (x,x,x)
 out = diffed_residual(beam; X,U,A,t,SP)
-iλ = 1
-ix = 2
-iu = 3
-ia = 4
+iλ,ix,iu,ia = 1,2,3,4
 
 R = out.R
 K = out.∇R[ix][1]
@@ -106,19 +103,19 @@ C = out.∇R[ix][2]
 M = out.∇R[ix][3]
 H = out.∇R[iu][1]
 
-using Profile,ProfileView,BenchmarkTools
-mission = :profile
-if  mission == :time
-    @btime out = diffed_residual(beam; X,U,A,t,SP)
-elseif mission == :profile
-    Profile.clear()
-    Profile.@profile for i=1:10000
-        out = diffed_residual(beam; X,U,A,t,SP)
-    end
-    ProfileView.view(fontsize=30);
-    # After clicking on a bar in the flame diagram, you can type warntype_last() and see the result of 
-    # code_warntype for the call represented by that bar.
-end
+# using Profile,ProfileView,BenchmarkTools
+# mission = :profile
+# if  mission == :time
+#     @btime out = diffed_residual(beam; X,U,A,t,SP)
+# elseif mission == :profile
+#     Profile.clear()
+#     Profile.@profile for i=1:10000
+#         out = diffed_residual(beam; X,U,A,t,SP)
+#     end
+#     ProfileView.view(fontsize=30);
+#     # After clicking on a bar in the flame diagram, you can type warntype_last() and see the result of 
+#     # code_warntype for the call represented by that bar.
+# end
 ;
 
 # @printf "\nR\n"

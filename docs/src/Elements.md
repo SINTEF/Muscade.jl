@@ -378,16 +378,18 @@ For those prefering to think in terms of Cartesian tensor algebra, rather than m
 
 Elements with a corotated reference system, can make use of [`examples/Rotations.jl`](StaticBeamAnalysis.md) that provides functionality to handle rotations in ℝ³.  See [`examples/BeamElements.jl`](StaticBeamAnalysis.md) for an example.
 
-An advanced automatic-differentiation technique to improve performance is to identify a part of `residual` or `lagrangian` which
+## Automatic differentiation within element code
+
+Some advanced elements (in particular, elements with co-rotated element systems) can be implemented elegantly by using automatic differentiation within `residual` or `lagrangian`.  These are advanced techniques, requiring a good understanding of [`automatic differentiation`](Adiff.md).  Example of usage can be found in [`examples/BeamElements.jl`](StaticBeamAnalysis.md).
+
+Helper functions [`motion`](@ref) and [`motion⁻¹`](@ref) allow to transform a `tuple` of `SVectors`, like the input `X` given to `residual` and `lagrangian`, into a an automatic differentiation structure, so that functions of `∂0(X)` only can be differentiated with respect to time. 
+
+It is sometimes possible to improve performance by identifying a part of `residual` or `lagrangian` which
 - takes a single, `SVector` as an input.  A vector shorter than the list of dofs differentiated by the solver will accelerate computations.
 - optionaly: has 2nd order derivatives that can be ignored (use wisely!)
-and create a Taylor development of it using [`Taylor`](@ref), which is then evaluated. In [`examples/BeamElements.jl`](StaticBeamAnalysis.md) this is used to improve performance when automatic differentiation is used within the element to compute the transformation of nodal forces from the element's corotated reference system back to the global one.
+and create a Taylor development of it using [`Taylor`](@ref), which is then evaluated. 
 
-It is sometimes convenient to handle time derivatives using automatic differentiation: elements with corotated reference systems can thus handle a moving corotated system, and thus centripetal and Coriolis forces.  See [`examples/BeamElements.jl`](StaticBeamAnalysis.md) for an example. Helper functions [`Muscade.motion`](@ref), [`Muscade.position`](@ref), [`Muscade.velocity`](@ref) and [`Muscade.acceleration`](@ref) are provided. These helper functions are not exported by `Muscade`, so their invocation must be qualified with `Muscade.`.
-
-## Defining functions in scripts
-
-xxxxxxxxxxxxxx
+In [`examples/BeamElements.jl`](StaticBeamAnalysis.md), [`Taylor`](@ref) is used at the same time to differentiate a function (the transformation of `X`-dofs from global to the element's corotated reference system) to compute the transformation of nodal forces from the element's corotated reference system back to the global one.  This could be done by using basic [`automatic differentiation`](Adiff.md) functionality, but the reduction of the number of partials thanks to [`Taylor`](@ref) is absolutely essential for performance.
 
 ## Testing elements
 

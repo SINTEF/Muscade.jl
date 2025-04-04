@@ -220,9 +220,6 @@ based on it when they receive such functions as argument.
 
 `tag` must be a legal variable name, and unique to this invocation of `@once`  
 """    
-macro once(ex) # TODO obsolete
-    ex
-end
 macro once(tag,ex)
     ex  = postwalk(rmlines,ex)
     ex  = postwalk(unblock,ex)

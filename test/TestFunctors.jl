@@ -1,4 +1,4 @@
-#module TestFunctors
+module TestFunctors
 using Muscade
 using Test
 
@@ -16,5 +16,5 @@ q2 = QuadraticFunction(f,1.)
     @test q2 isa Function
 end
 
-# end
+end
 

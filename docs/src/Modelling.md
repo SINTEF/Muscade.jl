@@ -18,9 +18,11 @@ model           = Model(:TestModel)
 n1              = addnode!(model,[0.]) 
 n2              = addnode!(model,[1.])
 e1              = addelement!(model,Hold,[n1];field=:tx1)                       # Hold first node
-e2              = addelement!(model,DofLoad,[n2];field=:tx1,value=t->3t)        # Increase load on second node
+@once id1 load(t) = 3t
+e2              = addelement!(model,DofLoad,[n2];field=:tx1,value=load)        # Increase load on second node
+@once id2 res(X,X′,X″,t)  = 12SVector(X[1]-X[2],X[2]-X[1])
 e3              = addelement!(model,QuickFix,[n1,n2];inod=(1,2),field=(:tx1,:tx1),
-                              res=(X,X′,X″,t)->12SVector(X[1]-X[2],X[2]-X[1]))  # Linear elastic spring with stiffness 12
+                              res=res)  # Linear elastic spring with stiffness 12
 initialstate    = initialize!(model)
 state           = solve(SweepX{0};initialstate,time=[0.,1.],verbose=false)      # Solve the problem
 tx1,_           = getdof(state[2],field=:tx1,nodID=[n2])                        # Extract the displacement of the free node
@@ -42,6 +44,8 @@ The definition of a model is done in three phases:
 [`setdof!`](@ref) can be used to set the value of specific dofs for more specific initial conditions.
 
 `Muscade` does not provide a mesher. There are some general purposes meshers with Julia API, which outputs could be used to generate calls to [`addnode!`](@ref) and [`addelement!`](@ref).
+
+Note that two `function`s, `load` and `res` are defined in the script, and then passed as argument to element constructors. In the script it is *recommended* (but not compulsory) to annotate the function definition with the macro[`@once`](@ref).  The first argument must be a unique variable name. The second argument is the function definition.  The macro prevents the function to be re-parsed if unchanged, which in turn prevents unnecessary recompilations of Muscade when the script is runned multiple times in a session. 
 
 The model - either finitialized or under construction, can be examined using [`describe`](@ref) and [`getndof`](@ref).  
 
@@ -128,8 +132,7 @@ A guideline for handling units without [problems](https://en.wikipedia.org/wiki/
 - **Users** convert Muscade outputs just before printing them out `printf("stress [MPa] %f",stress → MPa)`.
 
 Excellent packages exist for the handling of units ([`Unitful.jl`](https://painterqubits.github.io/Unitful.jl/stable/) ).  These packages have zero
-runtime overhead, and allow to verify code for unit consistency (`Muscade` does not provide this). However, it is arguably not possible to make these packages work with `Muscade`: In `Muscade`, `3←(pound/foot^3)` is of type `Float64`.  A comparable operation in [`Unitful.jl`](https://painterqubits.github.io/Unitful.jl/stable/)  
-would output a variable with a *type* containing data about dimensionality. `Muscade` handles various arrays of quantities with different dimensionality: such a solution would result in arrays of heterogeneous types. `Muscade` does not allow this, as this would result in catastrophic loss of performance due to [type instability](@ref typestab).
+runtime overhead, and allow to verify code for unit consistency (`Muscade` does not provide this). However, it is arguably not possible to make these packages work with `Muscade`: In `Muscade`, `3←(pound/foot^3)` is of type `Float64`.  A comparable operation in [`Unitful.jl`](https://painterqubits.github.io/Unitful.jl/stable/) would output a variable with a *type* containing data about dimensionality. `Muscade` handles various arrays of quantities with different dimensionality: such a solution would result in arrays of heterogeneous types. `Muscade` does not allow this, as this would result in catastrophic loss of performance due to [type instability](@ref typestab).
 
 ## Drawing
 
