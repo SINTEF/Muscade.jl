@@ -74,4 +74,61 @@ f2′ = tf2′(X₁)
     @test k2    ≈ 5.
 
 end
+
+
+
+
+
+#####
+
+
+const X1 = (SVector{3,𝕣}(1,2,3),)
+const X2 = (SVector{3,𝕣}(1,2,3),SVector{3,𝕣}(4,5,6))
+const X3 = (SVector{3,𝕣}(1,2,3),SVector{3,𝕣}(4,5,6),SVector{3,𝕣}(7,8,9))
+const X4 = (variate{1,3}(SVector{3,𝕣}(1,2,3)),)
+const X5 = (variate{1,3}(SVector{3,𝕣}(1,2,3)),variate{1,3}(SVector{3,𝕣}(4,5,6)))
+const X6 = (variate{1,3}(SVector{3,𝕣}(1,2,3)),variate{1,3}(SVector{3,𝕣}(4,5,6)),variate{1,3}(SVector{3,𝕣}(7,8,9)))
+const P  = 2
+
+
+
+Y1=motion{1}(X1)
+Y2=motion{1}(X2)
+Y3=motion{1}(X3)
+Y4=motion{P}(X4)
+Y5=motion{P}(X5)
+Y6=motion{P}(X6)
+@testset "motion" begin
+    @test motion⁻¹{1,1,0}(Y1) === SVector{3,𝕣}(1,2,3)
+    @test motion⁻¹{1,1,1}(Y1) === SVector{3,𝕣}(0,0,0)
+    @test motion⁻¹{1,1,2}(Y1) === SVector{3,𝕣}(0,0,0)
+
+    @test motion⁻¹{1,2,0}(Y2) === SVector{3,𝕣}(1,2,3)
+    @test motion⁻¹{1,2,1}(Y2) === SVector{3,𝕣}(4,5,6)
+    @test motion⁻¹{1,2,2}(Y2) === SVector{3,𝕣}(0,0,0)
+
+    @test motion⁻¹{1,3,0}(Y3) === SVector{3,𝕣}(1,2,3)
+    @test motion⁻¹{1,3,1}(Y3) === SVector{3,𝕣}(4,5,6)
+    @test motion⁻¹{1,3,2}(Y3) === SVector{3,𝕣}(7,8,9)
+
+    @test motion⁻¹{P,1,0}(Y4) === variate{1,3}(SVector{3,𝕣}(1,2,3))
+    @test motion⁻¹{P,1,1}(Y4) === SVector{3,𝕣}(0,0,0)
+    @test motion⁻¹{P,1,2}(Y4) === SVector{3,𝕣}(0,0,0)
+
+    @test motion⁻¹{P,2,0}(Y5) === variate{1,3}(SVector{3,𝕣}(1,2,3))
+    @test motion⁻¹{P,2,1}(Y5) === variate{1,3}(SVector{3,𝕣}(4,5,6))
+    @test motion⁻¹{P,2,2}(Y5) === SVector{3,𝕣}(0,0,0)
+
+    @test motion⁻¹{P,3,0}(Y6) === variate{1,3}(SVector{3,𝕣}(1,2,3))
+    @test motion⁻¹{P,3,1}(Y6) === variate{1,3}(SVector{3,𝕣}(4,5,6))
+    @test motion⁻¹{P,3,2}(Y6) === variate{1,3}(SVector{3,𝕣}(7,8,9))
+
+    @test motion⁻¹{1,1}(Y1) === (SVector{3,𝕣}(1,2,3),)
+    @test motion⁻¹{1,2}(Y2) === (SVector{3,𝕣}(1,2,3),SVector{3,𝕣}(4,5,6))
+    @test motion⁻¹{1,3}(Y3) === (SVector{3,𝕣}(1,2,3),SVector{3,𝕣}(4,5,6),SVector{3,𝕣}(7,8,9))
+end
+
+
+
+
 end # module

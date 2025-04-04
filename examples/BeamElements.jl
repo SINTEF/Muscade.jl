@@ -21,9 +21,9 @@ end
 BeamCrossSection(;EA=EA,EI=EI,GJ=GJ) = BeamCrossSection(EA,EI,GJ);
 
 # Resultant function that computes the internal loads from the strains and curvatures, and external loads on the element. 
-@espy function resultants(o::BeamCrossSection,ε,κ,xᵧ,rot) 
-    ☼f₁ = o.EA*ε # replace by ε₀
-    ☼m  = SVector(o.GJ*κ[1],o.EI*κ[2],o.EI*κ[3])# replace by κ₀ 
+@espy function resultants(o::BeamCrossSection,x,ε,κ,rot) 
+    ☼f₁ = o.EA*∂0(ε)
+    ☼m  = SVector(o.GJ*∂0(κ)[1],o.EI*∂0(κ)[2],o.EI*∂0(κ)[3])# replace by κ₀ 
     ☼fₑ = SVector(0.,0.,0.) # external forces at Gauss point (no external moment/torque/... so far). fₑ is in local coordinates # add inertia and drag
     return f₁,m,fₑ
 end;
@@ -64,7 +64,7 @@ struct EulerBeam3D{Mat} <: AbstractElement
     tgₑ      :: SVector{ndim,𝕣} # Vector connecting the nodes of the element in the local coordinate system
     Nε       :: SVector{ngp,SVector{     ndof,𝕣}}           # strain at the Gauss points
     Nκ       :: SVector{ngp,SMatrix{ndim,ndof,𝕣,ndim*ndof}} # curvatures at the Gauss points
-    Nδx      :: SVector{ngp,SMatrix{ndim,ndof,𝕣,ndim*ndof}} # coordinates of the Gauss points
+    Ny      :: SVector{ngp,SMatrix{ndim,ndof,𝕣,ndim*ndof}} # coordinates of the Gauss points
     dL       :: SVector{ngp,𝕣}  # length associated to each Gauss point
     mat      :: Mat # Used to store material properties (BeamCrossSection, for example)
 end
@@ -105,10 +105,10 @@ function EulerBeam3D(nod::Vector{Node};mat,orient2::SVector{ndim,𝕣}=SVector(0
                                      0         Bᵤ₁(ζᵢ)/L² 0          0          0           Bᵥ₁(ζᵢ)/L 0         Bᵤ₂(ζᵢ)/L² 0           0           0           Bᵥ₂(ζᵢ)/L;
                                      0         0          Bᵤ₁(ζᵢ)/L² 0          -Bᵥ₁(ζᵢ)/L 0          0         0          Bᵤ₂(ζᵢ)/L²  0           -Bᵥ₂(ζᵢ)/L  0         ] for ζᵢ∈ζgp) # Nκ[igp][idim,idof]
     ## Using the shape functions to get the coordinates of the Gauss points
-    Nδx      = SVector{ngp}(@SMatrix [Nₐ₁(ζᵢ)   0          0          0          0           0          Nₐ₂(ζᵢ)   0          0           0           0           0         ;
+    Ny      = SVector{ngp}(@SMatrix [Nₐ₁(ζᵢ)   0          0          0          0           0          Nₐ₂(ζᵢ)   0          0           0           0           0         ;
                                      0         Nᵤ₁(ζᵢ)    0          0          0           Nᵥ₁(ζᵢ)    0         Nᵤ₂(ζᵢ)    0           0           0           Nᵥ₂(ζᵢ)   ;
-                                     0         0          Nᵤ₁(ζᵢ)    0          -Nᵥ₁(ζᵢ)    0          0         0          Nᵤ₂(ζᵢ)     0           -Nᵥ₂(ζᵢ)    0         ] for ζᵢ∈ζgp) # Nδx[igp][idim,idof]
-    return EulerBeam3D(cₘ,rₘ,ζgp,ζnod,tgₘ,tgₑ,Nε,Nκ,Nδx,dL,mat)
+                                     0         0          Nᵤ₁(ζᵢ)    0          -Nᵥ₁(ζᵢ)    0          0         0          Nᵤ₂(ζᵢ)     0           -Nᵥ₂(ζᵢ)    0         ] for ζᵢ∈ζgp) # Ny[igp][idim,idof]
+    return EulerBeam3D(cₘ,rₘ,ζgp,ζnod,tgₘ,tgₑ,Nε,Nκ,Ny,dL,mat)
 end
 
 const saco = StaticArrays.sacollect
@@ -116,38 +116,44 @@ const v3   = SVector{3};
 
 # Define now the residual function for the EulerBeam3D element.
 
-# Two simplifications:
-# 1) static
-# 2) no GP coordinates and orientation
 @espy function Muscade.residual(o::EulerBeam3D,   X,U,A,t,SP,dbg) 
-    cₘ,rₘ,tgₘ,tgₑ    = o.cₘ,o.rₘ,o.tgₘ,o.tgₑ   # As-meshed element coordinates and describing tangential vector
-    Nε,Nκ,Nδx       = o.Nε,o.Nκ,o.Nδx           # From shape functions
-    ζgp,ζnod,dL     = o.ζgp,o.ζnod,o.dL        # Gauss points coordinates, node coordinates and length associated to each Gauss point
+    cₘ,tgₑ          = o.cₘ,o.tgₑ   # As-meshed element coordinates and describing tangential vector
+    Nε,Nκ,Ny        = o.Nε,o.Nκ,o.Ny           # From shape functions
+    ζgp,dL          = o.ζgp,o.dL        # Gauss points coordinates, node coordinates and length associated to each Gauss point
+
     X₀              = ∂0(X)
-    P               = min(2,precedence(X₀)+1) 
-    TδXₗ,Trₛₘ,Tcₛ     = Taylor{P}(X->global2local(o,X),X₀)
-    δXₗ,rₛₘ,cₛ        = TδXₗ(X₀),Trₛₘ(X₀),Tcₛ(X₀)
-    T               = ∂(TδXₗ)(X₀)
+    OD              = min(2,precedence(X₀)+1) 
+    TY₀,_,_         = Taylor{OD}(X->X₀2Y₀(o,X),X₀)
+    Y₀∂X₀           = ∂(TY₀)(X₀)
+
+    P,ND            = constants(X,U,A,t),length(X) 
+    X_              = motion{P}(X)
+    Y₀_,rₛₘ_,cₛ_     = X₀2Y₀(o::EulerBeam3D,X_)
+    unpack          = motion⁻¹{P,ND  }
     gp              = ntuple(ngp) do igp
-        ☼ε,☼κ,☼δxₗ   = Nε[igp]∘₁δXₗ, Nκ[igp]∘₁δXₗ, Nδx[igp]∘₁δXₗ   # axial strain, curvatures, displacement - all local (including their time derivatives)
-        ☼xᵧ         = rₛₘ∘₁(tgₑ*ζgp[igp]+δxₗ)+cₛ+cₘ             # [ndim], global coordinates of Gauss points
-        f₁,m,fₑ     = ☼resultants(o.mat,ε,κ,xᵧ,rₛₘ)          # call the "resultant" function to compute loads (local coordinates) from strains/curvatures/etc. using material properties. Note that output is dual of input. 
-        Rₗ           = (f₁ ∘₀ Nε[igp] + m∘₁Nκ[igp] + fₑ∘₁Nδx[igp])*dL[igp]     # Contribution to the local nodal load of this Gauss point  [ndof] = scalar*[ndof] + [ndim]⋅[ndim,ndof] + [ndim]⋅[ndim,ndof]
+        ☼ε          = motion⁻¹{P,ND  }(                   Nε[igp]∘₁Y₀_       ) # TODO type unstable because P,ND are no longer compile-time consts in closure
+        ☼κ          = motion⁻¹{P,ND  }(                   Nκ[igp]∘₁Y₀_       ) 
+        ☼x          = motion⁻¹{P,ND  }(rₛₘ_∘₁(tgₑ*ζgp[igp]+Ny[igp]∘₁Y₀_)+cₛ_+cₘ) 
+        ☼rₛₘ         = motion⁻¹{P,ND,0}(rₛₘ_                                   )
+        f₁,m,fₑ     = ☼resultants(o.mat,x,ε,κ,rₛₘ)          # call the "resultant" function to compute loads (local coordinates) from strains/curvatures/etc. using material properties. Note that output is dual of input. 
+        Rₗ           = (f₁ ∘₀ Nε[igp] + m∘₁Nκ[igp] + fₑ∘₁Ny[igp]) * dL[igp]     # Contribution to the local nodal load of this Gauss point  [ndof] = scalar*[ndof] + [ndim]⋅[ndim,ndof] + [ndim]⋅[ndim,ndof]
         @named(Rₗ)
     end
-    R  = sum(gpᵢ.Rₗ for gpᵢ∈gp) ∘₁ T 
+    R               = sum(gpᵢ.Rₗ for gpᵢ∈gp) ∘₁ Y₀∂X₀ 
     return R,noFB  
 end
-function global2local(o::EulerBeam3D,X)  
-    uᵧ₁,vᵧ₁,uᵧ₂,vᵧ₂  = SVector{3}(X[i] for i∈1:3), SVector{3}(X[i] for i∈4:6),SVector{3}(X[i] for i∈7:9),SVector{3}(X[i] for i∈10:12)
+function X₀2Y₀(o::EulerBeam3D,X₀)  
+    rₘ,tgₘ,tgₑ,ζnod  = o.rₘ,o.tgₘ,o.tgₑ,o.ζnod   # As-meshed element coordinates and describing tangential vector
+    uᵧ₁,vᵧ₁,uᵧ₂,vᵧ₂  = SVector{3}(X₀[i] for i∈1:3), SVector{3}(X₀[i] for i∈4:6),SVector{3}(X₀[i] for i∈7:9),SVector{3}(X₀[i] for i∈10:12)
     rₛ               = Rodrigues((vᵧ₁+vᵧ₂)/2)
-    rₛ               = Rodrigues(adjust(rₛ∘₁o.tgₘ,o.tgₘ+uᵧ₂-uᵧ₁))∘₁rₛ   
+    rₛ               = Rodrigues(adjust(rₛ∘₁tgₘ,tgₘ+uᵧ₂-uᵧ₁))∘₁rₛ   
     rₛₘ              = rₛ∘₁o.rₘ
     cₛ               = (uᵧ₁+uᵧ₂)/2
-    uₗ₁              = rₛₘ'∘₁(uᵧ₁+o.tgₘ*o.ζnod[1]-cₛ)-o.tgₑ*o.ζnod[1]    #Local displacement of node 1
-    uₗ₂              = rₛₘ'∘₁(uᵧ₂+o.tgₘ*o.ζnod[2]-cₛ)-o.tgₑ*o.ζnod[2]    #Local displacement of node 2
-    vₗ₁              = Rodrigues⁻¹(rₛₘ'∘₁Rodrigues(vᵧ₁)∘₁o.rₘ)      #Local rotation of node 1
-    vₗ₂              = Rodrigues⁻¹(rₛₘ'∘₁Rodrigues(vᵧ₂)∘₁o.rₘ)      #Local rotation of node 2
-    δXₗ              = SVector(uₗ₁...,vₗ₁...,uₗ₂...,vₗ₂...) #  δXₗ , T = ∂ δXₗ / ∂ ΔX
-    return δXₗ,rₛₘ,cₛ
+    uₗ₁              = rₛₘ'∘₁(uᵧ₁+tgₘ*ζnod[1]-cₛ)-tgₑ*ζnod[1]    #Local displacement of node 1
+    uₗ₂              = rₛₘ'∘₁(uᵧ₂+tgₘ*ζnod[2]-cₛ)-tgₑ*ζnod[2]    #Local displacement of node 2
+    vₗ₁              = Rodrigues⁻¹(rₛₘ'∘₁Rodrigues(vᵧ₁)∘₁rₘ)      #Local rotation of node 1
+    vₗ₂              = Rodrigues⁻¹(rₛₘ'∘₁Rodrigues(vᵧ₂)∘₁rₘ)      #Local rotation of node 2
+    Y₀              = SVector(uₗ₁...,vₗ₁...,uₗ₂...,vₗ₂...)           #  Y₀ , Y₀∂X₀ = ∂Y / ∂X
+    return Y₀,rₛₘ,cₛ
 end
+

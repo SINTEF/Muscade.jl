@@ -81,10 +81,11 @@ Generate a precedence `P` that is higher than the precedence of the arguments.
 
 See also: [`variate`](@ref), [`δ`](@ref), [`value`](@ref), [`∂`](@ref), [`VALUE`](@ref), [`value_∂`](@ref)
 """
-constants(tup::Tuple) = constants(tup...) 
-constants( a,args...) = max(constants(a),constants(args...))
-constants( a)         = 1+precedence(a) 
-constants( ::Nothing) = 0
+constants(tup::Tuple)   = constants(tup...) 
+constants( a,args...)   = max(constants(a),constants(args...))
+constants( a)           = 1+precedence(a) 
+constants(tup::Tuple{}) = 1 
+constants( ::Nothing)   = 1
 
 # variate
 struct δ{P,N,R}                end # need dum, because syntax δ{P,N,R}() collides with default constructor

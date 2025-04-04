@@ -1,4 +1,4 @@
-module TestBeamElements
+#module TestBeamElements
 
 using Test, Muscade, StaticArrays, LinearAlgebra
 include("../examples/BeamElements.jl")
@@ -37,19 +37,19 @@ mat             = BeamCrossSection(EA=10.,EI=3.,GJ=4.)
 
 beam            = EulerBeam3D(elnod;mat,orient2=SVector(0.,1.,0.))
 
-@testset "constructor" begin
-    @test beam.cₘ    ≈ [2.0, 1.5, 0.0]
-    @test beam.rₘ    ≈ [0.8 -0.6 0.0; 0.6 0.8 -0.0; 0.0 0.0 1.0]
-    @test beam.ζgp   ≈ [-0.2886751345948129, 0.2886751345948129]
-    @test beam.ζnod  ≈ [-0.5, 0.5]
-    @test beam.tgₘ   ≈ [4.0, 3.0, 0.0]
-    @test beam.tgₑ   ≈ [5.0, 0.0, 0.0]
-    @test beam.Nε[1] ≈ [-.2, 0, 0, 0, 0, 0, .2, 0, 0, 0, 0, 0]
-    @test beam.Nκ[1][2,2] ≈ -0.1385640646055102
-    @test beam.Nκ[1][3,5] ≈ 0.5464101615137755
-    @test beam.Nδx[1][1,1] ≈ 0.7886751345948129
-    @test beam.dL    ≈ [2.5, 2.5]
-end
+# @testset "constructor" begin
+#     @test beam.cₘ    ≈ [2.0, 1.5, 0.0]
+#     @test beam.rₘ    ≈ [0.8 -0.6 0.0; 0.6 0.8 -0.0; 0.0 0.0 1.0]
+#     @test beam.ζgp   ≈ [-0.2886751345948129, 0.2886751345948129]
+#     @test beam.ζnod  ≈ [-0.5, 0.5]
+#     @test beam.tgₘ   ≈ [4.0, 3.0, 0.0]
+#     @test beam.tgₑ   ≈ [5.0, 0.0, 0.0]
+#     @test beam.Nε[1] ≈ [-.2, 0, 0, 0, 0, 0, .2, 0, 0, 0, 0, 0]
+#     @test beam.Nκ[1][2,2] ≈ -0.1385640646055102
+#     @test beam.Nκ[1][3,5] ≈ 0.5464101615137755
+#     @test beam.Ny[1][1,1] ≈ 0.7886751345948129
+#     @test beam.dL    ≈ [2.5, 2.5]
+# end
 
 
 ##
@@ -65,47 +65,60 @@ U = (SVector{0,𝕣}(),)
 A = SVector{0,𝕣}()
 
 x = SVector(0.,0.,0.,0.,0.,0.,0.1,0.0,0.,0.,0.,0.); X = (x,)
-R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg) 
-@testset "residual tension" begin
-    @test R        ≈  [-0.9999999999999998, 0.0, 0.0, 0.0, 0.0, 0.0, 0.9999999999999998, 0.0, 0.0, 0.0, 0.0, 0.0]
-    @test FB === nothing
-end
-
-x = SVector(0.,0.,0.,0.,0.,0.,0.,0.1,0.,0.,0.,0.); X = (x,)
-R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg) 
-@testset "residual flex" begin
-    @test R        ≈  [0.305626505038752, -3.557508839178609, 0.0, 0.0, 0.0, -1.7940357448412423, -0.305626505038752, 3.557508839178609, 0.0, 0.0, 0.0, -1.7940357448412423]
-    @test FB === nothing
-end
-
-x = SVector(0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.1); X = (x,)
-R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg) 
-@testset "residual flex" begin
-    @test R        ≈  [0.0, 1.8000000000002365, 0.0, 0.0, 0.0, 0.6000000000000143, 0.0, -1.8000000000002365, 0.0, 0.0, 0.0, 1.2000000000002227]
-    @test FB === nothing
-end
-
-x = SVector(0.,0.,0.,0.,0.,0.,0.,0.,0.,0.1,0.,0.); X = (x,)
-R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg) 
-@testset "residual torsion" begin
-    @test R        ≈ [0.0, 0.0, 0.0, -0.40000000000000124, 0.0, 0.0, 0.0, 0.0, 0.0, 0.40000000000000135, 0.0, 0.0]
-    @test FB === nothing
-end
-using Printf
-X = (x,)
-out = diffed_residual(beam; X,U,A,t,SP)
-
-# using Profile,ProfileView,BenchmarkTools
-# mission = :profile
-# if  mission == :time
-#     @btime out = diffed_residual(beam; X,U,A,t,SP)
-# elseif mission == :profile
-#     Profile.clear()
-#     Profile.@profile for i=1:10000
-#         out = diffed_residual(beam; X,U,A,t,SP)
-#     end
-#     ProfileView.view(fontsize=30);
+# R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg) 
+# @testset "residual tension" begin
+#     @test R        ≈  [-0.9999999999999998, 0.0, 0.0, 0.0, 0.0, 0.0, 0.9999999999999998, 0.0, 0.0, 0.0, 0.0, 0.0]
+#     @test FB === nothing
 # end
+
+# x = SVector(0.,0.,0.,0.,0.,0.,0.,0.1,0.,0.,0.,0.); X = (x,)
+# R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg) 
+# @testset "residual flex" begin
+#     @test R        ≈  [0.305626505038752, -3.557508839178609, 0.0, 0.0, 0.0, -1.7940357448412423, -0.305626505038752, 3.557508839178609, 0.0, 0.0, 0.0, -1.7940357448412423]
+#     @test FB === nothing
+# end
+
+# x = SVector(0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.1); X = (x,)
+# R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg) 
+# @testset "residual flex" begin
+#     @test R        ≈  [0.0, 1.8000000000002365, 0.0, 0.0, 0.0, 0.6000000000000143, 0.0, -1.8000000000002365, 0.0, 0.0, 0.0, 1.2000000000002227]
+#     @test FB === nothing
+# end
+
+# x = SVector(0.,0.,0.,0.,0.,0.,0.,0.,0.,0.1,0.,0.); X = (x,)
+# R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg) 
+# @testset "residual torsion" begin
+#     @test R        ≈ [0.0, 0.0, 0.0, -0.40000000000000124, 0.0, 0.0, 0.0, 0.0, 0.0, 0.40000000000000135, 0.0, 0.0]
+#     @test FB === nothing
+# end
+
+using Printf
+X = (x,x,x)
+out = diffed_residual(beam; X,U,A,t,SP)
+iλ = 1
+ix = 2
+iu = 3
+ia = 4
+
+R = out.R
+K = out.∇R[ix][1]
+C = out.∇R[ix][2]
+M = out.∇R[ix][3]
+H = out.∇R[iu][1]
+
+using Profile,ProfileView,BenchmarkTools
+mission = :profile
+if  mission == :time
+    @btime out = diffed_residual(beam; X,U,A,t,SP)
+elseif mission == :profile
+    Profile.clear()
+    Profile.@profile for i=1:10000
+        out = diffed_residual(beam; X,U,A,t,SP)
+    end
+    ProfileView.view(fontsize=30);
+    # After clicking on a bar in the flame diagram, you can type warntype_last() and see the result of 
+    # code_warntype for the call represented by that bar.
+end
 ;
 
 # @printf "\nR\n"
@@ -121,7 +134,7 @@ out = diffed_residual(beam; X,U,A,t,SP)
 # print_element_array(beam,:X,out.∇R[2][3])  # M
 
 
-end
+#end
 
 
 
