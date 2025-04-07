@@ -62,7 +62,7 @@ See also [`sinc1`](@ref)
 """
 function scac(x)
     dx = x-1  
-    if abs(dx)>1e-2 
+    if abs(dx)>1e-3 
         sinc1(acos(x))
     else  # deliberately a long Taylor series (5th order): this function will be adiffed at least to 2nd order, up to 4th order
         y = 1 + dx*(1/3 + dx*(-2/90 + dx*(0.0052911879917544626 + dx*(-0.0016229317117234072 + dx*(0.0005625))))) 
