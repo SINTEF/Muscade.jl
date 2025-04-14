@@ -59,4 +59,22 @@ big2 = Matrix(bigsparse)
     @test big2[9:12,9:12] == block
 end
 
+
+
+
+    s = sprandn(10,11,0.2)
+    nnzs = 0
+    for (j,nz) ∈ enumerate(s.nzval)
+        if nz>0
+            s.nzval[j] = 1. 
+            global nnzs +=1
+        else
+            s.nzval[j] = 0.
+        end
+    end
+    Muscade.sparser!(s,i->s.nzval[i]>0.5)
+
+    @testset "sparser!" begin
+        @test nnzs == nnz(s)
+    end
 end
