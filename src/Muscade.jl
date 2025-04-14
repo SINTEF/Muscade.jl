@@ -52,7 +52,7 @@ module Muscade
     include("Solve.jl")
     export solve
 
-    include("BlockSparse.jl")
+    include("SparseTools.jl")
     export prepare,cat!,addin!,zero!,getblock
     
     include("FiniteDifferences.jl")
