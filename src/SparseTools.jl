@@ -152,11 +152,13 @@ and `false` otherwise. Alternatively, `keep` can be a `Vector{Bool}`
 Example
 
 `sparser!(S,i->abs(S.nzval[i])>tol)`
-`sparser!(S,pattern)`
+`sparser!(S,keep)`
 
-In the first example, the `keep` function accesses `S.nzval[i]` before the term is mutated by `sparser!`.  If using `sparser!` to
-reduce the storage of a collection of sparses with identical sparsity structure, care must be taken that the function must 
-refer to the original structure of all sparses.  This can be done by creating a vector `pattern`, used in the second example.
+!!! warning
+In the first example, the `keep` *function* accesses `S.nzval[i]`, and the term is then mutated by `sparser!`. 
+Any criteria requiring multipe access to *nzval* must build a `Vector` before calling `sparser!`.
+
+See also: [`jointsparser!`](@ref)
 
 """
 sparser!(S::SparseMatrixCSC{Tv,Ti},keep::Vector{Bool}) where{Tv,Ti} = sparser!(S,i->keep[i])
@@ -178,4 +180,21 @@ function sparser!(S::SparseMatrixCSC{Tv,Ti},keep::Function) where{Tv,Ti}
     nnz                 = length(S.nzval)
     resize!(S.nzval ,nnz-ndrop)
     resize!(S.rowval,nnz-ndrop)
+end
+
+"""
+    jointsparser!(S,tool=1e-9)
+
+Takes a collection (`Tuple`, `SVector`, `Vector`) of sparse arrays with identical sparsity structures, and 
+eliminates the entries with absolute value in all sparse arrays is lower than `tol`.   
+
+See also: [`sparser!`](@ref)
+
+"""    
+function jointsparser!(S,tol=1e-9)
+    tolm  = [tol*maximum(abs,Sᵢ) for Sᵢ∈S]
+    keep  = [any(abs(S[i].nzval[j] ≥tolm[i]) for i∈eachindex(S)) for j∈1:nnz(S[1])]
+    for Sᵢ ∈ S
+        sparser!(Sᵢ,keep)
+    end
 end
