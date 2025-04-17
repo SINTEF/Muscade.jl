@@ -66,6 +66,7 @@ function Base.convert(::Type{∂ℝ{Pa,Na,Ra}},b::∂ℝ{Pb,Nb,Rb}) where{Pa,Pb,
 end
 
 # Pack and unpack
+precedence( ::Type{Union{}})                              = 0
 precedence( ::Type{<:∂ℝ{P,N,R}}) where{P,N,R<:ℝ}          = P
 npartial(   ::Type{<:∂ℝ{P,N,R}}) where{P,N,R<:ℝ}          = N
 precedence( ::Type{<:ℝ})                                  = 0

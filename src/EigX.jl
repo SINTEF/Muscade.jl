@@ -1,7 +1,3 @@
-### Assembler
-
-
-
 """
 	EigX{ORDER}
 
@@ -54,72 +50,34 @@ A vector of length equal to that of the named input argument `time` containing t
 
 See also: [`solve`](@ref), [`initialize!`](@ref), [`findlastassigned`](@ref), [`studysingular`](@ref), [`DirectXUA`](@ref), [`FreqXU`](@ref)  
 """
-struct        EigX{TYPE} <: AbstractSolver end
-function solve(::Type{EigX{ℝ}},pstate,verbose,dbg;
-                    initialstate::State,
-                    nmode::𝕣=10) 
+struct        EigX <: AbstractSolver end
+function solve(TS::Type{EigX},pstate,verbose,dbg; 
+                   initialstate::State, nmod::𝕫=5,fastresidual::𝕓=true,droptol::𝕣=1e-9,kwargs...) 
+    OX,OU,IA = 2,0,0
     model,dis        = initialstate.model,initialstate.dis
-    out,asm,Xdofgr   = prepare(AssemblySweepX{2},model,dis)  
-    ndof             = getndof(Xdofgr)
 
-    state            = State{1,3,1}(copy(initialstate,SP=(γ=0.,))) 
+    verbose && @printf("\n    Preparing assembler\n")
+    out,asm,dofgr    = prepare(AssemblyDirect{OX,OU,IA},model,dis;fastresidual)  
+    nXdof            = getndof.(dofgr)[ind.X]
+    state            = State{1,OX+1,OU+1}(copy(initialstate))   
+    assemble!(out,asm,dis,model,state,(dbg...,solver=:EigX))
+    K                = out.L2[ind.Λ,ind.X][1,1]
+    M                = out.L2[ind.Λ,ind.X][1,3]
+    sparser!(K,droptol)
+    sparser!(M,droptol)
 
+    verbose && @printf("\n    Solving Eigenvalues\n")
+    ω², vecs, ncv = geneig(Val(:SDP),K,M,nmod)
+    ncv≥nmod||muscadeerror(dbg,@sprintf("eigensolver only converged for %i out of %i modes",ncv,nmod))
+    ω = sqrt.(ω²)
 
-    states           = allocate(pstate,Vector{typeof(state)}(undef,saveiter ? maxiter : length(time))) # states is not a return argument of this function.  Hence it is not lost in case of exception
-    local facLλx 
-        assemble!(out,asm,dis,model,state,(dbg...,solver=:SweepX,phase=:preliminary,step=step))
-        for iiter    = 1:maxiter
-            citer   += 1
-            out.firstiter = firstiter = iiter==1
-            out.line = false
-            assemble!(out,asm,dis,model,state,(dbg...,solver=:SweepX,step=step,iiter=iiter))
-            try if step==1 && firstiter  facLλx = lu(out.Lλx) 
-            else                         lu!(facLλx, out.Lλx) 
-            end catch; muscadeerror(@sprintf("matrix factorization failed at step=%i, iiter=%i",step,iiter)) end
-            Δx       = facLλx\out.Lλ
-            Δx²,Lλ²  = sum(Δx.^2),sum(out.Lλ.^2)
-            if     ORDER==0  decr0!(state,Δx ,Xdofgr                      )
-            elseif ORDER==1  decr1!(state,Δx ,Xdofgr,out.c                )
-            elseif ORDER==2  decr2!(state,Δx ,Xdofgr,out.c,firstiter,x′,x″)
-            end
+    @show ω[1:nmod]./(2π)
 
-
-            verbose && saveiter && @printf("        iteration %3d, γ= %7.1e\n",iiter,γ)
-            saveiter && (states[iiter]=State(state.time,state.Λ,deepcopy(state.X),state.U,state.A,state.SP,model,dis))
-            if Δx²≤cΔx² && Lλ²≤cLλ² 
-                verbose && @printf "    step %3d converged in %3d iterations. |Δx|=%7.1e |Lλ|=%7.1e\n" step iiter √(Δx²) √(Lλ²)
-                ~saveiter && (states[step]=State(state.time,state.Λ,deepcopy(state.X),state.U,state.A,state.SP,model,dis))
-                break#out of the iiter loop
-            end
-            iiter==maxiter && muscadeerror(@sprintf("no convergence of step %3d after %3d iterations |Δx|=%g / %g, |Lλ|=%g / %g",step,iiter,√(Δx²),maxΔx,√(Lλ²)^2,maxLλ))
-            state.SP     = (γ=state.SP.γ*γfac,)
-        end
-    end
-    verbose && @printf "\n    nel=%d, ndof=%d, nstep=%d, niter=%d, niter/nstep=%5.2f\n" getnele(model) getndof(Xdofgr) length(time) citer citer/length(time)
-    return
+    verbose && @printf("\n    Solving Eigenvalues - done\n")
+    
+    @show typeof(vecs)
+    #@show info
+    pstate[] = nothing
+    return 
 end
-function decr2!(state,Δx ,Xdofgr,c,firstiter,x′,x″)
-    a₁,a₂,a₃,b₁,b₂,b₃ = c.a₁,c.a₂,c.a₃,c.b₁,c.b₂,c.b₃
-    if firstiter
-        getdof!(state,1,x′,Xdofgr) 
-        getdof!(state,2,x″,Xdofgr) 
-        a        = a₂*x′+a₃*x″
-        b        = b₂*x′+b₃*x″
-        Δx′      = a₁*Δx + a
-        Δx″      = b₁*Δx + b
-    else
-        Δx′      = a₁*Δx 
-        Δx″      = b₁*Δx 
-    end
-    decrement!(state,1,Δx ,Xdofgr)
-    decrement!(state,2,Δx′,Xdofgr)
-    decrement!(state,3,Δx″,Xdofgr)
-end
-function decr1!(state,Δx ,Xdofgr,c)
-    Δx′      = c.a₁*Δx 
-    decrement!(state,1,Δx ,Xdofgr)
-    decrement!(state,2,Δx′,Xdofgr)
-end
-function decr0!(state,Δx ,Xdofgr)
-    decrement!(state,1,Δx ,Xdofgr)
-end
+

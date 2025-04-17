@@ -132,7 +132,7 @@ function solve(::Type{FreqXU{OX,OU}},pstate,verbose::𝕓,dbg;
         L2[ider]          = copy(L2[1])
     end    
     assemblebigmat!(L2,L2bigasm,asm,model,dis,out,(dbg...,solver=:FreqXU))              # assemble all complete model matrices into L2
-    jointsparser!(L2,droptol)
+    sparser!(L2,droptol)
 
     verbose && @printf("    Computing rhs\n")
     ndof                  = size(L2[1],1)

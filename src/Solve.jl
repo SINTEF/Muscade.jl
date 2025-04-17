@@ -29,7 +29,7 @@ function solve(Solver::Type{<:AbstractSolver};dbg=NamedTuple(),verbose::𝕓=tru
         catch exn
             silenterror || report(exn)
             silenterror || printstyled("\nAborting the analysis.",color=:red)
-            silenterror || println(" Function 'solve' should still be returning results obtained so far.")
+            silenterror || println(" Function 'solve' still returns any results obtained before the exception.")
         end
     else
         t = @elapsed solve(Solver,pstate,verbose,(dbg...,solver=Symbol(Solver));kwargs...)  

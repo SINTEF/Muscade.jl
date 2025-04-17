@@ -10,8 +10,8 @@ n1              = addnode!(model1,𝕣[ 0, 0])  # moving node
 n2              = addnode!(model1,𝕣[10, 0])  # anchor 1 
 n3              = addnode!(model1,𝕣[ 0,10])  # anchor 2 
 n4              = addnode!(model1,𝕣[     ])  # A-nod for springs
-e1              = addelement!(model1,Spring{2},[n1,n2,n4], EI=1)
-e2              = addelement!(model1,Spring{2},[n1,n3,n4], EI=1)
+e1              = addelement!(model1,Spring{2},[n1,n2,n4], EI=10)
+e2              = addelement!(model1,Spring{2},[n1,n3,n4], EI=10)
 @once f1 f1(t)     = t
 e3              = addelement!(model1,DofLoad,[n1], field=:tx1      ,value=f1)
 e4              = addelement!(model1,Hold   ,[n2], field=:tx1)
@@ -47,7 +47,7 @@ end
 
 scale=studyscale(stateX1[end],SP=(γ=0,),verbose=false) # scaling suggestions from looking at a state
 @testset "StudyScale" begin
-    @test scale.Λ.tx1 ≈ 0.41
+    @test scale.Λ.tx1 ≈ 0.42
     @test scale.Λ.tx2 ≈ 1.5
     @test scale.X.λtx2 ≈ 0.68
     @test scale.U == (;)
