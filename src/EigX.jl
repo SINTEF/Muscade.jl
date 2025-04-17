@@ -1,65 +1,36 @@
 """
-	EigX{ORDER}
+	res = solve(EigX;state=initialstate,nmod)
 
-A non-linear, time domain solver, that solves the problem time-step by time-step.
-Only the `X`-dofs of the model are solved for, while `U`-dofs and `A`-dofs are unchanged.
+Given an initial (typicaly static) state `initialstate`, computes the lowest `nmod` eigenmodes. 
+The data structure `res` can be passed to `increment` to obtain dynamic states superimposing
+mode shapes.
 
-- `SweepX{0}` is Newton-Raphson, with feasibility line-search, to handle inequality constraints. 
-- `SweepX{1}` is implicit Euler, with feasibility line-search. 
-- `SweepX{2}` is Newmark-β, with Newton-Raphson iterations and feasibility line search
-
-IMPORTANT NOTE: Muscade does not allow elements to have state variables, for example, plastic strain,
-or shear-free position for dry friction.  Where the element implements such physics, this 
-is implemented by introducing the state as a degree of freedom of the element, and solving
-for its evolution, *even in a static problem*, requires the use of `ORDER≥1`
-
-An analysis is carried out by a call with the following syntax:
-
-```
-initialstate    = initialize!(model)
-setdof!(initialstate,1.;class=:U,field=:λcsr)
-states           = solve(SweepX{2};initialstate=initialstate,time=0:10)
-```
-# Named arguments to `solve`:
-- `dbg=(;)`           a named tuple to trace the call tree (for debugging)
-- `verbose=true`      set to false to suppress printed output (for testing)
-- `silenterror=false` set to true to suppress print out of error (for testing) 
-- `initialstate`      a `State`, obtain from `ìnitialize!` or `SweepX`.
-- `time`              maximum number of Newton-Raphson iterations 
-- `β=1/4`,`γ=1/2`     parameters to the Newmark-β algorithm. Dummy if `ORDER<2`
-- `maxiter=50`        maximum number of equilibrium iterations at each step.
-- `maxΔx=1e-5`        convergence criteria: norm of `X`. D
-- `maxLλ=∞`           convergence criteria: norm of the residual. 
-- `saveiter=false`    set to true so that output `states` contains the state
-                      at the iteration of the last step analysed.  Useful to study
-                      a step that fails to converge. 
-- `maxLineIter=50`    Maximum number of iteration in the feasibility line search.
-                      set to 0 to skip the line search (not recommended for models
-                      with inequality constraints).
-- `sfac=0.5`          Parameter in the line search for a feasible point. If a 
-                      tentative result is not feasible, backtrack by a factor `sfac`.
-                      If still not feasible, backtrack what is left by a factor `sfac`,
-                      and so forth, up to `maxLineIter` times.
-- `γfac=0.5`          Parameter for feasibility. For an inequality constraint `g(X)`
-                      with reaction force `λ`, require `g(X)*λ==γ`, and multiply
-                      `γ *= γfac` at each iteration.                            
+# Input
+- `initialstate` - a `State`
+- `nmod=5` - the number of eigenmodes to identify
+- `fastresidual=true` - limit automatic differentiation of `residual` to first order
+- `droptol=1e-9` - in the stiffness and mass matrix, the magnitude of a term relative to the largest term in the matrix
+        under which the term is set to zero.
+- Further named arguments: see the optional keyword arguments to `geneig`.         
 
 # Output
+A `NamedTuple` with fields
+- `ω` a `Vector` of length `nmod` or longer containing circular frequencies associated to each mode
+- `vecs` is an internal
+- `dofgr` is an internal
 
-A vector of length equal to that of the named input argument `time` containing the states at the time steps.                       
-
-See also: [`solve`](@ref), [`initialize!`](@ref), [`findlastassigned`](@ref), [`studysingular`](@ref), [`DirectXUA`](@ref), [`FreqXU`](@ref)  
+See also: [`solve`](@ref), [`initialize!`](@ref), [`increment`](@ref), [`geneig`](@ref)
 """
 struct        EigX <: AbstractSolver end
 function solve(TS::Type{EigX},pstate,verbose,dbg; 
-                   initialstate::State, nmod::𝕫=5,fastresidual::𝕓=true,droptol::𝕣=1e-9,kwargs...) 
-    OX,OU,IA = 2,0,0
-    model,dis        = initialstate.model,initialstate.dis
+                   state::State, nmod::𝕫=5,fastresidual::𝕓=true,droptol::𝕣=1e-9,kwargs...) 
+    OX,OU,IA         = 2,0,0
+    model,dis        = state.model,state.dis
 
     verbose && @printf("\n    Preparing assembler\n")
     out,asm,dofgr    = prepare(AssemblyDirect{OX,OU,IA},model,dis;fastresidual)  
     nXdof            = getndof.(dofgr)[ind.X]
-    state            = State{1,OX+1,OU+1}(copy(initialstate))   
+    state            = State{1,OX+1,OU+1}(copy(state))   
     assemble!(out,asm,dis,model,state,(dbg...,solver=:EigX))
     K                = out.L2[ind.Λ,ind.X][1,1]
     M                = out.L2[ind.Λ,ind.X][1,3]
@@ -67,17 +38,41 @@ function solve(TS::Type{EigX},pstate,verbose,dbg;
     sparser!(M,droptol)
 
     verbose && @printf("\n    Solving Eigenvalues\n")
-    ω², vecs, ncv = geneig(Val(:SDP),K,M,nmod)
+    ω², vecs, ncv = geneig{:SDP}(K,M,nmod;kwargs...)
     ncv≥nmod||muscadeerror(dbg,@sprintf("eigensolver only converged for %i out of %i modes",ncv,nmod))
-    ω = sqrt.(ω²)
-
-    @show ω[1:nmod]./(2π)
-
-    verbose && @printf("\n    Solving Eigenvalues - done\n")
-    
-    @show typeof(vecs)
-    #@show info
-    pstate[] = nothing
+    pstate[] = (dofgr=dofgr[ind.X],ω=sqrt.(ω²),v=vecs)
     return 
 end
+"""
+    state = increment(initialstate,res,imod,A;order=2)
 
+Starting from `initalstate` for which an `EigX` analysis has been carried out, and using the output
+`res` of that analysis, construct new `State`s representing the instantaneous state of the 
+vibrating structure
+    
+# Input
+- `initialstate` the same initial `State` provided to `EigX` to compute `res`
+- `res` obtained from `EigX`
+- `imod`, an `AbstractVector` of integer mode numbers
+- `A`, an `AbstractVector` of same length as `imod`, containing real or complex 
+  amplitudes associated to the modes
+- `order=2` the number of time derivatives to be computed
+
+# Output
+- `state` a snapshot of the vibrating system
+
+See also: [`EigX`](@ref)
+
+"""
+function increment(initialstate,res,imod::AbstractVector{𝕫},A::AbstractVector;order=2)
+    length(imod)==length(A)|| muscadeerror("imod and A must be of same length.")
+    maximum(imod)≤length(res.ω)|| muscadeerror(@sprintf("res only has %n modes.",length(res.ω)))
+    state            = State{1,order+1,1}(copy(initialstate)) 
+    for i∈eachindex(imod)  
+        ω,v = res.ω[imod[i]],res.v[imod[i]]
+        for n     = 0:order
+            increment!(state,n+1,ℜ.((𝑖*ω)^n*A[i]*v),res.dofgr)
+        end
+    end
+    return state
+end

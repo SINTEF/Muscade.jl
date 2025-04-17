@@ -4,19 +4,20 @@ using KrylovKit: KrylovKit
 """
     λ,v,ncv = geneig{ALGO}(A,B=I,neig=5)
 
-    Solves `(A-λ*B)*v=0`, finding the `neig` lowest eigenvalues `λ` (in absolute value) and the corresponding eigenvectors `v` (a `Vector{Vector}`)
+Solves `(A-λ*B)*v=0`, finding the `neig` lowest eigenvalues `λ` (in absolute value) and the corresponding eigenvectors `v` (a `Vector{Vector}`)
 
-    `ALGO` can be
-    - :SDP       if `A` is symmetric definite positive and `B` is symmetric.  Will return real `λ` and `v`.
-    - :Hermitian if `A` is symmetric indefinite and `B` is symmetric. Will return real `λ` and `v`.
-    - :Complex   otherwise
-    Optional keyword arguments:
-    - `maxiter     = 300`
-    - `verbosity   = 0 ∈ {0,1,2,3}`
-    - `krylovdim   = 2neig+6`
+# Input
+`ALGO` can be
+- :SDP       if `A` is symmetric definite positive and `B` is symmetric.  Will return real `λ` and `v`.
+- :Hermitian if `A` is symmetric indefinite and `B` is symmetric. Will return real `λ` and `v`.
+- :Complex   otherwise
+Optional keyword arguments:
+- `maxiter     = 300`
+- `verbosity   = 0 ∈ {0,1,2,3}`
+- `krylovdim   = 2neig+6`
 
-    Use KrylovKit.jl. Freely based on VibrationGEPHelpers.jl and input from PetrKryslUCSD and stevengj.  
-    See GIThub-blame for bug-credits.
+Uses KrylovKit.jl. Freely based on VibrationGEPHelpers.jl and input from PetrKryslUCSD and stevengj.  
+See GIThub-blame for bug-credits.
 
 """
 struct geneig{ALGO} end

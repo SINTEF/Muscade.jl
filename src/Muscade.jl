@@ -61,7 +61,7 @@ module Muscade
     export SweepX
 
     include("EigX.jl")
-    export EigX
+    export EigX,increment
 
     include("DirectXUA.jl")
     export DirectXUA

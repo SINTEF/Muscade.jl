@@ -103,6 +103,7 @@ const 𝑖      = im        # \iti
 const ℜ     =  real     # \Re 
 const ℑ     =  imag     # \Im
 const expπ𝑖 = cispi  
+const exp𝑖  = cis
 """
     𝕫log2(i::𝕫)
 
