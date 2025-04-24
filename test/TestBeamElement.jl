@@ -1,4 +1,4 @@
-#module TestBeamElements
+module TestBeamElements
 
 using Test, Muscade, StaticArrays, LinearAlgebra
 include("../examples/BeamElements.jl")
@@ -37,19 +37,19 @@ mat             = BeamCrossSection(EA=10.,EI=3.,GJ=4.)
 
 beam            = EulerBeam3D(elnod;mat,orient2=SVector(0.,1.,0.))
 
-# @testset "constructor" begin
-#     @test beam.cₘ    ≈ [2.0, 1.5, 0.0]
-#     @test beam.rₘ    ≈ [0.8 -0.6 0.0; 0.6 0.8 -0.0; 0.0 0.0 1.0]
-#     @test beam.ζgp   ≈ [-0.2886751345948129, 0.2886751345948129]
-#     @test beam.ζnod  ≈ [-0.5, 0.5]
-#     @test beam.tgₘ   ≈ [4.0, 3.0, 0.0]
-#     @test beam.tgₑ   ≈ [5.0, 0.0, 0.0]
-#     @test beam.Nε[1] ≈ [-.2, 0, 0, 0, 0, 0, .2, 0, 0, 0, 0, 0]
-#     @test beam.Nκ[1][2,2] ≈ -0.1385640646055102
-#     @test beam.Nκ[1][3,5] ≈ 0.5464101615137755
-#     @test beam.Ny[1][1,1] ≈ 0.7886751345948129
-#     @test beam.dL    ≈ [2.5, 2.5]
-# end
+@testset "constructor" begin
+    @test beam.cₘ    ≈ [2.0, 1.5, 0.0]
+    @test beam.rₘ    ≈ [0.8 -0.6 0.0; 0.6 0.8 -0.0; 0.0 0.0 1.0]
+    @test beam.ζgp   ≈ [-0.2886751345948129, 0.2886751345948129]
+    @test beam.ζnod  ≈ [-0.5, 0.5]
+    @test beam.tgₘ   ≈ [4.0, 3.0, 0.0]
+    @test beam.tgₑ   ≈ [5.0, 0.0, 0.0]
+    @test beam.Nε[1] ≈ [-.2, 0, 0, 0, 0, 0, .2, 0, 0, 0, 0, 0]
+    @test beam.Nκ[1][2,2] ≈ -0.1385640646055102
+    @test beam.Nκ[1][3,5] ≈ 0.5464101615137755
+    @test beam.Ny[1][1,1] ≈ 0.7886751345948129
+    @test beam.dL    ≈ [2.5, 2.5]
+end
 
 
 ##
@@ -65,7 +65,7 @@ U = (SVector{0,𝕣}(),)
 A = SVector{0,𝕣}()
 
 x = SVector(0.,0.,0.,0.,0.,0.,0.1,0.0,0.,0.,0.,0.); X = (x,)
-# R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg) 
+R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg) 
 # @testset "residual tension" begin
 #     @test R        ≈  [-0.9999999999999998, 0.0, 0.0, 0.0, 0.0, 0.0, 0.9999999999999998, 0.0, 0.0, 0.0, 0.0, 0.0]
 #     @test FB === nothing
@@ -92,8 +92,25 @@ x = SVector(0.,0.,0.,0.,0.,0.,0.1,0.0,0.,0.,0.,0.); X = (x,)
 #     @test FB === nothing
 # end
 
+
+EA=1.
+EI=1.
+GJ=1.
+model           = Model(:TestModel)
+node1           = addnode!(model,𝕣[0,0,0])
+node2           = addnode!(model,𝕣[1,0,0])
+elnod           = [model.nod[n.inod] for n∈[node1,node2]]
+mat             = BeamCrossSection(EA=1.,EI=1.,GJ=1.)
+beam            = EulerBeam3D(elnod;mat,orient2=SVector(0.,1.,0.))
+t,SP,dbg  = 0.,(;),(status=:testing,)
+U = (SVector{0,𝕣}(),)
+A = SVector{0,𝕣}()
+
 using Printf
-X = (x,x,x)
+displacement =  SVector(0.,0.,0.,0.,0.,0.,  0.,0.,0.,0.,0.,0.); 
+velocity =      SVector(0.,0.,0.,0.,0.,0.,  0.,0.,0.,0.,0.,0.); 
+acceleration =  SVector(1.,0.,0.,0.,0.,0.,  1.,0.,0.,0.,0.,0.); 
+X = (displacement,velocity,acceleration)
 out = diffed_residual(beam; X,U,A,t,SP)
 iλ,ix,iu,ia = 1,2,3,4
 
@@ -102,6 +119,16 @@ K = out.∇R[ix][1]
 C = out.∇R[ix][2]
 M = out.∇R[ix][3]
 H = out.∇R[iu][1]
+
+@printf "\nR\n"
+print_element_array(beam,:X,out.R)    #  R
+@printf "\nK=∂R/∂X₀\n"
+print_element_array(beam,:X,out.∇R[2][1])  # K
+@printf "\nC=∂R/∂X₁\n"
+print_element_array(beam,:X,out.∇R[2][2])  # K
+@printf "\nM=∂R/∂X₂\n"
+print_element_array(beam,:X,out.∇R[2][3])  # M
+
 
 # using Profile,ProfileView,BenchmarkTools
 # mission = :profile
@@ -116,22 +143,5 @@ H = out.∇R[iu][1]
 #     # After clicking on a bar in the flame diagram, you can type warntype_last() and see the result of 
 #     # code_warntype for the call represented by that bar.
 # end
-;
 
-# @printf "\nR\n"
-# print_element_array(beam,:X,out.R)    #  R
-# @printf "\nK=∂R/∂X₀\n"
-# print_element_array(beam,:X,out.∇R[2][1])  # K
-
-# X = (x,x,x)
-# out = diffed_residual(beam; X,U,A,t,SP)
-# @printf "\nC=∂R/∂X₁\n"
-# print_element_array(beam,:X,out.∇R[2][2])  # C
-# @printf "\nM=∂R/∂X₂\n"
-# print_element_array(beam,:X,out.∇R[2][3])  # M
-
-
-#end
-
-
-
+end

@@ -23,8 +23,15 @@ BeamCrossSection(;EA=EA,EI=EI,GJ=GJ) = BeamCrossSection(EA,EI,GJ);
 # Resultant function that computes the internal loads from the strains and curvatures, and external loads on the element. 
 @espy function resultants(o::BeamCrossSection,x,ε,κ,rot) 
     ☼f₁ = o.EA*∂0(ε)
-    ☼m  = SVector(o.GJ*∂0(κ)[1],o.EI*∂0(κ)[2],o.EI*∂0(κ)[3])# replace by κ₀ 
-    ☼fₑ = SVector(0.,0.,0.) # external forces at Gauss point (no external moment/torque/... so far). fₑ is in local coordinates # add inertia and drag
+    ☼m  = SVector(o.GJ*∂0(κ)[1],o.EI*∂0(κ)[2],o.EI*∂0(κ)[3]) 
+    μ   =  SVector(1.0,1.0,1.0)
+    xᵧ₂ = ∂2(x)
+    # @show VALUE(xᵧ₂)
+    xₗ₂ = xᵧ₂ ∘₁ rot
+    # @show VALUE(xₗ₂)
+    fi = -μ .* xₗ₂ 
+    # @show VALUE(fi)
+    ☼fₑ = -fi #SVector(0.,0.,0.) # external forces at Gauss point (no external moment/torque/... so far). fₑ is in local coordinates # add inertia and drag
     return f₁,m,fₑ
 end;
 
@@ -122,13 +129,14 @@ const v3   = SVector{3};
     ζgp,dL          = o.ζgp,o.dL        # Gauss points coordinates, node coordinates and length associated to each Gauss point
 
     X₀              = ∂0(X)
-    OD              = min(2,precedence(X₀)+1) 
-    TY₀,_,_         = Taylor{OD}(X->X₀2Y₀(o,X),X₀)
-    Y₀∂X₀           = ∂(TY₀)(X₀)
+    # OD              = min(2,precedence(X₀)+1) 
+    # TY₀,_,_         = Taylor{OD}(X->X₀2Y₀(o,X),X₀)
+    # Y₀∂X₀           = ∂(TY₀)(X₀)
 
     P,ND            = constants(X,U,A,t),length(X) 
     X_              = motion{P}(X)
     Y₀_,rₛₘ_,cₛ_     = X₀2Y₀(o::EulerBeam3D,X_)
+    _,  rₛₘ ,_      = X₀2Y₀(o::EulerBeam3D,X₀)
     unpack          = motion⁻¹{P,ND  }
     gp              = ntuple(ngp) do igp
         ☼ε          = motion⁻¹{P,ND  }(                   Nε[igp]∘₁Y₀_       ) # TODO type unstable because P,ND are no longer compile-time consts in closure?
@@ -137,9 +145,18 @@ const v3   = SVector{3};
         ☼rₛₘ         = motion⁻¹{P,ND,0}(rₛₘ_                                   )
         f₁,m,fₑ     = ☼resultants(o.mat,x,ε,κ,rₛₘ)          # call the "resultant" function to compute loads (local coordinates) from strains/curvatures/etc. using material properties. Note that output is dual of input. 
         Rₗ           = (f₁ ∘₀ Nε[igp] + m∘₁Nκ[igp] + fₑ∘₁Ny[igp]) * dL[igp]     # Contribution to the local nodal load of this Gauss point  [ndof] = scalar*[ndof] + [ndim]⋅[ndim,ndof] + [ndim]⋅[ndim,ndof]
+        # Rₗ           = (fₑ∘₁Ny[igp]) * dL[igp]     # Contribution to the local nodal load of this Gauss point  [ndof] = scalar*[ndof] + [ndim]⋅[ndim,ndof] + [ndim]⋅[ndim,ndof]
+        # @show VALUE(fₑ∘₁Ny[igp])
         @named(Rₗ)
     end
-    R               = sum(gpᵢ.Rₗ for gpᵢ∈gp) ∘₁ Y₀∂X₀ 
+    # R               = sum(gpᵢ.Rₗ for gpᵢ∈gp) ∘₁ Y₀∂X₀ 
+    Rₗ               = sum(gpᵢ.Rₗ for gpᵢ∈gp) 
+    r₁,r₂,r₃,r₄  = SVector{3}(Rₗ[i] for i∈1:3), SVector{3}(Rₗ[i] for i∈4:6),SVector{3}(Rₗ[i] for i∈7:9),SVector{3}(Rₗ[i] for i∈10:12)
+    R₁,R₂,R₃,R₄  = r₁∘₁rₛₘ,r₂∘₁rₛₘ,r₃∘₁rₛₘ,r₄∘₁rₛₘ
+    R            = SVector(R₁...,R₂...,R₃...,R₄...)           
+    # @show VALUE(gp[1].Rₗ + gp[2].Rₗ)
+    # @show VALUE(Y₀∂X₀)
+    @show VALUE(R)
     return R,noFB  
 end
 function X₀2Y₀(o::EulerBeam3D,X₀)  
