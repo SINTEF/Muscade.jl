@@ -2,7 +2,7 @@ using KrylovKit: KrylovKit
 
 
 """
-    λ,v,ncv = geneig{ALGO}(A,B=I,neig=5)
+    λ,v,ncv = geneig{ALGO}(A,B,neig=5)
 
 Solves `(A-λ*B)*v=0`, finding the `neig` lowest eigenvalues `λ` (in absolute value) and the corresponding eigenvectors `v` (a `Vector{Vector}`)
 
@@ -32,7 +32,7 @@ function geneig{:SDP}(A,B=I,neig=5;maxiter=300,verbosity=0,krylovdim=2neig+6,see
     ix   = sortperm(abs.(vals))
     return vals[ix], vecs[ix], info.converged
 end
-function geneig{ALGO}(A,B=I,neig=5;maxiter=300,verbosity=0,krylovdim=2neig+6,seed=rand(size(A,1))) where{ALGO}
+function geneig{ALGO}(A,B,neig=5;maxiter=300,verbosity=0,krylovdim=2neig+6,seed=rand(size(A,1))) where{ALGO}
     luK = lu(A)
     L,U,s,p,q = luK.L,luK.U,luK.Rs,luK.p,luK.q
     vals, vecs, info = KrylovKit.eigsolve(x->L\((s.*(B*((U\x)[q])))[p]), seed,neig,:LR; maxiter,verbosity,ishermitian=ALGO==:Hermitian,krylovdim)
