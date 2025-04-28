@@ -1,4 +1,4 @@
-module TestTaylor
+#module TestTaylor
 using Muscade
 using Test,StaticArrays
 
@@ -127,4 +127,19 @@ Y6=motion{P}(X6)
     @test motion⁻¹{1,2}(Y2) === (SVector{3,𝕣}(1,2,3),SVector{3,𝕣}(4,5,6))
     @test motion⁻¹{1,3}(Y3) === (SVector{3,𝕣}(1,2,3),SVector{3,𝕣}(4,5,6),SVector{3,𝕣}(7,8,9))
 end
-end # module
+
+a = SVector(3.,4.)
+@testset "revariate" begin
+    @test Muscade.revariate{0}(a)    === a
+    @test Muscade.revariate{1}(a)[1] ===                                                                   ∂ℝ{1, 2, Float64}(3.0, [1.0, 0.0])
+    @test Muscade.revariate{2}(a)[1] ===                                       ∂ℝ{2, 2, ∂ℝ{1, 2, Float64}}(∂ℝ{1, 2, Float64}(3.0, [1.0, 0.0]), ∂ℝ{1, 2, Float64}[∂ℝ{1, 2, Float64}(1.0, [0.0, 0.0]), ∂ℝ{1, 2, Float64}(0.0, [0.0, 0.0])])
+    @test Muscade.revariate{3}(a)[1] === ∂ℝ{3, 2, ∂ℝ{2, 2, ∂ℝ{1, 2, Float64}}}(∂ℝ{2, 2, ∂ℝ{1, 2, Float64}}(∂ℝ{1, 2, Float64}(3.0, [1.0, 0.0]), ∂ℝ{1, 2, Float64}[∂ℝ{1, 2, Float64}(1.0, [0.0, 0.0]), ∂ℝ{1, 2, Float64}(0.0, [0.0, 0.0])]), ∂ℝ{2, 2, ∂ℝ{1, 2, Float64}}[∂ℝ{2, 2, ∂ℝ{1, 2, Float64}}(∂ℝ{1, 2, Float64}(1.0, [0.0, 0.0]), ∂ℝ{1, 2, Float64}[∂ℝ{1, 2, Float64}(0.0, [0.0, 0.0]), ∂ℝ{1, 2, Float64}(0.0, [0.0, 0.0])]), ∂ℝ{2, 2, ∂ℝ{1, 2, Float64}}(∂ℝ{1, 2, Float64}(0.0, [0.0, 0.0]), ∂ℝ{1, 2, Float64}[∂ℝ{1, 2, Float64}(0.0, [0.0, 0.0]), ∂ℝ{1, 2, Float64}(0.0, [0.0, 0.0])])])
+end
+
+X7 = variate{1,3}(X₀)
+
+@testset "noclosure" begin
+    @test noclosure(w,X₀) === w(X₀)
+    @test noclosure(w,X7) === w(X7)
+end
+#end # module

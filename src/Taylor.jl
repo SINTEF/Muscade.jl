@@ -3,7 +3,7 @@ struct Taylor{O,Nx,Ty}
     y::Ty
 end
 Taylor{O}(x::SVector{Nx,𝕣},y::Ty) where{O,Nx,Ty<:AbstractArray} =       Taylor{O,Nx,Ty        }(x,y )
-Taylor{O}(x::SVector{Nx,𝕣},y::Ty) where{O,Nx,Ty<:Tuple        } = Tuple(Taylor{O,Nx,typeof(yᵢ)}(x,yᵢ) for yᵢ∈y)
+Taylor{O}(x::SVector{Nx,𝕣},y::Ty) where{O,Nx,Ty<:Tuple        } = Tuple(Taylor{O,Nx,typeof(yᵢ)}(x,yᵢ) for yᵢ∈y) # not typestable
 Taylor{O}(x::SVector{Nx,𝕣},y::Tuple{A    }) where{O,Nx,A    }   = tuple(Taylor{O}(x,y[1]))
 Taylor{O}(x::SVector{Nx,𝕣},y::Tuple{A,B  }) where{O,Nx,A,B  }   = tuple(Taylor{O}(x,y[1]),Taylor{O}(x,y[2]))
 Taylor{O}(x::SVector{Nx,𝕣},y::Tuple{A,B,C}) where{O,Nx,A,B,C}   = tuple(Taylor{O}(x,y[1]),Taylor{O}(x,y[2]),Taylor{O}(x,y[3]))
@@ -50,36 +50,11 @@ function Taylor{2}(f::Function,X::SVector{Nx,R}) where{Nx,R<:Real}
     return Taylor{2}(x,y)
 end    
 
-(te::Taylor{O,Nx,Ty})(X::SVector{Nx,R}) where{O ,R<:Real,Nx,S,Ty<:SArray{S,𝕣}} = te.y  # y[] was untouched by x or to 0th order 
-(te::Taylor{O,Nx,Ty})(X::SVector{Nx,R}) where{O ,R<:Real,Nx,  Ty<:         𝕣 } = te.y  # y   was untouched by x or to 0th order 
-(te::Taylor{0,Nx,Ty})(X::SVector{Nx,R}) where{Nx,R<:Real     ,Ty             } = te.y  
-
-function (te::Taylor{1,Nx,Ty})(X::SVector{Nx,R}) where{R<:Real,dR<:∂ℝ,S,Nx,Ty<:SArray{S,dR}} # y[] to 1st order
-    ΔX = X-te.x
-    SArray{S}(yᵢ.x + yᵢ.dx∘₁ΔX  for yᵢ∈ te.y)
-end
-function (te::Taylor{1,Nx,Ty})(X::SVector{Nx,R}) where{R<:Real,Nx,Ty<:∂ℝ}                  # y  to 1st order
-    ΔX = X-te.x
-    te.y.x + te.y.dx∘₁ΔX
-end
-
-function (te::Taylor{2,Nx,Ty})(X::SVector{Nx,R}) where{R<:Real,dR<:∂ℝ,S,Nx,Ty<:SArray{S,dR}}          # y[] to 2nd order
-    ΔX = X-te.x   
-    SArray{S}(yᵢ.x.x + sum(    (yᵢ.dx[j].x + .5*(yᵢ.dx[j].dx ∘₁ ΔX)) *ΔX[j] for j∈eachindex(ΔX))  for yᵢ∈ te.y)  
-end
-function (te::Taylor{2,Nx,Ty})(X::SVector{Nx,R}) where{R<:Real,Nx,Ty<:∂ℝ}                 # y  to 2nd order 
-    ΔX = X-te.x   
-    te.y.x.x + sum(    (te.y.dx[j].x + .5*(te.y.dx[j].dx ∘₁ ΔX)) *ΔX[j] for j∈eachindex(ΔX))   
-end
-
+(te::Taylor{O,Nx,Ty})(X) where{  O,Nx,Ty<:ℝ        } =           compose(te.y,X-te.x)              
+(te::Taylor{O,Nx,Ty})(X) where{S,O,Nx,Ty<:SArray{S}} = SArray{S}(compose(yᵢ  ,X-te.x)  for yᵢ∈ te.y)
+        
 ∂(t::Taylor{O,Nx}) where{O,Nx} = Taylor{O-1}(t.x,∂{O,Nx}(t.y))
 ∂(t::Taylor{0   })             = muscadeerror("Tried to differentiate a 0th order Taylor expansion")
-
-# TODO: return a tuple of expansions, not an expansion of a tuple  DONE
-# TODO: Taylor stores Adiff objects. 
-# TODO Dots: no need to operate on Tuples DONE
-
-
 
 ##############
 
@@ -145,4 +120,43 @@ motion⁻¹{P,2    }(a               ) where{P   } = (motion⁻¹{P,2,0}(a),moti
 motion⁻¹{P,3    }(a               ) where{P   } = (motion⁻¹{P,3,0}(a),motion⁻¹{P,3,1}(a),motion⁻¹{P,3,2}(a))
 
 
+#############
+
+"""
+    compose(y,x)
+
+Example of usage:
+    Tx = revariate(x)
+    Ty = f(Tx)
+    y  = compose(Ty,x-VALUE(x))    
+"""
+compose(y::Tuple,Δx)                          = tuple(compose(first(y),Δx),compose(Base.tail(y),Δx)...) 
+compose(y::Tuple{},Δx)                        = tuple() 
+compose(y::SArray{S},Δx) where{S}             = SArray{S}(compose(yᵢ,Δx) for yᵢ∈y) 
+compose(y::∂ℝ,Δx)                             = compose(y.x,Δx) + cps_right(y,Δx)
+compose(y::𝕣 ,Δx)                             =         y
+cps_right(y::∂ℝ{P},Δx::SVector{N}) where{P,N} = sum(cps_right(y.dx[i],Δx)*Δx[i] for i∈1:N)*(1/P)
+cps_right(y::𝕣    ,Δx            )            =               y
+
+"""
+    be careful with closures
+
+    noclosure(X) do x
+        y= x^2
+        cos(y)
+    end
+
+"""
+noclosure(f,x) = compose(f(revariate(x)),x-VALUE(x))    
+
+struct revariate{ O,N}   end
+struct revariate_{P,N}   end
+revariate(a) = revariate{0}(a)
+function revariate{O}(a::SV{N,R}) where{O,N,R} 
+    P  = precedence(R)+O
+    va = VALUE(a)
+    P==0 ? va : SV{N,∂ℝ{P,N}}(∂ℝ{P,N  }(revariate_{P-1,N}(va[i],i),i) for i=1:N)
+end
+revariate_{P,N}(a,i) where{P,N} = ∂ℝ{P,N  }(revariate_{P-1,N}(a,i),i)
+revariate_{0,N}(a,i) where{  N} =                             a
 
