@@ -136,15 +136,15 @@ end
     TX₀         = revariate{1}(X₀)
     Tgp,Tε,Tvₛₘ  = kinematics(o,TX₀)
 
-    P,ND        = precedence(X₀),length(X)
+    P,ND        = constants(X,U,A,t),length(X)
     X_          = motion{P}(X)
 
-    ☼ε ,ε∂X₀    = Muscade.composewithJacobian{P,ND,ndof}(Tε,X_)
-    ☼vₛₘ,vₛₘ∂X₀   = Muscade.composewithJacobian{P,ND,ndof}(Tvₛₘ,X_)
+    ☼ε ,ε∂X₀    = Muscade.composewithJacobian{P-1,ND,ndof}(Tε,X_)
+    ☼vₛₘ,vₛₘ∂X₀   = Muscade.composewithJacobian{P-1,ND,ndof}(Tvₛₘ,X_)
     gp          = ntuple(ngp) do igp
         Tx,Tκ   = Tgp[igp].x, Tgp[igp].κ
-        ☼x ,x∂X₀= Muscade.composewithJacobian{P,ND,ndof}(Tx,X_)
-        ☼κ,κ∂X₀ = Muscade.composewithJacobian{P,ND,ndof}(Tκ,X_)
+        ☼x ,x∂X₀= Muscade.composewithJacobian{P-1,ND,ndof}(Tx,X_)
+        ☼κ,κ∂X₀ = Muscade.composewithJacobian{P-1,ND,ndof}(Tκ,X_)
         fᵢ,mᵢ,fₑ,mₑ = ☼resultants(o.mat,ε,κ,x,vₛₘ)          # call the "resultant" function to compute loads (local coordinates) from strains/curvatures/etc. using material properties. Note that output is dual of input. 
         R       = (fᵢ ∘₀ ε∂X₀ + mᵢ ∘₁ κ∂X₀ + fₑ ∘₁ x∂X₀ + mₑ ∘₁ vₛₘ∂X₀) * o.dL[igp]     # Contribution to the local nodal load of this Gauss point  [ndof] = scalar*[ndof] + [ndim]⋅[ndim,ndof] + [ndim]⋅[ndim,ndof]
         @named(R)
@@ -157,12 +157,12 @@ function kinematics(o::EulerBeam3D,X₀)
 
     # transformation to corotated system
     uᵧ₁,vᵧ₁,uᵧ₂,vᵧ₂  = SVector{3}(X₀[i] for i∈1:3), SVector{3}(X₀[i] for i∈4:6),SVector{3}(X₀[i] for i∈7:9),SVector{3}(X₀[i] for i∈10:12)
-    vₛ               = (vᵧ₁+vᵧ₂)/2
-    rₛₘ              = Rodrigues(vₛ) ∘₁ o.rₘ
-    vₛₘ              = Rodrigues⁻¹(rₛₘ)
+    vₛ               = (vᵧ₁+vᵧ₂)/2                         #  TODO accelerate these four lines together
+    rₛₘ              = Rodrigues(vₛ) ∘₁ o.rₘ                #    # TODO accelerate these two lines together
+    vₛₘ              = Rodrigues⁻¹(rₛₘ)                     #    #
+    vₗ₂              = Rodrigues⁻¹(rₛₘ'∘₁Rodrigues(vᵧ₂)∘₁rₘ) #      #Local rotation of node 2
     cₛ               = (uᵧ₁+uᵧ₂)/2
     uₗ₂              = rₛₘ'∘₁(uᵧ₂+tgₘ*ζnod[2]-cₛ)-tgₑ*ζnod[2]    #Local displacement of node 2
-    vₗ₂              = Rodrigues⁻¹(rₛₘ'∘₁Rodrigues(vᵧ₂)∘₁rₘ)     #Local rotation of node 2
     
     # interpolation
     ε               = √((uₗ₂[1]+L/2)^2+uₗ₂[2]^2+uₗ₂[3]^2)*2/L - 1.       
