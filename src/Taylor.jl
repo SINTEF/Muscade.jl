@@ -97,7 +97,7 @@ motion_{P,P  }(a::NTuple{D,      R }) where{D ,P  ,R<:Real  } = a[1]
     Y  = motion⁻¹{P,ND  }(Y) 
 
 Extract the value and time derivatives from a variable that is a function of the output of `motion`.
-In the above `Y` is a tuple of same length as `X`.  One can use `∂0`,`∂1` and `∂2` to unpack `Y`.    
+In the above `Y` is a tuple of length `ND`.  One can use `∂0`,`∂1` and `∂2` to unpack `Y`.    
 
 See [`motion`](@ref)
 """
@@ -141,13 +141,13 @@ cps_right(y::𝕣    ,Δx            )            =               y
 """
     be careful with closures
 
-    noclosure(X) do x
+    fast(X) do x
         y= x^2
         cos(y)
     end
 
 """
-noclosure(f,x) = compose(f(revariate(x)),x-VALUE(x))    
+fast(f,x) = compose(f(revariate(x)),x-VALUE(x))    
 
 struct revariate{ O,N}   end
 struct revariate_{P,N}   end
@@ -160,3 +160,9 @@ end
 revariate_{P,N}(a,i) where{P,N} = ∂ℝ{P,N  }(revariate_{P-1,N}(a,i),i)
 revariate_{0,N}(a,i) where{  N} =                             a
 
+function composewithJacobian{P,ND}(Ty,X_,)
+    X₀         = motion⁻¹{P,ND,0}(X_)
+    y          = motion⁻¹{P,ND}(compose(value{P+1}( Ty  ),X_))
+    y∂X₀       =                compose(∂{P+1,ndof}(Ty  ),X₀ )
+    return y,y∂X₀
+end

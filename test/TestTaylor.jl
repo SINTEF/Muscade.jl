@@ -1,4 +1,4 @@
-#module TestTaylor
+module TestTaylor
 using Muscade
 using Test,StaticArrays
 
@@ -138,8 +138,10 @@ end
 
 X7 = variate{1,3}(X₀)
 
-@testset "noclosure" begin
-    @test noclosure(w,X₀) === w(X₀)
-    @test noclosure(w,X7) === w(X7)
+# TODO compose is tested - indirectly - in Taylor.  ELiminate Taylor (?) and test compose by testing fast
+
+@testset "fast" begin
+    @test fast(w,X₀) === w(X₀)
+    @test fast(w,X7) === w(X7)
 end
-#end # module
+end # module

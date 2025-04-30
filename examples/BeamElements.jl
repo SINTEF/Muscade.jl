@@ -21,38 +21,33 @@ end
 BeamCrossSection(;EA=EA,EI=EI,GJ=GJ) = BeamCrossSection(EA,EI,GJ);
 
 # Resultant function that computes the internal loads from the strains and curvatures, and external loads on the element. 
-@espy function resultants(o::BeamCrossSection,x,ε,κ,rot) 
+@espy function resultants(o::BeamCrossSection,ε,κ,x,vₛₘ) 
+    # WARNING: curvatures are defined as rate of rotation along the element, not second derivatives of deflection.  
+    # Hence κ[3]>0 implies +2 direction is inside curve, 
+    #       κ[2]>0 implies -3 direction is inside curve.
     ☼f₁ = o.EA*∂0(ε)
     ☼m  = SVector(o.GJ*∂0(κ)[1],o.EI*∂0(κ)[2],o.EI*∂0(κ)[3])# replace by κ₀ 
-    ☼fₑ = SVector(0.,0.,0.) # external forces at Gauss point (no external moment/torque/... so far). fₑ is in local coordinates # add inertia and drag
-    return f₁,m,fₑ
+    ☼fₑ = SVector(0.,0.,0.) # external forces  at Gauss point. fₑ is in local coordinates # add inertia and drag
+    ☼mₑ = SVector(0.,0.,0.) # external couples at Gauss point. mₑ is in local coordinates 
+    return f₁,m,fₑ,mₑ
 end;
 
-# Static Euler beam element, with two nodes, two Gauss points and 12 degrees of freedom. 
+
+
+## Static Euler beam element, with two nodes, two Gauss points and 12 degrees of freedom. 
+
 const ngp        = 2
 const ndim       = 3
 const ndof       = 12
 const nnod       = 2;
 
 # Shape functions for a beam element with support ζ∈[-1/2,1/2]. Though the shape function matrices are sparse, do not "unroll" them.  That would be faster but considerably clutter the code                          
-# Nₐᵢ is the displacement field induced by node i's axial translations (also the rotation induced by node i's rotation about the element's direction/torsion)
-Nₐ₁(ζ) =                    -ζ +1/2                          
-Nₐ₂(ζ) =                     ζ +1/2;                 
-# Nᵤᵢ is the deflection field induced by node i's transverse displacements
-Nᵤ₁(ζ) =  2ζ^3          -3/2*ζ +1/2              
-Nᵤ₂(ζ) = -2ζ^3          +3/2*ζ +1/2;          
-# Nᵥᵢ is the deflection field induced by node i's rotations (bending, not torsion)
-Nᵥ₁(ζ) =   ζ^3 -1/2*ζ^2 -1/4*ζ +1/8          
-Nᵥ₂(ζ) =   ζ^3 +1/2*ζ^2 -1/4*ζ -1/8;          
-
-# First derivatives ∂N/∂ζ used to compute strain and torsion. For an element of length L, use ∂N/∂x=∂N/∂ζ/L.
-Bₐ₁(ζ) = -1        
-Bₐ₂(ζ) =  1;
-# Second derivatives ∂²N/∂ζ² used to compute curvature. For an element of length L, use ∂²N/∂x²=∂²N/∂ζ²/L².
-Bᵤ₁(ζ) =   12ζ
-Bᵥ₁(ζ) =    6ζ-1
-Bᵤ₂(ζ) =  -12ζ  
-Bᵥ₂(ζ) =    6ζ+1;
+yₐ(ζ) =            2ζ       # differential axial displacement or roll field
+yᵤ(ζ) =  -4ζ^3    +3ζ       # deflection due to differential nodal transverse translation
+yᵥ(ζ) =        ζ^2   - 1/4  # deflection due to differenttial rotation (bending, not torsion)
+κₐ(ζ) =                2    # torsion  . κₐ = yₐ′ . Divide by L .    
+κᵤ(ζ) =  -24ζ               # curvature. κᵤ = yᵤ′′. Divide by L².
+κᵥ(ζ) =                2    # curvature. κᵥ = yᵥ′′. Divide by L .
 
 # Data structure describing an EulerBeam3D element as meshed
 struct EulerBeam3D{Mat} <: AbstractElement
@@ -62,14 +57,18 @@ struct EulerBeam3D{Mat} <: AbstractElement
     ζnod     :: SVector{nnod,𝕣} # Location of the nodes for the normalized element with length 1
     tgₘ      :: SVector{ndim,𝕣} # Vector connecting the nodes of the element in the global coordinate system
     tgₑ      :: SVector{ndim,𝕣} # Vector connecting the nodes of the element in the local coordinate system
-    Nε       :: SVector{ngp,SVector{     ndof,𝕣}}           # strain at the Gauss points
-    Nκ       :: SVector{ngp,SMatrix{ndim,ndof,𝕣,ndim*ndof}} # curvatures at the Gauss points
-    Ny      :: SVector{ngp,SMatrix{ndim,ndof,𝕣,ndim*ndof}} # coordinates of the Gauss points
+    yₐ       :: SVector{ngp,𝕣}  # Value at gp of shape function for differential axial displacement or roll field
+    yᵤ       :: SVector{ngp,𝕣}  # Value at gp of shape function for deflection due to differential nodal transverse translation
+    yᵥ       :: SVector{ngp,𝕣}  # Value at gp of shape function for deflection due to differenttial rotation (bending, not torsion)
+    κₐ       :: SVector{ngp,𝕣}  # Value at gp of shape function for torsion  . κₐ = yₐ′ . Divided by L .    
+    κᵤ       :: SVector{ngp,𝕣}  # Value at gp of shape function for curvature. κᵤ = yᵤ′′. Divided by L².
+    κᵥ       :: SVector{ngp,𝕣}  # Value at gp of shape function for curvature. κᵥ = yᵥ′′. Divided by L .
+    L        :: 𝕣
     dL       :: SVector{ngp,𝕣}  # length associated to each Gauss point
     mat      :: Mat # Used to store material properties (BeamCrossSection, for example)
 end
 
-# Define nodes, classes, and field names for Muscade
+# Define nodes, classes, and field names of dofs
 Muscade.doflist(::Type{<:EulerBeam3D}) = (inod = (1,1,1,1,1,1, 2,2,2,2,2,2), class= ntuple(i->:X,ndof), field= (:t1,:t2,:t3,:r1,:r2,:r3, :t1,:t2,:t3,:r1,:r2,:r3) )
 
 # Define now the constructor for the EulerBeam3D element. Arguments: node coordinates and direction of the first bending axis in the global coordinate system.  
@@ -96,64 +95,59 @@ function EulerBeam3D(nod::Vector{Node};mat,orient2::SVector{ndim,𝕣}=SVector(0
     dL      = SVector{ngp }(L/2   , L/2 )
     ## Location of the Gauss points for a unit-length beam element, with nodes at ±1/2. 
     ζgp     = SVector{ngp }(-1/2√3,1/2√3) # ζ∈[-1/2,1/2]
-    ζnod    = SVector{ngp }(-1/2  ,1/2  ) # ζ∈[-1/2,1/2]
-    L²      = L^2
-    ## Using the first derivative of the shape function to get the strain at Gauss points 
-    Nε      = SVector{ngp}(@SVector [Bₐ₁(ζᵢ)/L,0,         0,         0,         0,          0,         Bₐ₂(ζᵢ)/L,0,         0,          0,          0,          0         ] for ζᵢ∈ζgp)  # Nε[igp][idof]
-    ## Using the first and second derivatives of the shape function to get the torsion and curvature at Gauss points
-    Nκ      = SVector{ngp}(@SMatrix [0         0          0          Bₐ₁(ζᵢ)/L  0           0          0         0          0           Bₐ₂(ζᵢ)/L   0           0         ;
-                                     0         Bᵤ₁(ζᵢ)/L² 0          0          0           Bᵥ₁(ζᵢ)/L 0         Bᵤ₂(ζᵢ)/L² 0           0           0           Bᵥ₂(ζᵢ)/L;
-                                     0         0          Bᵤ₁(ζᵢ)/L² 0          -Bᵥ₁(ζᵢ)/L 0          0         0          Bᵤ₂(ζᵢ)/L²  0           -Bᵥ₂(ζᵢ)/L  0         ] for ζᵢ∈ζgp) # Nκ[igp][idim,idof]
-    ## Using the shape functions to get the coordinates of the Gauss points
-    Ny      = SVector{ngp}(@SMatrix [Nₐ₁(ζᵢ)   0          0          0          0           0          Nₐ₂(ζᵢ)   0          0           0           0           0         ;
-                                     0         Nᵤ₁(ζᵢ)    0          0          0           Nᵥ₁(ζᵢ)    0         Nᵤ₂(ζᵢ)    0           0           0           Nᵥ₂(ζᵢ)   ;
-                                     0         0          Nᵤ₁(ζᵢ)    0          -Nᵥ₁(ζᵢ)    0          0         0          Nᵤ₂(ζᵢ)     0           -Nᵥ₂(ζᵢ)    0         ] for ζᵢ∈ζgp) # Ny[igp][idim,idof]
-    return EulerBeam3D(cₘ,rₘ,ζgp,ζnod,tgₘ,tgₑ,Nε,Nκ,Ny,dL,mat)
+    ζnod    = SVector{nnod}(-1/2  ,1/2  ) # ζ∈[-1/2,1/2]
+    shapes  = (yₐ.(ζgp), yᵤ.(ζgp), yᵥ.(ζgp), κₐ.(ζgp)/L, κᵤ.(ζgp)/L^2, κᵥ.(ζgp)/L)
+    return EulerBeam3D(cₘ,rₘ,ζgp,ζnod,tgₘ,tgₑ,shapes...,L,dL,mat)
 end
-
-const saco = StaticArrays.sacollect
-const v3   = SVector{3};
 
 # Define now the residual function for the EulerBeam3D element.
 
 @espy function Muscade.residual(o::EulerBeam3D,   X,U,A,t,SP,dbg) 
-    cₘ,tgₑ          = o.cₘ,o.tgₑ   # As-meshed element coordinates and describing tangential vector
-    Nε,Nκ,Ny        = o.Nε,o.Nκ,o.Ny           # From shape functions
-    ζgp,dL          = o.ζgp,o.dL        # Gauss points coordinates, node coordinates and length associated to each Gauss point
+    X₀          = ∂0(X)
+    TX₀         = revariate{1}(X₀)
+    Tgp,Tε,Tvₛₘ  = kinematics(o,TX₀)
 
-    X₀              = ∂0(X)
-    OD              = min(2,precedence(X₀)+1) 
-    TY₀,_,_         = Taylor{OD}(X->X₀2Y₀(o,X),X₀)
-    Y₀∂X₀           = ∂(TY₀)(X₀)
+    P,ND        = precedence(X₀),length(X)
+    X_          = motion{P}(X)
 
-    P,ND            = constants(X,U,A,t),length(X) 
-    X_              = motion{P}(X)
-    Y₀_,rₛₘ_,cₛ_     = X₀2Y₀(o::EulerBeam3D,X_)
-    unpack          = motion⁻¹{P,ND  }
-    gp              = ntuple(ngp) do igp
-        ☼ε          = motion⁻¹{P,ND  }(                   Nε[igp]∘₁Y₀_       ) # TODO type unstable because P,ND are no longer compile-time consts in closure?
-        ☼κ          = motion⁻¹{P,ND  }(                   Nκ[igp]∘₁Y₀_       ) 
-        ☼x          = motion⁻¹{P,ND  }(rₛₘ_∘₁(tgₑ*ζgp[igp]+Ny[igp]∘₁Y₀_)+cₛ_+cₘ) 
-        ☼rₛₘ         = motion⁻¹{P,ND,0}(rₛₘ_                                   )
-        f₁,m,fₑ     = ☼resultants(o.mat,x,ε,κ,rₛₘ)          # call the "resultant" function to compute loads (local coordinates) from strains/curvatures/etc. using material properties. Note that output is dual of input. 
-        Rₗ           = (f₁ ∘₀ Nε[igp] + m∘₁Nκ[igp] + fₑ∘₁Ny[igp]) * dL[igp]     # Contribution to the local nodal load of this Gauss point  [ndof] = scalar*[ndof] + [ndim]⋅[ndim,ndof] + [ndim]⋅[ndim,ndof]
-        @named(Rₗ)
+    ☼ε          = motion⁻¹{P,ND}(compose(value{P+1}( Tε  ),X_))
+    ☼vₛₘ         = motion⁻¹{P,ND}(compose(value{P+1}( Tε  ),X_))
+    ε∂X₀        =                compose(∂{P+1,ndof}(Tε  ),X₀ )
+    vₛₘ∂X₀        =              compose(∂{P+1,ndof}(Tvₛₘ  ),X₀ )
+    gp          = ntuple(ngp) do igp
+        Tx,Tκ   = Tgp[igp].x, Tgp[igp].κ
+        ☼x      = motion⁻¹{P,ND}(compose(value{P+1}( Tx  ),X_))
+        ☼κ      = motion⁻¹{P,ND}(compose(value{P+1}( Tκ  ),X_))
+        x∂X₀    =                compose(∂{P+1,ndof}(Tx  ),X₀ )
+        κ∂X₀    =                compose(∂{P+1,ndof}(Tκ  ),X₀ )
+        f₁,mᵢ,fₑ,mₑ = ☼resultants(o.mat,ε,κ,x,vₛₘ)          # call the "resultant" function to compute loads (local coordinates) from strains/curvatures/etc. using material properties. Note that output is dual of input. 
+        R       = (f₁ ∘₀ ε∂X₀ + mᵢ ∘₁ κ∂X₀ + fₑ ∘₁ x∂X₀ + mₑ ∘₁ vₛₘ∂X₀) * o.dL[igp]     # Contribution to the local nodal load of this Gauss point  [ndof] = scalar*[ndof] + [ndim]⋅[ndim,ndof] + [ndim]⋅[ndim,ndof]
+        @named(R)
     end
-    R               = sum(gpᵢ.Rₗ for gpᵢ∈gp) ∘₁ Y₀∂X₀ 
+    R               = sum(gpᵢ.R for gpᵢ∈gp) 
     return R,noFB  
 end
-function X₀2Y₀(o::EulerBeam3D,X₀)  
-    rₘ,tgₘ,tgₑ,ζnod  = o.rₘ,o.tgₘ,o.tgₑ,o.ζnod   # As-meshed element coordinates and describing tangential vector
+function kinematics(o::EulerBeam3D,X₀)  
+    cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp,L  = o.cₘ,o.rₘ,o.tgₘ,o.tgₑ,o.ζnod,o.ζgp,o.L   # As-meshed element coordinates and describing tangential vector
+
+    # transformation to corotated system
     uᵧ₁,vᵧ₁,uᵧ₂,vᵧ₂  = SVector{3}(X₀[i] for i∈1:3), SVector{3}(X₀[i] for i∈4:6),SVector{3}(X₀[i] for i∈7:9),SVector{3}(X₀[i] for i∈10:12)
-    rₛ               = Rodrigues((vᵧ₁+vᵧ₂)/2)
-    rₛ               = Rodrigues(adjust(rₛ∘₁tgₘ,tgₘ+uᵧ₂-uᵧ₁))∘₁rₛ   
-    rₛₘ              = rₛ∘₁o.rₘ
+    vₛ               = (vᵧ₁+vᵧ₂)/2
+    rₛₘ              = Rodrigues(vₛ) ∘₁ o.rₘ
+    vₛₘ              = Rodrigues⁻¹(rₛₘ)
     cₛ               = (uᵧ₁+uᵧ₂)/2
-    uₗ₁              = rₛₘ'∘₁(uᵧ₁+tgₘ*ζnod[1]-cₛ)-tgₑ*ζnod[1]    #Local displacement of node 1
     uₗ₂              = rₛₘ'∘₁(uᵧ₂+tgₘ*ζnod[2]-cₛ)-tgₑ*ζnod[2]    #Local displacement of node 2
-    vₗ₁              = Rodrigues⁻¹(rₛₘ'∘₁Rodrigues(vᵧ₁)∘₁rₘ)      #Local rotation of node 1
-    vₗ₂              = Rodrigues⁻¹(rₛₘ'∘₁Rodrigues(vᵧ₂)∘₁rₘ)      #Local rotation of node 2
-    Y₀              = SVector(uₗ₁...,vₗ₁...,uₗ₂...,vₗ₂...)           #  Y₀ , Y₀∂X₀ = ∂Y / ∂X
-    return Y₀,rₛₘ,cₛ
+    vₗ₂              = Rodrigues⁻¹(rₛₘ'∘₁Rodrigues(vᵧ₂)∘₁rₘ)     #Local rotation of node 2
+    
+    # interpolation
+    ε               = √((uₗ₂[1]+L/2)^2+uₗ₂[2]^2+uₗ₂[3]^2)*2/L - 1.       
+    gp              = ntuple(ngp) do igp
+        yₐ,yᵤ,yᵥ,κₐ,κᵤ,κᵥ = o.yₐ[igp],o.yᵤ[igp],o.yᵥ[igp],o.κₐ[igp],o.κᵤ[igp],o.κᵥ[igp]
+        κ           = SVector(         κₐ*vₗ₂[1], κᵤ*uₗ₂[2]+κᵥ*vₗ₂[3], κᵤ*uₗ₂[3]-κᵥ*vₗ₂[2])  
+        y           = SVector(yₐ*uₗ₂[1]         , yᵤ*uₗ₂[2]+yᵥ*vₗ₂[3], yᵤ*uₗ₂[3]-yᵥ*vₗ₂[2])                              
+        x           = rₛₘ∘₁(tgₑ*ζgp[igp]+y)+cₛ+cₘ 
+        (κ=κ,x=x)
+    end
+    return gp,ε,vₛₘ
 end
 

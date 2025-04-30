@@ -28,7 +28,7 @@ w2,w∂v2 = value_∂{1,3}(Rodrigues⁻¹(M2))
 end
 
 ###
-
+L               = 5
 model           = Model(:TestModel)
 node1           = addnode!(model,𝕣[0,0,0])
 node2           = addnode!(model,𝕣[4,3,0])
@@ -37,19 +37,23 @@ mat             = BeamCrossSection(EA=10.,EI=3.,GJ=4.)
 
 beam            = EulerBeam3D(elnod;mat,orient2=SVector(0.,1.,0.))
 
-# @testset "constructor" begin
-#     @test beam.cₘ    ≈ [2.0, 1.5, 0.0]
-#     @test beam.rₘ    ≈ [0.8 -0.6 0.0; 0.6 0.8 -0.0; 0.0 0.0 1.0]
-#     @test beam.ζgp   ≈ [-0.2886751345948129, 0.2886751345948129]
-#     @test beam.ζnod  ≈ [-0.5, 0.5]
-#     @test beam.tgₘ   ≈ [4.0, 3.0, 0.0]
-#     @test beam.tgₑ   ≈ [5.0, 0.0, 0.0]
-#     @test beam.Nε[1] ≈ [-.2, 0, 0, 0, 0, 0, .2, 0, 0, 0, 0, 0]
-#     @test beam.Nκ[1][2,2] ≈ -0.1385640646055102
-#     @test beam.Nκ[1][3,5] ≈ 0.5464101615137755
-#     @test beam.Ny[1][1,1] ≈ 0.7886751345948129
-#     @test beam.dL    ≈ [2.5, 2.5]
-# end
+@testset "constructor" begin
+    @test beam.cₘ    ≈ [2.0, 1.5, 0.0]
+    @test beam.rₘ    ≈ [0.8 -0.6 0.0; 0.6 0.8 -0.0; 0.0 0.0 1.0]
+    @test beam.ζgp   ≈ [-0.2886751345948129, 0.2886751345948129]
+    @test beam.ζnod  ≈ [-0.5, 0.5]
+    @test beam.tgₘ   ≈ [4.0, 3.0, 0.0]
+    @test beam.tgₑ   ≈ [5.0, 0.0, 0.0]
+
+    @test beam.yₐ    ≈ [-1/√3,1/√3]
+    @test beam.yᵤ    ≈ [-0.7698003589195012,0.7698003589195012]
+    @test beam.yᵥ    ≈ [-1/6,-1/6]
+    @test beam.κₐ    ≈ [2/L,2/L]
+    @test beam.κᵤ    ≈ [0.2771281292110204,-0.2771281292110204]
+    @test beam.κᵥ    ≈ [2/L,2/L]
+
+    @test beam.dL    ≈ [2.5, 2.5]
+end
 
 
 ##
@@ -64,44 +68,45 @@ t,SP,dbg  = 0.,(;),(status=:testing,)
 U = (SVector{0,𝕣}(),)
 A = SVector{0,𝕣}()
 
-x = SVector(0.,0.,0.,0.,0.,0.,0.1,0.0,0.,0.,0.,0.); X = (x,)
+# x = SVector(0.,0.,0.,0.,0.,0.,0.1,0.0,0.,0.,0.,0.); X = (x,)
 # R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg) 
 # @testset "residual tension" begin
-#     @test R        ≈  [-0.9999999999999998, 0.0, 0.0, 0.0, 0.0, 0.0, 0.9999999999999998, 0.0, 0.0, 0.0, 0.0, 0.0]
+#     @test R        ≈  [-1,0,0,0,0,0,1,0,0,0,0,0]
 #     @test FB === nothing
 # end
 
 # x = SVector(0.,0.,0.,0.,0.,0.,0.,0.1,0.,0.,0.,0.); X = (x,)
 # R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg) 
 # @testset "residual flex" begin
-#     @test R        ≈  [0.305626505038752, -3.557508839178609, 0.0, 0.0, 0.0, -1.7940357448412423, -0.305626505038752, 3.557508839178609, 0.0, 0.0, 0.0, -1.7940357448412423]
+#     @test R        ≈ [-0.04962809790010789,    -3.604962809790013,     0.0,     0.0,     0.0,    -1.8,     0.04962809790010789,     3.604962809790013,     0.0,     0.0,     0.0,    -1.8]
 #     @test FB === nothing
 # end
 
-# x = SVector(0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.1); X = (x,)
-# R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg) 
-# @testset "residual flex" begin
-#     @test R        ≈  [0.0, 1.8000000000002365, 0.0, 0.0, 0.0, 0.6000000000000143, 0.0, -1.8000000000002365, 0.0, 0.0, 0.0, 1.2000000000002227]
-#     @test FB === nothing
-# end
+x = SVector(0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.1); X = (x,)
+R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg) 
+@testset "residual flex" begin
+#    @test R        ≈  [0.0, 1.8000000000002365, 0.0, 0.0, 0.0, 0.6000000000000143, 0.0, -1.8000000000002365, 0.0, 0.0, 0.0, 1.2000000000002227]
+    @test R        ≈  [ -0.08992502499553628,    1.7970014996429078,    0.0,    0.0,    0.0,    0.5985007498214541,    0.08992502499553628,   -1.7970014996429078,    0.0,    0.0,    0.0,    1.1985007498214544  ]
+    @test FB === nothing
+end
 
-# x = SVector(0.,0.,0.,0.,0.,0.,0.,0.,0.,0.1,0.,0.); X = (x,)
-# R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg) 
-# @testset "residual torsion" begin
-#     @test R        ≈ [0.0, 0.0, 0.0, -0.40000000000000124, 0.0, 0.0, 0.0, 0.0, 0.0, 0.40000000000000135, 0.0, 0.0]
-#     @test FB === nothing
-# end
+x = SVector(0.,0.,0.,0.,0.,0.,0.,0.,0.,0.1,0.,0.); X = (x,)
+R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg) 
+@testset "residual torsion" begin
+    @test R        ≈ [0.0, 0.0, 0.0, -0.40000000000000124, 0.0, 0.0, 0.0, 0.0, 0.0, 0.40000000000000135, 0.0, 0.0]
+    @test FB === nothing
+end
 
-using Printf
-X = (x,x,x)
-out = diffed_residual(beam; X,U,A,t,SP)
-iλ,ix,iu,ia = 1,2,3,4
+# using Printf
+# X = (x,x,x)
+# out = diffed_residual(beam; X,U,A,t,SP)
+# iλ,ix,iu,ia = 1,2,3,4
 
-R = out.R
-K = out.∇R[ix][1]
-C = out.∇R[ix][2]
-M = out.∇R[ix][3]
-H = out.∇R[iu][1]
+# R = out.R
+# K = out.∇R[ix][1]
+# C = out.∇R[ix][2]
+# M = out.∇R[ix][3]
+# H = out.∇R[iu][1]
 
 # using Profile,ProfileView,BenchmarkTools
 # mission = :profile
