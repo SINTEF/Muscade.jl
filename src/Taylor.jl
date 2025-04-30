@@ -160,9 +160,10 @@ end
 revariate_{P,N}(a,i) where{P,N} = ∂ℝ{P,N  }(revariate_{P-1,N}(a,i),i)
 revariate_{0,N}(a,i) where{  N} =                             a
 
-function composewithJacobian{P,ND}(Ty,X_,)
+struct composewithJacobian{P,ND} end
+function composewithJacobian{P,ND}(Ty,X_,) where{P,ND}
     X₀         = motion⁻¹{P,ND,0}(X_)
-    y          = motion⁻¹{P,ND}(compose(value{P+1}( Ty  ),X_))
-    y∂X₀       =                compose(∂{P+1,ndof}(Ty  ),X₀ )
+    y          = motion⁻¹{P,ND  }(compose(value{P+1}( Ty  ),X_))
+    y∂X₀       =                  compose(∂{P+1,ndof}(Ty  ),X₀ )
     return y,y∂X₀
 end
