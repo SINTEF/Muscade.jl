@@ -1,5 +1,11 @@
 # [Solvers](@id solvers)
 
+## `EigX`: standard FEM modal analysis solver
+
+The solver computes the eignmodes and oscillation frequencies of a model.
+
+See the reference manual [`EigX`](@ref). 
+
 ## `SweepX`: standard FEM solver
 
 `SweepX{O}` is a non-linear solver for differential equations of order `O` in time. This can be used for static and quasi static problems without hysterertic behaviour (plasticity, friction).

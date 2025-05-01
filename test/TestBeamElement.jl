@@ -28,7 +28,7 @@ w2,w∂v2 = value_∂{1,3}(Rodrigues⁻¹(M2))
 end
 
 ###
-
+L               = 5
 model           = Model(:TestModel)
 node1           = addnode!(model,𝕣[0,0,0])
 node2           = addnode!(model,𝕣[4,3,0])
@@ -44,10 +44,14 @@ beam            = EulerBeam3D(elnod;mat,orient2=SVector(0.,1.,0.))
     @test beam.ζnod  ≈ [-0.5, 0.5]
     @test beam.tgₘ   ≈ [4.0, 3.0, 0.0]
     @test beam.tgₑ   ≈ [5.0, 0.0, 0.0]
-    @test beam.Nε[1] ≈ [-.2, 0, 0, 0, 0, 0, .2, 0, 0, 0, 0, 0]
-    @test beam.Nκ[1][2,2] ≈ -0.1385640646055102
-    @test beam.Nκ[1][3,5] ≈ 0.5464101615137755
-    @test beam.Ny[1][1,1] ≈ 0.7886751345948129
+
+    @test beam.yₐ    ≈ [-1/√3,1/√3]
+    @test beam.yᵤ    ≈ [-0.7698003589195012,0.7698003589195012]
+    @test beam.yᵥ    ≈ [-1/6,-1/6]
+    @test beam.κₐ    ≈ [2/L,2/L]
+    @test beam.κᵤ    ≈ [0.2771281292110204,-0.2771281292110204]
+    @test beam.κᵥ    ≈ [2/L,2/L]
+
     @test beam.dL    ≈ [2.5, 2.5]
 end
 
@@ -57,16 +61,9 @@ EA = 10.
 EI = 3.
 GJ = 4. 
 L =  1.
-# θ = 0.#elevation in x-z plane
-# ϕ = 0.#azimth in x-z plane
-# R = [   cosd(θ)         -sind(θ)             0.
-#         sind(θ)*cosd(ϕ) cosd(θ)*cosd(ϕ)     -sind(θ);
-#         sind(θ)*sind(ϕ) cosd(θ)*sind(ϕ)     cosd(θ)]
-
 model           = Model(:TestModel)
 node1           = addnode!(model,𝕣[0,0,0])
 node2           = addnode!(model,𝕣[L,0,0])
-# node2           = addnode!(model,𝕣[L*cosd(θ),L*sind(θ)*sind(ϕ),L*sind(θ)*cosd(ϕ)])
 elnod           = [model.nod[n.inod] for n∈[node1,node2]]
 mat             = BeamCrossSection(EA=EA,EI=EI,GJ=GJ)
 beam            = EulerBeam3D(elnod;mat,orient2=SVector(0.,1.,0.))
@@ -74,46 +71,53 @@ t,SP,dbg  = 0.,(;),(status=:testing,)
 U = (SVector{0,𝕣}(),)
 A = SVector{0,𝕣}()
 
-x = SVector(0.,     0.,     0.,     0.,     0.,     0.,
-            0.1,    0.0,    0.,     0.,     0.,     0.); X = (x,)
+t1n2 = 0.1;
+x = SVector(0.,     0.,     0.,     0.,     0.,     0.,            t1n2,    0.0,    0.,     0.,     0.,     0.); X = (x,)
 R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg) 
 @testset "residual tension" begin
     @test R        ≈  [ -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0 ]
+    @test R        ≈  [ -EA/L*t1n2, 0.0, 0.0, 0.0, 0.0, 0.0, EA/L*t1n2, 0.0, 0.0, 0.0, 0.0, 0.0 ]
     @test FB === nothing
 end
 
-x = SVector(0.,     0.,     0.,     0.,     0.,     0.,
-            0.,     0.1,    0.,     0.,     0.,     0.); X = (x,)
+t2n2 = 0.01
+x = SVector(0.,     0.,     0.,     0.,     0.,     0.,            0.,     t2n2,    0.,     0.,     0.,     0.); X = (x,)
 R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg) 
 @testset "residual flex1" begin
-    @test R        ≈  [0.305626505038752, -3.557508839178609, 0.0, 0.0, 0.0, -1.7940357448412423, -0.305626505038752, 3.557508839178609, 0.0, 0.0, 0.0, -1.7940357448412423]
+    #corect value with new beam @test R        ≈  [0.305626505038752, -3.557508839178609, 0.0, 0.0, 0.0, -1.7940357448412423, -0.305626505038752, 3.557508839178609, 0.0, 0.0, 0.0, -1.7940357448412423]
+    @test norm(R - [ 0,     -12*EI/L^3*t2n2,    0,     0,   0,    -6*EI/L^2*t2n2,  0,     12*EI/L^3*t2n2,    0,     0,   0,     -6*EI/L^2*t2n2],Inf)  < 1e-3;
     @test FB === nothing
 end
 
-x = SVector(0.,     0.,     0.,     0.,     0.,     0.,
-            0.,     0.,     0.,     0.,     0.,     0.1); X = (x,)
+r3n2 = 0.01
+x = SVector(0.,     0.,     0.,     0.,     0.,     0.,            0.,     0.,     0.,     0.,     0.,     r3n2); X = (x,)
 R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg) 
 @testset "residual flex2" begin
-    @test R        ≈  [0.0, 1.8000000000002365, 0.0, 0.0, 0.0, 0.6000000000000143, 0.0, -1.8000000000002365, 0.0, 0.0, 0.0, 1.2000000000002227]
+    #correct value with new beam
+    #  @test R        ≈  [0.0, 1.8000000000002365, 0.0, 0.0, 0.0, 0.6000000000000143, 0.0, -1.8000000000002365, 0.0, 0.0, 0.0, 1.2000000000002227]
+    @test norm(R - [ 0,     6*EI/L^3*r3n2,    0,     0,   0,    2*EI/L*r3n2,  0,     -6*EI/L^3*r3n2,    0,     0,   0,     4*EI/L*r3n2],Inf)  < 1e-3;
     @test FB === nothing
 end
 
-x = SVector(0.,     0.,     0.,     0.,     0.,     0.,
-            0.,     0.,     0.,     0.1,    0.,     0.); X = (x,)
+r1n2 = 0.1
+x = SVector(0.,     0.,     0.,     0.,     0.,     0.,            0.,     0.,     0.,     r1n2,    0.,     0.); X = (x,)
 R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg) 
 @testset "residual torsion" begin
-    @test R        ≈ [0.0, 0.0, 0.0, -0.4, 0.0, 0.0, 0.0, 0.0, 0.0, 0.4, 0.0, 0.0]
+    # @test R        ≈ [0.0, 0.0, 0.0, -0.4, 0.0, 0.0, 0.0, 0.0, 0.0, 0.4, 0.0, 0.0]
+    @test R        ≈ [0.0, 0.0, 0.0, -GJ/L*r1n2, 0.0, 0.0, 0.0, 0.0, 0.0, GJ/L*r1n2, 0.0, 0.0]
     @test FB === nothing
 end
 
 
-using Printf
+
+
 displacement =  SVector(0.,0.,0.,0.,0.,0.,  0.,0.,0.,0.,0.,0.); 
 velocity =      SVector(0.,0.,0.,0.,0.,0.,  0.,0.,0.,0.,0.,0.); 
 acceleration =  SVector(0.,0.,0.,0.,0.,0.,  0.,0.,0.,0.,0.,0.); 
 X = (displacement,velocity,acceleration)
 out = diffed_residual(beam; X,U,A,t,SP)
 iλ,ix,iu,ia = 1,2,3,4
+typeof(out.∇R[ix][1])
 
 K = out.∇R[ix][1]
 @testset "axial stiffness" begin
@@ -199,6 +203,35 @@ end
 # print_element_array(beam,:X,out.∇R[2][3])  # M
 
 
+# Cantilever bend with out-of-plane load
+# Leading to a three-dimensional response which mobilizes axial force, bending moment and torque.
+# Comparison to solutions by Longva (2015) and Crisfield (1990)
+R = 100.0;  # Radius of the bend [m]
+EI = 833.33;  # Bending stiffness [Nm²]
+EA = 1e9;  # Axial stiffness [N]
+GJ = 705.;  # Torsional stiffness [Nm²]
+Fy = 300.; # then 450 and 600 [N]
+
+nel         = 8
+nnodes      = nel+1   
+nodeCoord   = hcat(R*cos.(3π/2 .+ ((1:nnodes).-1)/(nnodes-1)*π/2),zeros(Float64,nnod,1),R*(1 .+ sin.(3π/2 .+ ((1:nnodes).-1)/(nnodes-1)*π/2)))
+mat         = BeamCrossSection(EA=EA,EI=EI,GJ=GJ)
+model       = Model(:TestModel)
+nodid       = addnode!(model,nodeCoord)
+mesh        = hcat(nodid[1:nnodes-1],nodid[2:nnodes])
+eleid       = addelement!(model,EulerBeam3D,mesh;mat=mat,orient2=SVector(0.,1.,0.))
+[addelement!(model,Hold,[nodid[1]]  ;field) for field∈[:t1,:t2,:t3,:r1,:r2,:r3]]                                    # Clamp at one end
+addelement!(model,DofLoad,[nodid[nnodes]];field=:t2,value=t->-min(1,t)*Fy) ;                                        # Out-of-plane load at other
+initialstate    = initialize!(model);
+state           = solve(SweepX{0};initialstate,time=[0.,0.])
+x_ = getdof(state[2];field=:t1,nodID=[nodid[nnodes]]) #Compare to 58.56 (Longva,2015) or 58.53 (Crisfield, 1990)
+y_ = getdof(state[2];field=:t2,nodID=[nodid[nnodes]]) #Compare to 40.47 (Longva,2015) or 40.53 (Crisfield, 1990)
+z_ = getdof(state[2];field=:t3,nodID=[nodid[nnodes]]) #Compare to 22.16 (Longva,2015) or 22.14 (Crisfield, 1990)
+# Load                300 N                       450 N                       600 N
+#                     x,y,z                       x,y,z                       x,y,z
+# Disp Longva         58.56, 40.47, 22.18         51.99, 48.72, 18.45         46.91, 53.64, 15.65 
+# Disp Crisfield      58.53, 40.53, 22.16         51.93, 48.79, 18.43         46.84, 53.71, 15.61
+
 # using Profile,ProfileView,BenchmarkTools
 # mission = :profile
 # if  mission == :time
@@ -214,6 +247,3 @@ end
 # end
 ;
 #end
-
-
-

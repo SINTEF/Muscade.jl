@@ -15,7 +15,7 @@ module Muscade
     export  constants,precedence,npartial,norm
 
     include("Taylor.jl")
-    export  Taylor,motion,motion⁻¹ 
+    export  Taylor,motion,motion⁻¹,revariate,compose,fast 
 
     include("Functors.jl")
     export QuadraticFunction,FunctionFromVector 
@@ -61,7 +61,7 @@ module Muscade
     export SweepX
 
     include("EigX.jl")
-    export EigX
+    export EigX,increment
 
     include("DirectXUA.jl")
     export DirectXUA
