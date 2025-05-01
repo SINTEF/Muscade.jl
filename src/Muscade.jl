@@ -15,7 +15,7 @@ module Muscade
     export  constants,precedence,npartial,norm
 
     include("Taylor.jl")
-    export  Taylor,motion,motion⁻¹,revariate,compose,fast 
+    export  Taylor,motion,motion⁻¹,revariate,compose,fast, composewithJacobian 
 
     include("Functors.jl")
     export QuadraticFunction,FunctionFromVector 
