@@ -31,17 +31,19 @@ BeamCrossSection(;EA=EA,EI=EI,GJ=GJ) = BeamCrossSection(EA,EI,GJ);
     xᵧ₀,xᵧ₁,xᵧ₂ = ∂0(xᵧ),∂1(xᵧ),∂2(xᵧ)
     xₗ₁          = xᵧ₁ ∘₁ r₀
     xₗ₂          = xᵧ₂ ∘₁ r₀
+
     # ## Compute drag force (hard-coded parameters so far)
     ρ = 1025.0
     A  = SVector(0.0,1.0,1.0)
     Cd = SVector(0.0,1.0,1.0) # SVector(0.0,0.0,0.0)
-    fd = .5 * ρ * A .* Cd .* xₗ₁ .* abs.(xₗ₁) #mind the sign: forces exerted by element on its environment
+    fd = .5 * ρ * A .* Cd .* xₗ₁ #.* abs.(xₗ₁) #mind the sign: forces exerted by element on its environment
     ## Compute inertia force (hard-coded parameter so far)
-    μ   = 1.0
-    fi = μ * xₗ₂ 
+    μ   = SVector(1.0,1.0,1.0)
+    fi = μ .* xₗ₂ 
     ## Compute added mass force (hard-coded parameter so far)
-    Ca = SVector(0.0,1.0,1.0)
+    Ca = SVector(0.0,0.0,0.0)
     fa = ρ * Ca .* xₗ₂
+    
     ☼fₑ = fd+fa+fi #SVector(0.,0.,0.) # external forces at Gauss point (no external moment/torque/... so far). fₑ is in local coordinates 
 
 
