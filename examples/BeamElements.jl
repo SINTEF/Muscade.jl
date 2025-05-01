@@ -157,11 +157,15 @@ function kinematics(o::EulerBeam3D,X₀)
 
     # transformation to corotated system
     uᵧ₁,vᵧ₁,uᵧ₂,vᵧ₂  = SVector{3}(X₀[i] for i∈1:3), SVector{3}(X₀[i] for i∈4:6),SVector{3}(X₀[i] for i∈7:9),SVector{3}(X₀[i] for i∈10:12)
-    rₛ₁              = Rodrigues(vᵧ₁)
-    rₛ₂              = Rodrigues(vᵧ₂)
-    vₗ₂              = 0.5*Rodrigues⁻¹(rₛ₂ ∘₁ rₛ₁')
-    rₛₘ              = Rodrigues(vₗ₂) ∘₁ rₛ₁ ∘₁ o.rₘ  
-    vₛₘ              = Rodrigues⁻¹(rₛₘ)              
+    vₗ₂,rₛₘ,vₛₘ = fast(SVector(vᵧ₁...,vᵧ₂...)) do v
+        vᵧ₁,vᵧ₂ = SVector{3}(v[i] for i∈1:3), SVector{3}(v[i] for i∈4:6)
+        rₛ₁              = fast(Rodrigues,vᵧ₁)
+        rₛ₂              = fast(Rodrigues,vᵧ₂)
+        vₗ₂              = 0.5*Rodrigues⁻¹(rₛ₂ ∘₁ rₛ₁')
+        rₛₘ              = Rodrigues(vₗ₂) ∘₁ rₛ₁ ∘₁ o.rₘ  
+        vₛₘ              = Rodrigues⁻¹(rₛₘ)              
+        return vₗ₂,rₛₘ,vₛₘ
+    end           
     cₛ               = 0.5*(uᵧ₁+uᵧ₂)
     uₗ₂              = rₛₘ'∘₁(uᵧ₂+tgₘ*ζnod[2]-cₛ)-tgₑ*ζnod[2]    #Local displacement of node 2
     
