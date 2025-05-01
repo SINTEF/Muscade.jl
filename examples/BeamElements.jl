@@ -138,7 +138,6 @@ end
 
     P,ND        = constants(X,U,A,t),length(X)
     X_          = motion{P}(X)
-
     ☼ε ,ε∂X₀    = Muscade.composewithJacobian{P-1,ND,ndof}(Tε,X_)
     ☼vₛₘ,vₛₘ∂X₀   = Muscade.composewithJacobian{P-1,ND,ndof}(Tvₛₘ,X_)
     gp          = ntuple(ngp) do igp

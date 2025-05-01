@@ -37,33 +37,33 @@ Y6=motion{3}(X6)
 end
 
 @testset "motion⁻¹" begin
-    @test motion⁻¹{2,1,0}(Y1) === SVector{3,𝕣}(1,2,3)
-    @test motion⁻¹{2,1,1}(Y1) === SVector{3,𝕣}(0,0,0)
-    @test motion⁻¹{2,1,2}(Y1) === SVector{3,𝕣}(0,0,0)
+    @test motion⁻¹{1,1,0}(Y1) === SVector{3,𝕣}(1,2,3)
+    @test motion⁻¹{1,1,1}(Y1) === SVector{3,𝕣}(0,0,0)
+    @test motion⁻¹{1,1,2}(Y1) === SVector{3,𝕣}(0,0,0)
 
-    @test motion⁻¹{2,2,0}(Y2) === SVector{3,𝕣}(1,2,3)
-    @test motion⁻¹{2,2,1}(Y2) === SVector{3,𝕣}(4,5,6)
-    @test motion⁻¹{2,2,2}(Y2) === SVector{3,𝕣}(0,0,0)
+    @test motion⁻¹{1,2,0}(Y2) === SVector{3,𝕣}(1,2,3)
+    @test motion⁻¹{1,2,1}(Y2) === SVector{3,𝕣}(4,5,6)
+    @test motion⁻¹{1,2,2}(Y2) === SVector{3,𝕣}(0,0,0)
 
-    @test motion⁻¹{2,3,0}(Y3) === SVector{3,𝕣}(1,2,3)
-    @test motion⁻¹{2,3,1}(Y3) === SVector{3,𝕣}(4,5,6)
-    @test motion⁻¹{2,3,2}(Y3) === SVector{3,𝕣}(7,8,9)
+    @test motion⁻¹{1,3,0}(Y3) === SVector{3,𝕣}(1,2,3)
+    @test motion⁻¹{1,3,1}(Y3) === SVector{3,𝕣}(4,5,6)
+    @test motion⁻¹{1,3,2}(Y3) === SVector{3,𝕣}(7,8,9)
 
-    @test motion⁻¹{3,1,0}(Y4) === variate{1,3}(SVector{3,𝕣}(1,2,3))
-    @test motion⁻¹{3,1,1}(Y4) === SVector{3,𝕣}(0,0,0)
-    @test motion⁻¹{3,1,2}(Y4) === SVector{3,𝕣}(0,0,0)
+    @test motion⁻¹{2,1,0}(Y4) === variate{1,3}(SVector{3,𝕣}(1,2,3))
+    @test motion⁻¹{2,1,1}(Y4) === SVector{3,𝕣}(0,0,0)
+    @test motion⁻¹{2,1,2}(Y4) === SVector{3,𝕣}(0,0,0)
 
-    @test motion⁻¹{3,2,0}(Y5) === variate{1,3}(SVector{3,𝕣}(1,2,3))
-    @test motion⁻¹{3,2,1}(Y5) === variate{1,3}(SVector{3,𝕣}(4,5,6))
-    @test motion⁻¹{3,2,2}(Y5) === SVector{3,𝕣}(0,0,0)
+    @test motion⁻¹{2,2,0}(Y5) === variate{1,3}(SVector{3,𝕣}(1,2,3))
+    @test motion⁻¹{2,2,1}(Y5) === variate{1,3}(SVector{3,𝕣}(4,5,6))
+    @test motion⁻¹{2,2,2}(Y5) === SVector{3,𝕣}(0,0,0)
 
-    @test motion⁻¹{3,3,0}(Y6) === variate{1,3}(SVector{3,𝕣}(1,2,3))
-    @test motion⁻¹{3,3,1}(Y6) === variate{1,3}(SVector{3,𝕣}(4,5,6))
-    @test motion⁻¹{3,3,2}(Y6) === variate{1,3}(SVector{3,𝕣}(7,8,9))
+    @test motion⁻¹{2,3,0}(Y6) === variate{1,3}(SVector{3,𝕣}(1,2,3))
+    @test motion⁻¹{2,3,1}(Y6) === variate{1,3}(SVector{3,𝕣}(4,5,6))
+    @test motion⁻¹{2,3,2}(Y6) === variate{1,3}(SVector{3,𝕣}(7,8,9))
 
-    @test motion⁻¹{2,1}(Y1) === (SVector{3,𝕣}(1,2,3),)
-    @test motion⁻¹{2,2}(Y2) === (SVector{3,𝕣}(1,2,3),SVector{3,𝕣}(4,5,6))
-    @test motion⁻¹{2,3}(Y3) === (SVector{3,𝕣}(1,2,3),SVector{3,𝕣}(4,5,6),SVector{3,𝕣}(7,8,9))
+    @test motion⁻¹{1,1}(Y1) === (SVector{3,𝕣}(1,2,3),)
+    @test motion⁻¹{1,2}(Y2) === (SVector{3,𝕣}(1,2,3),SVector{3,𝕣}(4,5,6))
+    @test motion⁻¹{1,3}(Y3) === (SVector{3,𝕣}(1,2,3),SVector{3,𝕣}(4,5,6),SVector{3,𝕣}(7,8,9))
 end
 
 a = SVector(3.,4.)

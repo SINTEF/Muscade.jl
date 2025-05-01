@@ -1,4 +1,4 @@
-#module TestBeamElements
+module TestBeamElements
 
 using Test, Muscade, StaticArrays, LinearAlgebra
 include("../examples/BeamElements.jl")
@@ -96,16 +96,16 @@ R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg)
     @test FB === nothing
 end
 
-# using Printf
-# X = (x,x,x)
-# out = diffed_residual(beam; X,U,A,t,SP)
-# iλ,ix,iu,ia = 1,2,3,4
+using Printf
+X = (x,x,x)
+out = diffed_residual(beam; X,U,A,t,SP)
+iλ,ix,iu,ia = 1,2,3,4
 
-# R = out.R
-# K = out.∇R[ix][1]
-# C = out.∇R[ix][2]
-# M = out.∇R[ix][3]
-# H = out.∇R[iu][1]
+R = out.R
+K = out.∇R[ix][1]
+C = out.∇R[ix][2]
+M = out.∇R[ix][3]
+H = out.∇R[iu][1]
 
 # using Profile,ProfileView,BenchmarkTools
 # mission = :profile
@@ -135,7 +135,7 @@ end
 # print_element_array(beam,:X,out.∇R[2][3])  # M
 
 
-#end
+end
 
 
 
