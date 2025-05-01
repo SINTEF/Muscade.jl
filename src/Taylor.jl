@@ -138,8 +138,8 @@ Works, but still work to do on the sytactic sugar.
 """
 struct composewithJacobian{P,ND,NDOF} end
 function composewithJacobian{P,ND,NDOF}(Ty,X_) where{P,ND,NDOF}
-    X₀         = motion⁻¹{P,ND,0}(X_)
-    y          = motion⁻¹{P,ND  }(compose(value{P+1}( Ty  ),X_))
-    y∂X₀       =                  compose(∂{P+1,NDOF}(Ty  ),X₀ )
+    X₀         = motion⁻¹{P-1,ND,0}(X_)
+    y          = motion⁻¹{P-1,ND  }(compose(value{P}( Ty  ),X_))
+    y∂X₀       =                  compose(∂{P,NDOF}(Ty  ),X₀ )
     return y,y∂X₀
 end

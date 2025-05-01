@@ -134,8 +134,8 @@ end
 
     P,ND        = constants(X,U,A,t),length(X)
     X_          = motion{P}(X)
-    ☼ε ,ε∂X₀    = Muscade.composewithJacobian{P-1,ND,ndof}(Tε,X_)
-    vₛₘ∂X₀       =                  compose(∂{P,ndof}(Tvₛₘ  ),X₀ )
+    ☼ε ,ε∂X₀    = composewithJacobian{P,ND,ndof}(Tε,X_)
+    vₛₘ∂X₀       =                    compose(∂{P,ndof}(Tvₛₘ  ),X₀ )
     rₛₘ          = motion⁻¹{P-1,ND  }(compose(value{P}(Trₛₘ  ),X_))
     vᵢ₀         = (SVector(0,0,0),)
     vᵢ₁         = ND≥1 ? (vᵢ₀...,   spin⁻¹(∂0(rₛₘ)' ∘₁ ∂1(rₛₘ))) : vᵢ₀ 
@@ -143,8 +143,8 @@ end
 
     gp          = ntuple(ngp) do igp
         Tx,Tκ   = Tgp[igp].x, Tgp[igp].κ
-        ☼x ,x∂X₀= Muscade.composewithJacobian{P-1,ND,ndof}(Tx,X_)
-        ☼κ,κ∂X₀ = Muscade.composewithJacobian{P-1,ND,ndof}(Tκ,X_)
+        ☼x ,x∂X₀= composewithJacobian{P,ND,ndof}(Tx,X_)
+        ☼κ,κ∂X₀ = composewithJacobian{P,ND,ndof}(Tκ,X_)
         fᵢ,mᵢ,fₑ,mₑ = ☼resultants(o.mat,ε,κ,x,rₛₘ,vᵢ)          # call the "resultant" function to compute loads (local coordinates) from strains/curvatures/etc. using material properties. Note that output is dual of input. 
         R       = (fᵢ ∘₀ ε∂X₀ + mᵢ ∘₁ κ∂X₀ + fₑ ∘₁ x∂X₀ + mₑ ∘₁ vₛₘ∂X₀) * o.dL[igp]     # Contribution to the local nodal load of this Gauss point  [ndof] = scalar*[ndof] + [ndim]⋅[ndim,ndof] + [ndim]⋅[ndim,ndof]
         @named(R)
