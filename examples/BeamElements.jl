@@ -134,7 +134,6 @@ end
 
     P,ND        = constants(X,U,A,t),length(X)
     X_          = motion{P}(X)
-
     ☼ε ,ε∂X₀    = Muscade.composewithJacobian{P-1,ND,ndof}(Tε,X_)
     vₛₘ∂X₀       =                  compose(∂{P+1,ndof}(Tvₛₘ  ),X₀ )
     rₛₘ          = motion⁻¹{P,ND  }(compose(value{P+1}(Trₛₘ  ),X_))

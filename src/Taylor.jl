@@ -41,16 +41,16 @@ In the above `Y` is a tuple of length `ND`.  One can use `∂0`,`∂1` and `∂2
 See also [`motion`](@ref)
 """
 motion⁻¹{P,1,0}(a::ℝ) where{P} =                             a
-motion⁻¹{P,2,0}(a::ℝ) where{P} =          value{P  }(a)
-motion⁻¹{P,3,0}(a::ℝ) where{P} = value{P}(value{P+1 }(a))
+motion⁻¹{P,2,0}(a::ℝ) where{P} =          value{P+1  }(a)
+motion⁻¹{P,3,0}(a::ℝ) where{P} = value{P+1}(value{P+2 }(a))
 # velocities
 motion⁻¹{P,1,1}(a::ℝ) where{P} = 0. 
-motion⁻¹{P,2,1}(a::ℝ) where{P} =          ∂{    P  ,1}(a)[1]  # [1]: only partial is wrt time
-motion⁻¹{P,3,1}(a::ℝ) where{P} = value{P}(∂{    P+1,1}(a)[1])
+motion⁻¹{P,2,1}(a::ℝ) where{P} =          ∂{    P+1  ,1}(a)[1]  # [1]: only partial is wrt time
+motion⁻¹{P,3,1}(a::ℝ) where{P} = value{P+1}(∂{    P+2,1}(a)[1])
 # accelerations
 motion⁻¹{P,1,2}(a::ℝ) where{P} = 0. 
 motion⁻¹{P,2,2}(a::ℝ) where{P} = 0.
-motion⁻¹{P,3,2}(a::ℝ) where{P} = ∂{   P,1}(∂{   P+1,1}(a)[1])[1]
+motion⁻¹{P,3,2}(a::ℝ) where{P} = ∂{   P+1,1}(∂{   P+2,1}(a)[1])[1]
 
 motion⁻¹{P,ND,OD}(a::AbstractArray) where{P,ND,OD} = motion⁻¹{P,ND,OD}.(a)
 #motion⁻¹{P,ND   }(a               ) where{P,ND   } = ntuple(ID->motion⁻¹{P,ND,ID-1}(a) ,ND)
@@ -85,7 +85,7 @@ See also: [`compose`](@ref)
 function revariate{O}(a::SV{N,R}) where{O,N,R} 
     P  = precedence(R)+O
     va = VALUE(a)
-    P==0 ? va : SV{N,∂ℝ{P,N}}(∂ℝ{P,N  }(revariate_{P-1,N}(va[i],i),i) for i=1:N)
+    P==0 ? va : SV{N}(∂ℝ{P,N  }(revariate_{P-1,N}(va[i],i),i) for i=1:N)
 end
 revariate_{P,N}(a,i) where{P,N} = ∂ℝ{P,N  }(revariate_{P-1,N}(a,i),i)
 revariate_{0,N}(a,i) where{  N} =                             a
