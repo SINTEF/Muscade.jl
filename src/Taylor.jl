@@ -41,11 +41,11 @@ In the above `Y` is a tuple of length `ND`.  One can use `∂0`,`∂1` and `∂2
 See also [`motion`](@ref)
 """
 motion⁻¹{P,1,0}(a::ℝ) where{P} =                             a
-motion⁻¹{P,2,0}(a::ℝ) where{P} =          value{P+1  }(a)
+motion⁻¹{P,2,0}(a::ℝ) where{P} =            value{P+1  }(a)
 motion⁻¹{P,3,0}(a::ℝ) where{P} = value{P+1}(value{P+2 }(a))
 # velocities
 motion⁻¹{P,1,1}(a::ℝ) where{P} = 0. 
-motion⁻¹{P,2,1}(a::ℝ) where{P} =          ∂{    P+1  ,1}(a)[1]  # [1]: only partial is wrt time
+motion⁻¹{P,2,1}(a::ℝ) where{P} =            ∂{    P+1  ,1}(a)[1]  # [1]: only partial is wrt time
 motion⁻¹{P,3,1}(a::ℝ) where{P} = value{P+1}(∂{    P+2,1}(a)[1])
 # accelerations
 motion⁻¹{P,1,2}(a::ℝ) where{P} = 0. 

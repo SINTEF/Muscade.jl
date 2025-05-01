@@ -135,11 +135,11 @@ end
     P,ND        = constants(X,U,A,t),length(X)
     X_          = motion{P}(X)
     ☼ε ,ε∂X₀    = Muscade.composewithJacobian{P-1,ND,ndof}(Tε,X_)
-    vₛₘ∂X₀       =                  compose(∂{P+1,ndof}(Tvₛₘ  ),X₀ )
-    rₛₘ          = motion⁻¹{P,ND  }(compose(value{P+1}(Trₛₘ  ),X_))
-    vᵢ          = (nothing, 
-                   spin⁻¹(∂0(rₛₘ)' ∘₁ ∂1(rₛₘ)), 
-                   spin⁻¹(∂1(rₛₘ)' ∘₁ ∂1(rₛₘ) + ∂0(rₛₘ)' ∘₁ ∂2(rₛₘ)))
+    vₛₘ∂X₀       =                  compose(∂{P,ndof}(Tvₛₘ  ),X₀ )
+    rₛₘ          = motion⁻¹{P-1,ND  }(compose(value{P}(Trₛₘ  ),X_))
+    vᵢ₀         = (SVector(0,0,0),)
+    vᵢ₁         = ND≥1 ? (vᵢ₀...,   spin⁻¹(∂0(rₛₘ)' ∘₁ ∂1(rₛₘ))) : vᵢ₀ 
+    vᵢ          = ND≥2 ? (vᵢ₁...,   spin⁻¹(∂1(rₛₘ)' ∘₁ ∂1(rₛₘ) + ∂0(rₛₘ)' ∘₁ ∂2(rₛₘ))) : vᵢ₁
 
     gp          = ntuple(ngp) do igp
         Tx,Tκ   = Tgp[igp].x, Tgp[igp].κ
