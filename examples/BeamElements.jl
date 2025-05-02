@@ -169,7 +169,7 @@ function kinematics(o::EulerBeam3D,X₀)
         rₛ₁              = fast(Rodrigues,vᵧ₁)
         rₛ₂              = fast(Rodrigues,vᵧ₂)
         vₗ₂              = 0.5*Rodrigues⁻¹(rₛ₂ ∘₁ rₛ₁')
-        rₛₘ              = Rodrigues(vₗ₂) ∘₁ rₛ₁ ∘₁ o.rₘ  
+        rₛₘ              = fast(Rodrigues,vₗ₂) ∘₁ rₛ₁ ∘₁ o.rₘ  
         vₛₘ              = Rodrigues⁻¹(rₛₘ)              
         return vₗ₂,rₛₘ,vₛₘ
     end           
