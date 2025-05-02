@@ -63,6 +63,12 @@ module Runtest
         @testset "TestFFT" begin
             include("TestFFT.jl")
         end
+        @testset "TestEigenmodes" begin
+            include("TestEigenmodes.jl")
+        end
+        @testset "TestEigX" begin
+            include("TestEigX.jl")
+        end
         @testset "TestFiniteDifferences" begin
             include("TestFiniteDifferences.jl")
         end

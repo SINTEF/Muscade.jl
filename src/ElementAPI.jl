@@ -11,6 +11,8 @@ See also: [`noFB`](@ref)
 """
 const noFB=nothing
 
+zilch(a::SArray{S}) where{S} = zeros(SArray{S,𝕣})
+zilch(a::AbstractArray)      = zeros(𝕣,size(a))
 """
     position = ∂0(X)
 
@@ -30,7 +32,7 @@ a static solver), the output is a vector of zeros.
 
 See also: [`∂0`](@ref),[`∂2`](@ref),[`getsomedofs`](@ref)  
 """
-∂1(y)   = length(y) ≥2 ? y[2] : zeros(SVector{length(y[1])})
+∂1(y)   = length(y) ≥2 ? y[2] : zilch(y[1])
 
 """
     position = ∂2(X)
@@ -41,9 +43,9 @@ a static solver), the output is a vector of zeros.
 
 See also: [`∂0`](@ref),[`∂1`](@ref),[`getsomedofs`](@ref)  
 """
-∂2(y)   = length(y) ≥3 ? y[3] : zeros(SVector{length(y[1])})
+∂2(y)   = length(y) ≥3 ? y[3] : zilch(y[1])
 ∂n(n)   = (∂0,∂1,∂2)[n+1] # type unstable
-∂n(y,ider) = length(y) ≥ider+1 ? y[ider+1] : zeros(SVector{length(y[1])}) # slow
+∂n(y,ider) = length(y) ≥ider+1 ? y[ider+1] : zilch(y[1]) # slow
 
 """
     rotations = getsomedofs(X,[3,6])

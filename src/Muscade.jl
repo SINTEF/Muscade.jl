@@ -15,7 +15,7 @@ module Muscade
     export  constants,precedence,npartial,norm
 
     include("Taylor.jl")
-    export  Taylor,motion,motion⁻¹ 
+    export  motion,motion⁻¹,revariate,compose,fast, composewithJacobian 
 
     include("Functors.jl")
     export QuadraticFunction,FunctionFromVector 
@@ -60,6 +60,9 @@ module Muscade
     include("SweepX.jl")
     export SweepX
 
+    include("EigX.jl")
+    export EigX,increment
+
     include("DirectXUA.jl")
     export DirectXUA
 
@@ -84,4 +87,5 @@ module Muscade
     include("FFT.jl")
     #export getδf,getδt(n3,δf3′),𝔉𝕣(g.(t3),δt3),𝔉𝕣⁻¹(X3′′,δf3)
 
+    include("Eigenmodes.jl")
 end

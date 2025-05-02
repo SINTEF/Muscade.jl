@@ -72,4 +72,4 @@ deploydocs(repo = "github.com/SINTEF/Muscade.jl.git",devbranch="main",  devurl="
 # https://sintef.github.io/Muscade.jl/dev
 # https://sintef.github.io/Muscade.jl/stable
 
-Pkg.activate(muscade)
+# Pkg.activate(muscade)

@@ -48,42 +48,41 @@ eleid       = addelement!(model,EulerBeam3D,mesh;mat=mat,orient2=SVector(0.,1.,0
 
 # Solve the problem 
 initialstate    = initialize!(model);
-state           = solve(SweepX{0};initialstate,time=[0.,1.])
+# state           = solve(SweepX{0};initialstate,time=[0.,1.])
 
-# Fetch results
-w_ = getdof(state[2];field=:t2,nodID=nodid[1:nnodes])
-θ_ = getdof(state[2];field=:r3,nodID=nodid[1:nnodes])
-req = @request gp(resultants(m))
-out = getresult(state[2],req,eleid)
-Mgp1_ = [ out[idxEl].gp[1][:resultants][:m][2] for idxEl ∈ 1:nel]
-Mgp2_ = [ out[idxEl].gp[2][:resultants][:m][2] for idxEl ∈ 1:nel]
-xgp1 = (L/nel)*((0.5-1.0/(2*sqrt(3))):1:nel)
-xgp2 = (L/nel)*((0.5+1.0/(2*sqrt(3))):1:nel)
-req = @request gp(κ)
-out = getresult(state[2],req,eleid)
-κgp1_ = [ out[idxEl].gp[1].κ[1][2] for idxEl ∈ 1:nel]
-κgp2_ = [ out[idxEl].gp[2].κ[1][2] for idxEl ∈ 1:nel];
+# # Fetch and display results
+# w_ = getdof(state[2];field=:t2,nodID=nodid[1:nnodes])
+# θ_ = getdof(state[2];field=:r3,nodID=nodid[1:nnodes])
+# req = @request gp(resultants(m))
+# out = getresult(state[2],req,eleid)
+# Mgp1_ = [ out[idxEl].gp[1][:resultants][:m][2] for idxEl ∈ 1:nel]
+# Mgp2_ = [ out[idxEl].gp[2][:resultants][:m][2] for idxEl ∈ 1:nel]
+# xgp1 = (L/nel)*((0.5-1.0/(2*sqrt(3))):1:nel)
+# xgp2 = (L/nel)*((0.5+1.0/(2*sqrt(3))):1:nel)
+# req = @request gp(κ)
+# out = getresult(state[2],req,eleid)
+# κgp1_ = [ out[idxEl].gp[1].κ[1][2] for idxEl ∈ 1:nel]
+# κgp2_ = [ out[idxEl].gp[2].κ[1][2] for idxEl ∈ 1:nel];
 
-# Display results
-fig      = Figure(size = (1000,1000))
-ax = Axis(fig[1,1], ylabel="Deflection w [m]",        yminorgridvisible = true,xminorgridvisible = true,xticks = (0:L/nel:L))
-lines!(fig[1,1], x,            -w,                       label="Analytical solution")
-scatter!(fig[1,1],(0:L/nel:L),  w_[:],                  label="Muscade/beam");
-axislegend()
-ax=Axis(fig[2,1], ylabel="Rotation θ [deg]",        yminorgridvisible = true,xminorgridvisible = true,xticks = (0:L/nel:L))
-lines!(fig[2,1],x,            θ*180/pi,                 label="Analytical solution")
-scatter!(fig[2,1],(0:L/nel:L),  θ_[:]*180/pi,           label="Muscade/beam");
-ax=Axis(fig[3,1], ylabel="Curvature κ [m⁻¹]",       yminorgridvisible = true,xminorgridvisible = true,xticks = (0:L/nel:L))
-lines!(fig[3,1],x,            κ,                        label="Analytical solution")
-scatter!(fig[3,1],[xgp1;xgp2],  [κgp1_;κgp2_],          label="Muscade/beam");
-ax=Axis(fig[4,1], ylabel="Bending moment M [Nm]",   yminorgridvisible = true,xminorgridvisible = true,xticks = (0:L/nel:L), xlabel="Position on beam [m]")
-lines!(fig[4,1],x,            M,                        label="Analytical solution")
-scatter!(fig[4,1],[xgp1;xgp2],  [Mgp1_;Mgp2_],          label="Muscade/beam");
+# fig      = Figure(size = (1000,1000))
+# ax = Axis(fig[1,1], ylabel="Deflection w [m]",        yminorgridvisible = true,xminorgridvisible = true,xticks = (0:L/nel:L))
+# lines!(fig[1,1], x,            -w,                       label="Analytical solution")
+# scatter!(fig[1,1],(0:L/nel:L),  w_[:],                  label="Muscade/beam");
+# axislegend()
+# ax=Axis(fig[2,1], ylabel="Rotation θ [deg]",        yminorgridvisible = true,xminorgridvisible = true,xticks = (0:L/nel:L))
+# lines!(fig[2,1],x,            θ*180/pi,                 label="Analytical solution")
+# scatter!(fig[2,1],(0:L/nel:L),  θ_[:]*180/pi,           label="Muscade/beam");
+# ax=Axis(fig[3,1], ylabel="Curvature κ [m⁻¹]",       yminorgridvisible = true,xminorgridvisible = true,xticks = (0:L/nel:L))
+# lines!(fig[3,1],x,            κ,                        label="Analytical solution")
+# scatter!(fig[3,1],[xgp1;xgp2],  [κgp1_;κgp2_],          label="Muscade/beam");
+# ax=Axis(fig[4,1], ylabel="Bending moment M [Nm]",   yminorgridvisible = true,xminorgridvisible = true,xticks = (0:L/nel:L), xlabel="Position on beam [m]")
+# lines!(fig[4,1],x,            M,                        label="Analytical solution")
+# scatter!(fig[4,1],[xgp1;xgp2],  [Mgp1_;Mgp2_],          label="Muscade/beam");
 
-currentDir = @__DIR__
-if occursin("build", currentDir)
-    save(normpath(joinpath(currentDir,"..","src","assets","beam.png")),fig)
-elseif occursin("examples", currentDir)
-    save(normpath(joinpath(currentDir,"beam.png")),fig)
-end
+# currentDir = @__DIR__
+# if occursin("build", currentDir)
+#     save(normpath(joinpath(currentDir,"..","src","assets","beam.png")),fig)
+# elseif occursin("examples", currentDir)
+#     save(normpath(joinpath(currentDir,"beam.png")),fig)
+# end
 # ![Result](assets/beam.png)
