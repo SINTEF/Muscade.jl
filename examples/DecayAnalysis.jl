@@ -117,7 +117,7 @@ e7             = addelement!(modelXUA,SingleDofCost,[n1];class=:X,field=:yaw,   
 #Solve inverse problem
 initialstateXUA    = initialize!(modelXUA;time=0.)
 stateXUA         = solve(DirectXUA{2,0,1};initialstate=initialstateXUA,time=T,
-                        maxiter=100,saveiter=true,fastresidual=true,
+                        maxiter=100,saveiter=true,
                         maxΔx=1e-5,maxΔλ=Inf,maxΔu=1e-5,maxΔa=1e-5);
 
 # Fetch and display estimated model parameters

@@ -93,8 +93,14 @@ struct EulerBeam3D{Mat} <: AbstractElement
     mat      :: Mat # used to store material properties (BeamCrossSection, for example)
 end
 
+# For performance, `residual` will only accept differentiation to first order
+Muscade.fastresidual(::Type{<:EulerBeam3D}) = Val(true)
+
 # Define nodes, classes, and field names of dofs
-Muscade.doflist(::Type{<:EulerBeam3D}) = (inod = (1,1,1,1,1,1, 2,2,2,2,2,2), class= ntuple(i->:X,ndof), field= (:t1,:t2,:t3,:r1,:r2,:r3, :t1,:t2,:t3,:r1,:r2,:r3) )
+Muscade.doflist(     ::Type{<:EulerBeam3D}) = 
+        (inod = (1,1,1,1,1,1, 2,2,2,2,2,2), 
+         class= ntuple(i->:X,ndof), 
+         field= (:t1,:t2,:t3,:r1,:r2,:r3, :t1,:t2,:t3,:r1,:r2,:r3) )
 
 # Constructor for the EulerBeam3D element. Arguments: node list, material, and direction of the first bending axis in the global coordinate system.  
 function EulerBeam3D(nod::Vector{Node};mat,orient2::SVector{ndim,𝕣}=SVector(0.,1.,0.))
@@ -126,6 +132,7 @@ function EulerBeam3D(nod::Vector{Node};mat,orient2::SVector{ndim,𝕣}=SVector(0
 end
 
 # Define now the residual function for the EulerBeam3D element.
+
 
 @espy function Muscade.residual(o::EulerBeam3D,   X,U,A,t,SP,dbg) 
     X₀          = ∂0(X)

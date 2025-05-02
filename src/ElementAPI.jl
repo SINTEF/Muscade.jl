@@ -175,5 +175,5 @@ See also: [`lagrangian`](@ref), [`residual`](@ref), [`doflist`](@ref)
 """
 draw(axe,::AbstractElement,args...;kwargs...) = nothing # by default, an element draws nothing
 
-
+fastresidual(     ::Type{E}) where{E<:AbstractElement} = Val(false)
 

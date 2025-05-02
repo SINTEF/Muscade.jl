@@ -18,10 +18,9 @@ arrnum(α,β)  = nclass + β + nclass*(α-1)
 mutable struct AssemblyDirect{OX,OU,IA}  <:Assembly
     L1 :: Vector{Vector{𝕣1      }}    # L1[α  ][αder     ]  α∈ λ,x,u,a
     L2 :: Matrix{Matrix{Sparse𝕣2}}    # L2[α,β][αder,βder]
-    fastresidual :: 𝔹
     matrices     :: 𝔹
 end  
-function prepare(::Type{AssemblyDirect{OX,OU,IA}},model,dis;Xwhite=false,XUindep=false,UAindep=false,XAindep=false,fastresidual=false,matrices=true) where{OX,OU,IA}
+function prepare(::Type{AssemblyDirect{OX,OU,IA}},model,dis;Xwhite=false,XUindep=false,UAindep=false,XAindep=false,matrices=true) where{OX,OU,IA}
     dofgr    = (allΛdofs(model,dis),allXdofs(model,dis),allUdofs(model,dis),allAdofs(model,dis))
     ndof     = getndof.(dofgr)
     neletyp  = getneletyp(model)
@@ -53,7 +52,7 @@ function prepare(::Type{AssemblyDirect{OX,OU,IA}},model,dis;Xwhite=false,XUindep
             L2[α,β][αder,βder] = copy(am)
         end
     end
-    out      = AssemblyDirect{OX,OU,IA}(L1,L2,fastresidual,matrices)
+    out      = AssemblyDirect{OX,OU,IA}(L1,L2,matrices)
     return out,asm,dofgr
 end
 function zero!(out::AssemblyDirect)
@@ -71,10 +70,16 @@ function zero!(out::AssemblyDirect)
         end
     end
 end
-function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::Eleobj,  Λ::NTuple{1  ,SVector{Nx}},
-                                                                                         X::NTuple{NDX,SVector{Nx}},
-                                                                                         U::NTuple{NDU,SVector{Nu}},
-                                                                                         A::           SVector{Na} ,t,SP,dbg) where{OX,OU,IA,NDX,NDU,Nx,Nu,Na,Eleobj} 
+
+function addin!(out::AssemblyDirect,asm,iele,scale,eleobj::Eleobj,Λ,X,U,A,t,SP,dbg) where{Eleobj} 
+    addin!(out::AssemblyDirect,asm,iele,scale,eleobj,fastresidual(Eleobj),Λ,X,U,A,t,SP,dbg)
+end
+
+function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::Eleobj,fastresidual::Val{true}, 
+                                Λ::NTuple{1  ,SVector{Nx}},
+                                X::NTuple{NDX,SVector{Nx}},
+                                U::NTuple{NDU,SVector{Nu}},
+                                A::           SVector{Na} ,t,SP,dbg) where{OX,OU,IA,NDX,NDU,Nx,Nu,Na,Eleobj} 
     @assert NDX==OX+1 @sprintf("got OX=%i and NDX=%i. Expected OX+1==NDX",OX,NDX)
     @assert NDX==OX+1 @sprintf("got OU=%i and NDU=%i. Expected OU+1==NDU",OU,NDU)
     ndof   = (Nx, Nx, Nu, Na)
@@ -82,59 +87,70 @@ function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::Eleobj,  Λ
     Npfast =      Nx*(OX+1) + Nu*(OU+1) + Na*IA # number of partials
     Np     = Nx + Nx*(OX+1) + Nu*(OU+1) + Na*IA # number of partials
 
-    if  out.fastresidual && hasmethod(residual  ,(Eleobj,       NTuple,NTuple,𝕣1,𝕣,NamedTuple,NamedTuple))
-        X∂ = ntuple(ider->SVector{Nx}(∂ℝ{1,Npfast}(X[ider][idof],   Nx*(ider-1)            +idof, scale.X[idof])   for idof=1:Nx),OX+1)
-        U∂ = ntuple(ider->SVector{Nu}(∂ℝ{1,Npfast}(U[ider][idof],   Nx*(OX+1)  +Nu*(ider-1)+idof, scale.U[idof])   for idof=1:Nu),OU+1)
-        if IA == 1
-            A∂   =        SVector{Na}(∂ℝ{1,Npfast}(A[      idof],   Nx*(OX+1)  +Nu*(OU+1)  +idof, scale.A[idof])   for idof=1:Na)
-            R,FB = residual(eleobj, X∂,U∂,A∂,t,SP,dbg)
-        else
-            R,FB = residual(eleobj, X∂,U∂,A ,t,SP,dbg)
-        end        
-        iλ   = 1:ndof[ind.Λ]
-        Lλ   = out.L1[ind.Λ]
-        add_value!(Lλ[1] ,asm[arrnum(ind.Λ)],iele,R,ia=iλ)
+    X∂ = ntuple(ider->SVector{Nx}(∂ℝ{1,Npfast}(X[ider][idof],   Nx*(ider-1)            +idof, scale.X[idof])   for idof=1:Nx),OX+1)
+    U∂ = ntuple(ider->SVector{Nu}(∂ℝ{1,Npfast}(U[ider][idof],   Nx*(OX+1)  +Nu*(ider-1)+idof, scale.U[idof])   for idof=1:Nu),OU+1)
+    if IA == 1
+        A∂   =        SVector{Na}(∂ℝ{1,Npfast}(A[      idof],   Nx*(OX+1)  +Nu*(OU+1)  +idof, scale.A[idof])   for idof=1:Na)
+        R,FB = residual(eleobj, X∂,U∂,A∂,t,SP,dbg)
+    else
+        R,FB = residual(eleobj, X∂,U∂,A ,t,SP,dbg)
+    end        
+    iλ   = 1:ndof[ind.Λ]
+    Lλ   = out.L1[ind.Λ]
+    add_value!(Lλ[1] ,asm[arrnum(ind.Λ)],iele,R,ia=iλ)
+    if out.matrices
+        pβ       = 0
+        for β∈xua, j=1:nder[β]
+            iβ   = pβ.+(1:ndof[β])
+            pβ  += ndof[β]
+            Lλβ  = out.L2[ind.Λ,β]
+            Lβλ  = out.L2[β,ind.Λ]
+            if j≤size(Lλβ,2) # ...but only add into existing matrices of L2, for better sparsity
+                add_∂!{1           }(Lλβ[1,j],asm[arrnum(ind.Λ,β)],iele,R,ia=iλ,ida=iβ)
+                add_∂!{1,:transpose}(Lβλ[j,1],asm[arrnum(β,ind.Λ)],iele,R,ia=iλ,ida=iβ)
+            end
+        end
+    end 
+end
+function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::Eleobj,fastresidual::Val{false}, 
+    Λ::NTuple{1  ,SVector{Nx}},
+    X::NTuple{NDX,SVector{Nx}},
+    U::NTuple{NDU,SVector{Nu}},
+    A::           SVector{Na} ,t,SP,dbg) where{OX,OU,IA,NDX,NDU,Nx,Nu,Na,Eleobj} 
+
+    @assert NDX==OX+1 @sprintf("got OX=%i and NDX=%i. Expected OX+1==NDX",OX,NDX)
+    @assert NDX==OX+1 @sprintf("got OU=%i and NDU=%i. Expected OU+1==NDU",OU,NDU)
+    ndof   = (Nx, Nx, Nu, Na)
+    nder   = (1,OX+1,OU+1,IA)
+    Npfast =      Nx*(OX+1) + Nu*(OU+1) + Na*IA # number of partials
+    Np     = Nx + Nx*(OX+1) + Nu*(OU+1) + Na*IA # number of partials
+
+    Λ∂ =              SVector{Nx}(∂²ℝ{1,Np}(Λ[1   ][idof],                           idof, scale.Λ[idof])   for idof=1:Nx)
+    X∂ = ntuple(ider->SVector{Nx}(∂²ℝ{1,Np}(X[ider][idof],Nx+Nx*(ider-1)            +idof, scale.X[idof])   for idof=1:Nx),OX+1)
+    U∂ = ntuple(ider->SVector{Nu}(∂²ℝ{1,Np}(U[ider][idof],Nx+Nx*(OX+1)  +Nu*(ider-1)+idof, scale.U[idof])   for idof=1:Nu),OU+1)
+    if IA == 1
+        A∂   =        SVector{Na}(∂²ℝ{1,Np}(A[      idof],Nx+Nx*(OX+1)  +Nu*(OU+1)  +idof, scale.A[idof])   for idof=1:Na)
+        L,FB = getlagrangian(eleobj, Λ∂,X∂,U∂,A∂,t,SP,dbg)
+    else
+        L,FB = getlagrangian(eleobj, Λ∂,X∂,U∂,A ,t,SP,dbg)
+    end
+    ∇L           = ∂{2,Np}(L)
+    pα           = 0   # points into the partials, 1 entry before the start of relevant partial derivative in α,ider-loop
+    for α∈λxua, i=1:nder[α]   # we must loop over all time derivatives to correctly point into the adiff-partials...
+        iα       = pα.+(1:ndof[α])
+        pα      += ndof[α]
+        Lα = out.L1[α]
+        if i≤size(Lα,1)  # ...but only add into existing vectors of L1, for speed
+            add_value!(out.L1[α][i] ,asm[arrnum(α)],iele,∇L,ia=iα)
+        end
         if out.matrices
             pβ       = 0
-            for β∈xua, j=1:nder[β]
+            for β∈λxua, j=1:nder[β]
                 iβ   = pβ.+(1:ndof[β])
                 pβ  += ndof[β]
-                Lλβ  = out.L2[ind.Λ,β]
-                Lβλ  = out.L2[β,ind.Λ]
-                if j≤size(Lλβ,2) # ...but only add into existing matrices of L2, for better sparsity
-                    add_∂!{1           }(Lλβ[1,j],asm[arrnum(ind.Λ,β)],iele,R,ia=iλ,ida=iβ)
-                    add_∂!{1,:transpose}(Lβλ[j,1],asm[arrnum(β,ind.Λ)],iele,R,ia=iλ,ida=iβ)
-                end
-            end
-        end 
-    else
-        Λ∂ =              SVector{Nx}(∂²ℝ{1,Np}(Λ[1   ][idof],                           idof, scale.Λ[idof])   for idof=1:Nx)
-        X∂ = ntuple(ider->SVector{Nx}(∂²ℝ{1,Np}(X[ider][idof],Nx+Nx*(ider-1)            +idof, scale.X[idof])   for idof=1:Nx),OX+1)
-        U∂ = ntuple(ider->SVector{Nu}(∂²ℝ{1,Np}(U[ider][idof],Nx+Nx*(OX+1)  +Nu*(ider-1)+idof, scale.U[idof])   for idof=1:Nu),OU+1)
-        if IA == 1
-            A∂   =        SVector{Na}(∂²ℝ{1,Np}(A[      idof],Nx+Nx*(OX+1)  +Nu*(OU+1)  +idof, scale.A[idof])   for idof=1:Na)
-            L,FB = getlagrangian(eleobj, Λ∂,X∂,U∂,A∂,t,SP,dbg)
-        else
-            L,FB = getlagrangian(eleobj, Λ∂,X∂,U∂,A ,t,SP,dbg)
-        end
-        ∇L           = ∂{2,Np}(L)
-        pα           = 0   # points into the partials, 1 entry before the start of relevant partial derivative in α,ider-loop
-        for α∈λxua, i=1:nder[α]   # we must loop over all time derivatives to correctly point into the adiff-partials...
-            iα       = pα.+(1:ndof[α])
-            pα      += ndof[α]
-            Lα = out.L1[α]
-            if i≤size(Lα,1)  # ...but only add into existing vectors of L1, for speed
-                add_value!(out.L1[α][i] ,asm[arrnum(α)],iele,∇L,ia=iα)
-            end
-            if out.matrices
-                pβ       = 0
-                for β∈λxua, j=1:nder[β]
-                    iβ   = pβ.+(1:ndof[β])
-                    pβ  += ndof[β]
-                    Lαβ = out.L2[α,β]
-                    if i≤size(Lαβ,1) && j≤size(Lαβ,2) # ...but only add into existing matrices of L2, for better sparsity
-                        add_∂!{1}(out.L2[α,β][i,j],asm[arrnum(α,β)],iele,∇L,ia=iα,ida=iβ)
-                    end
+                Lαβ = out.L2[α,β]
+                if i≤size(Lαβ,1) && j≤size(Lαβ,2) # ...but only add into existing matrices of L2, for better sparsity
+                    add_∂!{1}(out.L2[α,β][i,j],asm[arrnum(α,β)],iele,∇L,ia=iα,ida=iβ)
                 end
             end
         end
@@ -320,7 +336,6 @@ The solver does not yet support interior point methods.
 - `saveiter=false`    set to true so that the output `state` is a vector (over the iterations) of 
                       vectors (over the steps) of `State`s of the model (for debugging 
                       non-convergence). 
-- `fastresidual=false` compute the gradient of the `residual` instead of the Hessian of the `lagrangian`, for element that implement `residual`.
 Setting the following flags to `true` will improve the sparsity of the system. But setting
 a flag to `true` when the condition isn't met causes the Hessian to be wrong, which is detrimental for convergence.                      
 - `Xwhite=false`      `true` if response measurement error is a white noise process.
@@ -341,7 +356,6 @@ function solve(TS::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
     maxiter::ℤ=50,
     maxΔλ::ℝ=1e-5,maxΔx::ℝ=1e-5,maxΔu::ℝ=1e-5,maxΔa::ℝ=1e-5,
     saveiter::𝔹=false,
-    fastresidual:: 𝔹=false,
     kwargs...) where{OX,OU,IA}
 
     #  Mostly constants
@@ -371,7 +385,7 @@ function solve(TS::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
 
     # Prepare assembler
     verbose && @printf("\n    Preparing assembler\n")
-    out,asm,dofgr         = prepare(AssemblyDirect{OX,OU,IA},model,dis;fastresidual,kwargs...)      # mem and assembler for system at any given step
+    out,asm,dofgr         = prepare(AssemblyDirect{OX,OU,IA},model,dis;kwargs...)      # mem and assembler for system at any given step
     assemble!(out,asm,dis,model,state[1],(dbg...,solver=:DirectXUA,phase=:sparsity))     # create a sample "out" for preparebig
     Lvv,Lv,Lvvasm,Lvasm,Lvdis = preparebig(OX,OU,IA,nstep,out)                             # mem and assembler for big system
 
