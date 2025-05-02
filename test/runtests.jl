@@ -12,6 +12,12 @@ module Runtest
         @testset "TestAdiff" begin
             include("TestAdiff.jl")
         end
+        @testset "TestTaylor" begin
+            include("TestTaylor.jl")
+        end
+        @testset "TestFunctors" begin
+            include("TestFunctors.jl")
+        end
         @testset "TestModelDescription" begin
             include("TestModelDescription.jl")
         end
@@ -59,6 +65,9 @@ module Runtest
         end
         @testset "TestFiniteDifferences" begin
             include("TestFiniteDifferences.jl")
+        end
+        @testset "TestElementTestTools" begin
+            include("TestElementTestTools.jl")
         end
         # doctest(Muscade) # we do not use doctest, we run Literate.jl on mydemo.jl files that are included in a unit test file
     end

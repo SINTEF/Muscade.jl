@@ -6,13 +6,19 @@ module Muscade
     export ℝ1,ℤ1,𝕣1,𝕫1,𝔹1,𝕓1
     export ℝ2,ℤ2,𝕣2,𝕫2,𝔹2,𝕓2
     export ℝ11,ℤ11,𝕣11,𝕫11,𝔹11,𝕓11
-    export toggle,@once,default
+    export toggle,default,@once
 
     include("Adiff.jl")
     export  ∂ℝ #\partial \bbR
     export  variate,δ,directional # \delta
     export  value,VALUE,∂,value_∂ # \partial, \nabla
     export  constants,precedence,npartial,norm
+
+    include("Taylor.jl")
+    export  Taylor,motion,motion⁻¹ 
+
+    include("Functors.jl")
+    export QuadraticFunction,FunctionFromVector 
 
     include("Dots.jl")
     export dots,∘₀,∘₁,∘₂,⊗
@@ -23,7 +29,6 @@ module Muscade
 
     include("Exceptions.jl")
     export muscadeerror
-
 
     include("ModelDescription.jl")
     export AbstractElement
@@ -74,6 +79,7 @@ module Muscade
     export ←,→
 
     include("ElementTestTools.jl")
+    export diffed_residual,diffed_lagrangian,print_element_array
 
     include("FFT.jl")
     #export getδf,getδt(n3,δf3′),𝔉𝕣(g.(t3),δt3),𝔉𝕣⁻¹(X3′′,δf3)

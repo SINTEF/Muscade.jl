@@ -212,24 +212,25 @@ copies(n,a::T) where{T} = NTuple{n,T}(deepcopy(a) for i∈1:n)
 
 using MacroTools: postwalk,gensym_ids,rmlines,unblock 
 """
-    @once f(x)= x^2 
+    @once tag f(x)= x^2 
     
 do not parse the definition of function `f` again if not modified.
 Using in a script, this prevents recompilations in `Muscade` or applications
-based on it when they receive such functions as argument
+based on it when they receive such functions as argument.
+
+`tag` must be a legal variable name, and unique to this invocation of `@once`  
 """    
-macro once(ex)
+macro once(tag,ex)
     ex  = postwalk(rmlines,ex)
     ex  = postwalk(unblock,ex)
     qex = QuoteNode(ex)
-    ex  = esc(ex)
-    tag = gensym("tag")
-    return quote
-        if ~@isdefined($tag) || $tag≠$qex
+    tag = Symbol("tag_for_the_once_macro_",tag)
+    return esc(quote
+        if  ~@isdefined($tag) || $tag≠$qex
             $tag = $qex
             $ex    
         end 
-    end
+    end)
 end
 """
     default{:fieldname}(namedtuple,defval)

@@ -11,14 +11,14 @@ n3              = addnode!(model,𝕣[ 0,10])  # anchor 2
 n4              = addnode!(model,𝕣[     ])  # A-nod for springs
 e1              = addelement!(model,Spring{2},[n1,n2,n4], EI=1)
 e2              = addelement!(model,Spring{2},[n1,n3,n4], EI=1)
-@once f1(t)     = t
+@once f1 f1(t)     = t
 e3              = addelement!(model,DofLoad  ,[n1], field=:tx1      ,value=f1)
 e4              = addelement!(model,Hold  ,[n2], field=:tx1)
 e5              = addelement!(model,Hold  ,[n2], field=:tx2)
 e6              = addelement!(model,Hold  ,[n3], field=:tx1)
 e7              = addelement!(model,Hold  ,[n3], field=:tx2)
-@once f2(x,t)   = 1x^2
-@once f3(a)     = 0.1a^2
+@once f2 f2(x,t)   = 1x^2
+@once f3 f3(a)     = 0.1a^2
 e8              = addelement!(model,SingleDofCost ,class=:X, field=:tx1,[n1]      ,cost=f2)
 e9              = addelement!(model,SingleDofCost ,class=:X, field=:tx2,[n1]      ,cost=f2)
 e10             = addelement!(model,SingleDofCost ,class=:A, field=:ΞL₀,[n4]      ,cost=f3)

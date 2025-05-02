@@ -36,35 +36,38 @@ DryFriction(nod::Vector{Node};fieldx::Symbol,fieldf::Symbol=:f,
            friction::𝕣,Δx::𝕣=0.,x′scale::𝕣=1.) =
            DryFriction{fieldx,fieldf}(friction,x′scale,Δx/friction)
 # ## `residual`
-# The `residual` function is prepended by `@espy` to facilitate the extraction of element-results (see [`getresults`(@ref)).
+# The `residual` function is prepended by `@espy` to facilitate the extraction of element-results . 
+# Variables `old` and `new` are prepended by `☼` (`\sun`), to tell `@espy` the values of these variables can
+# be requested using [`getresult`](@ref). 
+#
 # The full name `Muscade.residual` must be used, because we are adding a method to a function defined in the `module` `Muscade`.
 @espy function Muscade.residual(o::DryFriction, X,U,A, t,SP,dbg) 
     x,x′,f,f′ = ∂0(X)[1],∂1(X)[1], ∂0(X)[2], ∂1(X)[2]       
-    conds     = (stick = (x′-o.k⁻¹*f′)/o.x′scale,           
-                 slip  =  abs(f)/o.fric -1      )                      
-    ☼old      = argmin(map(abs,conds))                      
+    stick = (x′-o.k⁻¹*f′)/o.x′scale           
+    slip  = abs(f)/o.fric -1                               
+    ☼old  = abs(slip)<abs(stick) ? :slip : :stick                      
     if        old==:stick && abs(f)>o.fric   ☼new = :slip   
     elseif    old==:slip  && f*x′<0          ☼new = :stick  
-    else                                     ☼new =  old    
-    end        
-    return SVector(f,conds[new]), noFB
-end
+    else                                     ☼new = old    
+    end  
+    return (new==:slip ? SVector(f,slip) : SVector(f,stick)), noFB
+end;
 # In the above `f` (a force) uses the "nod-on-el" convention (force exterted by the element's node on the element), so the sign is unusual.
 #
-# `conds = ...`: Was the system in `stick` of `slip` at the previous iteration? Each condition is matched if the 
-# expression (`(x′-o.k⁻¹*f′)/o.x′scale` or `abs(f)/o.fric -1`) evaluates to a near zero value. `conds` is a `NamedTuple`.  
-
-# The expression `argmin(map(abs,conds))` applies `abs` to each term of the tuple, and returns the index (`:stick` or `:slip`) of the
-# smallest argument: it identifies the `old` state of the element.
-#
-# Variables `old` and `new` are prepended by `☼` (`\sun`), to tell `@espy` this is an element-result. 
+# If the element was in stick the previous iteration, the variable `stick = (x′-o.k⁻¹*f′)/o.x′scale` will be very close to zero.
+# Similarly, if the element was in slip the previous iteration, the variable `slip  = abs(f)/o.fric -1` will be very close to zero.
+# `old` is then either `:stick` or `:slip` depending on which of the two above is smallest.
 #
 # The `if` construct can be read as follows:
-# - If we were in stick but now `|f|` exceeds `o.fric`, we now slip.
-# - If we were in slip but now the force is in the wrong direction, we now stick.
+# - If we were in stick at previous iteration but `|f|` from previous iteration exceeds `o.fric`, we slip in this iteration.
+# - If we were in slip at previous iteration but force from previous iteration is in the wrong direction, we stick in this iteration.
 # - Otherwise, no change.
 #
-# The function returns a 2-vector of residuals (corresponding to the two `X`dofs), and we have no "feedback" to the solver (as opposed to constraint elements).
+# The function returns a 2-vector of residuals (corresponding to the two `X`dofs).  The first residual `f` is the friction force applied to the dof `fieldx`. 
+#
+# The second residual corresponds to dof `fieldf`.  Importantly, this later dof must not be shared with any other element, so the that solver will set 
+# the second residual to zero in this iteration: depending on `new`, this will enforce `slip==0` or `stick==0`. The relevant condition will
+# be enforced exactly (to rounding errors) because both conditions are linear in `X`.
 #
 # ## `doflist`
 # Another function that must be overloaded, in order to tell `Muscade` what dofs the element provides. Note that this is a function of the element *type*, not

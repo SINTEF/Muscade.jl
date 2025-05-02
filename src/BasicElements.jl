@@ -347,10 +347,10 @@ struct DofConstraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λi
     mode     :: Tmode # mode(t)->symbol, or Symbol for Aconstraints
 end
 function DofConstraint(nod::Vector{Node};xinod::NTuple{Nx,𝕫}=(),xfield::NTuple{Nx,Symbol}=(),
-                                      uinod::NTuple{Nu,𝕫}=(),ufield::NTuple{Nu,Symbol}=(),
-                                      ainod::NTuple{Na,𝕫}=(),afield::NTuple{Na,Symbol}=(),
-                                      λinod::𝕫, λclass::Symbol, λfield::Symbol,
-                                      gap::Function ,gargs=(),mode::Function) where{Nx,Nu,Na} 
+                                         uinod::NTuple{Nu,𝕫}=(),ufield::NTuple{Nu,Symbol}=(),
+                                         ainod::NTuple{Na,𝕫}=(),afield::NTuple{Na,Symbol}=(),
+                                         λinod::𝕫, λclass::Symbol, λfield::Symbol,
+                                         gap::Function ,gargs=(),mode::Function) where{Nx,Nu,Na} 
     (λclass==:X && (Nu>0||Na>0)) && muscadeerror("Constraints with λclass=:X must have zero U-dofs and zero A-dofs") 
     (λclass==:A && (Nx>0||Nu>0)) && muscadeerror("Constraints with λclass=:A must have zero X-dofs and zero U-dofs") 
     return DofConstraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,
@@ -570,12 +570,12 @@ another element, during an analysis.
 Instead of adding the element to be monitored directly into the model,
 add this element with the element to be monitored as argument.
 
-Inputs and outs get @show'n to screen
+Inputs and outputs are @show'n. 
 
 # Named arguments to the constructor
 
 - `ElementType`         The the type of element to be monitored-
-- `trigger`            A function that takes `dbg` as an input and returns a boolean 
+- `trigger`             A function that takes `dbg` as an input and returns a boolean 
                         (`true`) to printout.
 - `elementkwargs`       a `NamedTuple` containing the named arguments of the `ElementType` constructor.
 
