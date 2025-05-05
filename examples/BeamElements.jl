@@ -31,8 +31,7 @@ BeamCrossSection(;EA=EA,EI=EI,GJ=GJ) = BeamCrossSection(EA,EI,GJ);
     xᵧ₀,xᵧ₁,xᵧ₂ = ∂0(xᵧ),∂1(xᵧ),∂2(xᵧ)
     xₗ₁          = xᵧ₁ ∘₁ r₀
     xₗ₂          = xᵧ₂ ∘₁ r₀
-
-    # ## Compute drag force (hard-coded parameters so far)
+    ## Compute drag force (hard-coded parameters so far)
     ρ = 1025.0
     A  = SVector(0.0,1.0,1.0)
     Cd = SVector(0.0,1.0,1.0) # SVector(0.0,0.0,0.0)
@@ -50,9 +49,9 @@ BeamCrossSection(;EA=EA,EI=EI,GJ=GJ) = BeamCrossSection(EA,EI,GJ);
     ☼fᵢ = o.EA*∂0(ε)
 
 
-    # WARNING: curvatures are defined as rate of rotation along the element, not second derivatives of deflection.  
-    # Hence κ[3]>0 implies +2 direction is inside curve, 
-    #       κ[2]>0 implies -3 direction is inside curve.
+    ## WARNING: curvatures are defined as rate of rotation along the element, not second derivatives of deflection.  
+    ## Hence κ[3]>0 implies +2 direction is inside curve, 
+    ##       κ[2]>0 implies -3 direction is inside curve.
     ☼mᵢ  = SVector(o.GJ*∂0(κ)[1],o.EI*∂0(κ)[2],o.EI*∂0(κ)[3])# replace by κ₀ 
 
 
@@ -157,7 +156,7 @@ end
 function kinematics(o::EulerBeam3D,X₀)  
     cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp,L  = o.cₘ,o.rₘ,o.tgₘ,o.tgₑ,o.ζnod,o.ζgp,o.L   # As-meshed element coordinates and describing tangential vector
 
-    # transformation to corotated system
+    ## transformation to corotated system
     uᵧ₁,vᵧ₁,uᵧ₂,vᵧ₂  = SVector{3}(X₀[i] for i∈1:3), SVector{3}(X₀[i] for i∈4:6),SVector{3}(X₀[i] for i∈7:9),SVector{3}(X₀[i] for i∈10:12)
     vₗ₂,rₛₘ,vₛₘ = fast(SVector(vᵧ₁...,vᵧ₂...)) do v
         vᵧ₁,vᵧ₂ = SVector{3}(v[i] for i∈1:3), SVector{3}(v[i] for i∈4:6)
@@ -171,7 +170,7 @@ function kinematics(o::EulerBeam3D,X₀)
     cₛ               = 0.5*(uᵧ₁+uᵧ₂)
     uₗ₂              = rₛₘ'∘₁(uᵧ₂+tgₘ*ζnod[2]-cₛ)-tgₑ*ζnod[2]    #Local displacement of node 2
     
-    # interpolation
+    ## interpolation
     ε               = √((uₗ₂[1]+L/2)^2+uₗ₂[2]^2+uₗ₂[3]^2)*2/L - 1.       
     gp              = ntuple(ngp) do igp
         yₐ,yᵤ,yᵥ,κₐ,κᵤ,κᵥ = o.yₐ[igp],o.yᵤ[igp],o.yᵥ[igp],o.κₐ[igp],o.κᵤ[igp],o.κᵥ[igp]

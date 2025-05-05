@@ -134,7 +134,7 @@ fast(f,x) = compose(f(revariate(x)),x-VALUE(x))
 """
     composewithJacobian{P,ND,NDOF}
 
-Works, but still work to do on the sytactic sugar.    
+Works, but still work to do on the syntactic sugar.    
 """
 struct composewithJacobian{P,ND,NDOF} end
 function composewithJacobian{P,ND,NDOF}(Ty,X_) where{P,ND,NDOF}

@@ -1,5 +1,5 @@
 module TestEigX
-using Muscade, StaticArrays,Test
+using Muscade, StaticArrays,Test,Random
 
 include("SomeElements.jl")
 # Create the model 
@@ -22,9 +22,10 @@ hold        = addelement!(model,SdofOscillator,[xnod[1]];K₁=1.)
 # Solve the problem 
 initialstate    = initialize!(model);
 nmod            = 5
+Random.seed!(1234) # eigensolvers use a random start.  Freeze it for reproducible tests
 res             = solve(EigX;state=initialstate,nmod,verbose=false)
 imod            = [1,    2]
-A               = [1,4+5im]
+A               = [1,4+5im] 
 
 state           = increment(initialstate,res,imod,A)
 

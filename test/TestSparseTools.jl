@@ -1,4 +1,4 @@
-module TestBlockSparse
+module TestSparseTools
 
 # cd("C:\\Users\\philippem\\.julia\\dev\\Muscade")
 # using Pkg 
@@ -59,6 +59,21 @@ big2 = Matrix(bigsparse)
     @test big2[9:12,9:12] == block
 end
 
+i = [3, 7, 2, 3, 6, 2, 7, 9, 2, 6, 4, 5, 9, 3, 9, 1, 7, 8, 10, 4, 9, 7]
+j = [2, 2, 3, 3, 3, 4, 4, 4, 6, 6, 7, 7, 7, 8, 8, 9, 9, 9, 9, 10, 10, 11]
+v = [0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0]
+
+s = sparse(i,j,v)
+Muscade.sparser!(s,i->s.nzval[i]>0.5)
+
+@testset "sparser!" begin
+    @test s.colptr == [1, 1, 2, 3, 5, 5, 5, 6, 6, 7, 8, 8]
+    @test s.rowval == [7, 6, 2, 7, 4, 1, 9]
+    @test s.nzval ≈ [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+    @test size(s) == (10,11)
+end
+
+
 s = sprandn(10,11,0.2)
 nnzs = 0
 for (j,nz) ∈ enumerate(s.nzval)
@@ -71,7 +86,7 @@ for (j,nz) ∈ enumerate(s.nzval)
 end
 Muscade.sparser!(s,i->s.nzval[i]>0.5)
 
-@testset "sparser!" begin
+@testset "sparser!2" begin
     @test nnzs == nnz(s)
 end
 

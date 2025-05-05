@@ -2,9 +2,7 @@
 #= 
 
 TODO 
-
-Faster LU decomposition
-    sparsify L2 (find entries that are zero in L2ᵢ ∀i, and update the sparsity structure)
+Does FFT take significant time? If so:
 
 Avoid FFT of zeros, and addition of zeros
     find L1ᵢ that are all zero
@@ -88,7 +86,8 @@ it at times `t=range(start=t₀,step=Δt,length=2^p)`. The return
 - `t₀=0.`             time of first step.                      
 - `Δt`                time step.
 - `p`                 `2^p` steps will be analysed.      
-- `tᵣ=t₀`             reference time for linearisation.                       
+- `tᵣ=t₀`             reference time for linearisation.
+- `droptol=1e-10`     set to zero terms in the incremental matrices that are smaller than `droptol` in absolute value.                      
 
 # Output
 
@@ -101,7 +100,7 @@ function solve(::Type{FreqXU{OX,OU}},pstate,verbose::𝕓,dbg;
     Δt::𝕣, p::𝕫, t₀::𝕣=0.,tᵣ::𝕣=t₀, 
     initialstate::State,
     fastresidual::𝔹=false,
-    droptol::𝕣=1e-9,
+    droptol::𝕣=1e-10,
     kwargs...) where{OX,OU}
 
     #  Mostly constants
@@ -133,6 +132,14 @@ function solve(::Type{FreqXU{OX,OU}},pstate,verbose::𝕓,dbg;
     end    
     assemblebigmat!(L2,L2bigasm,asm,model,dis,out,(dbg...,solver=:FreqXU))              # assemble all complete model matrices into L2
     sparser!(L2,droptol)
+
+    verbose && @printf("    Improving sparsity ")    
+    keep = [any(abs(L2ⱼ.nzval[i])>droptol for L2ⱼ∈L2) for i∈eachindex(L2[1].nzval)]
+    for L2ⱼ∈L2
+        sparser!(L2ⱼ,j->keep[j])
+    end
+    verbose && @printf("from %i to %i nz terms\n",length(keep),sum(keep))    
+
 
     verbose && @printf("    Computing rhs\n")
     ndof                  = size(L2[1],1)

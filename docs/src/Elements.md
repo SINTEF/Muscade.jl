@@ -384,17 +384,13 @@ Some advanced elements (in particular, elements with co-rotated element systems)
 
 Helper functions [`motion`](@ref) and [`motion⁻¹`](@ref) allow to transform a `tuple` of `SVectors`, like the input `X` given to `residual` and `lagrangian`, into a an automatic differentiation structure, so that functions of `∂0(X)` only can be differentiated with respect to time. 
 
-It is sometimes possible to improve performance by identifying a part of `residual` or `lagrangian` which
-- takes a single, `SVector` as an input.  A vector shorter than the list of dofs differentiated by the solver will accelerate computations.
-- optionaly: has 2nd order derivatives that can be ignored (use wisely!)
-and create a Taylor development of it using [`Taylor`](@ref), which is then evaluated. 
+It is sometimes possible to improve performance by identifying a part of `residual` or `lagrangian` which takes a single, `SVector` as an input: A vector shorter than the list of dofs differentiated by the solver allow to accelerate computations, by using [`fast`](@ref), or for more adbanced usage, [`revariate`](@ref) in combination with [`compose`](@ref). 
 
-In [`examples/BeamElements.jl`](StaticBeamAnalysis.md), [`Taylor`](@ref) is used at the same time to differentiate a function (the transformation of `X`-dofs from global to the element's corotated reference system) to compute the transformation of nodal forces from the element's corotated reference system back to the global one.  This could be done by using basic [`automatic differentiation`](Adiff.md) functionality, but the reduction of the number of partials thanks to [`Taylor`](@ref) is absolutely essential for performance.
+In [`examples/BeamElements.jl`](StaticBeamAnalysis.md), in function `kinematics`, [`fast`](@ref) is applied to accelerate a process of differentiation to the 2nd order.  In `residual`, [`revariate`](@ref) and [`compose`](@ref), as well as the convenience function [`composewithJacobian`](@ref) is applied, in order to differentiate `kinematics` and accelerate computations by exploiting the fact that `kinematic` is a function of `∂0(X)` only.
 
 ## Testing elements
-
 When developing a new element, it is advisable to test the constructor, and `residual` or `lagrangian` in a direct call (outside of any Muscade solver), and examine the returned outputs.
 
-Generaly, automatic differentiation is unproblematic, but when advanced tools are used (e.g. [`Taylor`](@ref)) with reduced order, then the derivatives should be inspected.  See [`diffed_residual`](@ref) and [`diffed_lagrangian`](@ref) to compute the derivatives of `R` and `L` returned by `residual` and `lagrangian` respectively. 
+Generaly, automatic differentiation is unproblematic, but when advanced tools are used (e.g. [`revariate`](@ref) and [`compose`](@ref)), then the derivatives should be inspected.  See [`diffed_residual`](@ref) and [`diffed_lagrangian`](@ref) to compute the derivatives of `R` and `L` returned by `residual` and `lagrangian` respectively. 
 
 
