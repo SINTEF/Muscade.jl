@@ -275,10 +275,10 @@ end
 
 # # Cantilever bend, with out-of-plane load leading to a three-dimensional response mobilizing axial force, bending moment and torque.
 # R = 100.0;  # Radius of the bend [m]
-# EI = 833.33;  # Bending stiffness [Nm²]
+# EI = 833.33e3;  # Bending stiffness [Nm²]
 # EA = 1e9;  # Axial stiffness [N]
-# GJ = 705.;  # Torsional stiffness [Nm²]
-# Fy = 300.; # then 450 and 600 [N]
+# GJ = 705e3;  # Torsional stiffness [Nm²]
+# Fy = 300.; # 300 then 450 and 600 [N]
 # nel         = 8
 # nnodes      = nel+1   
 # nodeCoord   = hcat(R*cos.(3π/2 .+ ((1:nnodes).-1)/(nnodes-1)*π/2),zeros(Float64,nnodes,1),R*(1 .+ sin.(3π/2 .+ ((1:nnodes).-1)/(nnodes-1)*π/2)))
@@ -288,9 +288,10 @@ end
 # mesh        = hcat(nodid[1:nnodes-1],nodid[2:nnodes])
 # eleid       = addelement!(model,EulerBeam3D,mesh;mat=mat,orient2=SVector(0.,1.,0.))
 # [addelement!(model,Hold,[nodid[1]]  ;field) for field∈[:t1,:t2,:t3,:r1,:r2,:r3]]                                    # Clamp at one end
-# addelement!(model,DofLoad,[nodid[nnodes]];field=:t2,value=t->-min(1,t)*Fy) ;                                        # Out-of-plane load at other
+# addelement!(model,DofLoad,[nodid[nnodes]];field=:t2,value=t->min(1,t)*Fy) ;                                        # Out-of-plane load at other
 # initialstate    = initialize!(model);
-# state           = solve(SweepX{0};initialstate,time=[0.,1e-6],verbose=true)
+# niter=50
+# state           = solve(SweepX{0};initialstate,time=[0.,1.],verbose=true,maxiter=niter,saveiter=true)
 # # Comparison to solutions by Longva (2015) and Crisfield (1990)
 # x_ = getdof(state[2];field=:t1,nodID=[nodid[nnodes]]) #Compare to 58.56 (Longva,2015) or 58.53 (Crisfield, 1990)
 # y_ = getdof(state[2];field=:t2,nodID=[nodid[nnodes]]) #Compare to 40.47 (Longva,2015) or 40.53 (Crisfield, 1990)
@@ -299,6 +300,27 @@ end
 # #                     x,y,z                       x,y,z                       x,y,z
 # # Disp Longva         58.56, 40.47, 22.18         51.99, 48.72, 18.45         46.91, 53.64, 15.65 
 # # Disp Crisfield      58.53, 40.53, 22.16         51.93, 48.79, 18.43         46.84, 53.71, 15.61
+
+
+# # Comparison to solutions by Longva (2015) and Crisfield (1990)
+# x_ = [getdof(state[idxIter];field=:t1,nodID=nodid[1:nnodes]) for idxIter∈1:niter] #Compare to 58.56 (Longva,2015) or 58.53 (Crisfield, 1990)
+# y_ = [getdof(state[idxIter];field=:t2,nodID=nodid[1:nnodes]) for idxIter∈1:niter] #Compare to 40.47 (Longva,2015) or 40.53 (Crisfield, 1990)
+# z_ = [getdof(state[idxIter];field=:t3,nodID=nodid[1:nnodes]) for idxIter∈1:niter] #Compare to 22.16 (Longva,2015) or 22.14 (Crisfield, 1990)
+# using GLMakie
+# fig      = Figure(size = (1000,1000))
+# ax = Axis3(fig[1,1],xlabel="x [m]", ylabel="y [m]", zlabel="z [m]",aspect=:equal)
+# # lines!(ax,nodeCoord[:,1], nodeCoord[:,2] , nodeCoord[:,3]                  , label="initial");
+# for idxIter ∈ 1:niter
+# lines!(ax,nodeCoord[:,1]+x_[idxIter][:], nodeCoord[:,2]+y_[idxIter][:] , nodeCoord[:,3]+z_[idxIter][:]                  , label=string(idxIter));
+# end
+# xlims!(ax, 0,100)
+# ylims!(ax, 0,100)
+# zlims!(ax, 0,100)
+# axislegend()
+# display(fig)
+# # currentDir = @__DIR__
+# # save(normpath(joinpath(currentDir,"beam_debug.png")),fig)
+# @show y_[end][end]
 
 # # using Profile,ProfileView,BenchmarkTools
 # # mission = :profile
