@@ -273,45 +273,45 @@ end
     @test norm(M[12,[1,3,4,5,7,9,10,11]])       ≈ 0.
 end
 
-# Cantilever bend, with out-of-plane load leading to a three-dimensional response mobilizing axial force, bending moment and torque.
-R = 100.0;  # Radius of the bend [m]
-EI = 833.33;  # Bending stiffness [Nm²]
-EA = 1e9;  # Axial stiffness [N]
-GJ = 705.;  # Torsional stiffness [Nm²]
-Fy = 300.; # then 450 and 600 [N]
-nel         = 8
-nnodes      = nel+1   
-nodeCoord   = hcat(R*cos.(3π/2 .+ ((1:nnodes).-1)/(nnodes-1)*π/2),zeros(Float64,nnodes,1),R*(1 .+ sin.(3π/2 .+ ((1:nnodes).-1)/(nnodes-1)*π/2)))
-mat         = BeamCrossSection(EA=EA,EI=EI,GJ=GJ)
-model       = Model(:TestModel)
-nodid       = addnode!(model,nodeCoord)
-mesh        = hcat(nodid[1:nnodes-1],nodid[2:nnodes])
-eleid       = addelement!(model,EulerBeam3D,mesh;mat=mat,orient2=SVector(0.,1.,0.))
-[addelement!(model,Hold,[nodid[1]]  ;field) for field∈[:t1,:t2,:t3,:r1,:r2,:r3]]                                    # Clamp at one end
-addelement!(model,DofLoad,[nodid[nnodes]];field=:t2,value=t->-min(1,t)*Fy) ;                                        # Out-of-plane load at other
-initialstate    = initialize!(model);
-state           = solve(SweepX{0};initialstate,time=[0.,1e-6],verbose=true)
-# Comparison to solutions by Longva (2015) and Crisfield (1990)
-x_ = getdof(state[2];field=:t1,nodID=[nodid[nnodes]]) #Compare to 58.56 (Longva,2015) or 58.53 (Crisfield, 1990)
-y_ = getdof(state[2];field=:t2,nodID=[nodid[nnodes]]) #Compare to 40.47 (Longva,2015) or 40.53 (Crisfield, 1990)
-z_ = getdof(state[2];field=:t3,nodID=[nodid[nnodes]]) #Compare to 22.16 (Longva,2015) or 22.14 (Crisfield, 1990)
-# Load                300 N                       450 N                       600 N
-#                     x,y,z                       x,y,z                       x,y,z
-# Disp Longva         58.56, 40.47, 22.18         51.99, 48.72, 18.45         46.91, 53.64, 15.65 
-# Disp Crisfield      58.53, 40.53, 22.16         51.93, 48.79, 18.43         46.84, 53.71, 15.61
+# # Cantilever bend, with out-of-plane load leading to a three-dimensional response mobilizing axial force, bending moment and torque.
+# R = 100.0;  # Radius of the bend [m]
+# EI = 833.33;  # Bending stiffness [Nm²]
+# EA = 1e9;  # Axial stiffness [N]
+# GJ = 705.;  # Torsional stiffness [Nm²]
+# Fy = 300.; # then 450 and 600 [N]
+# nel         = 8
+# nnodes      = nel+1   
+# nodeCoord   = hcat(R*cos.(3π/2 .+ ((1:nnodes).-1)/(nnodes-1)*π/2),zeros(Float64,nnodes,1),R*(1 .+ sin.(3π/2 .+ ((1:nnodes).-1)/(nnodes-1)*π/2)))
+# mat         = BeamCrossSection(EA=EA,EI=EI,GJ=GJ)
+# model       = Model(:TestModel)
+# nodid       = addnode!(model,nodeCoord)
+# mesh        = hcat(nodid[1:nnodes-1],nodid[2:nnodes])
+# eleid       = addelement!(model,EulerBeam3D,mesh;mat=mat,orient2=SVector(0.,1.,0.))
+# [addelement!(model,Hold,[nodid[1]]  ;field) for field∈[:t1,:t2,:t3,:r1,:r2,:r3]]                                    # Clamp at one end
+# addelement!(model,DofLoad,[nodid[nnodes]];field=:t2,value=t->-min(1,t)*Fy) ;                                        # Out-of-plane load at other
+# initialstate    = initialize!(model);
+# state           = solve(SweepX{0};initialstate,time=[0.,1e-6],verbose=true)
+# # Comparison to solutions by Longva (2015) and Crisfield (1990)
+# x_ = getdof(state[2];field=:t1,nodID=[nodid[nnodes]]) #Compare to 58.56 (Longva,2015) or 58.53 (Crisfield, 1990)
+# y_ = getdof(state[2];field=:t2,nodID=[nodid[nnodes]]) #Compare to 40.47 (Longva,2015) or 40.53 (Crisfield, 1990)
+# z_ = getdof(state[2];field=:t3,nodID=[nodid[nnodes]]) #Compare to 22.16 (Longva,2015) or 22.14 (Crisfield, 1990)
+# # Load                300 N                       450 N                       600 N
+# #                     x,y,z                       x,y,z                       x,y,z
+# # Disp Longva         58.56, 40.47, 22.18         51.99, 48.72, 18.45         46.91, 53.64, 15.65 
+# # Disp Crisfield      58.53, 40.53, 22.16         51.93, 48.79, 18.43         46.84, 53.71, 15.61
 
-# using Profile,ProfileView,BenchmarkTools
-# mission = :profile
-# if  mission == :time
-#     @btime out = diffed_residual(beam; X,U,A,t,SP)
-# elseif mission == :profile
-#     Profile.clear()
-#     Profile.@profile for i=1:10000
-#         out = diffed_residual(beam; X,U,A,t,SP)
-#     end
-#     ProfileView.view(fontsize=30);
-#     # After clicking on a bar in the flame diagram, you can type warntype_last() and see the result of 
-#     # code_warntype for the call represented by that bar.
-# end
-;
+# # using Profile,ProfileView,BenchmarkTools
+# # mission = :profile
+# # if  mission == :time
+# #     @btime out = diffed_residual(beam; X,U,A,t,SP)
+# # elseif mission == :profile
+# #     Profile.clear()
+# #     Profile.@profile for i=1:10000
+# #         out = diffed_residual(beam; X,U,A,t,SP)
+# #     end
+# #     ProfileView.view(fontsize=30);
+# #     # After clicking on a bar in the flame diagram, you can type warntype_last() and see the result of 
+# #     # code_warntype for the call represented by that bar.
+# # end
+# ;
 end
