@@ -72,7 +72,7 @@ function zero!(out::AssemblyDirect)
 end
 
 function addin!(out::AssemblyDirect,asm,iele,scale,eleobj::Eleobj,Λ,X,U,A,t,SP,dbg) where{Eleobj} 
-    addin!(out::AssemblyDirect,asm,iele,scale,eleobj,fastresidual(Eleobj),Λ,X,U,A,t,SP,dbg)
+    addin!(out::AssemblyDirect,asm,iele,scale,eleobj,nosecondorder(Eleobj),Λ,X,U,A,t,SP,dbg)
 end
 
 function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::Eleobj,fastresidual::Val{true}, 

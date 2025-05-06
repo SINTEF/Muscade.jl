@@ -143,3 +143,6 @@ function composewithJacobian{P,ND,NDOF}(Ty,X_) where{P,ND,NDOF}
     y∂X₀       =                  compose(∂{P,NDOF}(Ty  ),X₀ )
     return y,y∂X₀
 end
+
+firstorderonly(a...) = firstorderonly.(a)
+firstorderonly(a) = precedence(a)≤1 ? a : firstorderonly(a.x) 
