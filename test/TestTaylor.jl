@@ -90,4 +90,16 @@ vX₀  = variate{1,3}(X₀)
     @test fast(w,X₀) === w(X₀)
     @test fast(w,vX₀) === w(vX₀)
 end
+
+
+
+yy    = Muscade.firstorderonly(variate{2,3}(variate{1,3}(SVector{3,𝕣}(1,2,3))),
+                               variate{2,3}(variate{1,3}(SVector{3,𝕣}(4,5,6))),
+                               3.)
+fooyy =                       (variate{1,3}(SVector{3,𝕣}(1,2,3)) ,
+                               variate{1,3}(SVector{3,𝕣}(4,5,6)) ,
+                               3.)                    
+@testset "firstorderonly" begin
+    @test yy === fooyy
+end
 end # module

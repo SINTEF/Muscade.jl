@@ -144,5 +144,8 @@ function composewithJacobian{P,ND,NDOF}(Ty,X_) where{P,ND,NDOF}
     return y,y∂X₀
 end
 
-firstorderonly(a...) = firstorderonly.(a)
-firstorderonly(a) = precedence(a)≤1 ? a : firstorderonly(a.x) 
+firstorderonly(a...;)            = firstorderonly.(a)
+firstorderonly(a::Tuple)         = firstorderonly.(a)
+firstorderonly(a::AbstractArray) = firstorderonly.(a)
+firstorderonly(a::∂ℝ)             = precedence(a)≤1 ? a : firstorderonly(a.x) 
+firstorderonly(a)                = a
