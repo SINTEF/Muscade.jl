@@ -13,7 +13,7 @@ See also [`scac`](@ref)
 sinc1(x) = sinc(x/π) 
 function sinc1′(x)
     if abs(x)>1e-3
-        s,c=sin(x),cos(x)
+        s,c=sincos(x)
         c/x -s/x^2
     else
         x² = x*x
@@ -22,7 +22,7 @@ function sinc1′(x)
 end
 function sinc1″(x)
     if abs(x)>1e-1
-        s,c=sin(x),cos(x)
+        s,c=sincos(x)
         -s/x -2c/x^2 +2s/x^3
     else
         x² = x*x
@@ -31,7 +31,7 @@ function sinc1″(x)
 end
 function sinc1‴(x)
     if abs(x)>0.4
-        s,c=sin(x),cos(x)
+        s,c=sincos(x)
         -c/x +3s/x^2 +6c/x^3 -6s/x^4
     else
         x² = x*x
@@ -50,8 +50,6 @@ Muscade.@DiffRule1(sinc1″,              sinc1‴( a.x)                * a.dx )
 Muscade.@DiffRule1(sinc1‴,              sinc1⁗( a.x)                * a.dx )
 Muscade.@DiffRule1(sinc1⁗,              sinc1⁗′(a.x)                * a.dx )
 
-
-## sinc1(acos(x)), differentiable to fourth order over ]-1,1] 
 """
     BeamElements.scac(x)
 
