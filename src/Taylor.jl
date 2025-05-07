@@ -108,9 +108,9 @@ McLaurin(y::Tuple,Δx)                          = tuple(McLaurin(first(y),Δx),M
 McLaurin(y::Tuple{},Δx)                        = tuple() 
 McLaurin(y::SArray{S},Δx) where{S}             = SArray{S}(McLaurin(yᵢ,Δx) for yᵢ∈y) 
 McLaurin(y::∂ℝ,Δx)                             = McLaurin(y.x,Δx) + McLaurin_right(y,Δx)
-McLaurin(y::𝕣 ,Δx)                             =         y
+McLaurin(y::𝕣 ,Δx)                             =          y
 McLaurin_right(y::∂ℝ{P},Δx::SVector{N}) where{P,N} = sum(McLaurin_right(y.dx[i],Δx)*Δx[i] for i∈1:N)*(1/P)
-McLaurin_right(y::𝕣    ,Δx            )            =               y
+McLaurin_right(y::𝕣    ,Δx            )        =          y
 
 """
     Taylor(Ty,x₀,x)
@@ -155,24 +155,45 @@ Wrapper function of [`revariate`](@ref) and [`McLaurin`](@ref)
 fast(f,x) = compose(f(revariate(x)),x)    
 
 """
-    composewithJacobian{P,ND,NDOF}
+    composewithJacobian{P,ND,N∂}(Ty,X_)
 
-Works, but still work to do on the syntactic sugar.    
+Given `Ty` obtained using `revariate`, and `X_`, obtained using `motion{P}(X)` where `X` is a tuple
+of length `ND` of `SVectors` of length `N∂=length(eltype(X))` and `P=constants(X)`, compute `y`, a tuple of length `ND` of `AbstractArrays` of same `eltype` as vectors in `X,
+and `y∂X₀`, the Jacobian of `∂0(y)` with respect to `∂0(X)`.
+
+See also [`revariate`](@ref), [`motion`](@ref), [`motion⁻¹`](@ref), [`composevalue`](@ref), [`composeJacobian`](@ref)  
 """
-struct composewithJacobian{P,ND,NDOF} end
-function composewithJacobian{P,ND,NDOF}(Ty,X_) where{P,ND,NDOF}
+struct composewithJacobian{P,ND,N∂} end
+function composewithJacobian{P,ND,N∂}(Ty,X_) where{P,ND,N∂}
     X₀         = motion⁻¹{P-1,ND,0}(X_)
     y          = motion⁻¹{P-1,ND  }(compose(value{P}( Ty  ),X_))
-    y∂X₀       =                    compose(∂{P,NDOF}(Ty  ),X₀ )
+    y∂X₀       =                    compose(∂{P,N∂}(Ty  ),X₀ )
     return y,y∂X₀
 end
+"""
+    composevalue{P,ND}(Ty,X_)
+
+Given `Ty` obtained using `revariate`, and `X_`, obtained using `motion{P}(X)` where `X` is a tuple
+of length `ND` and `P=constants(X)`, compute `y`, a tuple of length `ND` of `AbstractArrays` of same `eltype` as vectors in `X.
+
+See also [`revariate`](@ref), [`motion`](@ref), [`motion⁻¹`](@ref), [`composewithJacobian`](@ref), [`composeJacobian`](@ref)  
+"""
 struct composevalue{P,ND} end
 composevalue{P,ND}(Ty,X_) where{P,ND} = motion⁻¹{P-1,ND}(compose(value{P}(Ty),X_))
-struct composeJacobian{P,NDOF} end
-composeJacobian{P,NDOF}(Ty,X₀) where{P,NDOF} = compose(∂{P,NDOF}(Ty),X₀) # y∂X₀
+"""
+    composeJacobian{P,N∂}(Ty,X_)
+
+Given `Ty` obtained using `revariate`, and `X_`, obtained using `motion{P}(X)` where `X` is a tuple
+of `SVectors` of length `N∂=length(eltype(X))` and `P=constants(X)`, compute `y`, a tuple of length `ND` of `AbstractArrays` of same `eltype` as vectors in `X,
+and `y∂X₀`, the Jacobian of `∂0(y)` with respect to `∂0(X)`.
+
+See also [`revariate`](@ref), [`motion`](@ref), [`motion⁻¹`](@ref), [`composevalue`](@ref), [`composewithJacobian`](@ref)  
+"""
+struct composeJacobian{P,N∂} end
+composeJacobian{P,N∂}(Ty,X₀) where{P,N∂} = compose(∂{P,N∂}(Ty),X₀) # y∂X₀
 
 firstorderonly(a...;)            = firstorderonly.(a)
 firstorderonly(a::Tuple)         = firstorderonly.(a)
 firstorderonly(a::AbstractArray) = firstorderonly.(a)
-firstorderonly(a::∂ℝ)             = precedence(a)≤1 ? a : firstorderonly(a.x) 
+firstorderonly(a::∂ℝ)            = precedence(a)≤1 ? a : firstorderonly(a.x) 
 firstorderonly(a)                = a

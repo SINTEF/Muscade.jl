@@ -135,23 +135,23 @@ end
 
 
 @espy function Muscade.residual(o::EulerBeam3D,   X,U,A,t,SP,dbg) 
-    P,ND        = constants(X,U,A,t),length(X)
+    P,ND,N∂     = constants(X),length(X),length(eltype(X))
     X₀          = ∂0(X)
     X_          = motion{P}(X)
     TX₀         = revariate{1}(X₀)
     Tgp,Tε,Tvₛₘ,Trₛₘ,Tvₗ₂ = kinematics(o,TX₀)
-    ☼ε ,ε∂X₀    = composewithJacobian{P,ND,ndof}(Tε ,X_)
-    vₛₘ∂X₀       = composeJacobian{    P,   ndof}(Tvₛₘ,X₀)
-    rₛₘ          = composevalue{       P,ND     }(Trₛₘ,X_)
-#    ☼☼κ         = composevalue{       P,ND     }(Tvₗ₂,X_)*2/o.L
+    ☼ε ,ε∂X₀    = composewithJacobian{P,ND,N∂}(Tε ,X_)
+    vₛₘ∂X₀       = composeJacobian{    P,   N∂}(Tvₛₘ,X₀)
+    rₛₘ          = composevalue{       P,ND   }(Trₛₘ,X_)
+    ☼κ          = composevalue{       P,ND   }(Tvₗ₂,X_).*(2/o.L)  # TODO ☼☼ for compute-only-if-requested
     vᵢ₀         = (SVector(0,0,0),)
     vᵢ₁         = ND≥1 ? (vᵢ₀...,   spin⁻¹(∂0(rₛₘ)' ∘₁ ∂1(rₛₘ))) : vᵢ₀ 
     vᵢ          = ND≥2 ? (vᵢ₁...,   spin⁻¹(∂1(rₛₘ)' ∘₁ ∂1(rₛₘ) + ∂0(rₛₘ)' ∘₁ ∂2(rₛₘ))) : vᵢ₁
 
     gp          = ntuple(ngp) do igp
         Tx,Tκ   = Tgp[igp].x, Tgp[igp].κ
-        ☼x,x∂X₀ = composewithJacobian{P,ND,ndof}(Tx,X_)
-        ☼κ,κ∂X₀ = composewithJacobian{P,ND,ndof}(Tκ,X_)
+        ☼x,x∂X₀ = composewithJacobian{P,ND,N∂}(Tx,X_)
+        ☼κ,κ∂X₀ = composewithJacobian{P,ND,N∂}(Tκ,X_)
         fᵢ,mᵢ,fₑ,mₑ = ☼resultants(o.mat,ε,κ,x,rₛₘ,vᵢ)          # call the "resultant" function to compute loads (local coordinates) from strains/curvatures/etc. using material properties. Note that output is dual of input. 
         R       = (fᵢ ∘₀ ε∂X₀ + mᵢ ∘₁ κ∂X₀ + fₑ ∘₁ x∂X₀ + mₑ ∘₁ vₛₘ∂X₀) * o.dL[igp]     # Contribution to the local nodal load of this Gauss point  [ndof] = scalar*[ndof] + [ndim]⋅[ndim,ndof] + [ndim]⋅[ndim,ndof]
         @named(R)
@@ -172,7 +172,7 @@ function kinematics(o::EulerBeam3D,X₀)
         rₛₘ              = fast(Rodrigues,vₗ₂) ∘₁ rₛ₁ ∘₁ o.rₘ  
         vₛₘ              = Rodrigues⁻¹(rₛₘ)              
         return vₗ₂,rₛₘ,vₛₘ
-    end           
+    end   
     cₛ               = 0.5*(uᵧ₁+uᵧ₂)
     uₗ₂              = rₛₘ'∘₁(uᵧ₂+tgₘ*ζnod[2]-cₛ)-tgₑ*ζnod[2]    #Local displacement of node 2
     
