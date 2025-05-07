@@ -166,6 +166,10 @@ function composewithJacobian{P,ND,NDOF}(Ty,X_) where{P,ND,NDOF}
     y∂X₀       =                    compose(∂{P,NDOF}(Ty  ),X₀ )
     return y,y∂X₀
 end
+struct composevalue{P,ND} end
+composevalue{P,ND}(Ty,X_) where{P,ND} = motion⁻¹{P-1,ND}(compose(value{P}(Ty),X_))
+struct composeJacobian{P,NDOF} end
+composeJacobian{P,NDOF}(Ty,X₀) where{P,NDOF} = compose(∂{P,NDOF}(Ty),X₀) # y∂X₀
 
 firstorderonly(a...;)            = firstorderonly.(a)
 firstorderonly(a::Tuple)         = firstorderonly.(a)

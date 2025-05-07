@@ -135,14 +135,15 @@ end
 
 
 @espy function Muscade.residual(o::EulerBeam3D,   X,U,A,t,SP,dbg) 
-    X₀          = ∂0(X)
-    TX₀         = revariate{1}(X₀)
-    Tgp,Tε,Tvₛₘ,Trₛₘ   ,Tvₗ₂ = kinematics(o,TX₀)
     P,ND        = constants(X,U,A,t),length(X)
+    X₀          = ∂0(X)
     X_          = motion{P}(X)
-    ☼ε ,ε∂X₀    = composewithJacobian{P,ND,ndof}(Tε,X_)
-    vₛₘ∂X₀       =                    compose(∂{P,ndof}(Tvₛₘ  ),X₀ )
-    rₛₘ          = motion⁻¹{P-1,ND  }(compose(value{P}(Trₛₘ  ),X_))
+    TX₀         = revariate{1}(X₀)
+    Tgp,Tε,Tvₛₘ,Trₛₘ,Tvₗ₂ = kinematics(o,TX₀)
+    ☼ε ,ε∂X₀    = composewithJacobian{P,ND,ndof}(Tε ,X_)
+    vₛₘ∂X₀       = composeJacobian{    P,   ndof}(Tvₛₘ,X₀)
+    rₛₘ          = composevalue{       P,ND     }(Trₛₘ,X_)
+#    ☼☼κ         = composevalue{       P,ND     }(Tvₗ₂,X_)*2/o.L
     vᵢ₀         = (SVector(0,0,0),)
     vᵢ₁         = ND≥1 ? (vᵢ₀...,   spin⁻¹(∂0(rₛₘ)' ∘₁ ∂1(rₛₘ))) : vᵢ₀ 
     vᵢ          = ND≥2 ? (vᵢ₁...,   spin⁻¹(∂1(rₛₘ)' ∘₁ ∂1(rₛₘ) + ∂0(rₛₘ)' ∘₁ ∂2(rₛₘ))) : vᵢ₁
@@ -184,6 +185,6 @@ function kinematics(o::EulerBeam3D,X₀)
         x           = rₛₘ∘₁(tgₑ*ζgp[igp]+y)+cₛ+cₘ 
         (κ=κ,x=x)
     end
-    return gp,ε,vₛₘ,rₛₘ    ,vₗ₂
+    return gp,ε,vₛₘ,rₛₘ,vₗ₂
 end
 
