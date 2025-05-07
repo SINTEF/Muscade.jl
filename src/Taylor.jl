@@ -91,33 +91,56 @@ revariate_{P,N}(a,i) where{P,N} = ∂ℝ{P,N  }(revariate_{P-1,N}(a,i),i)
 revariate_{0,N}(a,i) where{  N} =                             a
 
 """
-    compose(Ty,Δx)
+    McLaurin(Ty,x)
 
 `Ty::∂ℝ` has partials to arbitrary order with respect to a variable `x`. These
-partials define a Taylor expansion, which `compose` evaluates at an increment `Δx` 
-of the value `x` at which `Ty` was computed.
+partials define a McLaurin expansion, which `McLaurin` evaluates at value `x`, 
+as if `Ty` had been computed at 0.
 
-`compose` also handles nested structures of `Tuple`s and `SVector`s of `∂ℝ`, applying the
-composition to each element.
+`McLaurin` handles nested structures of `Tuple`s and `SVector`s of `∂ℝ`, applying the
+expansion to each element.
 
-`compose` can be used to evaluate a Taylor expansion, but it can also be used to compose
-automatic differentiation.  For example 
+`McLaurin` is a utility function behind [`compose`](@ref) and [`Taylor`](@ref)
+
+See also: [`compose`](@ref), [`Taylor`](@ref), [`revariate`](@ref), [`fast`](@ref)    
+"""
+McLaurin(y::Tuple,Δx)                          = tuple(McLaurin(first(y),Δx),McLaurin(Base.tail(y),Δx)...) 
+McLaurin(y::Tuple{},Δx)                        = tuple() 
+McLaurin(y::SArray{S},Δx) where{S}             = SArray{S}(McLaurin(yᵢ,Δx) for yᵢ∈y) 
+McLaurin(y::∂ℝ,Δx)                             = McLaurin(y.x,Δx) + McLaurin_right(y,Δx)
+McLaurin(y::𝕣 ,Δx)                             =         y
+McLaurin_right(y::∂ℝ{P},Δx::SVector{N}) where{P,N} = sum(McLaurin_right(y.dx[i],Δx)*Δx[i] for i∈1:N)*(1/P)
+McLaurin_right(y::𝕣    ,Δx            )            =               y
+
+"""
+    Taylor(Ty,x₀,x)
+
+`Ty::∂ℝ` has partials to arbitrary order evaluated at `x₀`. These
+partials define a Taylor expansion, which `Taylor` evaluates at value `x`
+
+`Taylor` handles nested structures of `Tuple`s and `SVector`s of `∂ℝ`, applying the
+expansion to each element.
+
+See also: [`compose`](@ref), [`McLaurin`](@ref), [`revariate`](@ref), [`fast`](@ref)    
+"""
+Taylor(y::Tuple,x₀,x) = McLaurin(y,x-x₀)
+
+
+
+"""
+    compose(Ty,x)
+
+Compose automatic differentiation.  For example 
     Tx = revariate(x)
     Ty = f(Tx)
-    y  = compose(Ty,x-VALUE(x))    
+    y  = compose(Ty,x)    
 is faster than
     y  = f(x)
 if the length of `x` is smaller than the length of its partials.
 
 See also: [`revariate`](@ref), [`fast`](@ref)    
 """
-compose(y::Tuple,Δx)                          = tuple(compose(first(y),Δx),compose(Base.tail(y),Δx)...) 
-compose(y::Tuple{},Δx)                        = tuple() 
-compose(y::SArray{S},Δx) where{S}             = SArray{S}(compose(yᵢ,Δx) for yᵢ∈y) 
-compose(y::∂ℝ,Δx)                             = compose(y.x,Δx) + compose_right(y,Δx)
-compose(y::𝕣 ,Δx)                             =         y
-compose_right(y::∂ℝ{P},Δx::SVector{N}) where{P,N} = sum(compose_right(y.dx[i],Δx)*Δx[i] for i∈1:N)*(1/P)
-compose_right(y::𝕣    ,Δx            )            =               y
+compose(Ty,x) = McLaurin(Ty,x-VALUE(x))
 
 """
     y,... = fast(f,x)
@@ -127,9 +150,9 @@ In the context of forward automatic differentiation using `∂ℝ`, accelerate t
 
 Be extremely careful with closures, making sure that `f` does not capture variables of type `∂ℝ`.
 
-Wrapper function of [`revariate`](@ref) and [`compose`](@ref)      
+Wrapper function of [`revariate`](@ref) and [`McLaurin`](@ref)      
 """
-fast(f,x) = compose(f(revariate(x)),x-VALUE(x))    
+fast(f,x) = compose(f(revariate(x)),x)    
 
 """
     composewithJacobian{P,ND,NDOF}
@@ -140,6 +163,6 @@ struct composewithJacobian{P,ND,NDOF} end
 function composewithJacobian{P,ND,NDOF}(Ty,X_) where{P,ND,NDOF}
     X₀         = motion⁻¹{P-1,ND,0}(X_)
     y          = motion⁻¹{P-1,ND  }(compose(value{P}( Ty  ),X_))
-    y∂X₀       =                  compose(∂{P,NDOF}(Ty  ),X₀ )
+    y∂X₀       =                    compose(∂{P,NDOF}(Ty  ),X₀ )
     return y,y∂X₀
 end
