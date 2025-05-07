@@ -143,7 +143,7 @@ end
     ☼ε ,ε∂X₀    = composewithJacobian{P,ND,N∂}(Tε ,X_)
     vₛₘ∂X₀       = composeJacobian{    P,   N∂}(Tvₛₘ,X₀)
     rₛₘ          = composevalue{       P,ND   }(Trₛₘ,X_)
-    ☼κ          = composevalue{       P,ND   }(Tvₗ₂,X_).*(2/o.L)  # TODO ☼☼ for compute-only-if-requested
+    ♢κ          = composevalue{       P,ND   }(Tvₗ₂,X_).*(2/o.L)  # evaluate only on request
     vᵢ₀         = (SVector(0,0,0),)
     vᵢ₁         = ND≥1 ? (vᵢ₀...,   spin⁻¹(∂0(rₛₘ)' ∘₁ ∂1(rₛₘ))) : vᵢ₀ 
     vᵢ          = ND≥2 ? (vᵢ₁...,   spin⁻¹(∂1(rₛₘ)' ∘₁ ∂1(rₛₘ) + ∂0(rₛₘ)' ∘₁ ∂2(rₛₘ))) : vᵢ₁
