@@ -477,47 +477,70 @@ add_∂!{P,T}(out::Array,asm,iele,a::SVector{Na,R},args...;kwargs...) where{P,Na
 #
 # Note that getLagrangian receives Λ::SVector. addin! by contrast receives Λ::NTuple{SVector}, this is not a bug
 
-function getresidual(eleobj::Eleobj,  
-    X::NTuple{Ndx,SVector{Nx}},
-    U::NTuple{Ndu,SVector{Nu}},
-    A::           SVector{Na} ,
-    t::ℝ,SP,dbg,req...)     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
-    
-    if hasmethod(residual  ,(Eleobj,       NTuple,NTuple,𝕣1,𝕣,NamedTuple,NamedTuple))
-        R,FB,eleres... = residual(  eleobj,  X,U,A,t,SP,dbg,req...)
-        hasnan(R ) && muscadeerror((dbg...,t=t,R =R ),@sprintf("residual(%s,...) returned NaN in R or derivatives",Eleobj))  
-        hasnan(FB) && muscadeerror((dbg...,t=t,FB=FB),@sprintf("residual(%s,...) returned NaN in FB or derivatives",Eleobj))  
+## World age trouble
+# @generated function hasresidual(::Eleobj) where{Eleobj}
+#     ret = Val(hasmethod(residual,(Eleobj,NTuple,NTuple,𝕣1,𝕣,NamedTuple,NamedTuple)))
+#     @show :residual,Eleobj,ret
+#     return :($ret)
+# end
+# @generated function haslagrangian(::Eleobj) where{Eleobj}
+#     ret = Val(hasmethod(lagrangian,(Eleobj,NTuple,NTuple,NTuple,𝕣1,𝕣,NamedTuple,NamedTuple)))
+#     @show :lagrangian,Eleobj,ret
+#     return :($ret)
+# end
 
-    elseif hasmethod(lagrangian,(Eleobj,NTuple,NTuple,NTuple,𝕣1,𝕣,NamedTuple,NamedTuple))
-        P   = constants(∂0(X),∂0(U),A,t)
-        Λ   = δ{P,Nx,𝕣}() 
-        L,FB,eleres... = lagrangian(eleobj,Λ,X,U,A,t,SP,dbg,req...)    
-        hasnan(L ) && muscadeerror((dbg...,t=t,R =R ),@sprintf("lagrangian(%s,...) returned NaN in L or derivatives",Eleobj))  
-        hasnan(FB) && muscadeerror((dbg...,t=t,FB=FB),@sprintf("lagrangian(%s,...) returned NaN in FB or derivatives",Eleobj))  
-        R = ∂{P,Nx}(L)
-    else 
-        muscadeerror((dbg...,t=t,SP=SP),@sprintf("Element %s must have method 'Muscade.lagrangian' or/and 'Muscade.residual' with correct interface",Eleobj))
-    end
+## Type unstable(?) stopgap.  Solution? Get @espy to generate hasresidual(  ::Eleobj)=true, with false fallback
+hasresidual(  ::Eleobj) where{Eleobj} = Val(hasmethod(residual  ,(Eleobj,       NTuple,NTuple,𝕣1,𝕣,NamedTuple,NamedTuple)))
+haslagrangian(::Eleobj) where{Eleobj} = Val(hasmethod(lagrangian,(Eleobj,NTuple,NTuple,NTuple,𝕣1,𝕣,NamedTuple,NamedTuple)))
+
+function getresidual(eleobj::Eleobj,X,U,A,t,SP,dbg,req...) where{Eleobj} 
+    R,FB,eleres... = getresidual(eleobj,hasresidual(eleobj),haslagrangian(eleobj),nosecondorder(Eleobj),X,U,A,t,SP,dbg,req...) 
+    hasnan(R,FB) && muscadeerror((dbg...,t=t,SP=SP ),@sprintf("residual(%s,...) returned NaN in R, FB or derivatives",Eleobj))  
     return R,FB,eleres...
 end
+function getresidual(eleobj::Eleobj,hasres::Val{true},haslag,nso::Val{false}, X::NTuple{Ndx,SVector{Nx}}, 
+        U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na} ,t::ℝ,SP,dbg,req...)     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
+    residual(  eleobj,  X,U,A,t,SP,dbg,req...)
+end
+function getresidual(eleobj::Eleobj,hasres::Val{true},haslag,nso::Val{true}, X::NTuple{Ndx,SVector{Nx}}, 
+        U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na} ,t::ℝ,SP,dbg,req...)     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
+    X1,U1,A1,t1 = firstorderonly(X,U,A,t)
+    residual(  eleobj,  X1,U1,A1,t1,SP,dbg,req...)
+end
+function getresidual(eleobj::Eleobj,hasres::Val{false},haslag::Val{true},nso, X::NTuple{Ndx,SVector{Nx}}, 
+        U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na} ,t::ℝ,SP,dbg,req...)     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
+    P               = constants(∂0(X),∂0(U),A,t)
+    Λ               = δ{P,Nx,𝕣}() 
+    L,FB,eleres...  = lagrangian(eleobj,Λ,X,U,A,t,SP,dbg,req...)    
+    R               = ∂{P,Nx}(L)
+    return R,FB,eleres...
+end
+getresidual(eleobj::Eleobj,hasres::Val{false},haslag::Val{false},nso, X,U,A,t,SP,dbg,req...) where{Eleobj} =
+    muscadeerror((dbg...,t=t,SP=SP),@sprintf("Element %s must have method 'Muscade.lagrangian' or/and 'Muscade.residual' with correct interface",Eleobj))
 
-function getlagrangian(eleobj::Eleobj,  
-    Λ::           SVector{Nx} ,  
-    X::NTuple{Ndx,SVector{Nx}},
-    U::NTuple{Ndu,SVector{Nu}},
-    A::           SVector{Na} ,
-    t::ℝ,SP,dbg,req...)     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
-    #                            eleobj,Λ,     X,     U,     A, t,SP,        dbg
-    if     hasmethod(lagrangian,(Eleobj,NTuple,NTuple,NTuple,𝕣1,𝕣,NamedTuple,NamedTuple))
-        L,FB,eleres... = lagrangian(eleobj,Λ,X,U,A,t,SP,dbg,req...)
-        hasnan(L,FB) && muscadeerror((dbg...,t=t,SP=SP),@sprintf("lagrangian(%s,...) returned NaN in L, FB or derivatives",Eleobj))   
-    #                           eleobj,       X,     U,     A, t,SP,        dbg  
-    elseif hasmethod(residual  ,(Eleobj,       NTuple,NTuple,𝕣1,𝕣,NamedTuple,NamedTuple))
-        R,FB,eleres... = residual(  eleobj,  X,U,A,t,SP,dbg,req...)
-        hasnan(R,FB) && muscadeerror((dbg...,t=t,SP=SP),@sprintf("residual(%s,...) returned NaN in R, FB or derivatives",Eleobj)) 
-        L = Λ ∘₁ R
-    else
-        muscadeerror((dbg...,t=t,SP=SP),@sprintf("Element %s must have method 'Muscade.lagrangian' or/and 'Muscade.residual' with correct interface",Eleobj))
-    end
+function getlagrangian(eleobj::Eleobj, Λ::SVector{Nx}, X::NTuple{Ndx,SVector{Nx}}, 
+        U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na}, t::ℝ,SP,dbg,req...)     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
+    L,FB,eleres... = getlagrangian(eleobj,hasresidual(eleobj),haslagrangian(eleobj),nosecondorder(Eleobj),Λ,X,U,A,t,SP,dbg,req...)    
+    hasnan(L,FB) && muscadeerror((dbg...,t=t,SP=SP),@sprintf("lagrangian(%s,...) returned NaN in L, FB or derivatives",Eleobj)) 
+    return L,FB,eleres...  
+end
+function getlagrangian(eleobj::Eleobj,hasres,haslag::Val{true},nso, Λ::SVector{Nx}, X::NTuple{Ndx,SVector{Nx}}, 
+        U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na}, t::ℝ,SP,dbg,req...)     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
+    out = lagrangian(eleobj,Λ,X,U,A,t,SP,dbg,req...)
+    L,FB,eleres... = lagrangian(eleobj,Λ,X,U,A,t,SP,dbg,req...)
+end
+function getlagrangian(eleobj::Eleobj,hasres::Val{true},haslag::Val{false},nso::Val{false}, Λ::SVector{Nx}, X::NTuple{Ndx,SVector{Nx}}, 
+        U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na}, t::ℝ,SP,dbg,req...)     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
+    R,FB,eleres... = residual(  eleobj,  X,U,A,t,SP,dbg,req...)
+    L = Λ ∘₁ R
     return L,FB,eleres... 
 end
+function getlagrangian(eleobj::Eleobj,hasres::Val{true},haslag::Val{false},nso::Val{true}, Λ::SVector{Nx}, X::NTuple{Ndx,SVector{Nx}}, 
+        U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na}, t::ℝ,SP,dbg,req...)     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
+    X1,U1,A1,t1 = firstorderonly(X,U,A,t)
+    R,FB,eleres... = residual(  eleobj,  X1,U1,A1,t1,SP,dbg,req...)
+    L = Λ ∘₁ R
+    return L,FB,eleres... 
+end
+getlagrangian(eleobj::Eleobj,hasres::Val{false},haslag::Val{false},nso, Λ,X,U,A,t,SP,dbg,req...)     where{Eleobj} =
+    muscadeerror((dbg...,t=t,SP=SP),@sprintf("Element %s must have method 'Muscade.lagrangian' or/and 'Muscade.residual' with correct interface",Eleobj))

@@ -81,7 +81,6 @@ it at times `t=range(start=t₀,step=Δt,length=2^p)`. The return
 - `dbg=(;)`           a named tuple to trace the call tree (for debugging).
 - `verbose=true`      set to false to suppress printed output (for testing).
 - `silenterror=false` set to true to suppress print out of error (for testing) .
-- `fastresidual=false` compute the gradient of the `residual` instead of the Hessian of the `lagrangian`, for element that implement `residual`.
 - `initialstate`      a `State`.
 - `t₀=0.`             time of first step.                      
 - `Δt`                time step.
@@ -99,7 +98,6 @@ struct FreqXU{OX,OU} <: AbstractSolver end
 function solve(::Type{FreqXU{OX,OU}},pstate,verbose::𝕓,dbg;
     Δt::𝕣, p::𝕫, t₀::𝕣=0.,tᵣ::𝕣=t₀, 
     initialstate::State,
-    fastresidual::𝔹=false,
     droptol::𝕣=1e-10,
     kwargs...) where{OX,OU}
 
@@ -118,7 +116,7 @@ function solve(::Type{FreqXU{OX,OU}},pstate,verbose::𝕓,dbg;
 
     # Prepare assembler
     verbose && @printf("    Preparing assembler\n")
-    out,asm,dofgr         = prepare(AssemblyDirect{OX,OU,IA},model,dis;fastresidual,kwargs...)   # model assembler for all arrays   
+    out,asm,dofgr         = prepare(AssemblyDirect{OX,OU,IA},model,dis;kwargs...)   # model assembler for all arrays   
 
     verbose && @printf("    Computing matrices\n")
     out.matrices          = true

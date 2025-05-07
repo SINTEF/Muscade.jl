@@ -92,9 +92,19 @@ In `Λ`, `X`, `U` and `A` handed by Muscade to `residual` or `lagrangian`,
 the dofs in the vectors will follow the order in the doflist. Element developers
 are free to number their dofs by node, by field, or in any other way.
 
-See also: [`lagrangian`](@ref), [`residual`](@ref)  ∂
+See also: [`lagrangian`](@ref), [`residual`](@ref), [`nosecondorder`](@ref)  
 """
 doflist(     ::Type{E}) where{E<:AbstractElement}  = muscadeerror(@sprintf("method 'Muscade.doflist' must be provided for elements of type '%s'\n",E))
+
+"""
+    nosecondorder(::Type{E<:AbstractElement})
+
+Elements that define `residual` which would give excessive compilation and/or execution time if differentiated
+to the second order should provide a flag to limit differentiation to first order by implementing:   
+
+    Muscade.nosecondorder(     ::Type{<:MyElementType}) = Val(true)
+"""
+nosecondorder(     ::Type{<:AbstractElement}) = Val(false)
 
 """
     @espy function Muscade.lagrangian(eleobj::MyElement,Λ,X,U,A,t,SP,dbg)
@@ -122,7 +132,7 @@ doflist(     ::Type{E}) where{E<:AbstractElement}  = muscadeerror(@sprintf("meth
 - `FB` feedback from the element to the solver (for example: can `γ` be 
   reduced?). Return `noFB` of the element has no feedback to provide.
 
-See also: [`residual`](@ref), [`doflist`](@ref), [`@espy`](@ref), [`∂0`](@ref), [`∂1`](@ref), [`∂2`](@ref), [`noFB`](@ref)
+See also: [`residual`](@ref), [`doflist`](@ref), [`@espy`](@ref), [`∂0`](@ref), [`∂1`](@ref), [`∂2`](@ref), [`noFB`](@ref), 
 """
 lagrangian()=nothing
 
@@ -152,7 +162,7 @@ end
 - `FB` feedback from the element to the solver (for example: can `γ` be 
   reduced?). Return `noFB` of the element has no feedback to provide.
 
-See also: [`lagrangian`](@ref), [`doflist`](@ref), [`@espy`](@ref), [`∂0`](@ref), [`∂1`](@ref), [`∂2`](@ref), [`noFB`](@ref)
+See also: [`lagrangian`](@ref), [`nosecondorder`](@ref), [`doflist`](@ref), [`@espy`](@ref), [`∂0`](@ref), [`∂1`](@ref), [`∂2`](@ref), [`noFB`](@ref)
 """
 residual()=nothing
 """

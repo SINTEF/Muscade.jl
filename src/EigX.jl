@@ -8,7 +8,6 @@ mode shapes.
 # Input
 - `initialstate` - a `State`
 - `nmod=5` - the number of eigenmodes to identify
-- `fastresidual=true` - limit automatic differentiation of `residual` to first order
 - `droptol=1e-9` - in the stiffness and mass matrix, the magnitude of a term relative to the largest term in the matrix
         under which the term is set to zero.
 - Further named arguments: see the optional keyword arguments to `geneig`.         
@@ -23,12 +22,12 @@ See also: [`solve`](@ref), [`initialize!`](@ref), [`increment`](@ref), [`geneig`
 """
 struct        EigX <: AbstractSolver end
 function solve(TS::Type{EigX},pstate,verbose,dbg; 
-                   state::State, nmod::𝕫=5,fastresidual::𝕓=true,droptol::𝕣=1e-9,kwargs...) 
+                   state::State, nmod::𝕫=5,droptol::𝕣=1e-9,kwargs...) 
     OX,OU,IA         = 2,0,0
     model,dis        = state.model,state.dis
 
     verbose && @printf("\n    Preparing assembler\n")
-    out,asm,dofgr    = prepare(AssemblyDirect{OX,OU,IA},model,dis;fastresidual)  
+    out,asm,dofgr    = prepare(AssemblyDirect{OX,OU,IA},model,dis)  
     nXdof            = getndof.(dofgr)[ind.X]
     state            = State{1,OX+1,OU+1}(copy(state))   
     assemble!(out,asm,dis,model,state,(dbg...,solver=:EigX))

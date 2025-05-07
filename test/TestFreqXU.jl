@@ -39,11 +39,10 @@ p               = 10
 t₀              = 0.
 OX              = 2
 OU              = 2
-fastresidual    = true
 t               = range(start=t₀,step=Δt,length=2^p)
 
 initialstate    = initialize!(model)   
-state           = solve(FreqXU{OX,OU};Δt, p, t₀,initialstate,fastresidual,verbose=false)
+state           = solve(FreqXU{OX,OU};Δt, p, t₀,initialstate,verbose=false)
 dof             = getdof(state,field=:tx1)
 
 # using GLMakie
