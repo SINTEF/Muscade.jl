@@ -132,6 +132,7 @@ function EulerBeam3D(nod::Vector{Node};mat,orient2::SVector{ndim,𝕣}=SVector(0
 end
 
 # Define now the residual function for the EulerBeam3D element.
+vec3(v,ind) = SVector{3}(v[i] for i∈ind)
 
 
 @espy function Muscade.residual(o::EulerBeam3D,   X,U,A,t,SP,dbg) 
@@ -143,7 +144,7 @@ end
     ☼ε ,ε∂X₀    = composewithJacobian{P,ND,N∂}(Tε ,X_)
     vₛₘ∂X₀       = composeJacobian{    P,   N∂}(Tvₛₘ,X₀)
     rₛₘ          = composevalue{       P,ND   }(Trₛₘ,X_)
-    ♢κ          = composevalue{       P,ND   }(Tvₗ₂,X_).*(2/o.L)  # evaluate only on request
+    ♢κ          = composevalue{       P,ND   }(Tvₗ₂,X_).*(2/o.L)  # ♢: evaluate only on request
     vᵢ₀         = (SVector(0,0,0),)
     vᵢ₁         = ND≥1 ? (vᵢ₀...,   spin⁻¹(∂0(rₛₘ)' ∘₁ ∂1(rₛₘ))) : vᵢ₀ 
     vᵢ          = ND≥2 ? (vᵢ₁...,   spin⁻¹(∂1(rₛₘ)' ∘₁ ∂1(rₛₘ) + ∂0(rₛₘ)' ∘₁ ∂2(rₛₘ))) : vᵢ₁
@@ -156,21 +157,21 @@ end
         R       = (fᵢ ∘₀ ε∂X₀ + mᵢ ∘₁ κ∂X₀ + fₑ ∘₁ x∂X₀ + mₑ ∘₁ vₛₘ∂X₀) * o.dL[igp]     # Contribution to the local nodal load of this Gauss point  [ndof] = scalar*[ndof] + [ndim]⋅[ndim,ndof] + [ndim]⋅[ndim,ndof]
         @named(R)
     end
-    R               = sum(gpᵢ.R for gpᵢ∈gp) 
+    R           = sum(gpᵢ.R for gpᵢ∈gp) 
     return R,noFB  
 end
 function kinematics(o::EulerBeam3D,X₀)  
     cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp,L  = o.cₘ,o.rₘ,o.tgₘ,o.tgₑ,o.ζnod,o.ζgp,o.L   # As-meshed element coordinates and describing tangential vector
 
     ## transformation to corotated system
-    uᵧ₁,vᵧ₁,uᵧ₂,vᵧ₂  = SVector{3}(X₀[i] for i∈1:3), SVector{3}(X₀[i] for i∈4:6),SVector{3}(X₀[i] for i∈7:9),SVector{3}(X₀[i] for i∈10:12)
-    vₗ₂,rₛₘ,vₛₘ = fast(SVector(vᵧ₁...,vᵧ₂...)) do v
-        vᵧ₁,vᵧ₂ = SVector{3}(v[i] for i∈1:3), SVector{3}(v[i] for i∈4:6)
-        rₛ₁              = fast(Rodrigues,vᵧ₁)
-        rₛ₂              = fast(Rodrigues,vᵧ₂)
-        vₗ₂              = 0.5*Rodrigues⁻¹(rₛ₂ ∘₁ rₛ₁')
-        rₛₘ              = fast(Rodrigues,vₗ₂) ∘₁ rₛ₁ ∘₁ o.rₘ  
-        vₛₘ              = Rodrigues⁻¹(rₛₘ)              
+    uᵧ₁,vᵧ₁,uᵧ₂,vᵧ₂  = vec3(X₀,1:3), vec3(X₀,4:6), vec3(X₀,7:9), vec3(X₀,10:12)
+    vₗ₂,rₛₘ,vₛₘ        = fast(SVector(vᵧ₁...,vᵧ₂...)) do v
+        vᵧ₁,vᵧ₂      = vec3(v,1:3), vec3(v,4:6)
+        rₛ₁          = fast(Rodrigues,vᵧ₁)
+        rₛ₂          = fast(Rodrigues,vᵧ₂)
+        vₗ₂          = 0.5*Rodrigues⁻¹(rₛ₂ ∘₁ rₛ₁')
+        rₛₘ          = fast(Rodrigues,vₗ₂) ∘₁ rₛ₁ ∘₁ o.rₘ  
+        vₛₘ          = Rodrigues⁻¹(rₛₘ)              
         return vₗ₂,rₛₘ,vₛₘ
     end   
     cₛ               = 0.5*(uᵧ₁+uᵧ₂)
