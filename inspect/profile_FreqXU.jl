@@ -54,20 +54,19 @@ state0          = initialize!(model)
 
 OX               = 2
 OU               = 0
-fast             = true
 
 
 using Profile,ProfileView,BenchmarkTools
 mission = :profile
 if mission == :report
-    stateXUA         = solve(FreqXU{OX,OU};Δt=1., p=8, t₀=0.,initialstate=state0,fastresidual=fast)
+    stateXUA         = solve(FreqXU{OX,OU};Δt=1., p=8, t₀=0.,initialstate=state0)
 elseif mission == :time
-    @btime state    = stateXUA         = solve(FreqXU{OX,OU};Δt=1., p=8, t₀=0.,initialstate=state0,verbose=false,fastresidual=fast)
+    @btime state    = stateXUA         = solve(FreqXU{OX,OU};Δt=1., p=8, t₀=0.,initialstate=state0,verbose=false)
 elseif mission == :profile
-    local stateXUA         = solve(FreqXU{OX,OU};Δt=1., p=16, t₀=0.,initialstate=state0,verbose=false,fastresidual=fast)
+    local stateXUA         = solve(FreqXU{OX,OU};Δt=1., p=16, t₀=0.,initialstate=state0,verbose=false)
     Profile.clear()
     Profile.@profile for i=1:10
-        local stateXUA         = solve(FreqXU{OX,OU};Δt=1., p=16, t₀=0.,initialstate=state0,verbose=false,fastresidual=fast)
+        local stateXUA         = solve(FreqXU{OX,OU};Δt=1., p=16, t₀=0.,initialstate=state0,verbose=false)
     end
     ProfileView.view(fontsize=30);
 end

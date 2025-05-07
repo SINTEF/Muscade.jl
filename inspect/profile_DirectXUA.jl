@@ -53,7 +53,7 @@ time             = 0:.1:1
 
 
 #stateXUA         = solve(DirectXUA{NDX,NDU,NA};initialstate=state0,time,maxiter=10,verbose=false)
-stateXUA         = solve(DirectXUA{OX,OU,IA};initialstate=state0,time,maxiter=10,fastresidual=true)
+stateXUA         = solve(DirectXUA{OX,OU,IA};initialstate=state0,time,maxiter=10)
 
 # Profile.clear()
 # Profile.@profile for i=1:10

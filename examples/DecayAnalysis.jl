@@ -18,6 +18,8 @@ struct FloaterOnCalmWater <: AbstractElement
 end
 FloaterOnCalmWater(nod::Vector{Node};K,C,M  )  = FloaterOnCalmWater(K,C,M)
 
+Muscade.nosecondorder(::Type{<:FloaterOnCalmWater}) = Val(true)
+
 Muscade.doflist(::Type{<:FloaterOnCalmWater}) = (inod  = (ntuple(i-> 1,3)...,ntuple(i-> 1,3)...,ntuple(i-> 1,6)...,                  ntuple(i-> 1,6)...           ),                                             
                                                  class = (ntuple(i->:X,3)...,ntuple(i->:U,3)...,ntuple(i->:A,6)...,                  ntuple(i->:A,6)...          ), 
                                                  field = (floatermotion...  ,floatermotion...  ,ntuple(i->Symbol(:M,idx[i]),6)...,   ntuple(i->Symbol(:C,idx[i]),6)...))
@@ -117,7 +119,7 @@ e7             = addelement!(modelXUA,SingleDofCost,[n1];class=:X,field=:yaw,   
 #Solve inverse problem
 initialstateXUA    = initialize!(modelXUA;time=0.)
 stateXUA         = solve(DirectXUA{2,0,1};initialstate=initialstateXUA,time=T,
-                        maxiter=100,saveiter=true,fastresidual=true,
+                        maxiter=100,saveiter=true,
                         maxΔx=1e-5,maxΔλ=Inf,maxΔu=1e-5,maxΔa=1e-5);
 
 # Fetch and display estimated model parameters

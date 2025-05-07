@@ -187,6 +187,8 @@ end
 
 See [`Muscade.residual`](@ref) for the list of arguments and outputs.
 
+Some solvers may prefer to evaluate 2nd order derivatives of `residual`.  However, for elements with anything but a small number of degrees of freedom, this quickly leads to intractably high compilation and/or execution times.  If this is the case, then the element should implement [`Muscade.nosecondorder`](@ref) to limit differentiation to the first order only. 
+
 ### Automatic differentiation
 
 The gradients and Hessians of `R` or `L` do not need to be implemented, because `Muscade` uses [automatic differentiation](Adiff.md). Because of this, it is important not to over-specify the inputs.  For example, 
