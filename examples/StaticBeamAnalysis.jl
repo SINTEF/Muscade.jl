@@ -48,7 +48,7 @@ eleid       = addelement!(model,EulerBeam3D,mesh;mat=mat,orient2=SVector(0.,1.,0
 
 # Solve the problem 
 initialstate    = initialize!(model);
-# state           = solve(SweepX{0};initialstate,time=[0.,1.])
+state           = solve(SweepX{0};initialstate,time=[0.,1.])
 
 # # Fetch and display results
 # w_ = getdof(state[2];field=:t2,nodID=nodid[1:nnodes])
@@ -86,3 +86,5 @@ initialstate    = initialize!(model);
 #     save(normpath(joinpath(currentDir,"beam.png")),fig)
 # end
 # ![Result](assets/beam.png)
+
+;

@@ -130,8 +130,7 @@ end
 @espy function Muscade.residual(o::EulerBeam3D,   X,U,A,t,SP,dbg) 
     X₀          = ∂0(X)
     TX₀         = revariate{1}(X₀)
-    Tgp,Tε,Tvₛₘ,Trₛₘ = kinematics(o,TX₀)
-
+    Tgp,Tε,Tvₛₘ,Trₛₘ   ,Tvₗ₂ = kinematics(o,TX₀)
     P,ND        = constants(X,U,A,t),length(X)
     X_          = motion{P}(X)
     ☼ε ,ε∂X₀    = composewithJacobian{P,ND,ndof}(Tε,X_)
@@ -143,7 +142,7 @@ end
 
     gp          = ntuple(ngp) do igp
         Tx,Tκ   = Tgp[igp].x, Tgp[igp].κ
-        ☼x ,x∂X₀= composewithJacobian{P,ND,ndof}(Tx,X_)
+        ☼x,x∂X₀ = composewithJacobian{P,ND,ndof}(Tx,X_)
         ☼κ,κ∂X₀ = composewithJacobian{P,ND,ndof}(Tκ,X_)
         fᵢ,mᵢ,fₑ,mₑ = ☼resultants(o.mat,ε,κ,x,rₛₘ,vᵢ)          # call the "resultant" function to compute loads (local coordinates) from strains/curvatures/etc. using material properties. Note that output is dual of input. 
         R       = (fᵢ ∘₀ ε∂X₀ + mᵢ ∘₁ κ∂X₀ + fₑ ∘₁ x∂X₀ + mₑ ∘₁ vₛₘ∂X₀) * o.dL[igp]     # Contribution to the local nodal load of this Gauss point  [ndof] = scalar*[ndof] + [ndim]⋅[ndim,ndof] + [ndim]⋅[ndim,ndof]
@@ -162,7 +161,7 @@ function kinematics(o::EulerBeam3D,X₀)
         rₛ₁              = fast(Rodrigues,vᵧ₁)
         rₛ₂              = fast(Rodrigues,vᵧ₂)
         vₗ₂              = 0.5*Rodrigues⁻¹(rₛ₂ ∘₁ rₛ₁')
-        rₛₘ              = Rodrigues(vₗ₂) ∘₁ rₛ₁ ∘₁ o.rₘ  
+        rₛₘ              = fast(Rodrigues,vₗ₂) ∘₁ rₛ₁ ∘₁ o.rₘ  
         vₛₘ              = Rodrigues⁻¹(rₛₘ)              
         return vₗ₂,rₛₘ,vₛₘ
     end           
@@ -178,6 +177,6 @@ function kinematics(o::EulerBeam3D,X₀)
         x           = rₛₘ∘₁(tgₑ*ζgp[igp]+y)+cₛ+cₘ 
         (κ=κ,x=x)
     end
-    return gp,ε,vₛₘ,rₛₘ
+    return gp,ε,vₛₘ,rₛₘ    ,vₗ₂
 end
 
