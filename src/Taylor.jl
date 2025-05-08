@@ -155,16 +155,17 @@ Wrapper function of [`revariate`](@ref) and [`McLaurin`](@ref)
 fast(f,x) = compose(f(revariate(x)),x)    
 
 """
-    composewithJacobian{P,ND,N∂}(Ty,X_)
+    composewithJacobian{P,ND}(Ty,X_)
 
 Given `Ty` obtained using `revariate`, and `X_`, obtained using `motion{P}(X)` where `X` is a tuple
-of length `ND` of `SVectors` of length `N∂=length(eltype(X))` and `P=constants(X)`, compute `y`, a tuple of length `ND` of `AbstractArrays` of same `eltype` as vectors in `X,
+of length `ND` of `SVectors` and `P=constants(X)`, compute `y`, a tuple of length `ND` of `AbstractArrays` of same `eltype` as vectors in `X,
 and `y∂X₀`, the Jacobian of `∂0(y)` with respect to `∂0(X)`.
 
 See also [`revariate`](@ref), [`motion`](@ref), [`motion⁻¹`](@ref), [`composevalue`](@ref), [`composeJacobian`](@ref)  
 """
-struct composewithJacobian{P,ND,N∂} end
-function composewithJacobian{P,ND,N∂}(Ty,X_) where{P,ND,N∂}
+struct composewithJacobian{P,ND} end
+function composewithJacobian{P,ND}(Ty,X_) where{P,ND}
+    N∂         = npartial(Ty)
     X₀         = motion⁻¹{P-1,ND,0}(X_)
     y          = motion⁻¹{P-1,ND  }(compose(value{P}( Ty  ),X_))
     y∂X₀       =                    compose(∂{P,N∂}(Ty  ),X₀ )
@@ -181,16 +182,16 @@ See also [`revariate`](@ref), [`motion`](@ref), [`motion⁻¹`](@ref), [`compose
 struct composevalue{P,ND} end
 composevalue{P,ND}(Ty,X_) where{P,ND} = motion⁻¹{P-1,ND}(compose(value{P}(Ty),X_))
 """
-    composeJacobian{P,N∂}(Ty,X_)
+    composeJacobian{P}(Ty,X_)
 
 Given `Ty` obtained using `revariate`, and `X_`, obtained using `motion{P}(X)` where `X` is a tuple
-of `SVectors` of length `N∂=length(eltype(X))` and `P=constants(X)`, compute `y`, a tuple of length `ND` of `AbstractArrays` of same `eltype` as vectors in `X,
+of `SVectors` and `P=constants(X)`, compute `y`, a tuple of length `ND` of `AbstractArrays` of same `eltype` as vectors in `X,
 and `y∂X₀`, the Jacobian of `∂0(y)` with respect to `∂0(X)`.
 
 See also [`revariate`](@ref), [`motion`](@ref), [`motion⁻¹`](@ref), [`composevalue`](@ref), [`composewithJacobian`](@ref)  
 """
-struct composeJacobian{P,N∂} end
-composeJacobian{P,N∂}(Ty,X₀) where{P,N∂} = compose(∂{P,N∂}(Ty),X₀) # y∂X₀
+struct composeJacobian{P} end
+composeJacobian{P}(Ty,X₀) where{P} = compose(∂{P,npartial(Ty)}(Ty),X₀) # y∂X₀
 
 firstorderonly(a...;)            = firstorderonly.(a)
 firstorderonly(a::Tuple)         = firstorderonly.(a)

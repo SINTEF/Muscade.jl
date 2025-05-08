@@ -141,18 +141,18 @@ vec3(v,ind) = SVector{3}(v[i] for i∈ind)
     X_          = motion{P}(X)
     TX₀         = revariate{1}(X₀)
     Tgp,Tε,Tvₛₘ,Trₛₘ,Tvₗ₂ = kinematics(o,TX₀)
-    ☼ε ,ε∂X₀    = composewithJacobian{P,ND,N∂}(Tε ,X_)
-    vₛₘ∂X₀       = composeJacobian{    P,   N∂}(Tvₛₘ,X₀)
-    rₛₘ          = composevalue{       P,ND   }(Trₛₘ,X_)
-    ♢κ          = composevalue{       P,ND   }(Tvₗ₂,X_).*(2/o.L)  # ♢: evaluate only on request
+    ☼ε ,ε∂X₀    = composewithJacobian{P,ND}(Tε ,X_)
+    vₛₘ∂X₀       = composeJacobian{    P,  }(Tvₛₘ,X₀)
+    rₛₘ          = composevalue{       P,ND}(Trₛₘ,X_)
+    ♢κ          = composevalue{       P,ND}(Tvₗ₂,X_).*(2/o.L)  # ♢: evaluate only on request
     vᵢ₀         = (SVector(0,0,0),)
     vᵢ₁         = ND≥1 ? (vᵢ₀...,   spin⁻¹(∂0(rₛₘ)' ∘₁ ∂1(rₛₘ))) : vᵢ₀ 
     vᵢ          = ND≥2 ? (vᵢ₁...,   spin⁻¹(∂1(rₛₘ)' ∘₁ ∂1(rₛₘ) + ∂0(rₛₘ)' ∘₁ ∂2(rₛₘ))) : vᵢ₁
 
     gp          = ntuple(ngp) do igp
         Tx,Tκ   = Tgp[igp].x, Tgp[igp].κ
-        ☼x,x∂X₀ = composewithJacobian{P,ND,N∂}(Tx,X_)
-        ☼κ,κ∂X₀ = composewithJacobian{P,ND,N∂}(Tκ,X_)
+        ☼x,x∂X₀ = composewithJacobian{P,ND}(Tx,X_)
+        ☼κ,κ∂X₀ = composewithJacobian{P,ND}(Tκ,X_)
         fᵢ,mᵢ,fₑ,mₑ = ☼resultants(o.mat,ε,κ,x,rₛₘ,vᵢ)          # call the "resultant" function to compute loads (local coordinates) from strains/curvatures/etc. using material properties. Note that output is dual of input. 
         R       = (fᵢ ∘₀ ε∂X₀ + mᵢ ∘₁ κ∂X₀ + fₑ ∘₁ x∂X₀ + mₑ ∘₁ vₛₘ∂X₀) * o.dL[igp]     # Contribution to the local nodal load of this Gauss point  [ndof] = scalar*[ndof] + [ndim]⋅[ndim,ndof] + [ndim]⋅[ndim,ndof]
         @named(R)
