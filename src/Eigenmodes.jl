@@ -35,7 +35,9 @@ end
 function geneig{ALGO}(A,B,neig=5;maxiter=300,verbosity=0,krylovdim=2neig+6,seed=rand(size(A,1))) where{ALGO}
     luK = lu(A)
     L,U,s,p,q = luK.L,luK.U,luK.Rs,luK.p,luK.q
-    vals, vecs, info = KrylovKit.eigsolve(x->L\((s.*(B*((U\x)[q])))[p]), seed,neig,:LR; maxiter,verbosity,ishermitian=ALGO==:Hermitian,krylovdim)
+    
+    ALGO==:Complex ? x₀=Complex.(seed) : x₀=seed
+    vals, vecs, info = KrylovKit.eigsolve(x->L\((s.*(B*((U\x)[q])))[p]), x₀,neig,:LR; maxiter,verbosity,ishermitian=ALGO==:Hermitian,krylovdim)
     for vecsᵢ ∈ vecs  
         vecsᵢ .= (U\vecsᵢ)[q]
     end

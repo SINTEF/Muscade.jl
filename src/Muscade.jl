@@ -2,7 +2,7 @@ module Muscade
     using  Printf,SparseArrays,StaticArrays,LinearAlgebra
 
     include("Dialect.jl")
-    export ℝ,ℤ,𝕣,𝕫,𝔹,𝕓
+    export ℝ,ℤ,𝕣,𝕫,𝔹,𝕓,ℂ
     export ℝ1,ℤ1,𝕣1,𝕫1,𝔹1,𝕓1
     export ℝ2,ℤ2,𝕣2,𝕫2,𝔹2,𝕓2
     export ℝ11,ℤ11,𝕣11,𝕫11,𝔹11,𝕓11
