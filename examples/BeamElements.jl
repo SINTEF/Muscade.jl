@@ -31,18 +31,19 @@ BeamCrossSection(;EA=EA,EI=EI,GJ=GJ) = BeamCrossSection(EA,EI,GJ);
     xₗ₁          = xᵧ₁ ∘₁ r₀
     xₗ₂          = xᵧ₂ ∘₁ r₀
     ## Compute drag force (hard-coded parameters so far)
-    ρ = 1025.0
-    A  = SVector(0.0,1.0,1.0)
-    Cd = SVector(0.0,1.0,1.0) # SVector(0.0,0.0,0.0)
-    fd = .5 * ρ * A .* Cd .* xₗ₁ #.* abs.(xₗ₁) #mind the sign: forces exerted by element on its environment
-    ## Compute inertia force (hard-coded parameter so far)
-    μ   = SVector(1.0,1.0,1.0)
+    # ρ = 1025.0
+    # A  = SVector(0.0,1.0,1.0)
+    # Cd = SVector(0.0,1.0,1.0) # SVector(0.0,0.0,0.0)
+    # fd = .5 * ρ * A .* Cd .* xₗ₁ #.* abs.(xₗ₁) #mind the sign: forces exerted by element on its environment
+    # ## Compute inertia force (hard-coded parameter so far)
+    μ   = (1.0,1.0,1.0)
     fi = μ .* xₗ₂ 
     ## Compute added mass force (hard-coded parameter so far)
-    Ca = SVector(0.0,0.0,0.0)
-    fa = ρ * Ca .* xₗ₂
+    # Ca = SVector(0.0,0.0,0.0)
+    # fa = ρ * Ca .* xₗ₂
     
-    ☼fₑ = fd+fa+fi #SVector(0.,0.,0.) # external forces at Gauss point (no external moment/torque/... so far). fₑ is in local coordinates 
+    # ☼fₑ = fd+fa+
+    ☼fₑ = fi #SVector(0.,0.,0.) # external forces at Gauss point (no external moment/torque/... so far). fₑ is in local coordinates 
     ☼fᵢ = o.EA*∂0(ε)
 
     ## WARNING: curvatures are defined as rate of rotation along the element, not second derivatives of deflection.  
@@ -53,7 +54,7 @@ BeamCrossSection(;EA=EA,EI=EI,GJ=GJ) = BeamCrossSection(EA,EI,GJ);
 end;
 
 ## Static Euler beam element, with two nodes, two Gauss points and 12 degrees of freedom. 
-const ngp        = 2
+const ngp        = 4
 const ndim       = 3
 const ndof       = 12
 const nnod       = 2;
@@ -114,11 +115,13 @@ function EulerBeam3D(nod::Vector{Node};mat,orient2::SVector{ndim,𝕣}=SVector(0
     rₘ      = SMatrix{ndim,ndim}(t...,n...,b...)
     ## Tangential vector and node coordinates in the local coordinate system
     tgₑ     = SVector{ndim}(L,0,0)
-    ## Length associated to each Gauss point
-    dL      = SVector{ngp }(L/2   , L/2 )
+    ## Weight associated to each Gauss point
+    # dL      = SVector{ngp }(L/2   , L/2 )
+    dL    = SVector{ngp}(L/2*(18-sqrt(30))/36,L/2*(18+sqrt(30))/36  ,L/2*(18+sqrt(30))/36,L/2*(18-sqrt(30))/36  ) 
     ## Location ζgp of the Gauss points for a unit-length beam element, with nodes at ζnod=±1/2. 
-    ζgp     = SVector{ngp }(-1/2√3,1/2√3) # ζ∈[-1/2,1/2]
-    ζnod    = SVector{nnod}(-1/2  ,1/2  ) # ζ∈[-1/2,1/2]
+    # ζgp     = SVector{ngp }(-1/2√3,1/2√3) 
+    ζgp     = SVector{ngp }(-1/2*sqrt(3/7+2/7*sqrt(6/5)),-1/2*sqrt(3/7-2/7*sqrt(6/5)), +1/2*sqrt(3/7-2/7*sqrt(6/5)),+1/2*sqrt(3/7+2/7*sqrt(6/5))) 
+    ζnod    = SVector{nnod }(-1/2  ,1/2  )
     shapes  = (yₐ.(ζgp), yᵤ.(ζgp), yᵥ.(ζgp), κₐ.(ζgp)/L, κᵤ.(ζgp)/L^2, κᵥ.(ζgp)/L)
     return EulerBeam3D(cₘ,rₘ,ζgp,ζnod,tgₘ,tgₑ,shapes...,L,dL,mat)
 end;
