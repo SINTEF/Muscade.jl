@@ -122,7 +122,7 @@ function EulerBeam3D(nod::Vector{Node};mat,orient2::SVector{ndim,𝕣}=SVector(0
     # ζgp     = SVector{ngp }(-1/2√3,1/2√3) 
     ζgp     = SVector{ngp }(-1/2*sqrt(3/7+2/7*sqrt(6/5)),-1/2*sqrt(3/7-2/7*sqrt(6/5)), +1/2*sqrt(3/7-2/7*sqrt(6/5)),+1/2*sqrt(3/7+2/7*sqrt(6/5))) 
     ζnod    = SVector{nnod }(-1/2  ,1/2  )
-    shapes  = (yₐ.(ζgp), yᵤ.(ζgp), yᵥ.(ζgp), κₐ.(ζgp)/L, κᵤ.(ζgp)/L^2, κᵥ.(ζgp)/L)
+    shapes  = (yₐ.(ζgp), yᵤ.(ζgp), yᵥ.(ζgp)*L, κₐ.(ζgp)/L, κᵤ.(ζgp)/L^2, κᵥ.(ζgp)/L)
     return EulerBeam3D(cₘ,rₘ,ζgp,ζnod,tgₘ,tgₑ,shapes...,L,dL,mat)
 end;
 
@@ -131,23 +131,31 @@ vec3(v,ind) = SVector{3}(v[i] for i∈ind)
 
 
 @espy function Muscade.residual(o::EulerBeam3D,   X,U,A,t,SP,dbg) 
-    P,ND,N∂     = constants(X),length(X),length(eltype(X))
-    X₀          = ∂0(X)
+    P,ND        = constants(X),length(X)
     X_          = motion{P}(X)
-    TX₀         = revariate{1}(X₀)
-    Tgp,Tε,Tvₛₘ,Trₛₘ,Tvₗ₂ = kinematics(o,TX₀)
-    ☼ε ,ε∂X₀    = composewithJacobian{P,ND}(Tε ,X_)
-    vₛₘ∂X₀       = composeJacobian{    P,  }(Tvₛₘ,X₀)
-    rₛₘ          = composevalue{       P,ND}(Trₛₘ,X_)
-    ♢κ          = composevalue{       P,ND}(Tvₗ₂,X_).*(2/o.L)  # ♢: evaluate only on request
-    vᵢ₀         = (SVector(0,0,0),)
-    vᵢ₁         = ND≥1 ? (vᵢ₀...,   spin⁻¹(∂0(rₛₘ)' ∘₁ ∂1(rₛₘ))) : vᵢ₀ 
-    vᵢ          = ND≥2 ? (vᵢ₁...,   spin⁻¹(∂1(rₛₘ)' ∘₁ ∂1(rₛₘ) + ∂0(rₛₘ)' ∘₁ ∂2(rₛₘ))) : vᵢ₁
+    gp_,ε_,vₛₘ_,rₛₘ_,vₗ₂_ = kinematics(o,X_,justinvoke)
+    ☼ε          = motion⁻¹{P,ND}(ε_  )  
+    rₛₘ          = motion⁻¹{P,ND}(rₛₘ_)  
+    ♢κ          = motion⁻¹{P,ND}(vₗ₂_).*(2/o.L) 
+    vᵢ₀         =              (SVector(0,0,0),                                                                           )
+    vᵢ₁         = ND<1 ? vᵢ₀ : (vᵢ₀...        , spin⁻¹(∂0(rₛₘ)' ∘₁ ∂1(rₛₘ))                                                 ) 
+    vᵢ          = ND<2 ? vᵢ₁ : (vᵢ₁...                                   ,   spin⁻¹(∂1(rₛₘ)' ∘₁ ∂1(rₛₘ) + ∂0(rₛₘ)' ∘₁ ∂2(rₛₘ)))  
 
+    X₀          = ∂0(X)
+    TX₀         = revariate{1}(X₀)
+    Tgp,Tε,Tvₛₘ,Trₛₘ,Tvₗ₂ = kinematics(o,TX₀,fast)
+    ε∂X₀        = composeJacobian{P}(Tε ,X₀)
+    vₛₘ∂X₀       = composeJacobian{P}(Tvₛₘ,X₀)
+
+    vₗ₂ = motion⁻¹{P,ND}(vₗ₂_).*(2/o.L)
     gp          = ntuple(ngp) do igp
+        x_,κ_   = gp_[igp].x, gp_[igp].κ   
+        ☼x      = motion⁻¹{P,ND}(x_  )
+        ☼κ      = motion⁻¹{P,ND}(κ_  )
+
         Tx,Tκ   = Tgp[igp].x, Tgp[igp].κ
-        ☼x,x∂X₀ = composewithJacobian{P,ND}(Tx,X_)
-        ☼κ,κ∂X₀ = composewithJacobian{P,ND}(Tκ,X_)
+        x∂X₀    = composeJacobian{P}(Tx,X₀)
+        κ∂X₀    = composeJacobian{P}(Tκ,X₀)
         fᵢ,mᵢ,fₑ,mₑ = ☼resultants(o.mat,ε,κ,x,rₛₘ,vᵢ)          # call the "resultant" function to compute loads (local coordinates) from strains/curvatures/etc. using material properties. Note that output is dual of input. 
         R       = (fᵢ ∘₀ ε∂X₀ + mᵢ ∘₁ κ∂X₀ + fₑ ∘₁ x∂X₀ + mₑ ∘₁ vₛₘ∂X₀) * o.dL[igp]     # Contribution to the local nodal load of this Gauss point  [ndof] = scalar*[ndof] + [ndim]⋅[ndim,ndof] + [ndim]⋅[ndim,ndof]
         @named(R)
@@ -157,7 +165,7 @@ vec3(v,ind) = SVector{3}(v[i] for i∈ind)
 end;
 
 # Transformation to corotated system and interpolation
-function kinematics(o::EulerBeam3D,X₀)  
+function kinematics(o::EulerBeam3D,X₀,fast)  
     cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp,L  = o.cₘ,o.rₘ,o.tgₘ,o.tgₑ,o.ζnod,o.ζgp,o.L   # As-meshed element coordinates and describing tangential vector
 
     ## transformation to corotated system
@@ -173,13 +181,12 @@ function kinematics(o::EulerBeam3D,X₀)
     end   
     cₛ               = 0.5*(uᵧ₁+uᵧ₂)
     uₗ₂              = rₛₘ'∘₁(uᵧ₂+tgₘ*ζnod[2]-cₛ)-tgₑ*ζnod[2]    #Local displacement of node 2
-    
     ## interpolation
-    ε               = √((uₗ₂[1]+L/2)^2+uₗ₂[2]^2+uₗ₂[3]^2)*2/L - 1.       
+    ε               = √((uₗ₂[1]+L/2)^2+uₗ₂[2]^2+uₗ₂[3]^2)*2/L - 1.      
     gp              = ntuple(ngp) do igp
         yₐ,yᵤ,yᵥ,κₐ,κᵤ,κᵥ = o.yₐ[igp],o.yᵤ[igp],o.yᵥ[igp],o.κₐ[igp],o.κᵤ[igp],o.κᵥ[igp]
         κ           = SVector(         κₐ*vₗ₂[1], κᵤ*uₗ₂[2]+κᵥ*vₗ₂[3], κᵤ*uₗ₂[3]-κᵥ*vₗ₂[2])  
-        y           = SVector(yₐ*uₗ₂[1]         , yᵤ*uₗ₂[2]+yᵥ*vₗ₂[3], yᵤ*uₗ₂[3]-yᵥ*vₗ₂[2])                              
+        y           = SVector(yₐ*uₗ₂[1]         , yᵤ*uₗ₂[2]+yᵥ*vₗ₂[3], yᵤ*uₗ₂[3]-yᵥ*vₗ₂[2])  
         x           = rₛₘ∘₁(tgₑ*ζgp[igp]+y)+cₛ+cₘ 
         (κ=κ,x=x)
     end

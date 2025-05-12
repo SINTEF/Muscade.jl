@@ -41,16 +41,16 @@ In the above `Y` is a tuple of length `ND`.  One can use `∂0`,`∂1` and `∂2
 See also [`motion`](@ref)
 """
 motion⁻¹{P,1,0}(a::ℝ) where{P} =                             a
-motion⁻¹{P,2,0}(a::ℝ) where{P} =            value{P+1  }(a)
-motion⁻¹{P,3,0}(a::ℝ) where{P} = value{P+1}(value{P+2 }(a))
+motion⁻¹{P,2,0}(a::ℝ) where{P} =          value{P   }(a)
+motion⁻¹{P,3,0}(a::ℝ) where{P} = value{P}(value{P+1 }(a))
 # velocities
 motion⁻¹{P,1,1}(a::ℝ) where{P} = 0. 
-motion⁻¹{P,2,1}(a::ℝ) where{P} =            ∂{    P+1  ,1}(a)[1]  # [1]: only partial is wrt time
-motion⁻¹{P,3,1}(a::ℝ) where{P} = value{P+1}(∂{    P+2,1}(a)[1])
+motion⁻¹{P,2,1}(a::ℝ) where{P} =          ∂{    P  ,1}(a)[1]  # [1]: only partial is wrt time
+motion⁻¹{P,3,1}(a::ℝ) where{P} = value{P}(∂{    P+1,1}(a)[1])
 # accelerations
 motion⁻¹{P,1,2}(a::ℝ) where{P} = 0. 
 motion⁻¹{P,2,2}(a::ℝ) where{P} = 0.
-motion⁻¹{P,3,2}(a::ℝ) where{P} = ∂{   P+1,1}(∂{   P+2,1}(a)[1])[1]
+motion⁻¹{P,3,2}(a::ℝ) where{P} = ∂{   P,1}(∂{   P+1,1}(a)[1])[1]
 
 motion⁻¹{P,ND,OD}(a::AbstractArray) where{P,ND,OD} = motion⁻¹{P,ND,OD}.(a)
 #motion⁻¹{P,ND   }(a               ) where{P,ND   } = ntuple(ID->motion⁻¹{P,ND,ID-1}(a) ,ND)
@@ -152,7 +152,8 @@ Be extremely careful with closures, making sure that `f` does not capture variab
 
 Wrapper function of [`revariate`](@ref) and [`McLaurin`](@ref)      
 """
-fast(f,x) = compose(f(revariate(x)),x)    
+fast(f,x)  = compose(f(revariate(x)),x)    
+justinvoke(f,x) = f(x)    
 
 """
     composewithJacobian{P,ND}(Ty,X_)
@@ -163,14 +164,14 @@ and `y∂X₀`, the Jacobian of `∂0(y)` with respect to `∂0(X)`.
 
 See also [`revariate`](@ref), [`motion`](@ref), [`motion⁻¹`](@ref), [`composevalue`](@ref), [`composeJacobian`](@ref)  
 """
-struct composewithJacobian{P,ND} end
-function composewithJacobian{P,ND}(Ty,X_) where{P,ND}
-    N∂         = npartial(Ty)
-    X₀         = motion⁻¹{P-1,ND,0}(X_)
-    y          = motion⁻¹{P-1,ND  }(compose(value{P}( Ty  ),X_))
-    y∂X₀       =                    compose(∂{P,N∂}(Ty  ),X₀ )
-    return y,y∂X₀
-end
+# struct composewithJacobian{P,ND} end
+# function composewithJacobian{P,ND}(Ty,X_) where{P,ND}
+#     N∂         = npartial(Ty)
+#     X₀         = motion⁻¹{P,ND,0}(X_)
+#     y          = motion⁻¹{P,ND  }(compose(value{P}( Ty  ),X_))
+#     y∂X₀       =                  compose(∂{P,N∂}(Ty  ),X₀ )
+#     return y,y∂X₀
+# end
 """
     composevalue{P,ND}(Ty,X_)
 
@@ -180,7 +181,7 @@ of length `ND` and `P=constants(X)`, compute `y`, a tuple of length `ND` of `Abs
 See also [`revariate`](@ref), [`motion`](@ref), [`motion⁻¹`](@ref), [`composewithJacobian`](@ref), [`composeJacobian`](@ref)  
 """
 struct composevalue{P,ND} end
-composevalue{P,ND}(Ty,X_) where{P,ND} = motion⁻¹{P-1,ND}(compose(value{P}(Ty),X_))
+composevalue{P,ND}(Ty,X_) where{P,ND} = motion⁻¹{P,ND}(compose(value{P}(Ty),X_))
 """
     composeJacobian{P}(Ty,X_)
 
