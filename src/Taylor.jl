@@ -51,12 +51,19 @@ motion⁻¹{P,3,1}(a::ℝ) where{P} = value{P}(∂{    P+1,1}(a)[1])
 motion⁻¹{P,1,2}(a::ℝ) where{P} = 0. 
 motion⁻¹{P,2,2}(a::ℝ) where{P} = 0.
 motion⁻¹{P,3,2}(a::ℝ) where{P} = ∂{   P,1}(∂{   P+1,1}(a)[1])[1]
+motion⁻¹{P,ND,OD}(a::SArray{S}) where{S,P,ND,OD}   = SArray{S}(motion⁻¹{P,ND,OD}(aᵢ) for aᵢ∈a)
 
-motion⁻¹{P,ND,OD}(a::AbstractArray) where{P,ND,OD} = motion⁻¹{P,ND,OD}.(a)
-#motion⁻¹{P,ND   }(a               ) where{P,ND   } = ntuple(ID->motion⁻¹{P,ND,ID-1}(a) ,ND)
-motion⁻¹{P,1    }(a               ) where{P   } = (motion⁻¹{P,1,0}(a),)
-motion⁻¹{P,2    }(a               ) where{P   } = (motion⁻¹{P,2,0}(a),motion⁻¹{P,2,1}(a))
-motion⁻¹{P,3    }(a               ) where{P   } = (motion⁻¹{P,3,0}(a),motion⁻¹{P,3,1}(a),motion⁻¹{P,3,2}(a))
+# motion⁻¹{P,ND,OD}(a::Tuple)         where{P,ND,OD} = tuple(motion⁻¹{P,ND,OD}(first(a)),motion⁻¹{P,ND,OD}(Base.tail(a))...)
+# motion⁻¹{P,ND,OD}( ::Tuple{})       where{P,ND,OD} = tuple()
+# motion⁻¹{P,ND,OD}(a...)             where{P,ND,OD} = motion⁻¹{P,ND,OD}(a)
+
+motion⁻¹{P,1    }(a::Union{ℝ,SArray}) where{P   } = (motion⁻¹{P,1,0}(a),)
+motion⁻¹{P,2    }(a::Union{ℝ,SArray}) where{P   } = (motion⁻¹{P,2,0}(a),motion⁻¹{P,2,1}(a))
+motion⁻¹{P,3    }(a::Union{ℝ,SArray}) where{P   } = (motion⁻¹{P,3,0}(a),motion⁻¹{P,3,1}(a),motion⁻¹{P,3,2}(a))
+motion⁻¹{P,ND   }(a::Tuple)           where{P,ND} = tuple(motion⁻¹{P,ND}(first(a)),motion⁻¹{P,ND}(Base.tail(a))...)
+motion⁻¹{P,ND   }(::Tuple{})          where{P,ND} = tuple()
+motion⁻¹{P,ND   }(a...)               where{P,ND} = motion⁻¹{P,ND}(a)
+
 
 
 #############
@@ -105,7 +112,7 @@ expansion to each element.
 See also: [`compose`](@ref), [`Taylor`](@ref), [`revariate`](@ref), [`fast`](@ref)    
 """
 McLaurin(y::Tuple,Δx)                          = tuple(McLaurin(first(y),Δx),McLaurin(Base.tail(y),Δx)...) 
-McLaurin(y::Tuple{},Δx)                        = tuple() 
+McLaurin( ::Tuple{},Δx)                        = tuple() 
 McLaurin(y::SArray{S},Δx) where{S}             = SArray{S}(McLaurin(yᵢ,Δx) for yᵢ∈y) 
 McLaurin(y::∂ℝ,Δx)                             = McLaurin(y.x,Δx) + McLaurin_right(y,Δx)
 McLaurin(y::𝕣 ,Δx)                             =          y
