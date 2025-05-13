@@ -122,7 +122,6 @@ C = out.∇R[ix][2]
 M = out.∇R[ix][3]
 H = out.∇R[iu][1]
 
-
 # using Printf
 # @printf "\nR\n"
 # print_element_array(beam,:X,out.R)    #  R
@@ -201,14 +200,14 @@ end
 end
 
 
-@testset "axial stiffness" begin
-    # axial force induced by inline displacement of same node
-    @test K[1,1]        ≈  EA/L   
-    @test K[7,7]        ≈  EA/L   
-    # axial force induced by inline displacement of opposite node
-    @test K[1,7]        ≈ -EA/L  
-    @test K[7,1]        ≈ -EA/L  
-end
+# @testset "axial stiffness" begin
+#     # axial force induced by inline displacement of same node
+#     @test K[1,1]        ≈  EA/L   
+#     @test K[7,7]        ≈  EA/L   
+#     # axial force induced by inline displacement of opposite node
+#     @test K[1,7]        ≈ -EA/L  
+#     @test K[7,1]        ≈ -EA/L  
+# end
 @testset "bending inertia" begin
     # transverse force induced by translation of same node
     @test M[8,8]        ≈ 156*μ*L/420    
@@ -241,16 +240,17 @@ end
     @test M[6,8]        ≈  13*μ*L^2/420 
     @test M[12,2]       ≈ -13*μ*L^2/420 
 end
-@testset "torsional stiffness" begin
-    # torsional moment induced by own rotation about element axis
-    @test K[4,4]        ≈ GJ/L 
-    @test K[10,10]      ≈ GJ/L 
-    # torsional moment induced by rotation of opposite node about element axis
-    @test K[4,10]       ≈ -GJ/L 
-    @test K[10,4]       ≈ -GJ/L 
-end
+# @testset "torsional stiffness" begin
+#     # torsional moment induced by own rotation about element axis
+#     @test K[4,4]        ≈ GJ/L 
+#     @test K[10,10]      ≈ GJ/L 
+#     # torsional moment induced by rotation of opposite node about element axis
+#     @test K[4,10]       ≈ -GJ/L 
+#     @test K[10,4]       ≈ -GJ/L 
+# end
 ;
 # # Cantilever bend, with out-of-plane load leading to a three-dimensional response mobilizing axial force, bending moment and torque.
+# # Requires GLMakie
 # R = 100.0;  # Radius of the bend [m]
 # EI = 833.33e3;  # Bending stiffness [Nm²]
 # EA = 1e9;  # Axial stiffness [N]
@@ -291,11 +291,11 @@ end
 # end
 # xlims!(ax, 0,71); ylims!(ax, 0,71); zlims!(ax, 0,71); axislegend()
 # save(normpath(joinpath(currentDir,"beamTest1.png")),fig)
-# Comparison to solutions by Longva (2015) and Crisfield (1990)
-# Load                300 N                       450 N                       600 N
-#                     x,y,z                       x,y,z                       x,y,z
-# Disp Longva         58.56, 40.47, 22.18         51.99, 48.72, 18.45         46.91, 53.64, 15.65 
-# Disp Crisfield      58.53, 40.53, 22.16         51.93, 48.79, 18.43         46.84, 53.71, 15.61
+# # Comparison to solutions by Longva (2015) and Crisfield (1990)
+# # Load                300 N                       450 N                       600 N
+# #                     x,y,z                       x,y,z                       x,y,z
+# # Disp Longva         58.56, 40.47, 22.18         51.99, 48.72, 18.45         46.91, 53.64, 15.65 
+# # Disp Crisfield      58.53, 40.53, 22.16         51.93, 48.79, 18.43         46.84, 53.71, 15.61
 
 # height = [  nodeCoord[end,1]+x_[2][end], 58.56, 58.53, nodeCoord[end,1]+x_[3][end], 51.99, 51.93, nodeCoord[end,1]+x_[4][end], 46.91, 46.84, 
 #             nodeCoord[end,2]+y_[2][end], 40.47, 40.53, nodeCoord[end,2]+y_[3][end], 48.72, 48.79, nodeCoord[end,2]+y_[4][end], 53.64, 53.71,

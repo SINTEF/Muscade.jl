@@ -53,12 +53,18 @@ req = @request gp(resultants(mᵢ))
 out = getresult(state[2],req,eleid)
 Mgp1_ = [ out[idxEl].gp[1][:resultants][:mᵢ][2] for idxEl ∈ 1:nel]
 Mgp2_ = [ out[idxEl].gp[2][:resultants][:mᵢ][2] for idxEl ∈ 1:nel]
-xgp1 = (L/nel)*((0.5-1.0/(2*sqrt(3))):1:nel)
-xgp2 = (L/nel)*((0.5+1.0/(2*sqrt(3))):1:nel)
+Mgp3_ = [ out[idxEl].gp[3][:resultants][:mᵢ][2] for idxEl ∈ 1:nel]
+Mgp4_ = [ out[idxEl].gp[4][:resultants][:mᵢ][2] for idxEl ∈ 1:nel]
+xgp1 = (L/nel)*( (0.5-1/2*sqrt(3/7+2/7*sqrt(6/5))) :1:nel)
+xgp2 = (L/nel)*( (0.5-1/2*sqrt(3/7-2/7*sqrt(6/5))) :1:nel)
+xgp3 = (L/nel)*( (0.5+1/2*sqrt(3/7-2/7*sqrt(6/5))) :1:nel)
+xgp4 = (L/nel)*( (0.5+1/2*sqrt(3/7+2/7*sqrt(6/5))) :1:nel)
 req = @request gp(κ)
 out = getresult(state[2],req,eleid)
 κgp1_ = [ out[idxEl].gp[1].κ[1][2] for idxEl ∈ 1:nel]
 κgp2_ = [ out[idxEl].gp[2].κ[1][2] for idxEl ∈ 1:nel];
+κgp3_ = [ out[idxEl].gp[3].κ[1][2] for idxEl ∈ 1:nel];
+κgp4_ = [ out[idxEl].gp[4].κ[1][2] for idxEl ∈ 1:nel];
 
 fig      = Figure(size = (1000,1000))
 ax = Axis(fig[1,1], ylabel="Deflection w [m]",        yminorgridvisible = true,xminorgridvisible = true,xticks = (0:L/nel:L))
@@ -70,10 +76,10 @@ lines!(fig[2,1],x,            θ*180/pi,                 label="Analytical solut
 scatter!(fig[2,1],(0:L/nel:L),  θ_[:]*180/pi,           label="Muscade/beam");
 ax=Axis(fig[3,1], ylabel="Curvature κ [m⁻¹]",       yminorgridvisible = true,xminorgridvisible = true,xticks = (0:L/nel:L))
 lines!(fig[3,1],x,            κ,                        label="Analytical solution")
-scatter!(fig[3,1],[xgp1;xgp2],  [κgp1_;κgp2_],          label="Muscade/beam");
+scatter!(fig[3,1],[xgp1;xgp2;xgp3;xgp4],  [κgp1_;κgp2_;κgp3_;κgp4_],          label="Muscade/beam");
 ax=Axis(fig[4,1], ylabel="Bending moment M [Nm]",   yminorgridvisible = true,xminorgridvisible = true,xticks = (0:L/nel:L), xlabel="Position on beam [m]")
 lines!(fig[4,1],x,            M,                        label="Analytical solution")
-scatter!(fig[4,1],[xgp1;xgp2],  [Mgp1_;Mgp2_],          label="Muscade/beam");
+scatter!(fig[4,1],[xgp1;xgp2;xgp3;xgp4],  [Mgp1_;Mgp2_;Mgp3_;Mgp4_],          label="Muscade/beam");
 
 currentDir = @__DIR__
 if occursin("build", currentDir)

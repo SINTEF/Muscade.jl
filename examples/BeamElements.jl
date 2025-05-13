@@ -20,32 +20,27 @@ BeamCrossSection(;EA=EA,EI=EI,GJ=GJ) = BeamCrossSection(EA,EI,GJ);
 
 # Resultant function that computes the internal loads from the strains and curvatures, and external loads on the element. 
 @espy function resultants(o::BeamCrossSection,ε,κ,xᵧ,rₛₘ,vᵢ) 
-
     r₀  = ∂0(rₛₘ)  # orientation of the element's local refsys
     vᵢ₁ = ∂1(vᵢ)  # intrinsic rotation rate         of the element's local refsys
     vᵢ₂ = ∂2(vᵢ)  # intrinsic rotation acceleration of the element's local refsys
     ☼mₑ = SVector(0.,0.,0.) # external couples at Gauss point. mₑ is in local coordinates 
-
-
     xᵧ₀,xᵧ₁,xᵧ₂ = ∂0(xᵧ),∂1(xᵧ),∂2(xᵧ)
     xₗ₁          = xᵧ₁ ∘₁ r₀
     xₗ₂          = xᵧ₂ ∘₁ r₀
     ## Compute drag force (hard-coded parameters so far)
-    # ρ = 1025.0
-    # A  = SVector(0.0,1.0,1.0)
-    # Cd = SVector(0.0,1.0,1.0) # SVector(0.0,0.0,0.0)
-    # fd = .5 * ρ * A .* Cd .* xₗ₁ #.* abs.(xₗ₁) #mind the sign: forces exerted by element on its environment
-    # ## Compute inertia force (hard-coded parameter so far)
+    ## ρ = 1025.0
+    ## A  = SVector(0.0,1.0,1.0)
+    ## Cd = SVector(0.0,1.0,1.0) # SVector(0.0,0.0,0.0)
+    ## fd = .5 * ρ * A .* Cd .* xₗ₁ #.* abs.(xₗ₁) #mind the sign: forces exerted by element on its environment
+    ## Compute inertia force (hard-coded parameter so far)
     μ   = (1.0,1.0,1.0)
     fi = μ .* xₗ₂ 
     ## Compute added mass force (hard-coded parameter so far)
-    # Ca = SVector(0.0,0.0,0.0)
-    # fa = ρ * Ca .* xₗ₂
-    
-    # ☼fₑ = fd+fa+
+    ## Ca = SVector(0.0,0.0,0.0)
+    ## fa = ρ * Ca .* xₗ₂
+    ## ☼fₑ = fd+fa+
     ☼fₑ = fi #SVector(0.,0.,0.) # external forces at Gauss point (no external moment/torque/... so far). fₑ is in local coordinates 
     ☼fᵢ = o.EA*∂0(ε)
-
     ## WARNING: curvatures are defined as rate of rotation along the element, not second derivatives of deflection.  
     ## Hence κ[3]>0 implies +2 direction is inside curve, 
     ##       κ[2]>0 implies -3 direction is inside curve.
@@ -116,10 +111,8 @@ function EulerBeam3D(nod::Vector{Node};mat,orient2::SVector{ndim,𝕣}=SVector(0
     ## Tangential vector and node coordinates in the local coordinate system
     tgₑ     = SVector{ndim}(L,0,0)
     ## Weight associated to each Gauss point
-    # dL      = SVector{ngp }(L/2   , L/2 )
     dL    = SVector{ngp}(L/2*(18-sqrt(30))/36,L/2*(18+sqrt(30))/36  ,L/2*(18+sqrt(30))/36,L/2*(18-sqrt(30))/36  ) 
     ## Location ζgp of the Gauss points for a unit-length beam element, with nodes at ζnod=±1/2. 
-    # ζgp     = SVector{ngp }(-1/2√3,1/2√3) 
     ζgp     = SVector{ngp }(-1/2*sqrt(3/7+2/7*sqrt(6/5)),-1/2*sqrt(3/7-2/7*sqrt(6/5)), +1/2*sqrt(3/7-2/7*sqrt(6/5)),+1/2*sqrt(3/7+2/7*sqrt(6/5))) 
     ζnod    = SVector{nnod }(-1/2  ,1/2  )
     shapes  = (yₐ.(ζgp), yᵤ.(ζgp), yᵥ.(ζgp)*L, κₐ.(ζgp)/L, κᵤ.(ζgp)/L^2, κᵥ.(ζgp)/L)
@@ -132,16 +125,16 @@ vec3(v,ind) = SVector{3}(v[i] for i∈ind)
 # Il semble que la perfection soit atteinte non quand il n’y a plus rien à ajouter, mais quand il n’y a plus rien à retrancher. Antoine de Saint-Exupéry
 @espy function Muscade.residual(o::EulerBeam3D,   X,U,A,t,SP,dbg) 
     P,ND                = constants(X),length(X)
-    # Compute all quantities at Gauss point, their time derivatives, including intrinsic roll rate and acceleration
+    ## Compute all quantities at Gauss point, their time derivatives, including intrinsic roll rate and acceleration
     gp_,ε_,vₛₘ_,rₛₘ_,vₗ₂_ = kinematics(o,motion{P}(X),justinvoke)
     gpval,☼ε , rₛₘ       = motion⁻¹{P,ND}(gp_,ε_,rₛₘ_  ) 
     vᵢ                  = intrinsicrotationrates(rₛₘ)
-    # compute all Jacobians of the above quantities with respect to X₀
+    ## compute all Jacobians of the above quantities with respect to X₀
     X₀                  = ∂0(X)
     TX₀                 = revariate{1}(X₀)
     Tgp,Tε,Tvₛₘ,_,_      = kinematics(o,TX₀,fast)
     gp∂X₀,ε∂X₀,vₛₘ∂X₀    = composeJacobian{P}((Tgp,Tε,Tvₛₘ),X₀)
-    # Quadrature loop: compute resultants, and 
+    ## Quadrature loop: compute resultants, and 
     gp                  = ntuple(ngp) do igp
         ☼x,☼κ           = gpval[igp].x, gpval[igp].κ   
         x∂X₀,κ∂X₀       = gp∂X₀[igp].x, gp∂X₀[igp].κ
