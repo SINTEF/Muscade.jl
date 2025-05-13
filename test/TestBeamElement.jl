@@ -62,6 +62,7 @@ EI = 3.
 GJ = 4. 
 L =  2.
 μ = 1. # currently hard-coded in beam element [kg/m]
+Iₜ = 1. # currently hard-coded
 model           = Model(:TestModel)
 node1           = addnode!(model,𝕣[0,0,0])
 node2           = addnode!(model,𝕣[L,0,0])
@@ -200,14 +201,14 @@ end
 end
 
 
-# @testset "axial stiffness" begin
-#     # axial force induced by inline displacement of same node
-#     @test K[1,1]        ≈  EA/L   
-#     @test K[7,7]        ≈  EA/L   
-#     # axial force induced by inline displacement of opposite node
-#     @test K[1,7]        ≈ -EA/L  
-#     @test K[7,1]        ≈ -EA/L  
-# end
+@testset "axial inertia" begin
+    # axial force induced by inline displacement of same node
+    @test M[1,1]        ≈  μ*L/3   
+    @test M[7,7]        ≈  μ*L/3   
+    # axial force induced by inline displacement of opposite node
+    @test M[1,7]        ≈ μ*L/6  
+    @test M[7,1]        ≈ μ*L/6  
+end
 @testset "bending inertia" begin
     # transverse force induced by translation of same node
     @test M[8,8]        ≈ 156*μ*L/420    
@@ -240,14 +241,31 @@ end
     @test M[6,8]        ≈  13*μ*L^2/420 
     @test M[12,2]       ≈ -13*μ*L^2/420 
 end
-# @testset "torsional stiffness" begin
-#     # torsional moment induced by own rotation about element axis
-#     @test K[4,4]        ≈ GJ/L 
-#     @test K[10,10]      ≈ GJ/L 
-#     # torsional moment induced by rotation of opposite node about element axis
-#     @test K[4,10]       ≈ -GJ/L 
-#     @test K[10,4]       ≈ -GJ/L 
-# end
+@testset "torsional inertia" begin
+    # shape function for local roll acceleration not used yet
+    @test M[4,4]        ≈ Iₜ*L/4
+    @test M[10,10]      ≈ Iₜ*L/4
+    @test M[4,10]       ≈ Iₜ*L/4
+    @test M[10,4]       ≈ Iₜ*L/4
+end
+@testset "spurious inertia" begin
+    # no axial force from anything else than displacements about element axis
+    @test norm(M[1, [2,3,4,5,6,8,9,10,11,12]])  ≈ 0.
+    @test norm(M[7, [2,3,4,5,6,8,9,10,11,12]])  ≈ 0.
+    # no torsion from anything else than rotations about element axis
+    @test norm(M[4, [1,2,3,5,6,7,8,9,11,12]])   ≈ 0.
+    @test norm(M[10,[1,2,3,5,6,7,8,9,11,12]])   ≈ 0.
+    # no transverse force from anything else than translations in same plane or rotation in orthogonal plane
+    @test norm(M[2, [1,3,4,5,7,9,10,11]])       ≈ 0.
+    @test norm(M[3, [1,2,4,6,7,8,10,12]])       ≈ 0.
+    @test norm(M[8, [1,3,4,5,7,9,10,11]])       ≈ 0.
+    @test norm(M[9, [1,2,4,6,7,8,10,12]])       ≈ 0.
+    # no bending moment force from anything else than translations in same plane or rotation in orthogonal plane
+    @test norm(M[5, [1,2,4,6,7,8,10,12]])       ≈ 0.
+    @test norm(M[6, [1,3,4,5,7,9,10,11]])       ≈ 0.
+    @test norm(M[11,[1,2,4,6,7,8,10,12]])       ≈ 0.
+    @test norm(M[12,[1,3,4,5,7,9,10,11]])       ≈ 0.
+end
 ;
 # # Cantilever bend, with out-of-plane load leading to a three-dimensional response mobilizing axial force, bending moment and torque.
 # # Requires GLMakie

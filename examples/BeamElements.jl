@@ -9,12 +9,8 @@ struct BeamCrossSection
     EA :: 𝕣
     EI :: 𝕣
     GJ :: 𝕣
-    ## ρ  :: 𝕣 
     ## μ  :: 𝕣 
-    ## Add moment of inertia about x for dynamic torque
-    ## Cd :: SVector{3,𝕣}
-    ## Ca :: SVector{3,𝕣}
-    ## A  :: SVector{3,𝕣}
+    ## Iₜ  :: 𝕣 
 end
 BeamCrossSection(;EA=EA,EI=EI,GJ=GJ) = BeamCrossSection(EA,EI,GJ);
 
@@ -23,28 +19,27 @@ BeamCrossSection(;EA=EA,EI=EI,GJ=GJ) = BeamCrossSection(EA,EI,GJ);
     r₀  = ∂0(rₛₘ)  # orientation of the element's local refsys
     vᵢ₁ = ∂1(vᵢ)  # intrinsic rotation rate         of the element's local refsys
     vᵢ₂ = ∂2(vᵢ)  # intrinsic rotation acceleration of the element's local refsys
-    ☼mₑ = SVector(0.,0.,0.) # external couples at Gauss point. mₑ is in local coordinates 
     xᵧ₀,xᵧ₁,xᵧ₂ = ∂0(xᵧ),∂1(xᵧ),∂2(xᵧ)
     xₗ₁          = xᵧ₁ ∘₁ r₀
     xₗ₂          = xᵧ₂ ∘₁ r₀
-    ## Compute drag force (hard-coded parameters so far)
-    ## ρ = 1025.0
-    ## A  = SVector(0.0,1.0,1.0)
-    ## Cd = SVector(0.0,1.0,1.0) # SVector(0.0,0.0,0.0)
-    ## fd = .5 * ρ * A .* Cd .* xₗ₁ #.* abs.(xₗ₁) #mind the sign: forces exerted by element on its environment
-    ## Compute inertia force (hard-coded parameter so far)
-    μ   = (1.0,1.0,1.0)
-    fi = μ .* xₗ₂ 
-    ## Compute added mass force (hard-coded parameter so far)
-    ## Ca = SVector(0.0,0.0,0.0)
+    ## Compute drag force (example) and added-mass force (example)
     ## fa = ρ * Ca .* xₗ₂
-    ## ☼fₑ = fd+fa+
-    ☼fₑ = fi #SVector(0.,0.,0.) # external forces at Gauss point (no external moment/torque/... so far). fₑ is in local coordinates 
+    ## fd = .5 * ρ * A .* Cd .* xₗ₁ #.* abs.(xₗ₁)
+    ## Compute translational inertia force (hard-coded parameter so far)
+    μ   = 1.
+    fi = μ * xᵧ₂ 
+    ☼fₑ = fi
+    ## Compute roll inertia moment (hard-coded parameter so far)
+    Iₜ = 1.
+    m₁ₗ =  Iₜ*vᵢ₂[1]
+    mᵧ = ∂0(rₛₘ)[:,1] * m₁ₗ
+    ☼mₑ = mᵧ  # external couples at Gauss point. mₑ is in local coordinates 
+    ## Compute internal loads
     ☼fᵢ = o.EA*∂0(ε)
     ## WARNING: curvatures are defined as rate of rotation along the element, not second derivatives of deflection.  
     ## Hence κ[3]>0 implies +2 direction is inside curve, 
     ##       κ[2]>0 implies -3 direction is inside curve.
-    ☼mᵢ  = SVector(o.GJ*∂0(κ)[1],o.EI*∂0(κ)[2],o.EI*∂0(κ)[3])# replace by κ₀ 
+    ☼mᵢ  = SVector(o.GJ*∂0(κ)[1],o.EI*∂0(κ)[2],o.EI*∂0(κ)[3])
     return fᵢ,mᵢ,fₑ,mₑ
 end;
 
