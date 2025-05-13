@@ -129,12 +129,12 @@ end;
 # Define now the residual function for the EulerBeam3D element.
 vec3(v,ind) = SVector{3}(v[i] for i∈ind)
 
-
+# Il semble que la perfection soit atteinte non quand il n’y a plus rien à ajouter, mais quand il n’y a plus rien à retrancher. Antoine de Saint-Exupéry
 @espy function Muscade.residual(o::EulerBeam3D,   X,U,A,t,SP,dbg) 
     P,ND                = constants(X),length(X)
     # Compute all quantities at Gauss point, their time derivatives, including intrinsic roll rate and acceleration
     gp_,ε_,vₛₘ_,rₛₘ_,vₗ₂_ = kinematics(o,motion{P}(X),justinvoke)
-    gpk,☼ε , rₛₘ         = motion⁻¹{P,ND}(gp_,ε_,rₛₘ_  ) 
+    gpval,☼ε , rₛₘ       = motion⁻¹{P,ND}(gp_,ε_,rₛₘ_  ) 
     vᵢ                  = intrinsicrotationrates(rₛₘ)
     # compute all Jacobians of the above quantities with respect to X₀
     X₀                  = ∂0(X)
@@ -143,7 +143,7 @@ vec3(v,ind) = SVector{3}(v[i] for i∈ind)
     gp∂X₀,ε∂X₀,vₛₘ∂X₀    = composeJacobian{P}((Tgp,Tε,Tvₛₘ),X₀)
     # Quadrature loop: compute resultants, and 
     gp                  = ntuple(ngp) do igp
-        ☼x,☼κ           = gpk[  igp].x, gpk[  igp].κ   
+        ☼x,☼κ           = gpval[igp].x, gpval[igp].κ   
         x∂X₀,κ∂X₀       = gp∂X₀[igp].x, gp∂X₀[igp].κ
         fᵢ,mᵢ,fₑ,mₑ     = ☼resultants(o.mat,ε,κ,x,rₛₘ,vᵢ)          # call the "resultant" function to compute loads (local coordinates) from strains/curvatures/etc. using material properties. Note that output is dual of input. 
         R               = (fᵢ ∘₀ ε∂X₀ + mᵢ ∘₁ κ∂X₀ + fₑ ∘₁ x∂X₀ + mₑ ∘₁ vₛₘ∂X₀) * o.dL[igp]     # Contribution to the local nodal load of this Gauss point  [ndof] = scalar*[ndof] + [ndim]⋅[ndim,ndof] + [ndim]⋅[ndim,ndof]
