@@ -1,17 +1,14 @@
+whereIsMuscadeDev = "C:\\Users\\thsa\\code\\Muscade.jl\\"
+
 using Pkg
 
 function devMuscadeIn(workingDir,whereIsMuscadeDev)
     cd(workingDir)
-    # versioninfo();
-    # @show pwd();
+    Pkg.activate(".")
     try Pkg.rm("Muscade") catch err end
     Pkg.develop(path=whereIsMuscadeDev)
-    Pkg.activate(".")
     Pkg.instantiate()
-    # Pkg.status()
 end
-
-whereIsMuscadeDev = "C:\\Users\\thsa\\code\\Muscade.jl\\"
 
 # run all Muscade tests, 
 workingDir = whereIsMuscadeDev*"test\\"

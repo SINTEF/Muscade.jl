@@ -117,14 +117,6 @@ function Rodrigues(v::Vec3)
     θ = norm(v)
     return LinearAlgebra.I + sinc1(θ)*S + sinc1(θ/2)^2/2*S*S  
 end
-# """
-#     v1 = BeamElements.normalize(v::SVector{3})
-
-# Compute a unit vector of same direction as `v`.  Fails
-# if `|v|==0`.
-# """
-# normalize(v)     = v/norm(v)
-## create a rotation vector that acts on u to make it colinear with v.  Fails if |u|=0, |v|=0 or θ=π
 """
     M = BeamElements.adjust(u::SVector{3},v::SVector{3})
 

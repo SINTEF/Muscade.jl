@@ -2,8 +2,7 @@ include("Rotations.jl")
 
 # # Euler beam element
 
-using StaticArrays, LinearAlgebra
-using Muscade
+using StaticArrays, LinearAlgebra, Muscade
 
 # Data structure containing the cross section material properties
 struct BeamCrossSection
@@ -35,32 +34,25 @@ BeamCrossSection(;EA=EA,EI=EI,GJ=GJ) = BeamCrossSection(EA,EI,GJ);
     ρ = 1025.0
     A  = SVector(0.0,1.0,1.0)
     Cd = SVector(0.0,1.0,1.0) # SVector(0.0,0.0,0.0)
-    fd = .5 * ρ * A .* Cd .* xₗ₁ .* abs.(xₗ₁) #mind the sign: forces exerted by element on its environment
+    fd = .5 * ρ * A .* Cd .* xₗ₁ #.* abs.(xₗ₁) #mind the sign: forces exerted by element on its environment
     ## Compute inertia force (hard-coded parameter so far)
-    μ   = 1.0
-    fi = μ * xₗ₂ 
+    μ   = SVector(1.0,1.0,1.0)
+    fi = μ .* xₗ₂ 
     ## Compute added mass force (hard-coded parameter so far)
-    Ca = SVector(0.0,1.0,1.0)
+    Ca = SVector(0.0,0.0,0.0)
     fa = ρ * Ca .* xₗ₂
+    
     ☼fₑ = fd+fa+fi #SVector(0.,0.,0.) # external forces at Gauss point (no external moment/torque/... so far). fₑ is in local coordinates 
-
-
     ☼fᵢ = o.EA*∂0(ε)
-
 
     ## WARNING: curvatures are defined as rate of rotation along the element, not second derivatives of deflection.  
     ## Hence κ[3]>0 implies +2 direction is inside curve, 
     ##       κ[2]>0 implies -3 direction is inside curve.
     ☼mᵢ  = SVector(o.GJ*∂0(κ)[1],o.EI*∂0(κ)[2],o.EI*∂0(κ)[3])# replace by κ₀ 
-
-
     return fᵢ,mᵢ,fₑ,mₑ
 end;
 
-
-
 ## Static Euler beam element, with two nodes, two Gauss points and 12 degrees of freedom. 
-
 const ngp        = 2
 const ndim       = 3
 const ndof       = 12
@@ -72,7 +64,7 @@ yᵤ(ζ) =  -4ζ^3    +3ζ       # deflection due to differential nodal transver
 yᵥ(ζ) =        ζ^2   - 1/4  # deflection due to differenttial rotation (bending, not torsion)
 κₐ(ζ) =                2    # torsion  . κₐ = yₐ′ . Divide by L .    
 κᵤ(ζ) =  -24ζ               # curvature. κᵤ = yᵤ′′. Divide by L².
-κᵥ(ζ) =                2    # curvature. κᵥ = yᵥ′′. Divide by L .
+κᵥ(ζ) =                2;   # curvature. κᵥ = yᵥ′′. Divide by L .
 
 # Data structure describing an EulerBeam3D element as meshed
 struct EulerBeam3D{Mat} <: AbstractElement
@@ -91,7 +83,7 @@ struct EulerBeam3D{Mat} <: AbstractElement
     L        :: 𝕣
     dL       :: SVector{ngp,𝕣}  # length associated to each Gauss point
     mat      :: Mat # used to store material properties (BeamCrossSection, for example)
-end
+end;
 
 # For performance, `residual` will only accept differentiation to first order
 Muscade.nosecondorder(::Type{<:EulerBeam3D}) = Val(true)
@@ -129,11 +121,9 @@ function EulerBeam3D(nod::Vector{Node};mat,orient2::SVector{ndim,𝕣}=SVector(0
     ζnod    = SVector{nnod}(-1/2  ,1/2  ) # ζ∈[-1/2,1/2]
     shapes  = (yₐ.(ζgp), yᵤ.(ζgp), yᵥ.(ζgp), κₐ.(ζgp)/L, κᵤ.(ζgp)/L^2, κᵥ.(ζgp)/L)
     return EulerBeam3D(cₘ,rₘ,ζgp,ζnod,tgₘ,tgₑ,shapes...,L,dL,mat)
-end
+end;
 
 # Define now the residual function for the EulerBeam3D element.
-
-
 @espy function Muscade.residual(o::EulerBeam3D,   X,U,A,t,SP,dbg) 
     X₀          = ∂0(X)
     TX₀         = revariate{1}(X₀)
@@ -157,7 +147,9 @@ end
     end
     R               = sum(gpᵢ.R for gpᵢ∈gp) 
     return R,noFB  
-end
+end;
+
+# Transformation to corotated system and interpolation
 function kinematics(o::EulerBeam3D,X₀)  
     cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp,L  = o.cₘ,o.rₘ,o.tgₘ,o.tgₑ,o.ζnod,o.ζgp,o.L   # As-meshed element coordinates and describing tangential vector
 
@@ -185,5 +177,4 @@ function kinematics(o::EulerBeam3D,X₀)
         (κ=κ,x=x)
     end
     return gp,ε,vₛₘ,rₛₘ    ,vₗ₂
-end
-
+end;
