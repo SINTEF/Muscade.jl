@@ -132,9 +132,8 @@ vec3(v,ind) = SVector{3}(v[i] for i∈ind)
 
 @espy function Muscade.residual(o::EulerBeam3D,   X,U,A,t,SP,dbg) 
     P,ND        = constants(X),length(X)
-    X_          = motion{P}(X)
-    gp_,ε_,vₛₘ_,rₛₘ_,vₗ₂_ = kinematics(o,X_,justinvoke)
-    ☼ε , rₛₘ     = motion⁻¹{P,ND}(ε_,rₛₘ_  ) 
+    gp_,ε_,vₛₘ_,rₛₘ_,vₗ₂_ = kinematics(o,motion{P}(X),justinvoke)
+    gpk,☼ε , rₛₘ = motion⁻¹{P,ND}(gp_,ε_,rₛₘ_  ) 
     ♢κ          = motion⁻¹{P,ND}(vₗ₂_).*(2/o.L) 
     vᵢ₀         =              (SVector(0,0,0),                                                                           )
     vᵢ₁         = ND<1 ? vᵢ₀ : (vᵢ₀...        , spin⁻¹(∂0(rₛₘ)' ∘₁ ∂1(rₛₘ))                                                 ) 
@@ -148,9 +147,7 @@ vec3(v,ind) = SVector{3}(v[i] for i∈ind)
 
     vₗ₂ = motion⁻¹{P,ND}(vₗ₂_).*(2/o.L)
     gp          = ntuple(ngp) do igp
-        x_,κ_   = gp_[igp].x, gp_[igp].κ   
-        ☼x      = motion⁻¹{P,ND}(x_  )
-        ☼κ      = motion⁻¹{P,ND}(κ_  )
+        ☼x,☼κ   = gpk[igp].x, gpk[igp].κ   
 
         Tx,Tκ   = Tgp[igp].x, Tgp[igp].κ
         x∂X₀    = composeJacobian{P}(Tx,X₀)
