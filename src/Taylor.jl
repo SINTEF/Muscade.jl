@@ -150,7 +150,7 @@ Be extremely careful with closures, making sure that `f` does not capture variab
 
 Wrapper function of [`revariate`](@ref) and [`McLaurin`](@ref)      
 """
-fast(f,x)  = compose(f(revariate(x)),x)    
+fast(      f,x) = compose(f(revariate(x)),x)    
 justinvoke(f,x) = f(x)    
 
 # """
@@ -180,6 +180,7 @@ See also [`revariate`](@ref), [`motion`](@ref), [`motion⁻¹`](@ref), [`compose
 """
 struct composevalue{P,ND} end
 composevalue{P,ND}(Ty,X_) where{P,ND} = motion⁻¹{P,ND}(compose(value{P}(Ty),X_))
+composevalue{P,ND}(Ty::Union{Tuple,NamedTuple},X₀) where{P,ND} = map(Tyᵢ->value{P,ND}(Tyᵢ,X₀),Ty)
 """
     composeJacobian{P}(Ty,X_)
 

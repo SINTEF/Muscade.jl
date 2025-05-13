@@ -129,4 +129,22 @@ function adjust(u::Vec3{R},v::Vec3{R}) where{R}
     s   = norm(w)
     θ   = atan(s,c)
     return w/sinc1(θ)
-end;
+end
+"""
+    M = BeamElements.intrinsicrotationrates(rₑ::NTuple{ND,SMatrix{3,3}}) where{ND}
+
+Transform a `NTuple` containing a rotation matrix and its extrinsic time derivatives,
+into a `NTuple` containing a (zero) rotation vector and its intrinsic time derivatives.
+
+See also [`spin`](@ref), [`spin⁻¹`](@ref), [`Rodrigues`](@ref), [`Rodrigues⁻¹`](@ref).
+"""
+function intrinsicrotationrates(rₑ::NTuple{ND,SMatrix{3,3}}) where{ND}
+    vᵢ₀ =              (SVector(0,0,0),                                                                           )
+    vᵢ₁ = ND<1 ? vᵢ₀ : (vᵢ₀...        , spin⁻¹(∂0(rₑ)' ∘₁ ∂1(rₑ))                                                 ) 
+    vᵢ  = ND<2 ? vᵢ₁ : (vᵢ₁...                                   ,   spin⁻¹(∂1(rₑ)' ∘₁ ∂1(rₑ) + ∂0(rₑ)' ∘₁ ∂2(rₑ)))  
+    return vᵢ
+end
+
+
+
+;
