@@ -6,13 +6,14 @@ using StaticArrays, LinearAlgebra, Muscade
 
 # Data structure containing the cross section material properties
 struct BeamCrossSection
-    EA :: 𝕣
-    EI :: 𝕣
-    GJ :: 𝕣
-    ## μ  :: 𝕣 
-    ## Iₜ  :: 𝕣 
+    EA :: 𝕣  # axial stiffness 
+    EI₂ :: 𝕣 # bending stiffness about second axis
+    EI₃ :: 𝕣 # bending stiffness about third axis
+    GJ :: 𝕣 # torsional stiffness (about longitudinal axis)
+    μ  :: 𝕣 # mass per unit length
+    ι₁ :: 𝕣 # (mass) moment of inertia for rotation about the element longitudinal axis per unit length
 end
-BeamCrossSection(;EA=EA,EI=EI,GJ=GJ) = BeamCrossSection(EA,EI,GJ);
+BeamCrossSection(;EA=EA,EI₂=EI₂,EI₃=EI₃,GJ=GJ,μ=μ,ι₁=ι₁) = BeamCrossSection(EA,EI₂,EI₃,GJ,μ,ι₁);
 
 # Resultant function that computes the internal loads from the strains and curvatures, and external loads on the element. 
 @espy function resultants(o::BeamCrossSection,ε,κ,xᵧ,rₛₘ,vᵢ) 
@@ -25,21 +26,19 @@ BeamCrossSection(;EA=EA,EI=EI,GJ=GJ) = BeamCrossSection(EA,EI,GJ);
     ## Compute drag force (example) and added-mass force (example)
     ## fa = ρ * Ca .* xₗ₂
     ## fd = .5 * ρ * A .* Cd .* xₗ₁ #.* abs.(xₗ₁)
-    ## Compute translational inertia force (hard-coded parameter so far)
-    μ   = 1.
-    fi = μ * xᵧ₂ 
-    ☼fₑ = fi
-    ## Compute roll inertia moment (hard-coded parameter so far)
-    Iₜ = 1.
-    m₁ₗ =  Iₜ*vᵢ₂[1]
-    mᵧ = ∂0(rₛₘ)[:,1] * m₁ₗ
-    ☼mₑ = mᵧ  # external couples at Gauss point. mₑ is in local coordinates 
+    ## Compute translational inertia force 
+    fi = o.μ * xᵧ₂ 
+    ☼fₑ = fi # external forces at Gauss point.
+    ## Compute roll inertia moment 
+    m₁ₗ = o.ι₁*vᵢ₂[1] #local 
+    mᵧ = ∂0(rₛₘ)[:,1] * m₁ₗ #global
+    ☼mₑ = mᵧ  # external couples at Gauss point. 
     ## Compute internal loads
     ☼fᵢ = o.EA*∂0(ε)
     ## WARNING: curvatures are defined as rate of rotation along the element, not second derivatives of deflection.  
     ## Hence κ[3]>0 implies +2 direction is inside curve, 
     ##       κ[2]>0 implies -3 direction is inside curve.
-    ☼mᵢ  = SVector(o.GJ*∂0(κ)[1],o.EI*∂0(κ)[2],o.EI*∂0(κ)[3])
+    ☼mᵢ  = SVector(o.GJ*∂0(κ)[1],o.EI₃*∂0(κ)[2],o.EI₂*∂0(κ)[3])
     return fᵢ,mᵢ,fₑ,mₑ
 end;
 

@@ -7,16 +7,17 @@ include("BeamElements.jl")
 # Beam simply supported at both ends  
 L = 1;  # Beam length [m]
 q = 0.0;  # Uniform lateral load [N/m]
-EI = 1;  # Bending stiffness [Nm²]
+EI₂ = 1;  # Bending stiffness [Nm²]
+EI₃ = 1;  # Bending stiffness [Nm²]
 EA = 1;  # Axial stiffness [N]
 GJ = 1;  # Torsional stiffness [Nm²]
-μ = 1
-
+μ = 1;
+ι₁= 1;
 
 nel         = 5
 Nnod        = nel+1   
 nodeCoord   = hcat((0:L/nel:L),zeros(Float64,Nnod,2))
-mat         = BeamCrossSection(EA=EA,EI=EI,GJ=GJ)
+mat         = BeamCrossSection(EA=EA,EI₂=EI₂,EI₃=EI₃,GJ=GJ,μ=μ,ι₁=ι₁)
 model       = Model(:TestModel)
 nodid       = addnode!(model,nodeCoord)
 mesh        = hcat(nodid[1:Nnod-1],nodid[2:Nnod])

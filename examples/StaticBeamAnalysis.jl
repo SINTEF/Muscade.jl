@@ -11,18 +11,18 @@ include("BeamElements.jl")
 
 L = 10.0;  # Beam length [m]
 q = 10.0;  # Uniform lateral load [N/m]
-EI = 1e6;  # Bending stiffness [Nm²]
+EI₃ = 1e6;  # Bending stiffness [Nm²]
 EA = 1e6;  # Axial stiffness [N]
 GJ = 1e3;  # Torsional stiffness [Nm²]
 
 # Analytical solutions from [here](https://mechanics.tamu.edu/wp-content/uploads/2017/03/Appendix-A_Exact-Analytical-Solutions.pdf) (which contains errors), and checked against [this source](https://faculty.arch.tamu.edu/anichols/Courses/Arch%20331/Spring%20last/Notes/Files/24_NS8-2beamdiagrams_RycFHMO.pdf)
 x = (0:L/100:L);
 # Deflection (the two sources agree)
-w = q*L^2*x.^2 .* (1.0 .-x/L).^2 ./ (24.0*EI); 
+w = q*L^2*x.^2 .* (1.0 .-x/L).^2 ./ (24.0*EI₃); 
 # Slope (verified by differentiating the above)
-θ = -q*L^2*x.*(1.0 .- 3.0*x/L + 2.0*x.^2/L^2) / (12.0*EI); 
+θ = -q*L^2*x.*(1.0 .- 3.0*x/L + 2.0*x.^2/L^2) / (12.0*EI₃); 
 # Curvature (derived)
-κ = -q*L^2*(1.0 .- 6.0*x/L + 6.0*x.^2/L^2) / (12.0*EI); 
+κ = -q*L^2*(1.0 .- 6.0*x/L + 6.0*x.^2/L^2) / (12.0*EI₃); 
 # Bending moment (the two sources do not agree)
 M = -q*L^2*(1.0 .- 6.0*x/L + 6.0*x.^2/L^2) / 12.0; 
 # Shear force (the two sources agree)
@@ -32,7 +32,7 @@ V = q*L*(1.0 .- 2.0*x/L) / 2.0;
 nel         = 20
 nnodes        = nel+1   
 nodeCoord   = hcat((0:L/nel:L),zeros(Float64,nnodes,2))
-mat         = BeamCrossSection(EA=EA,EI=EI,GJ=GJ)
+mat         = BeamCrossSection(EA=EA,EI₂=1.0,EI₃=EI₃,GJ=GJ,μ=1.0,ι₁=1.0)
 model       = Model(:TestModel)
 nodid       = addnode!(model,nodeCoord)
 mesh        = hcat(nodid[1:nnodes-1],nodid[2:nnodes])
