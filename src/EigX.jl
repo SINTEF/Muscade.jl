@@ -39,7 +39,7 @@ function solve(::Type{EigX{ℝ}},pstate,verbose,dbg;
     sparser!(M,droptol)
 
     verbose && @printf("\n    Solving Eigenvalues\n")
-    ω², vecs, ncv = geneig{:SDP}(K,M,nmod;kwargs...)
+    ω², vecs, ncv = geneig{:Hermitian}(K,M,nmod;kwargs...)
     ncv≥nmod||muscadeerror(dbg,@sprintf("eigensolver only converged for %i out of %i modes",ncv,nmod))
     pstate[] = (dofgr=dofgr[ind.X],ω=sqrt.(ω²),v=vecs)
     return 

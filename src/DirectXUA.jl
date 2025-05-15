@@ -350,7 +350,7 @@ A vector of length equal to that of `time` containing the state of the optimized
 See also: [`solve`](@ref), [`initialize!`](@ref), [`SweepX`](@ref), [`FreqXU`](@ref)
 """
 struct DirectXUA{OX,OU,IA} <: AbstractSolver end 
-function solve(TS::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
+function solve(::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
     time::AbstractRange{𝕣},
     initialstate::State,
     maxiter::ℤ=50,
