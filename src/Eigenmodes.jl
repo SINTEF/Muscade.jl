@@ -1,4 +1,4 @@
-using KrylovKit: KrylovKit
+using KrylovKit: KrylovKit,eigsolve
 
 
 """
@@ -18,33 +18,29 @@ Optional keyword arguments:
 
 Uses KrylovKit.jl. Freely based on VibrationGEPHelpers.jl and input from PetrKryslUCSD and stevengj.  
 See GIThub-blame for bug-credits.
-
 """
 struct geneig{ALGO} end
 function geneig{:SDP}(A,B=I,neig=5;maxiter=300,verbosity=0,krylovdim=2neig+6,seed=rand(size(A,1)))
     L = cholesky(Symmetric(A)).PtL
-    vals, vecs, info = KrylovKit.eigsolve(x->L\(B*(L'\x)),               seed,neig,:LR; maxiter,verbosity,ishermitian=true,krylovdim)
-    for vecsᵢ ∈ vecs
-        vecsᵢ .= ℜ.(L'\vecsᵢ)
+    val, vec, info = eigsolve(x->L\(B*(L'\x)),seed,neig,:LR; maxiter,verbosity,ishermitian=true,krylovdim)
+    for vecᵢ ∈ vec
+        vecᵢ .= ℜ.(L'\vecᵢ)
     end
-    vals .= 1 ./vals
-    vecs = normalize.(vecs)
-    ix   = sortperm(abs.(vals))
-    return vals[ix], vecs[ix], info.converged
+    val .= 1 ./val
+    normalize!.(vec)
+    ix   = sortperm(abs.(val))
+    return val[ix], vec[ix], info.converged
 end
 function geneig{ALGO}(A,B,neig=5;maxiter=300,verbosity=0,krylovdim=2neig+6,seed=rand(size(A,1))) where{ALGO}
-    luK = lu(A)
-    L,U,s,p,q = luK.L,luK.U,luK.Rs,luK.p,luK.q
-    vals, vecs, info = KrylovKit.eigsolve(x->L\((s.*(B*((U\x)[q])))[p]), seed,neig,:LR; maxiter,verbosity,ishermitian=ALGO==:Hermitian,krylovdim)
-    for vecsᵢ ∈ vecs  
-        vecsᵢ .= (U\vecsᵢ)[q]
+    luA = lu(A)
+    ALGO==:Complex ? x₀=Complex.(seed) : x₀=seed
+    val, vec, info = eigsolve(x->B*(luA\x), x₀,neig,:LR; maxiter,verbosity,
+                                ishermitian=ALGO==:Hermitian,krylovdim) 
+    for vecᵢ ∈ vec  
+        vecᵢ .= luA\vecᵢ
     end
-    vals .= 1 ./vals
-    normalize!.(vecs)
-    ix   = sortperm(abs.(vals))
-    return vals[ix], vecs[ix], info.converged
+    val .= 1 ./val
+    normalize!.(vec)
+    ix   = sortperm(abs.(val))
+    return val[ix], vec[ix], info.converged
 end
-
-
-
-

@@ -1,17 +1,3 @@
-
-#= 
-
-TODO 
-Does FFT take significant time? If so:
-
-Avoid FFT of zeros, and addition of zeros
-    find L1ᵢ that are all zero
-
-Avoid FFT of zeros    
-    in the non-all-zero L1ᵢ find dofs whose duals are zero over time
-=#
-
-
 function make_λxu_sparsepattern(out) 
     L2(α,β) = out.L2[α,β][1,1]
     α       = [2,3,1,2,3,1,2,3]  #   [0 . .]
@@ -55,7 +41,7 @@ end
 
 
 """
-	FreqXU{OX,OU}
+	EigXU{OX,OU}
 
 A linear frequency domain solver for optimisation FEM.
 
@@ -63,7 +49,7 @@ An analysis is carried out by a call with the following syntax:
 
 ```
 initialstate    = initialize!(model)
-stateXU         = solve(FreqXU{OX,OU};Δt, p, t₀,tᵣ,initialstate)
+stateXU         = solve(EigXU{OX,OU};Δt, p, t₀,tᵣ,initialstate)
 ```
 
 The solver linearises the problem (computes the Hessian of the Lagrangian) at `initialstate` with time `tᵣ`, and solves
@@ -94,8 +80,8 @@ A vector of length `2^p` containing the state of the model at each of these step
 
 See also: [`solve`](@ref), [`initialize!`](@ref), [`studysingular`](@ref), [`SweepX`](@ref), [`DirectXUA`](@ref)
 """
-struct FreqXU{OX,OU} <: AbstractSolver end 
-function solve(::Type{FreqXU{OX,OU}},pstate,verbose::𝕓,dbg;
+struct EigXU{OX,OU} <: AbstractSolver end 
+function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
     Δt::𝕣, p::𝕫, t₀::𝕣=0.,tᵣ::𝕣=t₀, 
     initialstate::State,
     droptol::𝕣=1e-10,
@@ -120,7 +106,7 @@ function solve(::Type{FreqXU{OX,OU}},pstate,verbose::𝕓,dbg;
 
     verbose && @printf("    Computing matrices\n")
     out.matrices          = true
-    assemble!(out,asm,dis,model,stateᵣ,(dbg...,solver=:FreqXU,phase=:matrices))            # assemble all model matrices - in class-blocks
+    assemble!(out,asm,dis,model,stateᵣ,(dbg...,solver=:EigXU,phase=:matrices))            # assemble all model matrices - in class-blocks
     pattern               = make_λxu_sparsepattern(out)
     L2                    = Vector{Sparse𝕣2}(undef,5)
     L2[1],L2bigasm,L1bigasm,Ldis  = prepare(pattern)  
@@ -128,7 +114,7 @@ function solve(::Type{FreqXU{OX,OU}},pstate,verbose::𝕓,dbg;
     for ider              = 2:5
         L2[ider]          = copy(L2[1])
     end    
-    assemblebigmat!(L2,L2bigasm,asm,model,dis,out,(dbg...,solver=:FreqXU))              # assemble all complete model matrices into L2
+    assemblebigmat!(L2,L2bigasm,asm,model,dis,out,(dbg...,solver=:EigXU))              # assemble all complete model matrices into L2
     sparser!(L2,droptol)
 
     verbose && @printf("    Improving sparsity ")    
