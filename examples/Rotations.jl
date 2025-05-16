@@ -115,14 +115,6 @@ function Rodrigues(v::Vec3)
     θ = norm(v)
     return LinearAlgebra.I + sinc1(θ)*S + sinc1(θ/2)^2/2*S*S  
 end
-# """
-#     v1 = BeamElements.normalize(v::SVector{3})
-
-# Compute a unit vector of same direction as `v`.  Fails
-# if `|v|==0`.
-# """
-# normalize(v)     = v/norm(v)
-## create a rotation vector that acts on u to make it colinear with v.  Fails if |u|=0, |v|=0 or θ=π
 """
     M = BeamElements.adjust(u::SVector{3},v::SVector{3})
 
@@ -137,4 +129,22 @@ function adjust(u::Vec3{R},v::Vec3{R}) where{R}
     s   = norm(w)
     θ   = atan(s,c)
     return w/sinc1(θ)
-end;
+end
+"""
+    M = BeamElements.intrinsicrotationrates(rₑ::NTuple{ND,SMatrix{3,3}}) where{ND}
+
+Transform a `NTuple` containing a rotation matrix and its extrinsic time derivatives,
+into a `NTuple` containing a (zero) rotation vector and its intrinsic time derivatives.
+
+See also [`spin`](@ref), [`spin⁻¹`](@ref), [`Rodrigues`](@ref), [`Rodrigues⁻¹`](@ref).
+"""
+function intrinsicrotationrates(rₑ::NTuple{ND,SMatrix{3,3}}) where{ND}
+    vᵢ₀ =              (SVector(0,0,0),                                                                           )
+    vᵢ₁ = ND<1 ? vᵢ₀ : (vᵢ₀...        , spin⁻¹(∂0(rₑ)' ∘₁ ∂1(rₑ))                                                 ) 
+    vᵢ  = ND<2 ? vᵢ₁ : (vᵢ₁...                                   ,   spin⁻¹(∂1(rₑ)' ∘₁ ∂1(rₑ) + ∂0(rₑ)' ∘₁ ∂2(rₑ)))  
+    return vᵢ
+end
+
+
+
+;
