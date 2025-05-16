@@ -117,7 +117,7 @@ function solve(::Type{EigX{ℂ}},pstate,verbose,dbg;
     sparser!(K,droptol)
     sparser!(C,droptol)
     sparser!(M,droptol)
-    A,_   ,_        = blkasm([1,2  ],[1,2  ],[ I,K  ])  # something wrong in my blkasm process, possibly initialisation
+    A,_   ,_        = blkasm([1,2  ],[1,2  ],[ I,K  ])  
     B,_   ,_        = blkasm([2,1,2],[1,2,2],[-I,M,C])
 
     verbose && @printf("\n    Solving Eigenvalues\n")
