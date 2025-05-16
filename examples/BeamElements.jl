@@ -145,14 +145,14 @@ end;
 function kinematics(o::EulerBeam3D,X₀,fast)  
     cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp,L  = o.cₘ,o.rₘ,o.tgₘ,o.tgₑ,o.ζnod,o.ζgp,o.L   # As-meshed element coordinates and describing tangential vector
     ## transformation to corotated system
-    uᵧ₁,vᵧ₁,uᵧ₂,vᵧ₂  = vec3(X₀,1:3), vec3(X₀,4:6), vec3(X₀,7:9), vec3(X₀,10:12)
-    vₗ₂,rₛₘ,vₛₘ        = fast(SVector(vᵧ₁...,vᵧ₂...)) do v
-        vᵧ₁,vᵧ₂      = vec3(v,1:3), vec3(v,4:6)
-        rₛ₁          = fast(Rodrigues,vᵧ₁)
-        rₛ₂          = fast(Rodrigues,vᵧ₂)
-        vₗ₂          = 0.5*Rodrigues⁻¹(rₛ₂ ∘₁ rₛ₁')
-        rₛₘ          = fast(Rodrigues,vₗ₂) ∘₁ rₛ₁ ∘₁ o.rₘ  
-        vₛₘ          = Rodrigues⁻¹(rₛₘ)              
+    uᵧ₁,vᵧ₁,uᵧ₂,vᵧ₂        = vec3(X₀,1:3), vec3(X₀,4:6), vec3(X₀,7:9), vec3(X₀,10:12)
+    vₗ₂,rₛₘ,vₛₘ              = fast(SVector(vᵧ₁...,vᵧ₂...)) do v
+        vᵧ₁,vᵧ₂            = vec3(v,1:3), vec3(v,4:6)
+        rₛ₁                = fast(Rodrigues,vᵧ₁)
+        rₛ₂                = fast(Rodrigues,vᵧ₂)
+        vₗ₂                = 0.5*Rodrigues⁻¹(rₛ₂ ∘₁ rₛ₁')
+        rₛₘ                = fast(Rodrigues,vₗ₂) ∘₁ rₛ₁ ∘₁ o.rₘ  
+        vₛₘ                = Rodrigues⁻¹(rₛₘ)              
         return vₗ₂,rₛₘ,vₛₘ
     end   
     cₛ               = 0.5*(uᵧ₁+uᵧ₂)
