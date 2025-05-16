@@ -39,6 +39,13 @@ function assemblebigvec!(L1,L1bigasm,asm,model,dis,out::AssemblyDirect{OX,OU,0},
     end
 end
 
+struct EigXUincrement{Tvec}
+    dofgr::DofGroup
+    p::𝕔1
+    vec::Tvec  # TODO
+end
+
+
 
 """
 	EigXU{OX,OU}
@@ -58,8 +65,8 @@ it at times `t=range(start=t₀,step=Δt,length=2^p)`. The return
 
 # Parameters
 - `OX`                0 for static analysis
-                      1 for first order problems in time (viscosity, friction, measurement of velocity)
-                      2 for second order problems in time (inertia, measurement of acceleration) 
+                      1 for first OX problems in time (viscosity, friction, measurement of velocity)
+                      2 for second OX problems in time (inertia, measurement of acceleration) 
 - `OU`                0 for white noise prior to the unknown load process
                       2 otherwise
 
@@ -166,3 +173,14 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
 end
 
 
+function increment{OX}(initialstate,res::EigXUincrement,imod::AbstractVector{𝕫},A::AbstractVector) where{OX} 
+    state            = State{1,OX+1,1}(copy(initialstate)) 
+    maximum(imod)≤length(res.p)|| muscadeerror(@sprintf("res only has %n modes.",length(ω)))
+    for i∈eachindex(imod)  
+        pᵢ,vᵢ = res.p[imod[i]],res.vec[imod[i]]
+        for n     = 0:OX
+            increment!(state,n+1,ℜ.((pᵢ)^n*A[i]*vᵢ),res.dofgr)
+        end
+    end
+    return state
+end

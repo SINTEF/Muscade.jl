@@ -51,38 +51,39 @@ function solve(::Type{EigX{ℝ}},pstate,verbose,dbg;
     return 
 end
 """
-    state = increment(initialstate,eigres,imod,A;order=2)
+    state = increment{OX}(initialstate,eigres,imod,A)
 
 Starting from `initalstate` for which an `EigX` analysis has been carried out, and using the output
 `res` of that analysis, construct new `State`s representing the instantaneous state of the 
 vibrating structure
     
 # Input
+- `OX` the number of time derivatives to be computed.  `increment(initialstate,eigres,imod,A)` defaults to `OX=2`
 - `initialstate` the same initial `State` provided to `EigX` to compute `eigres`
 - `eigres` obtained from `EigX`
 - `imod`, an `AbstractVector` of integer mode numbers
 - `A`, an `AbstractVector` of same length as `imod`, containing real or complex 
   amplitudes associated to the modes
-- `order=2` the number of time derivatives to be computed
 
 # Output
 - `state` a snapshot of the vibrating system
 
 See also: [`EigX`](@ref)
 """
-function increment(initialstate,res::EigXℝincrement,imod::AbstractVector{𝕫},A::AbstractVector;order=2) 
+struct increment{OX} end
+increment(args...) = increment{2}(args...)
+function increment{OX}(initialstate,res::EigXℝincrement,imod::AbstractVector{𝕫},A::AbstractVector) where{OX}
     length(imod)==length(A)|| muscadeerror("imod and A must be of same length.")
-    state            = State{1,order+1,1}(copy(initialstate)) 
+    state            = State{1,OX+1,1}(copy(initialstate)) 
     maximum(imod)≤length(res.ω) || muscadeerror(@sprintf("res only has %n modes.",length(ω)))
     for i∈eachindex(imod)  
         ωᵢ,vᵢ = res.ω[imod[i]],res.vec[imod[i]]
-        for n     = 0:order
+        for n     = 0:OX
             increment!(state,n+1,ℜ.((𝑖*ωᵢ)^n*A[i]*vᵢ),res.dofgr)
         end
     end
     return state
 end
-
 
 
 
@@ -128,12 +129,12 @@ function solve(::Type{EigX{ℂ}},pstate,verbose,dbg;
     pstate[] = EigXℂincrement(dofgr[ind.X],p,v)
     return 
 end
-function increment(initialstate,res::EigXℂincrement,imod::AbstractVector{𝕫},A::AbstractVector;order=2) 
-    state            = State{1,order+1,1}(copy(initialstate)) 
+function increment{OX}(initialstate,res::EigXℂincrement,imod::AbstractVector{𝕫},A::AbstractVector) where{OX} 
+    state            = State{1,OX+1,1}(copy(initialstate)) 
     maximum(imod)≤length(res.p)|| muscadeerror(@sprintf("res only has %n modes.",length(ω)))
     for i∈eachindex(imod)  
         pᵢ,vᵢ = res.p[imod[i]],res.vec[imod[i]]
-        for n     = 0:order
+        for n     = 0:OX
             increment!(state,n+1,ℜ.((pᵢ)^n*A[i]*vᵢ),res.dofgr)
         end
     end
