@@ -48,7 +48,7 @@ fₙ(k) = sqrt(EI₂/μ)*(k^2*π)/(2*L^2)
 @show [res.ω[i]/(2π)    for i∈1:nmod]; 
 
 # Display a chosen eigenvector
-imod            = [2,    2]
+imod            = [1,    2]
 A               = [1,    0] 
 eigres           = increment(state[2],res,imod,A);
 x_eig = getdof(eigres;field=:t1,nodID=nodid[1:Nnod])
@@ -56,19 +56,19 @@ y_eig = getdof(eigres;field=:t2,nodID=nodid[1:Nnod])
 z_eig = getdof(eigres;field=:t3,nodID=nodid[1:Nnod])
 
 fig      = Figure(size = (2000,1000))
-ax = Axis(fig[1,1], ylabel="Modeshape x [m]",        yminorgridvisible = true,xminorgridvisible = true,xticks = (0:L/nel:L))
-scatter!(fig[1,1],(0:L/nel:L),  x_eig[:],                  label="Modeshape");
-ax=Axis(fig[2,1], ylabel="Modeshape y [m]",        yminorgridvisible = true,xminorgridvisible = true,xticks = (0:L/nel:L))
-scatter!(fig[2,1],(0:L/nel:L),  y_eig[:],           label="Modeshape");
-ax=Axis(fig[3,1], ylabel="Modeshape z [m]",       yminorgridvisible = true,xminorgridvisible = true,xticks = (0:L/nel:L))
-scatter!(fig[3,1],(0:L/nel:L),  z_eig[:],          label="Modeshape");
+# ax = Axis(fig[1,1], ylabel="Modeshape x [m]",        yminorgridvisible = true,xminorgridvisible = true,xticks = (0:L/nel:L))
+# scatter!(fig[1,1],(0:L/nel:L),  x_eig[:],                  label="Modeshape");
+# ax=Axis(fig[2,1], ylabel="Modeshape y [m]",        yminorgridvisible = true,xminorgridvisible = true,xticks = (0:L/nel:L))
+# scatter!(fig[2,1],(0:L/nel:L),  y_eig[:],           label="Modeshape");
+# ax=Axis(fig[3,1], ylabel="Modeshape z [m]",       yminorgridvisible = true,xminorgridvisible = true,xticks = (0:L/nel:L))
+# scatter!(fig[3,1],(0:L/nel:L),  z_eig[:],          label="Modeshape");
 
 
-ax = Axis3(fig[1:3,2],aspect=:equal)
+ax = Axis3(fig[1,1],aspect=:equal)
 scatter!(ax,nodeCoord[:,1],                 nodeCoord[:,2],                 nodeCoord[:,3],                 label="As meshed");
 scatter!(ax,nodeCoord[:,1]+x_s[:],          nodeCoord[:,2]+y_s[:],          nodeCoord[:,3]+z_s[:],          label="Static equilibrium");
 scatter!(ax,nodeCoord[:,1]+x_s[:]+x_eig[:], nodeCoord[:,2]+y_s[:]+y_eig[:], nodeCoord[:,3]+z_s[:]+ z_eig[:],label="Modeshape");
- xlims!(ax, 0,1); ylims!(ax, 0,1); zlims!(ax, 0,1); 
+#  xlims!(ax, 0,1); ylims!(ax, 0,1); zlims!(ax, 0,1); 
 axislegend()
 display(fig)
 
