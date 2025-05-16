@@ -36,7 +36,7 @@ y_s = getdof(state[2];field=:t2,nodID=nodid[1:Nnod])
 z_s = getdof(state[2];field=:t3,nodID=nodid[1:Nnod])
 
 # Solve eigenvalue problem
-nmod            = 20
+nmod            = 5
 res             = solve(EigX{ℝ};state=state[2],nmod)
 
 # Compare with analytical solutions for the natural frequency of a simply supported beam 
@@ -57,18 +57,18 @@ z_eig = getdof(eigres;field=:t3,nodID=nodid[1:Nnod])
 
 fig      = Figure(size = (2000,1000))
 ax = Axis(fig[1,1], ylabel="Modeshape x [m]",        yminorgridvisible = true,xminorgridvisible = true,xticks = (0:L/nel:L))
-scatter!(fig[1,1],(0:L/nel:L),  x_[:],                  label="Modeshape");
+scatter!(fig[1,1],(0:L/nel:L),  x_eig[:],                  label="Modeshape");
 ax=Axis(fig[2,1], ylabel="Modeshape y [m]",        yminorgridvisible = true,xminorgridvisible = true,xticks = (0:L/nel:L))
-scatter!(fig[2,1],(0:L/nel:L),  y_[:],           label="Modeshape");
+scatter!(fig[2,1],(0:L/nel:L),  y_eig[:],           label="Modeshape");
 ax=Axis(fig[3,1], ylabel="Modeshape z [m]",       yminorgridvisible = true,xminorgridvisible = true,xticks = (0:L/nel:L))
-scatter!(fig[3,1],(0:L/nel:L),  z_[:],          label="Modeshape");
+scatter!(fig[3,1],(0:L/nel:L),  z_eig[:],          label="Modeshape");
 
 
 ax = Axis3(fig[1:3,2],aspect=:equal)
 scatter!(ax,nodeCoord[:,1],                 nodeCoord[:,2],                 nodeCoord[:,3],                 label="As meshed");
 scatter!(ax,nodeCoord[:,1]+x_s[:],          nodeCoord[:,2]+y_s[:],          nodeCoord[:,3]+z_s[:],          label="Static equilibrium");
 scatter!(ax,nodeCoord[:,1]+x_s[:]+x_eig[:], nodeCoord[:,2]+y_s[:]+y_eig[:], nodeCoord[:,3]+z_s[:]+ z_eig[:],label="Modeshape");
-# xlims!(ax, 0,1); ylims!(ax, 0,1); zlims!(ax, 0,1); 
+ xlims!(ax, 0,1); ylims!(ax, 0,1); zlims!(ax, 0,1); 
 axislegend()
 display(fig)
 

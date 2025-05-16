@@ -34,7 +34,7 @@ function solve(::Type{EigX{ℝ}},pstate,verbose,dbg;
     OX,OU,IA         = 2,0,0
     model,dis        = state.model,state.dis
 
-    verbose && @printf("\n    Assembing\n")
+    verbose && @printf("\n    Assembling\n")
     out,asm,dofgr    = prepare(AssemblyDirect{OX,OU,IA},model,dis)  
     nXdof            = getndof.(dofgr)[ind.X]
     state            = State{1,OX+1,OU+1}(copy(state))   
@@ -46,6 +46,7 @@ function solve(::Type{EigX{ℝ}},pstate,verbose,dbg;
 
     verbose && @printf("\n    Solving Eigenvalues\n")
     ω², vec, ncv = geneig{:Hermitian}(K,M,nmod;kwargs...)
+
     ncv≥nmod||muscadeerror(dbg,@sprintf("eigensolver only converged for %i out of %i modes",ncv,nmod))
     pstate[] = EigXℝincrement(dofgr[ind.X],sqrt.(ω²),vec)
     return 
@@ -84,8 +85,6 @@ function increment{OX}(initialstate,res::EigXℝincrement,imod::AbstractVector{�
     end
     return state
 end
-
-
 
 struct EigXℂincrement{Tvec}
     dofgr::DofGroup
