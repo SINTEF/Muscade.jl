@@ -20,7 +20,6 @@ See also: [`SweepX`](@ref), [`DirectXUA`](@ref), [`initialize!`](@ref)
 function solve(Solver::Type{<:AbstractSolver};dbg=NamedTuple(),verbose::𝕓=true,silenterror::𝕓=false,catcherror::𝕓=true,kwargs...) 
     verbose && printstyled("\n\n\nMuscade:",bold=true,color=:cyan)
     verbose && printstyled(@sprintf(" %s solver\n\n",Symbol(Solver)),color=:cyan)
-
     pstate = Ref{Any}() # state is not a return argument of the solver, so that partial results are not lost on error
     if catcherror
         try

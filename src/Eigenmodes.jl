@@ -20,7 +20,7 @@ Uses KrylovKit.jl. Freely based on VibrationGEPHelpers.jl and input from PetrKry
 See GIThub-blame for bug-credits.
 """
 struct geneig{ALGO} end
-function geneig{:SDP}(A,B=I,neig=5;maxiter=300,verbosity=0,krylovdim=2neig+6,seed=rand(size(A,1)))
+function geneig{:SDP}(A::SparseMatrixCSC,B=I,neig=5;maxiter=300,verbosity=0,krylovdim=2neig+6,seed=rand(size(A,1)))
     L = cholesky(Symmetric(A)).PtL
     val, vec, info = eigsolve(x->L\(B*(L'\x)),seed,neig,:LR; maxiter,verbosity,ishermitian=true,krylovdim)
     for vecᵢ ∈ vec
@@ -31,8 +31,10 @@ function geneig{:SDP}(A,B=I,neig=5;maxiter=300,verbosity=0,krylovdim=2neig+6,see
     ix   = sortperm(abs.(val))
     return val[ix], vec[ix], info.converged
 end
-function geneig{ALGO}(A,B,neig=5;maxiter=300,verbosity=0,krylovdim=2neig+6,seed=rand(size(A,1))) where{ALGO}
-    luA = lu(A)
+function geneig{ALGO}(A::SparseMatrixCSC,B,neig=5;kwargs...) where{ALGO} 
+    return geneig{ALGO}(lu(A),B,neig;kwargs...)
+end
+function geneig{ALGO}(luA::SparseArrays.UMFPACK.UmfpackLU,B,neig=5;maxiter=300,verbosity=0,krylovdim=2neig+6,seed=rand(size(luA,1))) where{ALGO}
     ALGO==:Complex ? x₀=Complex.(seed) : x₀=seed
     val, vec, info = eigsolve(x->B*(luA\x), x₀,neig,:LR; maxiter,verbosity,
                                 ishermitian=ALGO==:Hermitian,krylovdim) 

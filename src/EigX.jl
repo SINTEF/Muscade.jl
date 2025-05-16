@@ -17,12 +17,18 @@ The data structure `res` can be passed to `increment` to obtain dynamic states s
 A `NamedTuple` with fields
 - `ω` (for `EigX{ℝ}`) a `Vector` of length `nmod` or longer containing circular frequencies associated to each mode.
 - `p` (for `EigX{ℂ}`) a `Vector` of length `nmod` or longer containing complex exponents `p=τ+𝑖ω` associated to each mode.
-- `vecs` is an internal.
+- `vec` is an internal.
 - `dofgr` is an internal.
 
 See also: [`solve`](@ref), [`initialize!`](@ref), [`increment`](@ref), [`geneig`](@ref)
 """
-struct        EigX{T} <: AbstractSolver end
+struct EigX{T} <: AbstractSolver end
+
+struct EigXℝincrement
+    dofgr::DofGroup
+    ω::𝕣1
+    vec::𝕣11
+end
 function solve(::Type{EigX{ℝ}},pstate,verbose,dbg; 
                    state::State, nmod::𝕫=5,droptol::𝕣=1e-9,kwargs...) 
     OX,OU,IA         = 2,0,0
@@ -39,12 +45,52 @@ function solve(::Type{EigX{ℝ}},pstate,verbose,dbg;
     sparser!(M,droptol)
 
     verbose && @printf("\n    Solving Eigenvalues\n")
-    ω², vecs, ncv = geneig{:Hermitian}(K,M,nmod;kwargs...)
+    ω², vec, ncv = geneig{:Hermitian}(K,M,nmod;kwargs...)
     ncv≥nmod||muscadeerror(dbg,@sprintf("eigensolver only converged for %i out of %i modes",ncv,nmod))
-    pstate[] = (dofgr=dofgr[ind.X],ω=sqrt.(ω²),v=vecs)
+    pstate[] = EigXℝincrement(dofgr[ind.X],sqrt.(ω²),vec)
     return 
 end
+"""
+    state = increment(initialstate,eigres,imod,A;order=2)
 
+Starting from `initalstate` for which an `EigX` analysis has been carried out, and using the output
+`res` of that analysis, construct new `State`s representing the instantaneous state of the 
+vibrating structure
+    
+# Input
+- `initialstate` the same initial `State` provided to `EigX` to compute `eigres`
+- `eigres` obtained from `EigX`
+- `imod`, an `AbstractVector` of integer mode numbers
+- `A`, an `AbstractVector` of same length as `imod`, containing real or complex 
+  amplitudes associated to the modes
+- `order=2` the number of time derivatives to be computed
+
+# Output
+- `state` a snapshot of the vibrating system
+
+See also: [`EigX`](@ref)
+"""
+function increment(initialstate,res::EigXℝincrement,imod::AbstractVector{𝕫},A::AbstractVector;order=2) 
+    length(imod)==length(A)|| muscadeerror("imod and A must be of same length.")
+    state            = State{1,order+1,1}(copy(initialstate)) 
+    maximum(imod)≤length(res.ω) || muscadeerror(@sprintf("res only has %n modes.",length(ω)))
+    for i∈eachindex(imod)  
+        ωᵢ,vᵢ = res.ω[imod[i]],res.vec[imod[i]]
+        for n     = 0:order
+            increment!(state,n+1,ℜ.((𝑖*ωᵢ)^n*A[i]*vᵢ),res.dofgr)
+        end
+    end
+    return state
+end
+
+
+
+
+struct EigXℂincrement{Tvec}
+    dofgr::DofGroup
+    p::𝕔1
+    vec::Tvec
+end
 function blkasm(iA,jA,vA)
     pattern = sparse(iA,jA,vA)
     A,Aasm,Vasm,Vdis = prepare(pattern)
@@ -54,7 +100,6 @@ function blkasm(iA,jA,vA)
     end
     return A,Vasm,Vdis
 end 
-
 function solve(::Type{EigX{ℂ}},pstate,verbose,dbg; 
     state::State, nmod::𝕫=5,droptol::𝕣=1e-9,kwargs...) 
     OX,OU,IA         = 2,0,0
@@ -76,56 +121,22 @@ function solve(::Type{EigX{ℂ}},pstate,verbose,dbg;
     B,_   ,_        = blkasm([2,1,2],[1,2,2],[-I,M,C])
 
     verbose && @printf("\n    Solving Eigenvalues\n")
-    p, vecs, ncv    = geneig{:Complex}(A,B,nmod;kwargs...)
+    p, vec, ncv    = geneig{:Complex}(A,B,nmod;kwargs...)
     ncv≥nmod||muscadeerror(dbg,@sprintf("eigensolver only converged for %i out of %i modes",ncv,nmod))
-    v               = [view(vecsᵢ,nXdof+1:2nXdof) for vecsᵢ∈vecs]
+    v               = [view(vecᵢ,nXdof+1:2nXdof) for vecᵢ ∈ vec]
 
-    pstate[] = (dofgr=dofgr[ind.X],p=p,v=v)
+    pstate[] = EigXℂincrement(dofgr[ind.X],p,v)
     return 
 end
-
-"""
-    state = increment(initialstate,res,imod,A;order=2)
-
-Starting from `initalstate` for which an `EigX` analysis has been carried out, and using the output
-`res` of that analysis, construct new `State`s representing the instantaneous state of the 
-vibrating structure
-    
-# Input
-- `initialstate` the same initial `State` provided to `EigX` to compute `res`
-- `res` obtained from `EigX`
-- `imod`, an `AbstractVector` of integer mode numbers
-- `A`, an `AbstractVector` of same length as `imod`, containing real or complex 
-  amplitudes associated to the modes
-- `order=2` the number of time derivatives to be computed
-
-# Output
-- `state` a snapshot of the vibrating system
-
-See also: [`EigX`](@ref)
-
-"""
-function increment(initialstate,res::Tres,imod::AbstractVector{𝕫},A::AbstractVector;order=2) where{Tres}
-    length(imod)==length(A)|| muscadeerror("imod and A must be of same length.")
+function increment(initialstate,res::EigXℂincrement,imod::AbstractVector{𝕫},A::AbstractVector;order=2) 
     state            = State{1,order+1,1}(copy(initialstate)) 
-    if hasfield(Tres,:ω)
-        maximum(imod)≤length(res.ω)|| muscadeerror(@sprintf("res only has %n modes.",length(ω)))
-        for i∈eachindex(imod)  
-            ωᵢ,vᵢ = res.ω[imod[i]],res.v[imod[i]]
-            for n     = 0:order
-                increment!(state,n+1,ℜ.((𝑖*ωᵢ)^n*A[i]*vᵢ),res.dofgr)
-            end
+    maximum(imod)≤length(res.p)|| muscadeerror(@sprintf("res only has %n modes.",length(ω)))
+    for i∈eachindex(imod)  
+        pᵢ,vᵢ = res.p[imod[i]],res.vec[imod[i]]
+        for n     = 0:order
+            increment!(state,n+1,ℜ.((pᵢ)^n*A[i]*vᵢ),res.dofgr)
         end
-    elseif hasfield(Tres,:p)
-        maximum(imod)≤length(res.p)|| muscadeerror(@sprintf("res only has %n modes.",length(ω)))
-        for i∈eachindex(imod)  
-            pᵢ,vᵢ = res.p[imod[i]],res.v[imod[i]]
-            for n     = 0:order
-                increment!(state,n+1,ℜ.((pᵢ)^n*A[i]*vᵢ),res.dofgr)
-            end
-        end
-    else
-        muscadeerror("To show results from eigenvalue analysis, expected field ω or p")
     end
     return state
 end
+

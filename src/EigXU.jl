@@ -85,6 +85,7 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
     Δt::𝕣, p::𝕫, t₀::𝕣=0.,tᵣ::𝕣=t₀, 
     initialstate::State,
     droptol::𝕣=1e-10,
+    nmod::𝕫=5,
     kwargs...) where{OX,OU}
 
     #  Mostly constants
@@ -100,7 +101,6 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
     pstate[] = state      = Vector{S}(undef,nstep)                                                                           
     stateᵣ                = State{1,3,3}(copy(initialstate,time=tᵣ))   
 
-    # Prepare assembler
     verbose && @printf("    Preparing assembler\n")
     out,asm,dofgr         = prepare(AssemblyDirect{OX,OU,IA},model,dis;kwargs...)   # model assembler for all arrays   
 
@@ -116,6 +116,9 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
     end    
     assemblebigmat!(L2,L2bigasm,asm,model,dis,out,(dbg...,solver=:EigXU))              # assemble all complete model matrices into L2
     sparser!(L2,droptol)
+    nXdof,nUdof = getndof(model,(:X,:U))
+    ixu = (nXdof+1):(2nXdof+nUdof)
+    N   = sparse(ixu,ixu,ones(nXdof+nUdof))
 
     verbose && @printf("    Improving sparsity ")    
     keep = [any(abs(L2ⱼ.nzval[i])>droptol for L2ⱼ∈L2) for i∈eachindex(L2[1].nzval)]
@@ -124,53 +127,25 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
     end
     verbose && @printf("from %i to %i nz terms\n",length(keep),sum(keep))    
 
+    verbose && @printf("    Solving XU-eigenproblem for all ω\n")
+    L2₁  = L2[1]
+    ndof = 2nXdof+nUdof
+    M    = Sparse𝕔2(ndof,ndof,L2₁.colptr,L2₁.rowval,𝕔1(undef,length(L2₁.nzval)))
+    Δz   = Vector{𝕣11}(undef,nω) # Δz[iω][imod][idof]
+    λ    = 𝕣11(undef,nω)         # λ[iω][imod]
 
-    verbose && @printf("    Computing rhs\n")
-    ndof                  = size(L2[1],1)
-    L1𝕔                   = ntuple(ider->𝕔2(undef,nω,ndof)       ,3)
-    L1𝕣                   = ntuple(ider->reinterpret(𝕣,L1𝕔[ider]),3)
-    out.matrices          = false
-    #TODO Multithread
-    for (step,timeᵢ)      = enumerate(time)
-        L1ᵢ               = ntuple(ider->view(L1𝕣[ider],step,:),3)
-        state[step]       = State(timeᵢ,deepcopy(stateᵣ.Λ),deepcopy(stateᵣ.X),deepcopy(stateᵣ.U),stateᵣ.A,nothing,stateᵣ.model,stateᵣ.dis)
-        assemblebigvec!(L1ᵢ,L1bigasm,asm,model,dis,out,state[step],dbg)
-    end
-  
-    verbose && @printf("    Fourier transform of rhs\n")
-    for L1ᵢ∈ L1𝕔
-        𝔉!(L1ᵢ,Δt)
-    end
     Δω  = getδω(nstep,Δt)
     ω   = range(start=0.,step=Δω,length=nω)
-
-    verbose && @printf("    Solving equations for all ω\n")
-    local LU
-    x   = L2[1]
-    M   = Sparse𝕔2(ndof,ndof,x.colptr,x.rowval,𝕔1(undef,length(x.nzval)))
-    rhs = 𝕔1(undef,ndof)
-    Δz  = 𝕔1(undef,ndof)
-
-    # TODO multithread
     for (iω,ωᵢ) = enumerate(ω)
         for inz ∈eachindex(M.nzval)
             M.nzval[inz] = L2[1].nzval[inz] 
         end
         for j = 1:4
-            a = (𝑖*ωᵢ)^j
+            𝑖ωᵢʲ  = (𝑖*ωᵢ)^j
             for inz ∈eachindex(M.nzval)
-                M.nzval[inz] += a *L2[j+1].nzval[inz]
+                M.nzval[inz] += 𝑖ωᵢʲ *L2[j+1].nzval[inz]
             end
         end
-        for idof ∈eachindex(rhs)
-            rhs[idof]   = L1𝕔[1][iω,idof]
-        end
-        for j = 1:2
-            a = (-𝑖*ωᵢ)^j
-            for idof ∈eachindex(rhs)
-                rhs[idof] += a *L1𝕔[j+1][iω,idof]
-            end
-        end 
         try 
             if iω==1 LU = lu(M) 
             else     lu!(LU ,M)
@@ -179,24 +154,13 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
             verbose && @printf("\n")
             muscadeerror(@sprintf("M matrix factorization failed for ω=%f",ωᵢ));
         end
-        ldiv!(Δz,LU,rhs)
-        for (ider,L1ᵢ) ∈ enumerate(L1𝕔)
-            L1ᵢ[iω,:] .= Δz * (𝑖*ωᵢ)^(ider-1)
-        end
+
+        λ[iω], Δz[iω], ncv = geneig{:Complex}(LU,N,nmod;kwargs...)
+        # error message if ncv < nω?
     end    
-
-    verbose && @printf("    Inverse Fourier transform of solution and its time derivatives\n")
-    for L1ᵢ∈ L1𝕔
-        𝔉⁻¹!(L1ᵢ,Δω)
-    end
-
-    verbose && @printf("    Updating the states\n")
-    # TODO multithread
-    for (step,stateᵢ) = enumerate(state)
-        for ider = 1:3
-            decrement!(stateᵢ,ider,view(L1𝕣[ider],step,:),λxu_dofgr)
-        end
-    end
+    @show typeof(λ)
+    @show typeof(Δz)
+    pstate[] = (solver=EigXU,dofgr=allΛXUdofs(model,dis),p=p,v=v)
     verbose && @printf("\n\n")
     return
 end

@@ -60,11 +60,14 @@ module Muscade
     include("SweepX.jl")
     export SweepX
 
+    include("DirectXUA.jl")
+    export DirectXUA
+
     include("EigX.jl")
     export EigX,increment
 
-    include("DirectXUA.jl")
-    export DirectXUA
+    include("EigXU.jl")
+    export EigXU
 
     include("FreqXU.jl")
     export FreqXU

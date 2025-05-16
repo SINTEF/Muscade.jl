@@ -12,48 +12,6 @@ Avoid FFT of zeros
 =#
 
 
-function make_λxu_sparsepattern(out) 
-    L2(α,β) = out.L2[α,β][1,1]
-    α       = [2,3,1,2,3,1,2,3]  #   [0 . .]
-    β       = [1,1,2,2,2,3,3,3]  #   [. . .]
-    return sparse(α,β,L2.(α,β))  # = [. . .]
-end
-
-function assemblebigmat!(L2::Vector{Sparse𝕣2},L2bigasm,asm,model,dis,out::AssemblyDirect{OX,OU,0},dbg) where{OX,OU}
-    # does not call assemble!: solve has previously called assemble! to prepare bigasm, so out.L2 is already set,
-    for L2ᵢ∈L2
-        zero!(L2ᵢ)
-    end
-    for     α ∈ λxu 
-        for β ∈ λxu
-            Lαβ = out.L2[α,β]
-            for     αder = 1:size(Lαβ,1)
-                for βder = 1:size(Lαβ,2)
-                    ider =  αder+βder-1   
-                    sgn  = isodd(αder) ? +1 : -1 
-                    if α==ind.Λ && β==ind.U
-                        addin!(L2bigasm,L2[ider],Lαβ[αder,βder],α,β,sgn) 
-                    else
-                        addin!(L2bigasm,L2[ider],Lαβ[αder,βder],α,β,sgn) 
-                    end
-                end
-            end
-        end
-    end
-end
-function assemblebigvec!(L1,L1bigasm,asm,model,dis,out::AssemblyDirect{OX,OU,0},state,dbg) where{OX,OU}
-    zero!.(L1)
-    out.matrices = false
-    assemble!(out,asm,dis,model,state,(dbg...,asm=:assemblebigvec!))
-    for β ∈ λxu
-        Lβ = out.L1[β]
-        for βder = 1:size(Lβ,1)
-            addin!(L1bigasm,L1[βder],Lβ[βder],β,1) 
-        end
-    end
-end
-
-
 """
 	FreqXU{OX,OU}
 
