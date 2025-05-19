@@ -1,3 +1,5 @@
+# # Dynamic analysis of a beam
+#
 using Revise
 using Muscade, StaticArrays, GLMakie
 using Printf
@@ -8,13 +10,14 @@ include("BeamElements.jl")
 L = 1;  # Beam length [m]
 q = 0.0;  # Uniform lateral load [N/m]
 EI₂ = 1;  # Bending stiffness [Nm²]
-EI₃ = 1e3;  # Bending stiffness [Nm²]
-EA = 1e3;  # Axial stiffness [N]
-GJ = 1e3;  # Torsional stiffness [Nm²]
+EI₃ = 1;  # Bending stiffness [Nm²]
+EA = 1e6;  # Axial stiffness [N]
+GJ = 1e6;  # Torsional stiffness [Nm²]
 μ = 1;
 ι₁= 1;
 
-nel         = 20
+# Create model
+nel         = 50
 Nnod        = nel+1   
 nodeCoord   = hcat((0:L/nel:L),zeros(Float64,Nnod,2))
 mat         = BeamCrossSection(EA=EA,EI₂=EI₂,EI₃=EI₃,GJ=GJ,μ=μ,ι₁=ι₁)
@@ -24,51 +27,53 @@ mesh        = hcat(nodid[1:Nnod-1],nodid[2:Nnod])
 eleid       = addelement!(model,EulerBeam3D,mesh;mat=mat,orient2=SVector(0.,1.,0.))
 [addelement!(model,Hold,[nodid[1]]  ;field) for field∈[:t1,:t2,:t3,:r1]]                                # Simply supported end 1
 [addelement!(model,Hold,[nodid[end]];field) for field∈[:t1,:t2,:t3,:r1]]                                # Simply supported end 2
-[addelement!(model,DofLoad,[nodid[nodeidx]];field=:t2,value=t->-min(1,t)*q*L/Nnod) for nodeidx=1:Nnod];          # Distributed vertical load q
+[addelement!(model,Hold,[nodid[nodeidx]];field=:t3) for nodeidx∈2:Nnod-1]                               # Enforce beam motions in one dimension to obtain planar modeshapes
+[addelement!(model,DofLoad,[nodid[nodeidx]];field=:t2,value=t->sin(t)*q*L/Nnod) for nodeidx=1:Nnod]; # Distributed vertical load q
 
-
-# Solve the static analysis problem 
+# Static analysis
 initialstate    = initialize!(model);
-state           = solve(SweepX{0};initialstate,time=[0., 1.]);
-
-x_s = getdof(state[2];field=:t1,nodID=nodid[1:Nnod])
-y_s = getdof(state[2];field=:t2,nodID=nodid[1:Nnod])
-z_s = getdof(state[2];field=:t3,nodID=nodid[1:Nnod])
+state           = solve(SweepX{0};initialstate,time=[0.]);
 
 # Solve eigenvalue problem
-nmod            = 5
-res             = solve(EigX{ℝ};state=state[2],nmod)
+nmod            = 15
+res             = solve(EigX{ℝ};state=state[1],nmod)
 
-# Compare with analytical solutions for the natural frequency of a simply supported beam 
+# Analytical solutions for the natural frequency of a simply supported beam 
 # See e.g. https://roymech.org/Useful_Tables/Vibrations/Natural_Vibrations_derivation.html
-# fₙ(k) = sqrt(EI/m)*(k^2*π)/(2*L^2)
+fₙ(k) = √(EI₂/μ)*(k^2*π)/(2*L^2)
+Φₙ(k,x) = sin.(k*π/L.*x)
 
-fₙ(k) = sqrt(EI₂/μ)*(k^2*π)/(2*L^2)
-@show [fₙ(i)            for i∈1:nmod];
-@show [res.ω[i]/(2π)    for i∈1:nmod]; 
-
-# Display a chosen eigenvector
-imod            = [1,    2]
-A               = [1,    0] 
-eigres           = increment(state[2],res,imod,A);
-x_eig = getdof(eigres;field=:t1,nodID=nodid[1:Nnod])
-y_eig = getdof(eigres;field=:t2,nodID=nodid[1:Nnod])
-z_eig = getdof(eigres;field=:t3,nodID=nodid[1:Nnod])
-
+# Display solution and comparison against analytical solution
 fig      = Figure(size = (2000,1000))
-# ax = Axis(fig[1,1], ylabel="Modeshape x [m]",        yminorgridvisible = true,xminorgridvisible = true,xticks = (0:L/nel:L))
-# scatter!(fig[1,1],(0:L/nel:L),  x_eig[:],                  label="Modeshape");
-# ax=Axis(fig[2,1], ylabel="Modeshape y [m]",        yminorgridvisible = true,xminorgridvisible = true,xticks = (0:L/nel:L))
-# scatter!(fig[2,1],(0:L/nel:L),  y_eig[:],           label="Modeshape");
-# ax=Axis(fig[3,1], ylabel="Modeshape z [m]",       yminorgridvisible = true,xminorgridvisible = true,xticks = (0:L/nel:L))
-# scatter!(fig[3,1],(0:L/nel:L),  z_eig[:],          label="Modeshape");
+axes = [Axis(fig[idxLine,1], yminorgridvisible = false,xminorgridvisible = false ) for idxLine=1:3]
+axes[1].title = "Modeshapes of a simply supported beam. Muscade (" *string(nel)*" elements): markers. Analytical solution: lines. "
+for idxMod=1:nmod
+    eigres  = increment(state[1],res,[idxMod],[1]);
+    t2_eig  = getdof(eigres;field=:t2,nodID=nodid[1:Nnod])
+    δ       = sign(Φₙ(idxMod,0:L/nel:L)'*t2_eig) * maximum(t2_eig)
+    ax      = axes[mod(idxMod-1,3)+1]
+    labelStr= "Mode "*string(idxMod)*", Muscade: "*string(round(res.ω[idxMod]/(2π),digits=3))*" Hz, Analytical: " *string(round(fₙ(idxMod),digits=3))* " Hz"
+    scatter!(ax,(0:L/nel:L),  t2_eig[:]/δ,          label=labelStr  );
+    lines!(  ax,(0:L/nel:L),  Φₙ(idxMod,0:L/nel:L)                  );
+end
+for ax∈axes; 
+    xlims!(ax,0,1); ylims!(ax, -2,2); axislegend(ax)
+end
 
+currentDir = @__DIR__
+if occursin("build", currentDir)
+    save(normpath(joinpath(currentDir,"..","src","assets","beamModes.png")),fig)
+elseif occursin("examples", currentDir)
+    save(normpath(joinpath(currentDir,"beamModes.png")),fig)
+end
+# ![Result](assets/beamModes.png)
 
-ax = Axis3(fig[1,1],aspect=:equal)
-scatter!(ax,nodeCoord[:,1],                 nodeCoord[:,2],                 nodeCoord[:,3],                 label="As meshed");
-scatter!(ax,nodeCoord[:,1]+x_s[:],          nodeCoord[:,2]+y_s[:],          nodeCoord[:,3]+z_s[:],          label="Static equilibrium");
-scatter!(ax,nodeCoord[:,1]+x_s[:]+x_eig[:], nodeCoord[:,2]+y_s[:]+y_eig[:], nodeCoord[:,3]+z_s[:]+ z_eig[:],label="Modeshape");
-#  xlims!(ax, 0,1); ylims!(ax, 0,1); zlims!(ax, 0,1); 
-axislegend()
-display(fig)
-
+# Dynamic analysis
+# T               = 0.01 *(1:1000)
+# dynAnalysis     = solve(SweepX{2};initialstate=state[1],time=T) 
+# ERROR: MethodError: no method matching motion{2}(::Tuple{SVector{12, Float64}, SVector{12, ∂ℝ{1, 1, Float64}}, SVector{12, ∂ℝ{1, 1, Float64}}})
+# Closest candidates are:
+#   (::Type{motion{P}} where P)()
+#    @ Muscade C:\Users\thsa\code\Muscade.jl\src\Taylor.jl:1
+#   motion{P}(::Tuple{Vararg{SVector{N, R}, ND}}) where {ND, P, N, R}
+#    @ Muscade C:\Users\thsa\code\Muscade.jl\src\Taylor.jl:24
