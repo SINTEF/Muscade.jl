@@ -10,7 +10,7 @@ Solves `(A-λ*B)*v=0`, finding the `neig` lowest eigenvalues `λ` (in absolute v
 `ALGO` can be
 - :SDP       if `A` is symmetric definite positive and `B` is symmetric.  Will return real `λ` and `v`.
 - :Hermitian if `A` is symmetric indefinite and `B` is symmetric. Will return real `λ` and `v`.
-- :Complex   otherwise
+- :Complex   otherwise, will return complex `λ` and `v`. 
 Optional keyword arguments:
 - `maxiter     = 300`
 - `verbosity   = 0 ∈ {0,1,2,3}`
@@ -20,7 +20,7 @@ Uses KrylovKit.jl. Freely based on VibrationGEPHelpers.jl and input from PetrKry
 See GIThub-blame for bug-credits.
 """
 struct geneig{ALGO} end
-function geneig{:SDP}(A::SparseArrays.CHOLMOD.FactorComponent,B=I,neig=5;maxiter=300,verbosity=0,krylovdim=2neig+6,seed=rand(size(A,1)),kwargs...)
+function geneig{:SDP}(L::SparseArrays.CHOLMOD.FactorComponent,B=I,neig=5;maxiter=300,verbosity=0,krylovdim=2neig+6,seed=rand(size(A,1)),kwargs...)
     val, vec, info = eigsolve(x->L\(B*(L'\x)),seed,neig,:LR; maxiter,verbosity,ishermitian=true,krylovdim,kwargs...)
     info.converged ≥ neig || muscadeerror(@sprintf("eigensolver only converged for %i out of requested %i modes",info.converged,neig))
     val = val[1:neig]
@@ -33,7 +33,6 @@ function geneig{:SDP}(A::SparseArrays.CHOLMOD.FactorComponent,B=I,neig=5;maxiter
     ix   = sortperm(abs.(val))
     return val[ix], vec[ix], info.converged
 end
-
 function geneig{:Complex}(luA::SparseArrays.UMFPACK.UmfpackLU,B,neig=5;maxiter=300,verbosity=0,krylovdim=2neig+6,seed=rand(𝕔,size(luA,1)),kwargs...) 
     val, vec, info = eigsolve(x->B*(luA\x), seed,neig,:LR; maxiter,verbosity,ishermitian=false,krylovdim,kwargs...)
     info.converged ≥ neig || muscadeerror(@sprintf("eigensolver only converged for %i out of requested %i modes",info.converged,neig))
