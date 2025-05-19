@@ -39,10 +39,10 @@ function assemblebigvec!(L1,L1bigasm,asm,model,dis,out::AssemblyDirect{OX,OU,0},
     end
 end
 
-struct EigXUincrement{Tvec}
-    dofgr::DofGroup
-    p::𝕔1
-    vec::Tvec  # TODO
+struct EigXUincrement
+    dofgr :: DofGroup
+    λ     :: 𝕣11         # [iω][imod]
+    Δz    :: Vector{𝕣11} # [iω][imod][idof]
 end
 
 
@@ -50,17 +50,17 @@ end
 """
 	EigXU{OX,OU}
 
-A linear frequency domain solver for optimisation FEM.
+Study the combinations of load and response that are least detected by sensor systems.
 
 An analysis is carried out by a call with the following syntax:
 
 ```
 initialstate    = initialize!(model)
-stateXU         = solve(EigXU{OX,OU};Δt, p, t₀,tᵣ,initialstate)
+eiginc          = solve(EigXU{OX,OU};Δω, p, nmod,initialstate)
 ```
 
-The solver linearises the problem (computes the Hessian of the Lagrangian) at `initialstate` with time `tᵣ`, and solves
-it at times `t=range(start=t₀,step=Δt,length=2^p)`. The return
+The solver linearises the problem (computes the Hessian of the Lagrangian) at `initialstate` and solves 
+the ΛXU-eigenvalue problem at frequencies ωᵢ = Δω*i with i∈{0,...,2ᵖ-1}.
 
 
 # Parameters
@@ -73,23 +73,21 @@ it at times `t=range(start=t₀,step=Δt,length=2^p)`. The return
 # Named arguments
 - `dbg=(;)`           a named tuple to trace the call tree (for debugging).
 - `verbose=true`      set to false to suppress printed output (for testing).
-- `silenterror=false` set to true to suppress print out of error (for testing) .
 - `initialstate`      a `State`.
-- `t₀=0.`             time of first step.                      
-- `Δt`                time step.
+- `nmod`              the number of eigen-modes to identusy
+- `Δω`                frequency step
 - `p`                 `2^p` steps will be analysed.      
-- `tᵣ=t₀`             reference time for linearisation.
 - `droptol=1e-10`     set to zero terms in the incremental matrices that are smaller than `droptol` in absolute value.                      
 
 # Output
-
-A vector of length `2^p` containing the state of the model at each of these steps.                       
+- an object of type `EigXUincrement` for use with [`increment`](@ref) to create a snapshot of the
+  oscillating system.
 
 See also: [`solve`](@ref), [`initialize!`](@ref), [`studysingular`](@ref), [`SweepX`](@ref), [`DirectXUA`](@ref)
 """
 struct EigXU{OX,OU} <: AbstractSolver end 
 function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
-    Δt::𝕣, p::𝕫, t₀::𝕣=0.,tᵣ::𝕣=t₀, 
+    Δω::𝕣, p::𝕫, 
     initialstate::State,
     droptol::𝕣=1e-10,
     nmod::𝕫=5,
@@ -99,21 +97,19 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
     local LU
     model,dis             = initialstate.model, initialstate.dis
     nω                    = 2^(p-1)
-    nstep                 = 2nω
-    time                  = range(;start=t₀,step=Δt,length=nstep)
     IA                    = 0
 
     # State storage
     S                     = State{1,3,3,Nothing}
-    pstate[] = state      = Vector{S}(undef,nstep)                                                                           
-    stateᵣ                = State{1,3,3}(copy(initialstate,time=tᵣ))   
+    pstate[] = state      = Vector{S}(undef,nω)                                                                           
+    state₀                = State{1,3,3}(copy(initialstate))   
 
     verbose && @printf("    Preparing assembler\n")
-    out,asm,dofgr         = prepare(AssemblyDirect{OX,OU,IA},model,dis;kwargs...)   # model assembler for all arrays   
+    out,asm,dofgr         = prepare(AssemblyDirect{OX,OU,IA},model,dis)   # model assembler for all arrays   
 
     verbose && @printf("    Computing matrices\n")
     out.matrices          = true
-    assemble!(out,asm,dis,model,stateᵣ,(dbg...,solver=:EigXU,phase=:matrices))            # assemble all model matrices - in class-blocks
+    assemble!(out,asm,dis,model,state₀,(dbg...,solver=:EigXU,phase=:matrices))            # assemble all model matrices - in class-blocks
     pattern               = make_λxu_sparsepattern(out)
     L2                    = Vector{Sparse𝕣2}(undef,5)
     L2[1],L2bigasm,L1bigasm,Ldis  = prepare(pattern)  
@@ -141,7 +137,6 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
     Δz   = Vector{𝕣11}(undef,nω) # Δz[iω][imod][idof]
     λ    = 𝕣11(undef,nω)         # λ[iω][imod]
 
-    Δω  = getδω(nstep,Δt)
     ω   = range(start=0.,step=Δω,length=nω)
     for (iω,ωᵢ) = enumerate(ω)
         for inz ∈eachindex(M.nzval)
@@ -162,24 +157,21 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
             muscadeerror(@sprintf("M matrix factorization failed for ω=%f",ωᵢ));
         end
 
-        λ[iω], Δz[iω], ncv = geneig{:Complex}(LU,N,nmod;kwargs...)
+        λ[iω], Δz[iω], ncv = geneig{:Hermitian}(LU,N,nmod;kwargs...)
         # error message if ncv < nω?
     end    
-    @show typeof(λ)
-    @show typeof(Δz)
-    pstate[] = (solver=EigXU,dofgr=allΛXUdofs(model,dis),p=p,v=v)
+    pstate[] = EigXUincrement(allΛXUdofs(model,dis),λ,Δz)
     verbose && @printf("\n\n")
     return
 end
 
-
-function increment{OX}(initialstate,res::EigXUincrement,imod::AbstractVector{𝕫},A::AbstractVector) where{OX} 
+function increment{OX}(initialstate,eiginc::EigXUincrement,iω::𝕫,imod::AbstractVector{𝕫},A::AbstractVector) where{OX} 
     state            = State{1,OX+1,1}(copy(initialstate)) 
-    maximum(imod)≤length(res.p)|| muscadeerror(@sprintf("res only has %n modes.",length(ω)))
+    maximum(imod)≤length(eiginc.λ)|| muscadeerror(@sprintf("eiginc only has %n modes.",length(ω)))
     for i∈eachindex(imod)  
-        pᵢ,vᵢ = res.p[imod[i]],res.vec[imod[i]]
-        for n     = 0:OX
-            increment!(state,n+1,ℜ.((pᵢ)^n*A[i]*vᵢ),res.dofgr)
+        λᵢ,Δzᵢ = eiginc.λ[iω][imod[i]],eiginc.Δz[iω][imod[i]]
+        for iOX = 0:OX
+            increment!(state,iOX+1,ℜ.((λᵢ)^iOX*A[i]*Δzᵢ),eiginc.dofgr)
         end
     end
     return state

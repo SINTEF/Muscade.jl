@@ -20,10 +20,9 @@ Uses KrylovKit.jl. Freely based on VibrationGEPHelpers.jl and input from PetrKry
 See GIThub-blame for bug-credits.
 """
 struct geneig{ALGO} end
-function geneig{:SDP}(A::SparseMatrixCSC,B=I,neig=5;maxiter=300,verbosity=0,krylovdim=2neig+6,seed=rand(size(A,1)),kwargs...)
-    L = cholesky(Symmetric(A)).PtL
+function geneig{:SDP}(A::SparseArrays.CHOLMOD.FactorComponent,B=I,neig=5;maxiter=300,verbosity=0,krylovdim=2neig+6,seed=rand(size(A,1)),kwargs...)
     val, vec, info = eigsolve(x->L\(B*(L'\x)),seed,neig,:LR; maxiter,verbosity,ishermitian=true,krylovdim,kwargs...)
-    info.converged ≥ neig || @sprintf("eigensolver only converged for %i out of %i modes",info.converged,neig)
+    info.converged ≥ neig || muscadeerror(@sprintf("eigensolver only converged for %i out of requested %i modes",info.converged,neig))
     val = val[1:neig]
     vec = vec[1:neig]
     for vecᵢ ∈ vec
@@ -34,10 +33,10 @@ function geneig{:SDP}(A::SparseMatrixCSC,B=I,neig=5;maxiter=300,verbosity=0,kryl
     ix   = sortperm(abs.(val))
     return val[ix], vec[ix], info.converged
 end
-function geneig{:Complex}(A::SparseMatrixCSC,B,neig=5;maxiter=300,verbosity=0,krylovdim=2neig+6,seed=rand(𝕔,size(A,1)),kwargs...) 
-    luA = lu(A)
+
+function geneig{:Complex}(luA::SparseArrays.UMFPACK.UmfpackLU,B,neig=5;maxiter=300,verbosity=0,krylovdim=2neig+6,seed=rand(𝕔,size(luA,1)),kwargs...) 
     val, vec, info = eigsolve(x->B*(luA\x), seed,neig,:LR; maxiter,verbosity,ishermitian=false,krylovdim,kwargs...)
-    info.converged ≥ neig || @sprintf("eigensolver only converged for %i out of %i modes",info.converged,neig)
+    info.converged ≥ neig || muscadeerror(@sprintf("eigensolver only converged for %i out of requested %i modes",info.converged,neig))
     val = val[1:neig]
     vec = vec[1:neig]
     for vecᵢ ∈ vec  
@@ -48,7 +47,10 @@ function geneig{:Complex}(A::SparseMatrixCSC,B,neig=5;maxiter=300,verbosity=0,kr
     ix   = sortperm(abs.(val))
     return val[ix], vec[ix], info.converged
 end
-function geneig{:Hermitian}(A::SparseMatrixCSC,B,neig=5;seed=rand(size(A,1)),kwargs...) 
-    val, vec, info = geneig{:Complex}(A,B,neig;seed,kwargs...) 
+function geneig{:Hermitian}(luA::SparseArrays.UMFPACK.UmfpackLU,B,neig=5;kwargs...) 
+    val, vec, info = geneig{:Complex}(luA,B,neig;kwargs...) 
     return ℜ.(val), ℜ.(vec), info
 end
+geneig{:Hermitian}(A::SparseMatrixCSC,B,neig=5;kwargs...) = geneig{:Hermitian}(lu(A)                     ,B,neig;seed=rand(size(A,1)),kwargs...)
+geneig{:Complex  }(A::SparseMatrixCSC,B,neig=5;kwargs...) = geneig{:Complex  }(lu(A)                     ,B,neig;                     kwargs...)
+geneig{:SDP      }(A::SparseMatrixCSC,B,neig=5;kwargs...) = geneig{:SDP      }(cholesky(Symmetric(A)).PtL,B,neig;                     kwargs...)

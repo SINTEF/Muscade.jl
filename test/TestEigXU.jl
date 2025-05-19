@@ -36,14 +36,22 @@ e13             = addelement!(model,SingleDofCost,[n2];class=:X,field=:tx1,     
 
 nmod            = 2
 p               = 10
-Δt              = (3*2π)/2^p
-t₀              = 0.
+Δω              = 0.01
 OX              = 2
 OU              = 2
-t               = range(start=t₀,step=Δt,length=2^p)
 
 initialstate    = initialize!(model)   
-eigs           = solve(EigXU{OX,OU};Δt, p, nmod, t₀,initialstate,verbose=false)
+initialstate.time = 0.
+eiginc           = solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=false,verbosity=0)
+
+imod            = [2]
+A               = [1] 
+iω              = 100
+ω               = Δω*(iω-1)
+
+state           = increment(initialstate,eiginc,iω,imod,A)
+
+;
 #dof             = getdof(state,field=:tx1)
 
 # using GLMakie
