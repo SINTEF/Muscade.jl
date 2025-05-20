@@ -114,8 +114,6 @@ function EulerBeam3D(nod::Vector{Node};mat,orient2::SVector{ndim,𝕣}=SVector(0
 end;
 
 # Define now the residual function for the EulerBeam3D element.
-vec3(v,ind) = SVector{3}(v[i] for i∈ind)
-
 # Il semble que la perfection soit atteinte non quand il n’y a plus rien à ajouter, mais quand il n’y a plus rien à retrancher. Antoine de Saint-Exupéry
 @espy function Muscade.residual(o::EulerBeam3D,   X,U,A,t,SP,dbg) 
     P,ND                = constants(X),length(X)
@@ -142,6 +140,7 @@ vec3(v,ind) = SVector{3}(v[i] for i∈ind)
 end;
 
 # Transformation to corotated system and interpolation
+vec3(v,ind) = SVector{3}(v[i] for i∈ind);
 function kinematics(o::EulerBeam3D,X₀,fast)  
     cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp,L  = o.cₘ,o.rₘ,o.tgₘ,o.tgₑ,o.ζnod,o.ζgp,o.L   # As-meshed element coordinates and describing tangential vector
     ## transformation to corotated system
@@ -167,5 +166,4 @@ function kinematics(o::EulerBeam3D,X₀,fast)
         (κ=κ,x=x)  
     end
     return gp,ε,vₛₘ,rₛₘ,vₗ₂
-end
-
+end;

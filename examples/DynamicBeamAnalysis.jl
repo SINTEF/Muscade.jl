@@ -1,12 +1,12 @@
-# # Dynamic analysis of a beam
+# # Modal analysis of a beam
 #
+
+# Beam simply supported at both ends  
 using Revise
 using Muscade, StaticArrays, GLMakie
 using Printf
+include("BeamElements.jl");
 
-include("BeamElements.jl")
-
-# Beam simply supported at both ends  
 L = 1;  # Beam length [m]
 q = 0.0;  # Uniform lateral load [N/m]
 EI₂ = 1;  # Bending stiffness [Nm²]
@@ -24,11 +24,13 @@ mat         = BeamCrossSection(EA=EA,EI₂=EI₂,EI₃=EI₃,GJ=GJ,μ=μ,ι₁=�
 model       = Model(:TestModel)
 nodid       = addnode!(model,nodeCoord)
 mesh        = hcat(nodid[1:Nnod-1],nodid[2:Nnod])
-eleid       = addelement!(model,EulerBeam3D,mesh;mat=mat,orient2=SVector(0.,1.,0.))
+eleid       = addelement!(model,EulerBeam3D,mesh;mat=mat,orient2=SVector(0.,1.,0.)); 
+
+# Set boundary conditions and constraints 
 [addelement!(model,Hold,[nodid[1]]  ;field) for field∈[:t1,:t2,:t3,:r1]]                                # Simply supported end 1
 [addelement!(model,Hold,[nodid[end]];field) for field∈[:t1,:t2,:t3,:r1]]                                # Simply supported end 2
 [addelement!(model,Hold,[nodid[nodeidx]];field=:t3) for nodeidx∈2:Nnod-1]                               # Enforce beam motions in one dimension to obtain planar modeshapes
-[addelement!(model,DofLoad,[nodid[nodeidx]];field=:t2,value=t->sin(t)*q*L/Nnod) for nodeidx=1:Nnod]; # Distributed vertical load q
+[addelement!(model,DofLoad,[nodid[nodeidx]];field=:t2,value=t->sin(t)*q*L/Nnod) for nodeidx=1:Nnod];    # Distributed vertical load q
 
 # Static analysis
 initialstate    = initialize!(model);
@@ -36,12 +38,12 @@ state           = solve(SweepX{0};initialstate,time=[0.]);
 
 # Solve eigenvalue problem
 nmod            = 15
-res             = solve(EigX{ℝ};state=state[1],nmod)
+res             = solve(EigX{ℝ};state=state[1],nmod);
 
 # Analytical solutions for the natural frequency of a simply supported beam 
 # See e.g. https://roymech.org/Useful_Tables/Vibrations/Natural_Vibrations_derivation.html
 fₙ(k) = √(EI₂/μ)*(k^2*π)/(2*L^2)
-Φₙ(k,x) = sin.(k*π/L.*x)
+Φₙ(k,x) = sin.(k*π/L.*x);
 
 # Display solution and comparison against analytical solution
 fig      = Figure(size = (2000,1000))
@@ -68,12 +70,12 @@ elseif occursin("examples", currentDir)
 end
 # ![Result](assets/beamModes.png)
 
-# Dynamic analysis
-# T               = 0.01 *(1:1000)
-# dynAnalysis     = solve(SweepX{2};initialstate=state[1],time=T) 
-# ERROR: MethodError: no method matching motion{2}(::Tuple{SVector{12, Float64}, SVector{12, ∂ℝ{1, 1, Float64}}, SVector{12, ∂ℝ{1, 1, Float64}}})
-# Closest candidates are:
-#   (::Type{motion{P}} where P)()
-#    @ Muscade C:\Users\thsa\code\Muscade.jl\src\Taylor.jl:1
-#   motion{P}(::Tuple{Vararg{SVector{N, R}, ND}}) where {ND, P, N, R}
-#    @ Muscade C:\Users\thsa\code\Muscade.jl\src\Taylor.jl:24
+#src Dynamic analysis
+#src T               = 0.01 *(1:1000)
+#src dynAnalysis     = solve(SweepX{2};initialstate=state[1],time=T) 
+#src ERROR: MethodError: no method matching motion{2}(::Tuple{SVector{12, Float64}, SVector{12, ∂ℝ{1, 1, Float64}}, SVector{12, ∂ℝ{1, 1, Float64}}})
+#src Closest candidates are:
+#src   (::Type{motion{P}} where P)()
+#src    @ Muscade C:\Users\thsa\code\Muscade.jl\src\Taylor.jl:1
+#src   motion{P}(::Tuple{Vararg{SVector{N, R}, ND}}) where {ND, P, N, R}
+#src    @ Muscade C:\Users\thsa\code\Muscade.jl\src\Taylor.jl:24

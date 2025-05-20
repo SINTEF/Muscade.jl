@@ -1,5 +1,5 @@
 # # 3D rotations
-using LinearAlgebra
+using LinearAlgebra, StaticArrays
 """
     BeamElements.sinc1(x)
 
