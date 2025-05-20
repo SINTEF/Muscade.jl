@@ -19,6 +19,7 @@ include(workingDir*"runtests.jl");
 workingDir = whereIsMuscadeDev*"examples\\"
 devMuscadeIn(workingDir,whereIsMuscadeDev)
 include(workingDir*"StaticBeamAnalysis.jl")
+include(workingDir*"DynamicBeamAnalysis.jl")
 include(workingDir*"DecayAnalysis.jl")
 include(workingDir*"DryFriction.jl")
 
