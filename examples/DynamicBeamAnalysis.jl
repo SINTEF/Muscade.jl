@@ -51,10 +51,10 @@ for idxMod=1:nmod
     eigres  = increment(state[1],res,[idxMod],[1]);
     t2_eig  = getdof(eigres;field=:t2,nodID=nodid[1:Nnod])
     δ       = sign(Φₙ(idxMod,0:L/nel:L)'*t2_eig) * maximum(t2_eig)
-    ax      = axes[mod(idxMod-1,3)+1]
+    selectAxis = axes[mod(idxMod-1,3)+1]
     labelStr= "Mode "*string(idxMod)*", Muscade: "*string(round(res.ω[idxMod]/(2π),digits=3))*" Hz, Analytical: " *string(round(fₙ(idxMod),digits=3))* " Hz"
-    scatter!(ax,(0:L/nel:L),  t2_eig[:]/δ,          label=labelStr  );
-    lines!(  ax,(0:L/nel:L),  Φₙ(idxMod,0:L/nel:L)                  );
+    scatter!(selectAxis,(0:L/nel:L),  t2_eig[:]/δ,          label=labelStr  );
+    lines!(  selectAxis,(0:L/nel:L),  Φₙ(idxMod,0:L/nel:L)                  );
 end
 for ax∈axes; 
     xlims!(ax,0,1); ylims!(ax, -2,2); axislegend(ax)
