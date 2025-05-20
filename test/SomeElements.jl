@@ -26,7 +26,7 @@ Turbine(nod::Vector{Node};seadrag,sea,skydrag,sky) = Turbine(SVector(coord(nod)[
     R  = -o.sea(t,x)*o.seadrag*(1+A[1]) - o.sky(t,x)*o.skydrag*(1+A[2])
     return R,noFB 
 end
-function Muscade.draw(::Type{<:Turbine},axe,o, Λ,X,U,A, t,SP,dbg;kwargs...)
+function Muscade.draw(axe,o::Vector{Teleobj}, Λ,X,U,A, t,SP,dbg;kwargs...) where{Teleobj<:Turbine}
     nel        = length(o)
     a          = 𝕣2(undef,3,3*nel)
     Δz         = default{:height   }(kwargs,20     )/2
@@ -81,7 +81,7 @@ p = SVector(   2.82040487827,  -24.86027164695,   153.69500343165, -729.52107422
     return L,noFB
 end
 
-function Muscade.draw(::Type{<:AnchorLine},axe,o, Λ,X,U,A, t,SP,dbg;kwargs...)
+function Muscade.draw(axe,o::Vector{AnchorLine}, Λ,X,U,A, t,SP,dbg;kwargs...)
     nel           = length(o)
     blue          = default{:blue         }(kwargs,:blue )
     red           = default{:red          }(kwargs,:red  )

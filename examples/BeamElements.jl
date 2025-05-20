@@ -70,7 +70,7 @@ struct EulerBeam3D{Mat} <: AbstractElement
     κₐ       :: SVector{ngp,𝕣}  # Value at gp of shape function for torsion  . κₐ = yₐ′ . Divided by L .    
     κᵤ       :: SVector{ngp,𝕣}  # Value at gp of shape function for curvature. κᵤ = yᵤ′′. Divided by L².
     κᵥ       :: SVector{ngp,𝕣}  # Value at gp of shape function for curvature. κᵥ = yᵥ′′. Divided by L .
-    L        :: 𝕣
+    L        :: 𝕣               # as meshed length of the element
     dL       :: SVector{ngp,𝕣}  # length associated to each Gauss point
     mat      :: Mat # used to store material properties (BeamCrossSection, for example)
 end;
@@ -116,17 +116,17 @@ end;
 # Define now the residual function for the EulerBeam3D element.
 vec3(v,ind) = SVector{3}(v[i] for i∈ind)
 
-# Il semble que la perfection soit atteinte non quand il n’y a plus rien à ajouter, mais quand il n’y a plus rien à retrancher. Antoine de Saint-Exupéry
+# Il semble que la perfection soit atteinte non quand il n’y a plus rien à ajouter, mais quand il n’y a plus rien à retrancher. Antoine de Saint-Exupéry.
 @espy function Muscade.residual(o::EulerBeam3D,   X,U,A,t,SP,dbg) 
     P,ND                = constants(X),length(X)
     ## Compute all quantities at Gauss point, their time derivatives, including intrinsic roll rate and acceleration
-    gp_,ε_,vₛₘ_,rₛₘ_,vₗ₂_ = kinematics(o,motion{P}(X),justinvoke)
+    gp_,ε_,vₛₘ_,rₛₘ_,vₗ₂_,_ = kinematics(o,motion{P}(X))
     gpval,☼ε , rₛₘ       = motion⁻¹{P,ND}(gp_,ε_,rₛₘ_  ) 
     vᵢ                  = intrinsicrotationrates(rₛₘ)
     ## compute all Jacobians of the above quantities with respect to X₀
     X₀                  = ∂0(X)
     TX₀                 = revariate{1}(X₀)
-    Tgp,Tε,Tvₛₘ,_,_      = kinematics(o,TX₀,fast)
+    Tgp,Tε,Tvₛₘ,_,_,_    = kinematics(o,TX₀,fast)
     gp∂X₀,ε∂X₀,vₛₘ∂X₀    = composeJacobian{P}((Tgp,Tε,Tvₛₘ),X₀)
     ## Quadrature loop: compute resultants, and 
     gp                  = ntuple(ngp) do igp
@@ -137,14 +137,24 @@ vec3(v,ind) = SVector{3}(v[i] for i∈ind)
         @named(R)
     end
     R                   = sum(gpᵢ.R for gpᵢ∈gp) 
-    ♢κ                 = motion⁻¹{P,ND}(vₗ₂_).*(2/o.L) 
+    ♢κ                  = motion⁻¹{P,ND}(vₗ₂_).*(2/o.L) 
     return R,noFB  
 end;
-
-# Transformation to corotated system and interpolation
-function kinematics(o::EulerBeam3D,X₀,fast)  
+function kinematics(o::EulerBeam3D,X₀,fast=justinvoke)  
     cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp,L  = o.cₘ,o.rₘ,o.tgₘ,o.tgₑ,o.ζnod,o.ζgp,o.L   # As-meshed element coordinates and describing tangential vector
-    ## transformation to corotated system
+    vₛₘ,rₛₘ,uₗ₂,vₗ₂,cₛₘ  = corotated(o,X₀,fast)
+    ε                = √((uₗ₂[1]+L/2)^2+uₗ₂[2]^2+uₗ₂[3]^2)*2/L - 1.      
+    gp               = ntuple(ngp) do igp  # gp[igp].κ, gp[igp].x
+        yₐ,yᵤ,yᵥ,κₐ,κᵤ,κᵥ = o.yₐ[igp],o.yᵤ[igp],o.yᵥ[igp],o.κₐ[igp],o.κᵤ[igp],o.κᵥ[igp]
+        κ            = SVector(         κₐ*vₗ₂[1], κᵤ*uₗ₂[2]+κᵥ*vₗ₂[3], κᵤ*uₗ₂[3]-κᵥ*vₗ₂[2])  
+        y            = SVector(yₐ*uₗ₂[1]         , yᵤ*uₗ₂[2]+yᵥ*vₗ₂[3], yᵤ*uₗ₂[3]-yᵥ*vₗ₂[2])  
+        x            = rₛₘ∘₁(tgₑ*ζgp[igp]+y)+cₛₘ 
+        (κ=κ,x=x)  
+    end
+    return gp,ε,vₛₘ,rₛₘ,vₗ₂,uₗ₂
+end
+function corotated(o::EulerBeam3D,X₀,fast=justinvoke)  
+    cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp,L  = o.cₘ,o.rₘ,o.tgₘ,o.tgₑ,o.ζnod,o.ζgp,o.L   # As-meshed element coordinates and describing tangential vector
     uᵧ₁,vᵧ₁,uᵧ₂,vᵧ₂        = vec3(X₀,1:3), vec3(X₀,4:6), vec3(X₀,7:9), vec3(X₀,10:12)
     vₗ₂,rₛₘ,vₛₘ              = fast(SVector(vᵧ₁...,vᵧ₂...)) do v
         vᵧ₁,vᵧ₂            = vec3(v,1:3), vec3(v,4:6)
@@ -157,15 +167,118 @@ function kinematics(o::EulerBeam3D,X₀,fast)
     end   
     cₛ               = 0.5*(uᵧ₁+uᵧ₂)
     uₗ₂              = rₛₘ'∘₁(uᵧ₂+tgₘ*ζnod[2]-cₛ)-tgₑ*ζnod[2]    #Local displacement of node 2
-    ## interpolation
-    ε               = √((uₗ₂[1]+L/2)^2+uₗ₂[2]^2+uₗ₂[3]^2)*2/L - 1.      
-    gp              = ntuple(ngp) do igp  # gp[igp].κ, gp[igp].x
-        yₐ,yᵤ,yᵥ,κₐ,κᵤ,κᵥ = o.yₐ[igp],o.yᵤ[igp],o.yᵥ[igp],o.κₐ[igp],o.κᵤ[igp],o.κᵥ[igp]
-        κ           = SVector(         κₐ*vₗ₂[1], κᵤ*uₗ₂[2]+κᵥ*vₗ₂[3], κᵤ*uₗ₂[3]-κᵥ*vₗ₂[2])  
-        y           = SVector(yₐ*uₗ₂[1]         , yᵤ*uₗ₂[2]+yᵥ*vₗ₂[3], yᵤ*uₗ₂[3]-yᵥ*vₗ₂[2])  
-        x           = rₛₘ∘₁(tgₑ*ζgp[igp]+y)+cₛ+cₘ 
-        (κ=κ,x=x)  
+    return vₛₘ,rₛₘ,uₗ₂,vₗ₂,cₛ+cₘ
+end
+"""
+- `ElementType`, the method must dispatch on this `DataType`.
+- `axe`, a `GLMakie` axe
+- `o` a `AbstractVector` of element objects, of length `nel`.
+- `Λ` a matrix of size `(nXdof,nel)`
+- `X` a `NTuple` (over the derivatives) of matrices of size `(nXdof,nel)`
+- `U` a `NTuple` (over the derivatives) of matrices of size `(nUdof,nel)`
+- `A` a matrix of size `(nAdof,nel)`
+- `t` time
+- `SP` solver parameters
+- `dbg` debuging information
+- `kwargs` a `NamedTuple` containing the keyword arguments provided by the user. See [`default`](@ref).
+
+"""
+function Muscade.draw(axe,o::Vector{T}, Λ,X,U,A,t,SP,dbg;kwargs...) where{T<:EulerBeam3D}
+    nel           = length(o)
+    args          = default{:EulerBeam3D}(kwargs,(;))
+    style         = default{:style   }(args,:simple)
+    draw_frame    = default{:frame   }(args,false  )
+    draw_marking  = default{:marking }(args,false  )
+    nseg          = default{:nseg    }(args,1      )
+    section       = default{:section }(args,zeros(2,0))
+    solid_color   = default{:color   }(args,:yellow)
+    line_color    = default{:color   }(args,:black)
+    nsec          = size(section,2)
+    X₀            = ∂0(X)
+    it1,ir1,it2,ir2 = SVector{3}(1:3),SVector{3}(4:6),SVector{3}(7:9),SVector{3}(10:12)
+    if     style==:simple
+        line = Array{𝕣,3}(undef,3,3,nel)
+        for (iel,oᵢ) = enumerate(o)
+            line[:,1,iel] = oᵢ.cₘ - oᵢ.tgₘ/2 + X₀[it1,iel]
+            line[:,2,iel] = oᵢ.cₘ + oᵢ.tgₘ/2 + X₀[it2,iel]
+            line[:,3,iel].= NaN
+        end
+        rline = reshape(line,(3,3nel))
+        lines!(  axe,rline,color = line_color                )    
+        scatter!(axe,rline,color = line_color, marker=:circle)    
+    elseif style==:shape
+        ζ = range(-1/2,1/2,nseg+1)
+        x = Array{𝕣,3}(undef,3,nseg+2,nel)
+        for (iel,oᵢ) = enumerate(o)
+            cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp,L  = oᵢ.cₘ,oᵢ.rₘ,oᵢ.tgₘ,oᵢ.tgₑ,oᵢ.ζnod,oᵢ.ζgp,oᵢ.L   # As-meshed element coordinates and describing tangential vector
+            vₛₘ,rₛₘ,uₗ₂,vₗ₂,cₛₘ = corotated(oᵢ,X₀) 
+            for (i,ζᵢ) ∈ enumerate(ζ)
+                y                       = SVector(yₐ(ζᵢ)*uₗ₂[1] , yᵤ(ζᵢ)*uₗ₂[2]+L*yᵥ(ζᵢ)*vₗ₂[3], yᵤ(ζᵢ)*uₗ₂[3]-L*yᵥ(ζᵢ)*vₗ₂[2])  
+                x[:,i,iel] = rₛₘ∘₁(tgₑ*ζᵢ+y)+cₛₘ 
+            end        
+            x[:,nseg+2,iel] .= NaN
+        end
+        lines!(  axe,reshape(x,(3,(nseg+2)*nel)),color = line_color)
+        xnod = x[:,[1,nseg+1],:]
+        scatter!(axe,reshape(xnod,(3,2*nel)),color = line_color, marker=:circle)    
+    elseif style==:solid
+        nsec≥2 || muscadeerror()
+        ζ = range(-1/2,1/2,nseg+1)
+        vertex = Array{𝕣,4}(undef,3,nel,nseg+1,nsec) 
+    #    face   = 𝕫2(undef,4,nel*nseg*nsec) 
+        for (iel,oᵢ) = enumerate(o)
+            cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp,L  = oᵢ.cₘ,oᵢ.rₘ,oᵢ.tgₘ,oᵢ.tgₑ,oᵢ.ζnod,oᵢ.ζgp,oᵢ.L   # As-meshed element coordinates and describing tangential vector
+            vₛₘ,rₛₘ,uₗ₂,vₗ₂,cₛₘ = corotated(oᵢ,X₀) 
+            vᵧ₁,vᵧ₂          = vec3(X₀,1:3), vec3(X₀,4:6)
+            rₛ₁              = Rodrigues(vᵧ₁)
+            rₛ₂              = Rodrigues(vᵧ₂)
+            for (iseg,ζᵢ) ∈ enumerate(ζ)
+                y  = SVector(yₐ(ζᵢ)*uₗ₂[1] , yᵤ(ζᵢ)*uₗ₂[2]+L*yᵥ(ζᵢ)*vₗ₂[3], yᵤ(ζᵢ)*uₗ₂[3]-L*yᵥ(ζᵢ)*vₗ₂[2])  
+                xn = rₛₘ∘₁(tgₑ*ζᵢ+y)+cₛₘ # point on neutral axis
+                v  = (iseg-1)/nseg*Rodrigues⁻¹(rₛ₂ ∘₁ rₛ₁')
+                r  = Rodrigues(v) ∘₁ rₛ₁ ∘₁ rₘ  
+                for isec = 1:nsec
+                    vertex[:,iel,iseg,isec] = xn .+ r[:,SVector{2}(2:3)] ∘₁ section[:,isec]
+                end
+            end        
+        end
+        scatter!(axe,reshape(vertex,(3,nel*(nseg+1)*nsec)),           color = line_color , marker=:circle,markersize=3)  
+        # mesh!(   axe,vertex, face    , color = solid_color, shading=true)  
+        # i         = 1:N-1;                            % list of nodes to which to associate a patch i: along pipe
+        # j         = col(1:n);                         % j: around it
+        # index     = col(bsxfun(@plus,(i-1)*(n+1),j)); % corresponding index of node
+        # faces     = bsxfun(@plus,[0 1 2+n 1+n],index);% and indices of 4 nodes on the corresponding patch
+        # h         = patch('Vertices',X(:,:)','Faces',faces,'FaceColor',cl);
+
+
+
     end
-    return gp,ε,vₛₘ,rₛₘ,vₗ₂
+
+    if draw_frame
+        frame = 𝕣2(undef,3,9nel)
+        for (iel,oᵢ) = enumerate(o)
+            vₛₘ,rₛₘ,uₗ₂,vₗ₂,cₛₘ  = corotated(oᵢ,X₀[:,iel])
+            ℓ = oᵢ.L/3
+            cₛ  = (X₀[it1]+X₀[it2])/2 + oᵢ.cₘ
+            gp,ε,vₛₘ,rₛₘ,vₗ₂,uₗ₂ = kinematics(oᵢ,X₀,fast)
+            for i = 1:3
+                frame[:,9*(iel-1)+3*i-2] = cₛ
+                frame[:,9*(iel-1)+3*i-1] = cₛ + ℓ*rₛₘ[:,i]
+                frame[:,9*(iel-1)+3*i-0].= NaN
+            end
+        end
+        lines!(axe,frame,color = :magenta)    
+    end
+
+
+
 end
 
+
+
+# with_theme(Theme(fontsize = 30,font="Arial")) do
+#     oface    = mesh!(   axe,vertex, face    , color = color, shading=true)
+#     overtex  = scatter!(axe,vertex          ,markersize=50,color=:black)
+#     oedge    = lines!(  axe,vertex[edge,:]' ,color = :tan4, linewidth = 10)
+#     otext    = text!(   axe,string.(1:4),position=[Point(vertex[i,:]...) for i=1:4],color=:red)
+# end

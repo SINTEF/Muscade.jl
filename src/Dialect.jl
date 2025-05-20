@@ -240,6 +240,7 @@ attempt to get a field `fieldname` from a `NamedTuple`. If `namedtuple` does not
 such a field - or is not a `NamedTuple`, return `defval`.
 """
 struct default{S} end
+default{S}(t::T,d=nothing) where{S,T<:Base.Pairs} = default{S}((;t...),d)
 default{S}(t::T,d=nothing) where{S,T<:NamedTuple} = hasfield(T,S) ? getfield(t,S) : d
 default{S}(t::T,d=nothing) where{S,T            } =                                 d
 
