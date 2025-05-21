@@ -257,3 +257,11 @@ See also Julia's `identity` function.
 struct IdVec end
 const idvec = IdVec()
 @inline Base.getindex(::IdVec,i) = i
+
+"""
+    imod(i,n) = mod(i-1,n)+1
+
+For `i::ℤ`, returns a value in `{1,...n}`.  This differs
+from `mod` which return a value in `[0,n[`   
+"""
+imod(i::ℤ,n) = mod(i-1,n)+1

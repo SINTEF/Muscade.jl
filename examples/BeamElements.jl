@@ -224,8 +224,11 @@ function Muscade.draw(axe,o::Vector{T}, Λ,X,U,A,t,SP,dbg;kwargs...) where{T<:Eu
     elseif style==:solid
         nsec≥2 || muscadeerror()
         ζ = range(-1/2,1/2,nseg+1)
-        vertex = Array{𝕣,4}(undef,3,nel,nseg+1,nsec) 
-    #    face   = 𝕫2(undef,4,nel*nseg*nsec) 
+        vertex             = Array{𝕣,4}(undef,3,nel,nseg+1,nsec) 
+        face               = Array{𝕫,5}(undef,  nel,nseg  ,nsec,2,3) 
+        rvertex            = reshape(vertex,(3,nel*(nseg+1)*nsec    ))
+        rface              = reshape(face,  (  nel* nseg   *nsec*2,3))
+        idx(iel,iseg,isec) = iel+nel*(iseg-1+(nseg+1)*(imod(isec,nsec)-1)) # 1st index into rvertex
         for (iel,oᵢ) = enumerate(o)
             cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp,L  = oᵢ.cₘ,oᵢ.rₘ,oᵢ.tgₘ,oᵢ.tgₑ,oᵢ.ζnod,oᵢ.ζgp,oᵢ.L   # As-meshed element coordinates and describing tangential vector
             vₛₘ,rₛₘ,uₗ₂,vₗ₂,cₛₘ = corotated(oᵢ,X₀) 
@@ -238,23 +241,24 @@ function Muscade.draw(axe,o::Vector{T}, Λ,X,U,A,t,SP,dbg;kwargs...) where{T<:Eu
                 v  = (iseg-1)/nseg*Rodrigues⁻¹(rₛ₂ ∘₁ rₛ₁')
                 r  = Rodrigues(v) ∘₁ rₛ₁ ∘₁ rₘ  
                 for isec = 1:nsec
-                    vertex[:,iel,iseg,isec] = xn .+ r[:,SVector{2}(2:3)] ∘₁ section[:,isec]
+                    vertex[:,iel,iseg,isec] = xn .+ r[:,2]*section[1,isec] + r[:,3]*section[2,isec] 
+                    if iseg≤nseg
+                        i1,i2,i3,i4 = idx(iel,iseg,isec),idx(iel,iseg  ,isec+1),idx(iel,iseg+1,isec  ),idx(iel,iseg+1,isec+1)
+                        face[iel,iseg,isec,1,:] = SVector(i1,i2,i4)    
+                        face[iel,iseg,isec,2,:] = SVector(i1,i4,i3)   
+                    end
                 end
             end        
         end
-        scatter!(axe,reshape(vertex,(3,nel*(nseg+1)*nsec)),           color = line_color , marker=:circle,markersize=3)  
-        # mesh!(   axe,vertex, face    , color = solid_color, shading=true)  
-        # i         = 1:N-1;                            % list of nodes to which to associate a patch i: along pipe
-        # j         = col(1:n);                         % j: around it
-        # index     = col(bsxfun(@plus,(i-1)*(n+1),j)); % corresponding index of node
-        # faces     = bsxfun(@plus,[0 1 2+n 1+n],index);% and indices of 4 nodes on the corresponding patch
-        # h         = patch('Vertices',X(:,:)','Faces',faces,'FaceColor',cl);
-
-
-
+        scatter!(axe,rvertex,           color = line_color , marker=:circle,markersize=3)  
+        mesh!(   axe,rvertex, rface    , color = solid_color, shading=true)  
+        # if draw_longitudinal
+            
+        # end
     end
-
-    if draw_frame
+    @show vertex
+    @show face
+    if draw_frame  # move to "draw shape"
         frame = 𝕣2(undef,3,9nel)
         for (iel,oᵢ) = enumerate(o)
             vₛₘ,rₛₘ,uₗ₂,vₗ₂,cₛₘ  = corotated(oᵢ,X₀[:,iel])
