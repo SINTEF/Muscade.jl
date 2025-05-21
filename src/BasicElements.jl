@@ -113,9 +113,10 @@ doflist( ::Type{<:ElementCost{Teleobj}}) where{Teleobj} = doflist(Teleobj)
     L,FB,☼eleres = getlagrangian(o.eleobj,Λ,X,U,A,t,SP,(dbg...,via=ElementCost),req.eleres)
     ☼cost        = o.cost(eleres,X,U,A,t,o.costargs...) 
     return L+cost,FB
-end    
-draw(::Type{<:ElementCost{Teleobj}}, axe,eleobj, Λ,X,U,A, t,SP,dbg;kwargs...) where{Teleobj} = 
-      draw(Teleobj, axe,[eᵢ.eleobj for eᵢ∈eleobj], Λ,X,U,A, t,SP,dbg;kwargs...)
+end   
+
+draw(axe,eleobj::Vector{Teleobj}, Λ,X,U,A, t,SP,dbg;kwargs...) where{Teleobj<:ElementCost} = 
+      draw(axe,[eᵢ.eleobj for eᵢ∈eleobj], Λ,X,U,A, t,SP,dbg;kwargs...)
 """
     SingleDofCost{Derivative,Class,Field,Tcost} <: AbstractElement
 
@@ -515,8 +516,8 @@ doflist( ::Type{<:ElementConstraint{Teleobj,λinod,λfield}}) where{Teleobj,λin
     end
     return L,(λ=λ,g=gap,mode=m)
 end
-draw(::Type{<:ElementConstraint{Teleobj}}, axe,eleobj, Λ,X,U,A, t,SP,dbg;kwargs...) where{Teleobj} = 
-      draw(Teleobj, axe,[eᵢ.eleobj for eᵢ∈eleobj], Λ,X,U,A, t,SP,dbg;kwargs...)
+draw(axe,eleobj::AbstractVector{Teleobj}, Λ,X,U,A, t,SP,dbg;kwargs...) where{Teleobj<:ElementConstraint} = 
+      draw(axe,[eᵢ.eleobj for eᵢ∈eleobj], Λ,X,U,A, t,SP,dbg;kwargs...)
 
 #-------------------------------------------------
 

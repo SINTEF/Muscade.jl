@@ -20,7 +20,7 @@ function draw_(axe,dis::EletypDisassembler,eleobj,iele,state,dbg;kwargs...)
         end
         A[:,i]  = state.A[index.A]
     end
-    draw(eltype(eleobj),axe, eleobj, Λ,X,U,A, state.time,state.SP,(dbg...,iele=iele);kwargs...)
+    draw(axe, eleobj, Λ,X,U,A, state.time,state.SP,(dbg...,iele=iele);kwargs...)
     return
 end
 

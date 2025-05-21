@@ -2,11 +2,11 @@ module Muscade
     using  Printf,SparseArrays,StaticArrays,LinearAlgebra
 
     include("Dialect.jl")
-    export ℝ,ℤ,𝕣,𝕫,𝔹,𝕓
+    export ℝ,ℤ,𝕣,𝕫,𝔹,𝕓,ℂ
     export ℝ1,ℤ1,𝕣1,𝕫1,𝔹1,𝕓1
     export ℝ2,ℤ2,𝕣2,𝕫2,𝔹2,𝕓2
     export ℝ11,ℤ11,𝕣11,𝕫11,𝔹11,𝕓11
-    export toggle,default,@once
+    export toggle,default,@once,imod
 
     include("Adiff.jl")
     export  ∂ℝ #\partial \bbR
@@ -15,7 +15,7 @@ module Muscade
     export  constants,precedence,npartial,norm
 
     include("Taylor.jl")
-    export  motion,motion⁻¹,revariate,compose,fast, composewithJacobian 
+    export  motion,motion⁻¹,revariate,compose,fast,justinvoke,composevalue,composeJacobian 
 
     include("Functors.jl")
     export QuadraticFunction,FunctionFromVector 
@@ -60,11 +60,14 @@ module Muscade
     include("SweepX.jl")
     export SweepX
 
+    include("DirectXUA.jl")
+    export DirectXUA
+
     include("EigX.jl")
     export EigX,increment
 
-    include("DirectXUA.jl")
-    export DirectXUA
+    include("EigXU.jl")
+    export EigXU
 
     include("FreqXU.jl")
     export FreqXU

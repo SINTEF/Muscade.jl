@@ -240,6 +240,7 @@ attempt to get a field `fieldname` from a `NamedTuple`. If `namedtuple` does not
 such a field - or is not a `NamedTuple`, return `defval`.
 """
 struct default{S} end
+default{S}(t::T,d=nothing) where{S,T<:Base.Pairs} = default{S}((;t...),d)
 default{S}(t::T,d=nothing) where{S,T<:NamedTuple} = hasfield(T,S) ? getfield(t,S) : d
 default{S}(t::T,d=nothing) where{S,T            } =                                 d
 
@@ -256,3 +257,11 @@ See also Julia's `identity` function.
 struct IdVec end
 const idvec = IdVec()
 @inline Base.getindex(::IdVec,i) = i
+
+"""
+    imod(i,n) = mod(i-1,n)+1
+
+For `i::ℤ`, returns a value in `{1,...n}`.  This differs
+from `mod` which return a value in `[0,n[`   
+"""
+imod(i::ℤ,n) = mod(i-1,n)+1

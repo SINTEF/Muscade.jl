@@ -166,10 +166,12 @@ See also: [`lagrangian`](@ref), [`nosecondorder`](@ref), [`doflist`](@ref), [`@e
 """
 residual()=nothing
 """
-    Muscade.draw(ElementType,axe,o, Λ,X,U,A,t,SP,dbg;kwargs...)
+For parametric element types
+    Muscade.draw(axe,o::AbstractVector{Teleobj}, Λ,X,U,A,t,SP,dbg;kwargs...) where{Teleobj<:MyElement}
+For non-parametric element types, one can simplify the above to:
+    Muscade.draw(axe,o::AbstractVector{MyElement}, Λ,X,U,A,t,SP,dbg;kwargs...)
 
 Inputs are:
-- `ElementType`, the method must dispatch on this `DataType`.
 - `axe`, a `GLMakie` axe
 - `o` a `AbstractVector` of element objects, of length `nel`.
 - `Λ` a matrix of size `(nXdof,nel)`
@@ -183,7 +185,6 @@ Inputs are:
 
 See also: [`lagrangian`](@ref), [`residual`](@ref), [`doflist`](@ref)
 """
-draw(axe,::AbstractElement,args...;kwargs...) = nothing # by default, an element draws nothing
-
+draw(axe,::AbstractVector{E},args...;kwargs...) where{E<:AbstractElement} = nothing # by default, an element draws nothing
 
 

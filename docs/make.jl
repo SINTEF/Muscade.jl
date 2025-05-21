@@ -4,7 +4,13 @@ docs        = @__DIR__
 muscade     = normpath(joinpath(docs,".."))
 docsrc      = joinpath(docs,"src")
 examplesrc(ex) = normpath(joinpath(docs,"..","examples",ex))
-examples    = ["StaticBeamAnalysis","DecayAnalysis","DryFriction"]
+examples    = ["BeamElements","StaticBeamAnalysis","DynamicBeamAnalysis","DecayAnalysis","DryFriction"]
+
+requiredIncludeFiles = ["BeamElements.jl","Rotations.jl"]
+ for includeFile ∈ requiredIncludeFiles
+        cp(joinpath(muscade,"examples",includeFile),joinpath(muscade,"docs","src",includeFile),force=true)             
+ end
+
 
 using Pkg
 Pkg.activate(docs) 
@@ -16,20 +22,11 @@ cp(joinpath(muscade,"LICENSE.md"),joinpath(docsrc,"LICENSE.md"),force=true)
 
 ## Literate
 
-
 nodocstr(str) =  replace(str, r"(*ANYCRLF)^\"\"\"$.*?^\"\"\"$"ms => "") # Take """ somedocstring """ out of str
-function replace_includes(str)  # include source file into mother file
-        included = ["BeamElements.jl","Rotations.jl"] # in this order
-        for ex ∈ included
-                content = read(examplesrc(ex), String)
-                str     = replace(str, "include(\"$(ex)\")" => content)
-        end
-        return nodocstr(str)
-end
 
 @printf "\nLiterate.markdown: *.jl → *.md\n\n"
 for ex ∈ examples
-        Literate.markdown(examplesrc(@sprintf("%s.jl",ex)), docsrc, preprocess = replace_includes)
+        Literate.markdown(examplesrc(@sprintf("%s.jl",ex)), docsrc, preprocess = nodocstr)
 end
 
 ## DocumenterCitations

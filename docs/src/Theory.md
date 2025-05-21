@@ -44,8 +44,8 @@ In a load estimation problem where part of the response is measured, we wish to 
 In Muscade, this *must* be handled by minimizing the *surprisal* ``Q = -\log(P)`` instead of maximizing the probability density ``P``. 
 
 1) ``Q`` and ``P`` have the same extrema, so finding a minimum of ``Q`` does give a maximum of ``P``.  
-2) The joint probability density of independant random variables is equal to the *product* of each variable's probability density. Because ``\log(a+b)=\log(a)+\log(b)``, the joint surprisal of independant random variables is equal to the *sum* of each variable's surprisal. In forward finite element analysis, the load vectors and incremental matrices of elements are *added* into a system vector and system matrix.  Muscade extends this logic: contributions to the Lagrangian from various elements are *added* together.
-3) Generaly speaking, surprisals are numericaly better behaved that probability densities.  
+2) The joint probability density of independant random variables is equal to the *product* of each variable's probability density. Because ``\log(ab)=\log(a)+\log(b)``, the joint surprisal of independant random variables is equal to the *sum* of each variable's surprisal. In forward finite element analysis, the load vectors and incremental matrices of elements are *added* into a system vector and system matrix.  Muscade extends this logic: contributions to the Lagrangian from various elements are *added* together.
+3) Generaly speaking, surprisals are numericaly better behaved than probability densities.  
  
 To illustrate the last point, consider a multinormal Gaussian probability density distribution and its surprisal:
    

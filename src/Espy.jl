@@ -92,7 +92,7 @@ merge(::Nothing, ::Nothing) = nothing
     return code_tuple(t...)
     return c
 end
-
+Base.haskey(::Nothing,a) = false
 
 ######################## Generate new function code
 # ✓check,✔Check,∎QED,⋆star,♢diamond,☼sun,☐Box
