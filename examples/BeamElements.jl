@@ -6,12 +6,12 @@ using StaticArrays, LinearAlgebra, Muscade
 
 # Data structure containing the cross section material properties
 struct BeamCrossSection
-    EA :: 𝕣  # axial stiffness 
+    EA  :: 𝕣  # axial stiffness 
     EI₂ :: 𝕣 # bending stiffness about second axis
     EI₃ :: 𝕣 # bending stiffness about third axis
-    GJ :: 𝕣 # torsional stiffness (about longitudinal axis)
-    μ  :: 𝕣 # mass per unit length
-    ι₁ :: 𝕣 # (mass) moment of inertia for rotation about the element longitudinal axis per unit length
+    GJ  :: 𝕣 # torsional stiffness (about longitudinal axis)
+    μ   :: 𝕣 # mass per unit length
+    ι₁  :: 𝕣 # (mass) moment of inertia for rotation about the element longitudinal axis per unit length
 end
 BeamCrossSection(;EA=EA,EI₂=EI₂,EI₃=EI₃,GJ=GJ,μ=μ,ι₁=ι₁) = BeamCrossSection(EA,EI₂,EI₃,GJ,μ,ι₁);
 
