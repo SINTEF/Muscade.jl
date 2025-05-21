@@ -87,12 +87,12 @@ Mgp3_ = [ out[idxEl].gp[3][:resultants][:mᵢ] for idxEl ∈ 1:nel]
 Mgp4_ = [ out[idxEl].gp[4][:resultants][:mᵢ] for idxEl ∈ 1:nel];
 
 # Strains
-# req = @request ε
-# out = getresult(state[idxLoad],req,eleid)
-# εgp1_ = [ out[idxEl].ε[1] for idxEl ∈ 1:nel]
-# εgp2_ = [ out[idxEl].ε[1] for idxEl ∈ 1:nel];
-# εgp3_ = [ out[idxEl].ε[1] for idxEl ∈ 1:nel];
-# εgp4_ = [ out[idxEl].ε[1] for idxEl ∈ 1:nel];
+req = @request ε
+out = getresult(state[idxLoad],req,eleid)
+εgp1_ = [ out[idxEl].ε[1] for idxEl ∈ 1:nel]
+εgp2_ = [ out[idxEl].ε[1] for idxEl ∈ 1:nel];
+εgp3_ = [ out[idxEl].ε[1] for idxEl ∈ 1:nel];
+εgp4_ = [ out[idxEl].ε[1] for idxEl ∈ 1:nel];
 
 # Curvatures
 req = @request gp(κ)
