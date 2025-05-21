@@ -114,9 +114,7 @@ function EulerBeam3D(nod::Vector{Node};mat,orient2::SVector{ndim,𝕣}=SVector(0
 end;
 
 # Define now the residual function for the EulerBeam3D element.
-vec3(v,ind) = SVector{3}(v[i] for i∈ind)
-
-# Il semble que la perfection soit atteinte non quand il n’y a plus rien à ajouter, mais quand il n’y a plus rien à retrancher. Antoine de Saint-Exupéry.
+# (Il semble que la perfection soit atteinte non quand il n’y a plus rien à ajouter, mais quand il n’y a plus rien à retrancher. Antoine de Saint-Exupéry.)
 @espy function Muscade.residual(o::EulerBeam3D,   X,U,A,t,SP,dbg) 
     P,ND                = constants(X),length(X)
     ## Compute all quantities at Gauss point, their time derivatives, including intrinsic roll rate and acceleration
@@ -153,6 +151,8 @@ function kinematics(o::EulerBeam3D,X₀,fast=justinvoke)
     end
     return gp,ε,vₛₘ,rₛₘ,vₗ₂,uₗ₂
 end
+
+vec3(v,ind) = SVector{3}(v[i] for i∈ind);
 function corotated(o::EulerBeam3D,X₀,fast=justinvoke)  
     cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp,L  = o.cₘ,o.rₘ,o.tgₘ,o.tgₑ,o.ζnod,o.ζgp,o.L   # As-meshed element coordinates and describing tangential vector
     uᵧ₁,vᵧ₁,uᵧ₂,vᵧ₂        = vec3(X₀,1:3), vec3(X₀,4:6), vec3(X₀,7:9), vec3(X₀,10:12)
@@ -168,7 +168,9 @@ function corotated(o::EulerBeam3D,X₀,fast=justinvoke)
     cₛ               = 0.5*(uᵧ₁+uᵧ₂)
     uₗ₂              = rₛₘ'∘₁(uᵧ₂+tgₘ*ζnod[2]-cₛ)-tgₑ*ζnod[2]    #Local displacement of node 2
     return vₛₘ,rₛₘ,uₗ₂,vₗ₂,cₛ+cₘ
-end
+end;
+
+# Finally, specify how to draw a beam element
 """
 
 Drawing a `EulerBeam3D`.

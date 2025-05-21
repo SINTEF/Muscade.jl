@@ -108,8 +108,8 @@ ax=Axis(fig[1,1], ylabel="Forces F [N]",       yminorgridvisible = true,xminorgr
 scatter!(ax,xgps,  [[Fgp1_[iel][1] for iel=1:nel] ; [Fgp2_[iel][1] for iel=1:nel] ; [Fgp3_[iel][1] for iel=1:nel] ; [Fgp4_[iel][1] for iel=1:nel]],          label="F₁");
 ax.title = "Internal loads, elongation and curvature at last load step"
 axislegend();
-# ax=Axis(fig[2,1], ylabel="Strain [-]",       yminorgridvisible = true,xminorgridvisible = true,xticks = (0:1. /nel:1))
-# scatter!(ax,xgps,  [[εgp1_[iel][1] for iel=1:nel] ; [εgp2_[iel][1] for iel=1:nel] ; [εgp3_[iel][1] for iel=1:nel] ; [εgp4_[iel][1] for iel=1:nel]],          label="ε");
+ax=Axis(fig[2,1], ylabel="Strain [-]",       yminorgridvisible = true,xminorgridvisible = true,xticks = (0:1. /nel:1))
+scatter!(ax,xgps,  [[εgp1_[iel][1] for iel=1:nel] ; [εgp2_[iel][1] for iel=1:nel] ; [εgp3_[iel][1] for iel=1:nel] ; [εgp4_[iel][1] for iel=1:nel]],          label="ε");
 ax=Axis(fig[3,1], ylabel="Moments M [Nm]",       yminorgridvisible = true,xminorgridvisible = true,xticks = (0:1. /nel:1))
 scatter!(ax,xgps,  [[Mgp1_[iel][1] for iel=1:nel] ; [Mgp2_[iel][1] for iel=1:nel] ; [Mgp3_[iel][1] for iel=1:nel] ; [Mgp4_[iel][1] for iel=1:nel]],          label="M₁");
 scatter!(ax,xgps,  [[Mgp1_[iel][2] for iel=1:nel] ; [Mgp2_[iel][2] for iel=1:nel] ; [Mgp3_[iel][2] for iel=1:nel] ; [Mgp4_[iel][2] for iel=1:nel]],          label="M₂");

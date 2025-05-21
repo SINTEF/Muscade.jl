@@ -2,9 +2,7 @@
 #
 
 # Beam simply supported at both ends  
-using Revise
 using Muscade, StaticArrays, GLMakie
-using Printf
 include("BeamElements.jl");
 
 L = 1;  # Beam length [m]
