@@ -170,26 +170,40 @@ function corotated(o::EulerBeam3D,X₀,fast=justinvoke)
     return vₛₘ,rₛₘ,uₗ₂,vₗ₂,cₛ+cₘ
 end
 """
-- `ElementType`, the method must dispatch on this `DataType`.
-- `axe`, a `GLMakie` axe
-- `o` a `AbstractVector` of element objects, of length `nel`.
-- `Λ` a matrix of size `(nXdof,nel)`
-- `X` a `NTuple` (over the derivatives) of matrices of size `(nXdof,nel)`
-- `U` a `NTuple` (over the derivatives) of matrices of size `(nUdof,nel)`
-- `A` a matrix of size `(nAdof,nel)`
-- `t` time
-- `SP` solver parameters
-- `dbg` debuging information
-- `kwargs` a `NamedTuple` containing the keyword arguments provided by the user. See [`default`](@ref).
+
+Drawing a `EulerBeam3D`.
+
+    draw(axe,state)
+
+    draw(axe,state;EulerBeam3D=(;style=:simple))
+
+    draw(axe,state;EulerBeam3D=(;style=:shape))
+
+    α = 2π*(0:19)/20
+    circle = 0.1*[cos.(α) sin.(α)]'
+    draw(axe,state;EulerBeam3D=(;style=:solid,section = circle))
+
+`style=:simple` (default) shows a straight line between visible nodes.
+
+`style=:shape` shows the deformed neutral axis of the element. It has optional arguments `frame=true` 
+(draws the element's corotated frame of reference)
+and `nseg=10` (number of points to show the deflected shape of each element). 
+
+`style=:solid` shows the deformed shape of the element. It requires the input `section=...` to be given
+a matrix of size `(2,nsec)` describing `nsec` points around the cross section of the element (no need to close 
+the circumference by repeating the first point at the end).  It has optional arguments `nseg=10` as above, `marking=true`
+to draw a longitudinal marking and `solid_color=:yellow`.
+ 
+All above options share the optional argument `line_color=:black`.
 
 """
 function Muscade.draw(axe,o::Vector{T}, Λ,X,U,A,t,SP,dbg;kwargs...) where{T<:EulerBeam3D}
     nel           = length(o)
     args          = default{:EulerBeam3D}(kwargs,(;))
     style         = default{:style   }(args,:simple)
-    draw_frame    = default{:frame   }(args,false  )
-    draw_marking  = default{:marking }(args,false  )
-    nseg          = default{:nseg    }(args,1      )
+    draw_frame    = default{:frame   }(args,true  )
+    draw_marking  = default{:marking }(args,true  )
+    nseg          = default{:nseg    }(args,10     )
     section       = default{:section }(args,zeros(2,0))
     solid_color   = default{:color   }(args,:yellow)
     line_color    = default{:color   }(args,:black)
@@ -209,9 +223,21 @@ function Muscade.draw(axe,o::Vector{T}, Λ,X,U,A,t,SP,dbg;kwargs...) where{T<:Eu
     elseif style==:shape
         ζ = range(-1/2,1/2,nseg+1)
         x = Array{𝕣,3}(undef,3,nseg+2,nel)
+        if draw_frame  
+            frame = 𝕣2(undef,3,9nel)
+        end    
         for (iel,oᵢ) = enumerate(o)
-            cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp,L  = oᵢ.cₘ,oᵢ.rₘ,oᵢ.tgₘ,oᵢ.tgₑ,oᵢ.ζnod,oᵢ.ζgp,oᵢ.L   # As-meshed element coordinates and describing tangential vector
-            vₛₘ,rₛₘ,uₗ₂,vₗ₂,cₛₘ = corotated(oᵢ,X₀) 
+            cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp,L  = oᵢ.cₘ,oᵢ.rₘ,oᵢ.tgₘ,oᵢ.tgₑ,oᵢ.ζnod,oᵢ.ζgp,oᵢ.L   
+            X₀ₑ = view(X₀,:,iel)
+            vₛₘ,rₛₘ,uₗ₂,vₗ₂,cₛₘ = corotated(oᵢ,X₀ₑ) 
+            if draw_frame
+                ℓ = oᵢ.L/3
+                for i = 1:3
+                    frame[:,9*(iel-1)+3*i-2] = cₛₘ
+                    frame[:,9*(iel-1)+3*i-1] = cₛₘ + ℓ*rₛₘ[:,i]
+                    frame[:,9*(iel-1)+3*i-0].= NaN
+                end
+            end
             for (i,ζᵢ) ∈ enumerate(ζ)
                 y                       = SVector(yₐ(ζᵢ)*uₗ₂[1] , yᵤ(ζᵢ)*uₗ₂[2]+L*yᵥ(ζᵢ)*vₗ₂[3], yᵤ(ζᵢ)*uₗ₂[3]-L*yᵥ(ζᵢ)*vₗ₂[2])  
                 x[:,i,iel] = rₛₘ∘₁(tgₑ*ζᵢ+y)+cₛₘ 
@@ -221,18 +247,27 @@ function Muscade.draw(axe,o::Vector{T}, Λ,X,U,A,t,SP,dbg;kwargs...) where{T<:Eu
         lines!(  axe,reshape(x,(3,(nseg+2)*nel)),color = line_color)
         xnod = x[:,[1,nseg+1],:]
         scatter!(axe,reshape(xnod,(3,2*nel)),color = line_color, marker=:circle)    
+        if draw_frame  # move to "draw shape"
+            lines!(axe,frame,color = :grey,linewidth=1)    
+        end
     elseif style==:solid
-        nsec≥2 || muscadeerror()
+        nsec≥2 || muscadeerror("An section description must be provided for 'solid' plot")
         ζ = range(-1/2,1/2,nseg+1)
-        vertex             = Array{𝕣,4}(undef,3,nel,nseg+1,nsec) 
-        face               = Array{𝕫,5}(undef,  nel,nseg  ,nsec,2,3) 
-        rvertex            = reshape(vertex,(3,nel*(nseg+1)*nsec    ))
-        rface              = reshape(face,  (  nel* nseg   *nsec*2,3))
-        idx(iel,iseg,isec) = iel+nel*(iseg-1+(nseg+1)*(imod(isec,nsec)-1)) # 1st index into rvertex
+        vertex             = Array{𝕣,4}(undef,3,  nsec, nseg+1 ,nel  ) 
+        face               = Array{𝕫,5}(undef,  2,nsec, nseg   ,nel,3) 
+        rvertex            = reshape(vertex,(3,   nsec*(nseg+1)*nel  ))
+        rface              = reshape(face,  (   2*nsec* nseg   *nel,3))
+        idx(iel,iseg,isec) = imod(isec,nsec)+nsec*(iseg-1+(nseg+1)*(iel-1)) # 1st index into rvertex
+        if draw_marking
+            mark   = Array{𝕣,3}(undef,3, nseg+2 ,nel  )     
+            rmark  = reshape(mark,(3,   (nseg+2)*nel  ))
+            markrad = 1.01*maximum(section[1,:])
+        end
         for (iel,oᵢ) = enumerate(o)
-            cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp,L  = oᵢ.cₘ,oᵢ.rₘ,oᵢ.tgₘ,oᵢ.tgₑ,oᵢ.ζnod,oᵢ.ζgp,oᵢ.L   # As-meshed element coordinates and describing tangential vector
-            vₛₘ,rₛₘ,uₗ₂,vₗ₂,cₛₘ = corotated(oᵢ,X₀) 
-            vᵧ₁,vᵧ₂          = vec3(X₀,1:3), vec3(X₀,4:6)
+            cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp,L  = oᵢ.cₘ,oᵢ.rₘ,oᵢ.tgₘ,oᵢ.tgₑ,oᵢ.ζnod,oᵢ.ζgp,oᵢ.L   
+            X₀ₑ = view(X₀,:,iel)
+            vₛₘ,rₛₘ,uₗ₂,vₗ₂,cₛₘ = corotated(oᵢ,X₀ₑ) 
+            vᵧ₁,vᵧ₂          = vec3(X₀ₑ,4:6), vec3(X₀ₑ,10:12)
             rₛ₁              = Rodrigues(vᵧ₁)
             rₛ₂              = Rodrigues(vᵧ₂)
             for (iseg,ζᵢ) ∈ enumerate(ζ)
@@ -240,49 +275,23 @@ function Muscade.draw(axe,o::Vector{T}, Λ,X,U,A,t,SP,dbg;kwargs...) where{T<:Eu
                 xn = rₛₘ∘₁(tgₑ*ζᵢ+y)+cₛₘ # point on neutral axis
                 v  = (iseg-1)/nseg*Rodrigues⁻¹(rₛ₂ ∘₁ rₛ₁')
                 r  = Rodrigues(v) ∘₁ rₛ₁ ∘₁ rₘ  
+                if draw_marking 
+                    mark[:,iseg,iel] = xn .+ r[:,2]*markrad 
+                end
                 for isec = 1:nsec
-                    vertex[:,iel,iseg,isec] = xn .+ r[:,2]*section[1,isec] + r[:,3]*section[2,isec] 
+                    vertex[:,isec,iseg,iel] = xn .+ r[:,2]*section[1,isec] + r[:,3]*section[2,isec] 
                     if iseg≤nseg
                         i1,i2,i3,i4 = idx(iel,iseg,isec),idx(iel,iseg  ,isec+1),idx(iel,iseg+1,isec  ),idx(iel,iseg+1,isec+1)
-                        face[iel,iseg,isec,1,:] = SVector(i1,i2,i4)    
-                        face[iel,iseg,isec,2,:] = SVector(i1,i4,i3)   
+                        face[1,isec,iseg,iel,:] = SVector(i1,i2,i4)    
+                        face[2,isec,iseg,iel,:] = SVector(i1,i4,i3)   
                     end
                 end
-            end        
+            end  
         end
-        scatter!(axe,rvertex,           color = line_color , marker=:circle,markersize=3)  
-        mesh!(   axe,rvertex, rface    , color = solid_color, shading=true)  
-        # if draw_longitudinal
-            
-        # end
-    end
-    @show vertex
-    @show face
-    if draw_frame  # move to "draw shape"
-        frame = 𝕣2(undef,3,9nel)
-        for (iel,oᵢ) = enumerate(o)
-            vₛₘ,rₛₘ,uₗ₂,vₗ₂,cₛₘ  = corotated(oᵢ,X₀[:,iel])
-            ℓ = oᵢ.L/3
-            cₛ  = (X₀[it1]+X₀[it2])/2 + oᵢ.cₘ
-            gp,ε,vₛₘ,rₛₘ,vₗ₂,uₗ₂ = kinematics(oᵢ,X₀,fast)
-            for i = 1:3
-                frame[:,9*(iel-1)+3*i-2] = cₛ
-                frame[:,9*(iel-1)+3*i-1] = cₛ + ℓ*rₛₘ[:,i]
-                frame[:,9*(iel-1)+3*i-0].= NaN
-            end
+        mesh!(   axe,rvertex, rface    , color = solid_color) 
+        if draw_marking
+            mark[:,nseg+2,:] .= NaN 
+            lines!(  axe,rmark,color = line_color)    
         end
-        lines!(axe,frame,color = :magenta)    
     end
-
-
-
 end
-
-
-
-# with_theme(Theme(fontsize = 30,font="Arial")) do
-#     oface    = mesh!(   axe,vertex, face    , color = color, shading=true)
-#     overtex  = scatter!(axe,vertex          ,markersize=50,color=:black)
-#     oedge    = lines!(  axe,vertex[edge,:]' ,color = :tan4, linewidth = 10)
-#     otext    = text!(   axe,string.(1:4),position=[Point(vertex[i,:]...) for i=1:4],color=:red)
-# end
