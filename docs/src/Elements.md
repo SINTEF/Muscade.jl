@@ -360,7 +360,7 @@ which can be read: if `kwargs.linewidth` exists, the set `linewidth` to its valu
 
 The user has facilities to draw only selected element types or selected elements, so the element's `draw` method does not need to implement a switch on *whether* to draw.
 
-See [`examples/BeamElements.jl`](StaticBeamAnalysis.md) for an example of implementation.
+See [`examples/BeamElements.jl`](StaticBeamAnalysis.md) for an example of implementation.  See also 
 
 ### Getting element results
 
@@ -394,5 +394,7 @@ In [`examples/BeamElements.jl`](StaticBeamAnalysis.md), in function `kinematics`
 When developing a new element, it is advisable to test the constructor, and `residual` or `lagrangian` in a direct call (outside of any Muscade solver), and examine the returned outputs.
 
 Generaly, automatic differentiation is unproblematic, but when advanced tools are used (e.g. [`revariate`](@ref) and [`compose`](@ref)), then the derivatives should be inspected.  See [`diffed_residual`](@ref) and [`diffed_lagrangian`](@ref) to compute the derivatives of `R` and `L` returned by `residual` and `lagrangian` respectively. 
+
+See also [`Muscade.SpyAxe`](@ref) for testing of graphic generating functions such as [`Muscade.draw`](@ref).
 
 

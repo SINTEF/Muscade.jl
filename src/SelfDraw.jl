@@ -63,3 +63,31 @@ function draw(axe,state::State;kwargs...)   # whole model
     end
 end   
 
+"""
+    axe = Muscade.SpyAxe
+
+Spoof a GLMakie `axe` object so that calls like
+
+    using Muscade: lines!
+    lines!(  axe,args...;kwargs...) 
+    
+result in `args` and `kwargs` being stored in `axe`, allowing to test functions that generate plots.
+Results are accessed by for example
+
+    axe.call[3].fun        
+    axe.call[3].args[2]
+
+To get the name of the 3rd GLMakie function that was called, and the
+2nd input argument of the call.
+
+Only `lines!`, `scatter!` and `mesh!`  are implemented, but more functions can
+easily be added.
+
+"""
+struct SpyAxe
+    call::Vector{Any}
+end
+SpyAxe() = SpyAxe(Any[])
+lines!(  axe::SpyAxe,args...;kwargs...) = push!(axe.call,(fun=:lines!  ,args=args,kwargs=kwargs))
+scatter!(axe::SpyAxe,args...;kwargs...) = push!(axe.call,(fun=:scatter!,args=args,kwargs=kwargs))
+mesh!(   axe::SpyAxe,args...;kwargs...) = push!(axe.call,(fun=:mesh!   ,args=args,kwargs=kwargs))

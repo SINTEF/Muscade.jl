@@ -36,8 +36,8 @@ end
 # draw(axe,state[step])
 # save("C:\\Users\\philippem\\C home\\GIT\\Muscade.jl\\test\\first_light.jpg",fig)
 
-include("GLMakieTester.jl")
-axe = SpyAxe()
+using Muscade: lines!,scatter!,mesh!
+axe = Muscade.SpyAxe()
 draw(axe,state[step],ieletyp=[1,2])
 @testset "drawing" begin
     @test  axe.call[1].fun == :lines!

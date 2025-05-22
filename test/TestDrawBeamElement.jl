@@ -1,6 +1,7 @@
 module TestDrawBeamElement
 using Muscade, StaticArrays, Test
 using Printf
+using Muscade: lines!,scatter!,mesh!
 
 include("../examples/BeamElements.jl")
 
@@ -44,9 +45,7 @@ setdof!(state,  [1.       ,  1.3        , 1.6                     ],nodID=nodid[
 circle = 0.05*[cos.(α) sin.(α)]'
 square = 0.1*[1 -1 -1 1;1 1 -1 -1]
 
-
-include("GLMakieTester.jl")
-axe = SpyAxe()
+axe = Muscade.SpyAxe()
 #draw(axe,state;EulerBeam3D=(;style=:simple))
 draw(axe,state;EulerBeam3D=(;style=:shape,nseg=10,frame=true,Uscale=0.1))
 draw(axe,state;EulerBeam3D=(;style=:solid,nseg=10,section = circle,marking=true,Uscale=0.1))

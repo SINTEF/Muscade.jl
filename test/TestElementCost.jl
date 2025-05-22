@@ -49,8 +49,8 @@ for i ∈ eachindex(EL)
     Am[:,i]    .= A
 end
 
-include("GLMakieTester.jl")
-axe = SpyAxe()
+using Muscade: lines!,scatter!,mesh!
+axe = Muscade.SpyAxe()
 draw(axe,EL, Λm,Xm,Um,Am, 0.,nothing,(;))
 @testset "drawing" begin
      @test  axe.call[1].fun == :lines!
