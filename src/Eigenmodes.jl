@@ -22,29 +22,21 @@ See GIThub-blame for bug-credits.
 struct geneig{ALGO} end
 function geneig{:SDP}(L::SparseArrays.CHOLMOD.FactorComponent,B=I,neig=5;maxiter=300,verbosity=0,krylovdim=2neig+6,seed=rand(size(A,1)),kwargs...)
     val, vec, info = eigsolve(x->L\(B*(L'\x)),seed,neig,:LR; maxiter,verbosity,ishermitian=true,krylovdim,kwargs...)
-    info.converged ≥ neig || muscadeerror(@sprintf("eigensolver only converged for %i out of requested %i modes",info.converged,neig))
-    val = val[1:neig]
-    vec = vec[1:neig]
     for vecᵢ ∈ vec
         vecᵢ .= ℜ.(L'\vecᵢ)
     end
     val .= 1 ./val
     normalize!.(vec)
-    ix   = sortperm(abs.(val))
-    return val[ix], vec[ix], info.converged
+    return val, vec, info.converged
 end
 function geneig{:Complex}(luA::SparseArrays.UMFPACK.UmfpackLU,B,neig=5;maxiter=300,verbosity=0,krylovdim=2neig+6,seed=rand(𝕔,size(luA,1)),kwargs...) 
     val, vec, info = eigsolve(x->B*(luA\x), seed,neig,:LR; maxiter,verbosity,ishermitian=false,krylovdim,kwargs...)
-    info.converged ≥ neig || muscadeerror(@sprintf("eigensolver only converged for %i out of requested %i modes",info.converged,neig))
-    val = val[1:neig]
-    vec = vec[1:neig]
     for vecᵢ ∈ vec  
         vecᵢ .= luA\vecᵢ
     end
     val .= 1 ./val
     normalize!.(vec)
-    ix   = sortperm(abs.(val))
-    return val[ix], vec[ix], info.converged
+    return val, vec, info.converged
 end
 function geneig{:Hermitian}(luA::SparseArrays.UMFPACK.UmfpackLU,B,neig=5;kwargs...) 
     val, vec, info = geneig{:Complex}(luA,B,neig;kwargs...) 

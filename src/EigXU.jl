@@ -41,8 +41,11 @@ end
 
 struct EigXUincrement
     dofgr :: DofGroup
+    ω     :: 𝕣1          # [iω] 
+    ncv   :: 𝕫1          # [iω]
     λ     :: 𝕣11         # [iω][imod]
-    Δz    :: Vector{𝕣11} # [iω][imod][idof]
+    S     :: 𝕣11         # [iω][imod]
+    ΔΛXU  :: Vector{𝕣11} # [iω][imod][idof]
 end
 
 
@@ -96,7 +99,7 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
     #  Mostly constants
     local LU
     model,dis             = initialstate.model, initialstate.dis
-    nω                    = 2^(p-1)
+    nω                    = 2^p
     IA                    = 0
 
     # State storage
@@ -120,6 +123,7 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
     assemblebigmat!(L2,L2bigasm,asm,model,dis,out,(dbg...,solver=:EigXU))              # assemble all complete model matrices into L2
     sparser!(L2,droptol)
     nXdof,nUdof = getndof(model,(:X,:U))
+    iλ =  1:nXdof
     ixu = (nXdof+1):(2nXdof+nUdof)
     N   = sparse(ixu,ixu,ones(nXdof+nUdof))
 
@@ -134,19 +138,17 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
     L2₁  = L2[1]
     ndof = 2nXdof+nUdof
     M    = Sparse𝕔2(ndof,ndof,L2₁.colptr,L2₁.rowval,𝕔1(undef,length(L2₁.nzval)))
-    Δz   = Vector{𝕣11}(undef,nω) # Δz[iω][imod][idof]
-    λ    = 𝕣11(undef,nω)         # λ[iω][imod]
+    ΔΛXU = Vector{𝕣11}(undef,nω) # ΔΛXU[iω][imod][idof]
+    λ    = 𝕣11(undef,nω)         # λ[ iω][imod]
+    S    = 𝕣11(undef,nω)         # S[ iω][imod] # Information
+    ncv  = 𝕫1(undef,nω)          # ncv[iω]
 
-    ω   = range(start=0.,step=Δω,length=nω)
+    ω   = range(start=0.,step=Δω,length=nω) 
     for (iω,ωᵢ) = enumerate(ω)
-        for inz ∈eachindex(M.nzval)
-            M.nzval[inz] = L2[1].nzval[inz] 
-        end
-        for j = 1:4
+        M.nzval .= 0.
+        for j = 0:4
             𝑖ωᵢʲ  = (𝑖*ωᵢ)^j
-            for inz ∈eachindex(M.nzval)
-                M.nzval[inz] += 𝑖ωᵢʲ *L2[j+1].nzval[inz]
-            end
+            M.nzval .+= 𝑖ωᵢʲ *L2[j+1].nzval
         end
         try 
             if iω==1 LU = lu(M) 
@@ -157,21 +159,47 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
             muscadeerror(@sprintf("M matrix factorization failed for ω=%f",ωᵢ));
         end
 
-        λ[iω], Δz[iω], ncv = geneig{:Hermitian}(LU,N,nmod;kwargs...)
-        # error message if ncv < nω?
+        λ[iω], ΔΛXU[iω], ncv[iω] = geneig{:Hermitian}(LU,N,nmod;kwargs...)
+        S[iω] = 𝕣1(undef,ncv[iω])
+        for imod = 1:ncv[iω]
+            δZ      = copy(ΔΛXU[iω][imod])
+        #    δZ[iλ] .= 0.
+            S[iω][imod] = 1/(2*log(2))*conj.(δZ) ∘₁ (N ∘₁ δZ) 
+        end
     end    
-    pstate[] = EigXUincrement(allΛXUdofs(model,dis),λ,Δz)
-    verbose && @printf("\n\n")
+    all(ncv.≥nmod) && verbose && muscadewarning("Some eigensolutions did not converge",4)
+    pstate[] = EigXUincrement(allΛXUdofs(model,dis),ω,ncv,λ,S,ΔΛXU)
+    verbose && @printf("\n")
     return
 end
+"""
+    state = increment{OX}(initialstate,eiginc,iω,imod,A)
 
+Starting from `initalstate` for which an `EigX` analysis has been carried out, and using the output
+`eiginc` of that analysis, construct new `State`s representing the instantaneous state of the 
+vibrating structure
+    
+# Input
+- `OX` the number of time derivatives to be computed.  `increment(initialstate,eiginc,imod,A)` defaults to `OX=2`
+- `initialstate` the same initial `State` provided to `EigXU` to compute `eiginc`
+- `eiginc` obtained from `EigXU`
+- `iω`, the number of the frequency to consider. `ω=iω*Δω` where `Δω` is an input to [`EigXU`](@ref). 
+- `imod`, an `AbstractVector` of integer mode numbers
+- `A`, an `AbstractVector` of same length as `imod`, containing real or complex 
+  amplitudes associated to the modes
+
+# Output
+- `state` a snapshot of the vibrating system
+
+See also: [`EigXU`](@ref)
+"""
 function increment{OX}(initialstate,eiginc::EigXUincrement,iω::𝕫,imod::AbstractVector{𝕫},A::AbstractVector) where{OX} 
     state            = State{1,OX+1,1}(copy(initialstate)) 
-    maximum(imod)≤length(eiginc.λ)|| muscadeerror(@sprintf("eiginc only has %n modes.",length(ω)))
-    for i∈eachindex(imod)  
-        λᵢ,Δzᵢ = eiginc.λ[iω][imod[i]],eiginc.Δz[iω][imod[i]]
+    ω, ΔΛXU           = eiginc.ω[iω], eiginc.ΔΛXU[iω]
+    maximum(imod)≤length(eiginc.λ) || muscadeerror(@sprintf("eiginc only has %n modes for iω=%i.",length(ω),iω))
+    for (i,imodᵢ)∈enumerate(imod)  
         for iOX = 0:OX
-            increment!(state,iOX+1,ℜ.((λᵢ)^iOX*A[i]*Δzᵢ),eiginc.dofgr)
+            increment!(state,iOX+1,ℜ.(ω^iOX*A[i]*ΔΛXU[imodᵢ]),eiginc.dofgr)
         end
     end
     return state

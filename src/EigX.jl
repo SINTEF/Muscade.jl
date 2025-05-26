@@ -14,7 +14,7 @@ The data structure `eiginc` can be passed to `increment` to obtain dynamic state
 - Further named arguments: see the optional keyword arguments to `geneig`.         
 
 # Output
-- an object of type `igXℝincrement` or `igXℂincrement`, for use with [`increment`](@ref) to create a snapshot of the
+- an object of type `EigXℝincrement` or `EigXℂincrement`, for use with [`increment`](@ref) to create a snapshot of the
   oscillating system.
 
 See also: [`solve`](@ref), [`initialize!`](@ref), [`increment`](@ref), [`geneig`](@ref)
@@ -41,11 +41,12 @@ function solve(::Type{EigX{ℝ}},pstate,verbose,dbg;
     sparser!(K,droptol)
     sparser!(M,droptol)
 
-    verbose && @printf("\n    Solving Eigenvalues\n")
+    verbose && @printf("    Solving Eigenvalues\n\n")
     ω², Δx, ncv = geneig{:Hermitian}(K,M,nmod;kwargs...)
 
     ncv≥nmod||muscadeerror(dbg,@sprintf("eigensolver only converged for %i out of %i modes",ncv,nmod))
     pstate[] = EigXℝincrement(dofgr[ind.X],sqrt.(ω²),Δx)
+    verbose && @printf("\n")
     return 
 end
 """

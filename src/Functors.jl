@@ -1,3 +1,6 @@
+
+# TODO: FunctionWrappers.jl
+
 """
     f  = FunctionFromVector(xs::AbstractRange,ys::AbstractVector)
     y  = f(x)
@@ -43,5 +46,5 @@ where `μ` is a `Function` of time
 QuadraticFunction(μ::𝕣       ,σ::𝕣) = QuadraticFunctionWithConstantMean(  μ,σ)
 QuadraticFunction(μ::Function,σ::𝕣) = QuadraticFunctionWithMeanFuncOfTime(μ,σ)
 
-(f::QuadraticFunctionWithConstantMean  )(x  ) = .5*((x-f.μ   )/f.σ)^2
+(f::QuadraticFunctionWithConstantMean  )(x,args...) = .5*((x-f.μ   )/f.σ)^2  # args... allows to ignore an extra t argument
 (f::QuadraticFunctionWithMeanFuncOfTime)(x,t) = .5*((x-f.μ(t))/f.σ)^2

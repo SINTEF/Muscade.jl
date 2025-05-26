@@ -83,6 +83,13 @@ To get the name of the 3rd GLMakie function that was called, and the
 Only `lines!`, `scatter!` and `mesh!`  are implemented, but more functions can
 easily be added.
 
+In given Julia session, if GLMakie is used, then Muscade: lines! (etc.) cannot be used,
+and conversedly: restart Julia when switching.  
+
+The reason is that Muscade defines `lines!` (etc.) instead of overloading it.
+This is deliberate, to allow Muscade to run unit tests of graphical generation, without making
+GLMakie a dependency of Muscade.  This again is because element developers remain free
+to base `draw` for their suite of elements on other graphic packages.
 """
 struct SpyAxe
     call::Vector{Any}
