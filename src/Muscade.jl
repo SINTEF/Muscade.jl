@@ -1,5 +1,7 @@
 module Muscade
-    using  Printf,SparseArrays,StaticArrays,LinearAlgebra
+    print("Compiling Muscade")
+    using  Printf,SparseArrays,StaticArrays,LinearAlgebra,SpecialFunctions,MacroTools
+    using KrylovKit: KrylovKit,eigsolve
 
     include("Dialect.jl")
     export ℝ,ℤ,𝕣,𝕫,𝔹,𝕓,ℂ

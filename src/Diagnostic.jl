@@ -1,6 +1,5 @@
 
 ### getting printout of the model
-using Printf
 """
     describe(model,spec)
 

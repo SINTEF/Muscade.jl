@@ -1,4 +1,3 @@
-using Printf
 abstract type AbstractSolver  end
 """
     solve(Solver;dbg=(;),verbose=true,silenterror=false,kwargs...)

@@ -79,17 +79,25 @@ axe      = Axis(fig[1,1],title="Information content",xlabel="ω [rad/s]",ylabel=
 
 nω = 2^p
 ω   = range(start=0.,step=Δω,length=nω) 
-S = 𝕣1(undef,nω)
+Sxx = 𝕣1(undef,nω)
+Sxu = 𝕣1(undef,nω)
+Suu = 𝕣1(undef,nω)
 λ = 𝕣1(undef,nω)
 for imod = 1:maximum(eiginc.ncv)
     for iω= 1:nω
         if imod≤eiginc.ncv[iω]
-            S[iω] = eiginc.S[iω][imod]
+            Sxx[iω] = eiginc.Sxx[iω][imod]
+            Sxu[iω] = eiginc.Sxu[iω][imod]
+            Suu[iω] = eiginc.Suu[iω][imod]
         else
-            S[iω] = NaN
+            Sxx[iω] = NaN
+            Sxu[iω] = NaN
+            Suu[iω] = NaN
         end
     end
-    scatter!(axe,ω,S,markersize=2,color=:black)
+    scatter!(axe,ω,Sxx,markersize=2,color=:black)
+    scatter!(axe,ω,Sxu,markersize=2,color=:green)
+    scatter!(axe,ω,Suu,markersize=2,color=:red)
 end
 nωₚ = findlast(ωₚ .< ω[end])
 scatter!(axe,ωₚ[1:nωₚ],ones(nωₚ))

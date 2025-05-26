@@ -44,7 +44,9 @@ struct EigXUincrement
     ω     :: 𝕣1          # [iω] 
     ncv   :: 𝕫1          # [iω]
     λ     :: 𝕣11         # [iω][imod]
-    S     :: 𝕣11         # [iω][imod]
+    Sxx   :: 𝕣11         # [iω][imod]
+    Sxu   :: 𝕣11         # [iω][imod]
+    Suu   :: 𝕣11         # [iω][imod]
     ΔΛXU  :: Vector{𝕣11} # [iω][imod][idof]
 end
 
@@ -89,6 +91,7 @@ the ΛXU-eigenvalue problem at frequencies ωᵢ = Δω*i with i∈{0,...,2ᵖ-1
 See also: [`solve`](@ref), [`initialize!`](@ref), [`studysingular`](@ref), [`SweepX`](@ref), [`DirectXUA`](@ref)
 """
 struct EigXU{OX,OU} <: AbstractSolver end 
+
 function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
     Δω::𝕣, p::𝕫, 
     initialstate::State,
@@ -124,6 +127,8 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
     sparser!(L2,droptol)
     nXdof,nUdof = getndof(model,(:X,:U))
     iλ =  1:nXdof
+    ix = (nXdof+1):2nXdof
+    iu = (2nXdof+1):(2nXdof+nUdof)
     ixu = (nXdof+1):(2nXdof+nUdof)
     N   = sparse(ixu,ixu,ones(nXdof+nUdof))
 
@@ -140,7 +145,9 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
     M    = Sparse𝕔2(ndof,ndof,L2₁.colptr,L2₁.rowval,𝕔1(undef,length(L2₁.nzval)))
     ΔΛXU = Vector{𝕣11}(undef,nω) # ΔΛXU[iω][imod][idof]
     λ    = 𝕣11(undef,nω)         # λ[ iω][imod]
-    S    = 𝕣11(undef,nω)         # S[ iω][imod] # Information
+    Sxx  = 𝕣11(undef,nω)         # S[ iω][imod] # Information
+    Sxu  = 𝕣11(undef,nω)         # S[ iω][imod] # Information
+    Suu  = 𝕣11(undef,nω)         # S[ iω][imod] # Information
     ncv  = 𝕫1(undef,nω)          # ncv[iω]
 
     ω   = range(start=0.,step=Δω,length=nω) 
@@ -158,17 +165,24 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
             verbose && @printf("\n")
             muscadeerror(@sprintf("M matrix factorization failed for ω=%f",ωᵢ));
         end
-
         λ[iω], ΔΛXU[iω], ncv[iω] = geneig{:Hermitian}(LU,N,nmod;kwargs...)
-        S[iω] = 𝕣1(undef,ncv[iω])
+        Sxx[iω] = 𝕣1(undef,ncv[iω])
+        Sxu[iω] = 𝕣1(undef,ncv[iω])
+        Suu[iω] = 𝕣1(undef,ncv[iω])
         for imod = 1:ncv[iω]
-            δZ      = copy(ΔΛXU[iω][imod])
-        #    δZ[iλ] .= 0.
-            S[iω][imod] = 1/(2*log(2))*conj.(δZ) ∘₁ (N ∘₁ δZ) 
+            δX      = copy(ΔΛXU[iω][imod])
+            δU      = copy(ΔΛXU[iω][imod])
+            δX[iλ] .= 0.
+            δX[iu] .= 0.
+            δU[iλ] .= 0.
+            δU[ix] .= 0.
+            Sxx[iω][imod] = 1/(2*log(2))*conj.(δX) ∘₁ (N ∘₁ δX) 
+            Sxu[iω][imod] = 1/(  log(2))*conj.(δX) ∘₁ (N ∘₁ δU) 
+            Suu[iω][imod] = 1/(2*log(2))*conj.(δU) ∘₁ (N ∘₁ δU) 
         end
     end    
     all(ncv.≥nmod) && verbose && muscadewarning("Some eigensolutions did not converge",4)
-    pstate[] = EigXUincrement(allΛXUdofs(model,dis),ω,ncv,λ,S,ΔΛXU)
+    pstate[] = EigXUincrement(allΛXUdofs(model,dis),ω,ncv,λ,Sxx,Sxu,Suu,ΔΛXU)
     verbose && @printf("\n")
     return
 end

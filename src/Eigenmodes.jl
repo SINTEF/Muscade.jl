@@ -1,5 +1,3 @@
-using KrylovKit: KrylovKit,eigsolve
-
 
 """
     λ,v,ncv = geneig{ALGO}(A,B,neig=5)

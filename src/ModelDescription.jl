@@ -1,4 +1,3 @@
-using StaticArrays,Printf
 
 # model datastructure - private, structure may change, use accessor functions
 """

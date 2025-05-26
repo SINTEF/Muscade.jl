@@ -1,4 +1,3 @@
-using  Printf
 
 """
     print_element_array(eleobj,class,V)

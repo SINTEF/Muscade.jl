@@ -1,4 +1,3 @@
-using Printf,MacroTools
 
 ######################## Helper functions
 ☼tag(s::Symbol)  = string(s)[1]=='☼' # \sun  

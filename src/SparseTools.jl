@@ -17,7 +17,6 @@
 # ilv    = pilr[ilc]+ i-1
 # irow   = ilr[ilv]  
 
-using Printf
 
 """
     bigmat,bigmatasm,bigvecasm,bigvecdis = prepare(pattern)
