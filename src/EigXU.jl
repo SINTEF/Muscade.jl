@@ -44,9 +44,7 @@ struct EigXUincrement
     ω     :: 𝕣1          # [iω] 
     ncv   :: 𝕫1          # [iω]
     λ     :: 𝕣11         # [iω][imod]
-    Sxx   :: 𝕣11         # [iω][imod]
-    Sxu   :: 𝕣11         # [iω][imod]
-    Suu   :: 𝕣11         # [iω][imod]
+    nor   :: 𝕣11         # [iω][imod]
     ΔΛXU  :: Vector{𝕣11} # [iω][imod][idof]
 end
 
@@ -126,11 +124,11 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
     assemblebigmat!(L2,L2bigasm,asm,model,dis,out,(dbg...,solver=:EigXU))              # assemble all complete model matrices into L2
     sparser!(L2,droptol)
     nXdof,nUdof = getndof(model,(:X,:U))
-    iλ =  1:nXdof
-    ix = (nXdof+1):2nXdof
-    iu = (2nXdof+1):(2nXdof+nUdof)
-    ixu = (nXdof+1):(2nXdof+nUdof)
-    N   = sparse(ixu,ixu,ones(nXdof+nUdof))
+    iλ   =  1:nXdof
+    ix   = (nXdof+1):2nXdof
+    iu   = (2nXdof+1):(2nXdof+nUdof)
+    ixu  = (nXdof+1):(2nXdof+nUdof)
+    B    = sparse(ixu,ixu,ones(nXdof+nUdof)) # ndof×ndof
 
     verbose && @printf("    Improving sparsity ")    
     keep = [any(abs(L2ⱼ.nzval[i])>droptol for L2ⱼ∈L2) for i∈eachindex(L2[1].nzval)]
@@ -142,47 +140,46 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
     verbose && @printf("    Solving XU-eigenproblem for all ω\n")
     L2₁  = L2[1]
     ndof = 2nXdof+nUdof
-    M    = Sparse𝕔2(ndof,ndof,L2₁.colptr,L2₁.rowval,𝕔1(undef,length(L2₁.nzval)))
+    A    = Sparse𝕔2(ndof,ndof,L2₁.colptr,L2₁.rowval,𝕔1(undef,length(L2₁.nzval)))
     ΔΛXU = Vector{𝕣11}(undef,nω) # ΔΛXU[iω][imod][idof]
-    λ    = 𝕣11(undef,nω)         # λ[ iω][imod]
-    Sxx  = 𝕣11(undef,nω)         # S[ iω][imod] # Information
-    Sxu  = 𝕣11(undef,nω)         # S[ iω][imod] # Information
-    Suu  = 𝕣11(undef,nω)         # S[ iω][imod] # Information
-    ncv  = 𝕫1(undef,nω)          # ncv[iω]
+    λ    = 𝕣11(undef,nω)         # λ⁻¹[ iω][imod]
+    nor  = 𝕣11(undef,nω)         # B[   iω][imod] 
+    ncv  = 𝕫1(undef,nω)          # ncv[ iω]
 
     ω   = range(start=0.,step=Δω,length=nω) 
     for (iω,ωᵢ) = enumerate(ω)
-        M.nzval .= 0.
+        A.nzval .= 0.
         for j = 0:4
             𝑖ωᵢʲ  = (𝑖*ωᵢ)^j
-            M.nzval .+= 𝑖ωᵢʲ *L2[j+1].nzval
+            A.nzval .+= 𝑖ωᵢʲ *L2[j+1].nzval
         end
         try 
-            if iω==1 LU = lu(M) 
-            else     lu!(LU ,M)
+            if iω==1 LU = lu(A) 
+            else     lu!(LU ,A)
             end 
         catch 
             verbose && @printf("\n")
-            muscadeerror(@sprintf("M matrix factorization failed for ω=%f",ωᵢ));
+            muscadeerror(@sprintf("A matrix factorization failed for ω=%f",ωᵢ));
         end
-        λ[iω], ΔΛXU[iω], ncv[iω] = geneig{:Hermitian}(LU,N,nmod;kwargs...)
-        Sxx[iω] = 𝕣1(undef,ncv[iω])
-        Sxu[iω] = 𝕣1(undef,ncv[iω])
-        Suu[iω] = 𝕣1(undef,ncv[iω])
+        λ⁻¹, ΔΛXU[iω], ncv[iω] = geneig{:Hermitian}(LU,B,nmod;kwargs...)
+        nor[iω] = 𝕣1(undef,ncv[iω])
+        λ[iω]   = 1 ./λ⁻¹
+        # We want the following blocks, ∀ω
+        # A,Mxx,Mxu,Muu - actualy we compute the weighted norm on L2 components, and combine over ω and x,u     
+        # B,Nxx,Nuu.  Nxu is zero.  Nxx and Nuu should be freq dependent?  We have opinion on small velocities and accelerations...
         for imod = 1:ncv[iω]
-            δX      = copy(ΔΛXU[iω][imod])
-            δU      = copy(ΔΛXU[iω][imod])
-            δX[iλ] .= 0.
-            δX[iu] .= 0.
-            δU[iλ] .= 0.
-            δU[ix] .= 0.
-            Sxx[iω][imod] = 1/(2*log(2))*conj.(δX) ∘₁ (N ∘₁ δX) 
-            Sxu[iω][imod] = 1/(  log(2))*conj.(δX) ∘₁ (N ∘₁ δU) 
-            Suu[iω][imod] = 1/(2*log(2))*conj.(δU) ∘₁ (N ∘₁ δU) 
+            δZ      = copy(ΔΛXU[iω][imod])
+            δZ[iλ] .= 0.
+            δZ    ./= √(ℜ(1/2*δZ  ∘₁ (A ∘₁ δZ)))  # δZ is real, A is complex Hermitian, so square norm is real
+
+            # @show size(B)
+            # @show size(δZ)
+            # @show ndof,nXdof,nUdof
+            nor[iω][imod] = ℜ(δZ ∘₁ (B ∘₁ δZ))/(2log(2)) 
         end
     end    
     all(ncv.≥nmod) && verbose && muscadewarning("Some eigensolutions did not converge",4)
-    pstate[] = EigXUincrement(allΛXUdofs(model,dis),ω,ncv,λ,Sxx,Sxu,Suu,ΔΛXU)
+    pstate[] = EigXUincrement(allΛXUdofs(model,dis),ω,ncv,λ,nor,ΔΛXU)
     verbose && @printf("\n")
     return
 end

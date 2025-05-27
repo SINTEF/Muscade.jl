@@ -46,8 +46,8 @@ initialstate.time = 0.
 
 OX,OU             = 2,0
 if true # eigXU
-    Δω                = 2^-6
-    p                 = 13
+    Δω                = 2^-1#2^-6
+    p                 = 8#13
     nmod              = 2
     eiginc            = solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=true,verbosity=1,tol=1e-20)
 
@@ -79,25 +79,17 @@ axe      = Axis(fig[1,1],title="Information content",xlabel="ω [rad/s]",ylabel=
 
 nω = 2^p
 ω   = range(start=0.,step=Δω,length=nω) 
-Sxx = 𝕣1(undef,nω)
-Sxu = 𝕣1(undef,nω)
-Suu = 𝕣1(undef,nω)
-λ = 𝕣1(undef,nω)
+nor = 𝕣1(undef,nω)
+λ   = 𝕣1(undef,nω)
 for imod = 1:maximum(eiginc.ncv)
     for iω= 1:nω
         if imod≤eiginc.ncv[iω]
-            Sxx[iω] = eiginc.Sxx[iω][imod]
-            Sxu[iω] = eiginc.Sxu[iω][imod]
-            Suu[iω] = eiginc.Suu[iω][imod]
+            nor[iω] = eiginc.nor[iω][imod]
         else
-            Sxx[iω] = NaN
-            Sxu[iω] = NaN
-            Suu[iω] = NaN
+            nor[iω] = NaN
         end
     end
-    scatter!(axe,ω,Sxx,markersize=2,color=:black)
-    scatter!(axe,ω,Sxu,markersize=2,color=:green)
-    scatter!(axe,ω,Suu,markersize=2,color=:red)
+    scatter!(axe,ω,nor,markersize=2,color=:black)
 end
 nωₚ = findlast(ωₚ .< ω[end])
 scatter!(axe,ωₚ[1:nωₚ],ones(nωₚ))
