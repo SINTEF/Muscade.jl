@@ -145,12 +145,13 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
     λ    = 𝕣11(undef,nω)         # λ⁻¹[ iω][imod]
     nor  = 𝕣11(undef,nω)         # B[   iω][imod] 
     ncv  = 𝕫1(undef,nω)          # ncv[ iω]
+    wrk  = zeros(ndof)           # wrk[ndof]
 
-    ω   = range(start=0.,step=Δω,length=nω) 
-    for (iω,ωᵢ) = enumerate(ω)
-        A.nzval .= 0.
-        for j = 0:4
-            𝑖ωᵢʲ  = (𝑖*ωᵢ)^j
+    ω                 = range(start=0.,step=Δω,length=nω) 
+    for (iω,ωᵢ)       = enumerate(ω)
+        A.nzval      .= 0.
+        for j         = 0:4
+            𝑖ωᵢʲ      = (𝑖*ωᵢ)^j
             A.nzval .+= 𝑖ωᵢʲ *L2[j+1].nzval
         end
         try 
@@ -162,20 +163,14 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
             muscadeerror(@sprintf("A matrix factorization failed for ω=%f",ωᵢ));
         end
         λ⁻¹, ΔΛXU[iω], ncv[iω] = geneig{:Hermitian}(LU,B,nmod;kwargs...)
-        nor[iω] = 𝕣1(undef,ncv[iω])
-        λ[iω]   = 1 ./λ⁻¹
-        # We want the following blocks, ∀ω
-        # A,Mxx,Mxu,Muu - actualy we compute the weighted norm on L2 components, and combine over ω and x,u     
-        # B,Nxx,Nuu.  Nxu is zero.  Nxx and Nuu should be freq dependent?  We have opinion on small velocities and accelerations...
-        for imod = 1:ncv[iω]
-            δZ      = copy(ΔΛXU[iω][imod])
-            δZ[iλ] .= 0.
-            δZ    ./= √(ℜ(1/2*δZ  ∘₁ (A ∘₁ δZ)))  # δZ is real, A is complex Hermitian, so square norm is real
-
-            # @show size(B)
-            # @show size(δZ)
-            # @show ndof,nXdof,nUdof
-            nor[iω][imod] = ℜ(δZ ∘₁ (B ∘₁ δZ))/(2log(2)) 
+        nor[iω]                = 𝕣1(undef,ncv[iω])
+        λ[iω]                  = 1 ./λ⁻¹
+        for imod               = 1:ncv[iω]
+            Δ                  = ΔΛXU[iω][imod]
+            wrk[ixu]          .= view(Δ,ixu)                   # this copy can be optimised by viewing the classes in Δ, operating on out.L2[α,β][αder,βder], and combining over derivatives.  Is it worth the effort?   
+            Anorm              = √(ℜ(1/2*wrk  ∘₁ (A ∘₁ wrk)))  # ΔΛXU is real, A is complex Hermitian, so square norm is real: (imag part is zero to machine precision)
+            Δ                ./= Anorm                        
+            nor[iω][imod]      = ℜ(Δ ∘₁ (B ∘₁ Δ))/(2log(2)) 
         end
     end    
     all(ncv.≥nmod) && verbose && muscadewarning("Some eigensolutions did not converge",4)

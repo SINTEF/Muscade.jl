@@ -46,8 +46,8 @@ initialstate.time = 0.
 
 OX,OU             = 2,0
 if true # eigXU
-    Δω                = 2^-1#2^-6
-    p                 = 8#13
+    Δω                = 2^-6
+    p                 = 13
     nmod              = 2
     eiginc            = solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=true,verbosity=1,tol=1e-20)
 
@@ -74,7 +74,7 @@ end
 using GLMakie
 fig      = Figure(size = (500,500))
 display(fig) # open interactive window (gets closed down by "save")
-axe      = Axis(fig[1,1],title="Information content",xlabel="ω [rad/s]",ylabel="S [bit/s]",yscale=log)
+axe      = Axis(fig[1,1],title="Information content",xlabel="ω [rad/s]",ylabel="magnitude of error",yscale=log)
 
 
 nω = 2^p

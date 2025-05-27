@@ -1,5 +1,5 @@
 module TestEspy
-using Test,StaticArrays,MacroTools
+using Test,StaticArrays,MacroTools,SparseArrays,Printf
 include("../src/Dialect.jl")
 include("../src/Espy.jl")
 include("../src/Exceptions.jl")
