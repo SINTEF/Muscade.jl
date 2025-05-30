@@ -185,7 +185,7 @@ firstorderonly(a::∂ℝ)            = precedence(a)≤1 ? a : firstorderonly(a.
 firstorderonly(a)                = a
 
 # ∂ℝ(a,aₓ) → ∂ℝ( ∂ℝ(a,aₓ), ∂ℝ(aₓ,0) ) 
-backtohigherorder(a::SVector{Na,∂ℝ{1,N,𝕣}},::Type{∂ℝ{1,N, 𝕣       }}) where{N,Na} = a
+backtohigherorder(a::SVector{Na,T},::Type{T}) where{T,Na} = a
 backtohigherorder(a::SVector{Na,∂ℝ{1,N,𝕣}},::Type{∂ℝ{2,N,∂ℝ{1,N,𝕣}}}) where{N,Na} = 
      SV{Na}(∂ℝ{2,N,∂ℝ{1,N,𝕣}}( 
                               a[ia],  
