@@ -477,17 +477,6 @@ add_∂!{P,T}(out::Array,asm,iele,a::SVector{Na,R},args...;kwargs...) where{P,Na
 #
 # Note that getLagrangian receives Λ::SVector. addin! by contrast receives Λ::NTuple{SVector}, this is not a bug
 
-## World age trouble
-# @generated function hasresidual(::Eleobj) where{Eleobj}
-#     ret = Val(hasmethod(residual,(Eleobj,NTuple,NTuple,𝕣1,𝕣,NamedTuple,NamedTuple)))
-#     @show :residual,Eleobj,ret
-#     return :($ret)
-# end
-# @generated function haslagrangian(::Eleobj) where{Eleobj}
-#     ret = Val(hasmethod(lagrangian,(Eleobj,NTuple,NTuple,NTuple,𝕣1,𝕣,NamedTuple,NamedTuple)))
-#     @show :lagrangian,Eleobj,ret
-#     return :($ret)
-# end
 
 ## Type unstable(?) stopgap.  Solution? Get @espy to generate hasresidual(  ::Eleobj)=true, with false fallback
 hasresidual(  ::Eleobj) where{Eleobj} = Val(hasmethod(residual  ,(Eleobj,       NTuple,NTuple,𝕣1,𝕣,NamedTuple,NamedTuple)))
@@ -537,9 +526,9 @@ function getlagrangian(eleobj::Eleobj,hasres::Val{true},haslag::Val{false},nso::
 end
 function getlagrangian(eleobj::Eleobj,hasres::Val{true},haslag::Val{false},nso::Val{true}, Λ::SVector{Nx}, X::NTuple{Ndx,SVector{Nx}}, 
         U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na}, t::ℝ,SP,dbg,req...)     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
-    X1,U1,A1,t1 = firstorderonly(X,U,A,t)
+    X1,U1,A1,t1 = firstorderonly(X,U,A,t) # TODO cut out ∂/∂Λ "fast", then reintroduce it later - HOW?
     R,FB,eleres... = residual(  eleobj,  X1,U1,A1,t1,SP,dbg,req...)
-    L = Λ ∘₁ R
+    L           = Λ ∘₁ backtohigherorder(R,eltype(Λ)) # to avoid loosing symmetry of Hessian...
     return L,FB,eleres... 
 end
 getlagrangian(eleobj::Eleobj,hasres::Val{false},haslag::Val{false},nso, Λ,X,U,A,t,SP,dbg,req...)     where{Eleobj} =

@@ -40,7 +40,7 @@ addelement!( model, SingleDofCost, column(Unod)    ,class=:U, field=:t2,cost=Qua
 addelement!( model, SingleDofCost, column(Unod)    ,class=:U, field=:t3,cost=QuadraticFunction(0.,1. ))
 addelement!( model, SingleDofCost, vec(Xnod[4])    ,class=:X, field=:t2,cost=QuadraticFunction(0.,10.))
 addelement!( model, SingleDofCost, vec(Xnod[7])    ,class=:X, field=:t3,cost=QuadraticFunction(0.,10.))
-
+#setscale!(model,)
 initialstate      = initialize!(model)   
 initialstate.time = 0.
 
@@ -49,50 +49,55 @@ if true # eigXU
     Δω                = 2^-6
     p                 = 13
     nmod              = 2
-    eiginc            = solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=true,verbosity=1,tol=1e-20)
+   eiginc            = solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=true,verbosity=1,tol=1e-20)
 
-    # α = 2π*(0:19)/20
-    # circle = 0.05*[cos.(α) sin.(α)]'
-    # jmod              = [3]
-    # A                 = [1000] 
-    # iω                = 11
-    # Uscale            = 0.002
-    # state             = increment{OX}(initialstate,eiginc,iω,jmod,A)
-    # using GLMakie
-    # fig      = Figure(size = (500,500))
-    # display(fig) # open interactive window (gets closed down by "save")
-    # axe      = Axis3(fig[1,1],title="Test",xlabel="X",ylabel="Y",zlabel="Z",aspect=:data,viewmode=:fit,perspectiveness=.5)
-    # draw(axe,state;EulerBeam3D=(;style=:shape,nseg=10,section = circle,marking=true,Uscale))
-end
-if true # eigX
-    eigincX = solve(EigX{ℝ};state=initialstate,nmod=10)
-    # jmod              = [1]
-    # A                 = [1] 
-    # state             = increment(initialstate,eigincX,jmod,A)
-    ωₚ                = eigincX.ω
-end
-using GLMakie
-fig      = Figure(size = (500,500))
-display(fig) # open interactive window (gets closed down by "save")
-axe      = Axis(fig[1,1],title="Information content",xlabel="ω [rad/s]",ylabel="magnitude of error",yscale=log)
+    α = 2π*(0:19)/20
+    circle = 0.05*[cos.(α) sin.(α)]'
+    jmod              = [2]
+    A                 = [100] 
+    iω                = 11
+    Uscale            = 0.002
+    state             = increment{OX}(initialstate,eiginc,iω,jmod,A)
+    scala             = studyscale(state)
+    @show scala
+    using GLMakie
+    fig      = Figure(size = (500,500))
+    display(fig) # open interactive window (gets closed down by "save")
+    axe      = Axis3(fig[1,1],title="Test",xlabel="X",ylabel="Y",zlabel="Z",aspect=:data,viewmode=:fit,perspectiveness=.5)
+    draw(axe,state;EulerBeam3D=(;style=:shape,nseg=10,section = circle,marking=true,Uscale))
 
 
-nω = 2^p
-ω   = range(start=0.,step=Δω,length=nω) 
-nor = 𝕣1(undef,nω)
-λ   = 𝕣1(undef,nω)
-for imod = 1:maximum(eiginc.ncv)
-    for iω= 1:nω
-        if imod≤eiginc.ncv[iω]
-            nor[iω] = eiginc.nor[iω][imod]
-        else
-            nor[iω] = NaN
-        end
-    end
-    scatter!(axe,ω,nor,markersize=2,color=:black)
+
 end
-nωₚ = findlast(ωₚ .< ω[end])
-scatter!(axe,ωₚ[1:nωₚ],ones(nωₚ))
+# if true # eigX
+#     eigincX = solve(EigX{ℝ};state=initialstate,nmod=10)
+#     # jmod              = [1]
+#     # A                 = [1] 
+#     # state             = increment(initialstate,eigincX,jmod,A)
+#     ωₚ                = eigincX.ω
+# end
+# using GLMakie
+# fig      = Figure(size = (500,500))
+# display(fig) # open interactive window (gets closed down by "save")
+# axe      = Axis(fig[1,1],title="Information content",xlabel="ω [rad/s]",ylabel="magnitude of error",yscale=log)
+
+
+# nω = 2^p
+# ω   = range(start=0.,step=Δω,length=nω) 
+# nor = 𝕣1(undef,nω)
+# λ   = 𝕣1(undef,nω)
+# for imod = 1:maximum(eiginc.ncv)
+#     for iω= 1:nω
+#         if imod≤eiginc.ncv[iω]
+#             nor[iω] = eiginc.nor[iω][imod]
+#         else
+#             nor[iω] = NaN
+#         end
+#     end
+#     scatter!(axe,ω,nor,markersize=2,color=:black)
+# end
+# nωₚ = findlast(ωₚ .< ω[end])
+# scatter!(axe,ωₚ[1:nωₚ],ones(nωₚ))
 
 
 # dof             = getdof(state,field=:t1)

@@ -177,8 +177,20 @@ struct composeJacobian{P} end
 composeJacobian{P}(Ty,X₀) where{P} = compose(∂{P,npartial(Ty)}(Ty),X₀) # y∂X₀
 composeJacobian{P}(Ty::Union{Tuple,NamedTuple},X₀) where{P} = map(Tyᵢ->composeJacobian{P}(Tyᵢ,X₀),Ty)
 
+# ∂ℝ( ∂ℝ(a,aₓ), ∂ℝ(aₓ,aₓₓ) ) → ∂ℝ(a,aₓ)   
 firstorderonly(a...;)            = firstorderonly.(a)
 firstorderonly(a::Tuple)         = firstorderonly.(a)
 firstorderonly(a::AbstractArray) = firstorderonly.(a)
 firstorderonly(a::∂ℝ)            = precedence(a)≤1 ? a : firstorderonly(a.x) 
 firstorderonly(a)                = a
+
+# ∂ℝ(a,aₓ) → ∂ℝ( ∂ℝ(a,aₓ), ∂ℝ(aₓ,0) ) 
+backtohigherorder(a::SVector{Na,∂ℝ{1,N,𝕣}},::Type{∂ℝ{1,N, 𝕣       }}) where{N,Na} = a
+backtohigherorder(a::SVector{Na,∂ℝ{1,N,𝕣}},::Type{∂ℝ{2,N,∂ℝ{1,N,𝕣}}}) where{N,Na} = 
+     SV{Na}(∂ℝ{2,N,∂ℝ{1,N,𝕣}}( 
+                              a[ia],  
+                              SV{N}(∂ℝ{1,N,𝕣}(
+                                              a[ia].dx[i],
+                                              SV{N,𝕣}(zero(𝕣) for j=1:N)
+                                              ) for i=1:N)
+                             ) for ia=1:Na)

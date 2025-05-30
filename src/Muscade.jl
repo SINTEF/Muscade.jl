@@ -1,5 +1,4 @@
 module Muscade
-    print("Compiling Muscade")
     using  Printf,SparseArrays,StaticArrays,LinearAlgebra,SpecialFunctions,MacroTools
     using KrylovKit: KrylovKit,eigsolve
 

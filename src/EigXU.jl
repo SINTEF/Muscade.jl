@@ -162,7 +162,7 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
             verbose && @printf("\n")
             muscadeerror(@sprintf("A matrix factorization failed for ω=%f",ωᵢ));
         end
-        λ⁻¹, ΔΛXU[iω], ncv[iω] = geneig{:Hermitian}(LU,B,nmod;kwargs...)
+        λ⁻¹, ΔΛXU[iω], ncv[iω] = geneig{:Hermitian}(LU,B,nmod;normalize=false,kwargs...)
         nor[iω]                = 𝕣1(undef,ncv[iω])
         λ[iω]                  = 1 ./λ⁻¹
         for imod               = 1:ncv[iω]

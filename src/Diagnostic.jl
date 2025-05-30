@@ -154,14 +154,23 @@ function addin!(out::AssemblyStudyScale,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nx
     ΔZ              = variate{2,Nz}(δ{1,Nz,𝕣}(scaleZ),scaleZ)                 
     iλ,ix,iu,ia     = gradientpartition(Nx,Nx,Nu,Na) # index into element vectors ΔZ and Lz
     ΔΛ,ΔX,ΔU,ΔA     = view(ΔZ,iλ),view(ΔZ,ix),view(ΔZ,iu),view(ΔZ,ia) 
-    L,FB         = getlagrangian(eleobj, ∂0(Λ)+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A+ΔA,t,SP,dbg)
+    L,FB            = getlagrangian(eleobj, ∂0(Λ)+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A+ΔA,t,SP,dbg)
     ∇L              = ∂{2,Nz}(L)
     add_value!(out.Lz ,asm[1],iele,∇L)
     add_∂!{1}( out.Lzz,asm[2],iele,∇L)
 end
 
 #------------------------------------
-magnitude(x) = x==0 ? NaN : round(𝕫,log10(abs(x)))
+# an interger log10 of a number
+function magnitude(x) 
+    if x==0 
+        NaN
+    elseif abs(x)==Inf
+        99
+    else
+        round(𝕫,log10(abs(x)))
+    end
+end
 function short(X,n) # but 186*0.0001 = 0.018600000000000002 ...
     o   = exp10(floor(log10(X))-n+1)
     return round(Int64,X/o)*o
@@ -170,6 +179,7 @@ function listdoftypes(dis) # specalised for allΛXUAdofs, should be rewriten to 
     type = vcat([(:Λ,f) for f∈dis.fieldX],[(:X,f) for f∈dis.fieldX],[(:U,f) for f∈dis.fieldU],[(:A,f) for f∈dis.fieldA])
     return type,unique(type)
 end
+# infinity norm for each dof class-type
 function ∞norm(M::SparseMatrixCSC,type,types)
     ntype         = length(types)
     f             = zeros(ntype,ntype)
@@ -193,20 +203,20 @@ function ∞norm(V::Vector,type,types)
     return f
 end
 """
-    scale = studyscale(state;[verbose=false],[dbg=(;)])
+    scale = studyscale(state;[SP=nothing],[verbose=false],[dbg=(;)])
 
 Returns a named tuple of named tuples for scaling the model, accessed as
     `scaled.myclass.myfield`, for example `scale.X.tx1`.
 
 !!! info    
-    Currently, the format of `scale` is not identical to the input expected by `setscale!`: work in progress
+    The format of `scale` is not identical to the input expected by `setscale!`
 
 If `verbose=true`, prints out a report of the analysis underlying the proposed `scale`.  The proposed scaling depends
 on the `state` passed as input - as it is computed for a given incremental matrix.
     
 See also: [`setscale!`](@ref)
 """
-function studyscale(state::State;SP,verbose::𝕓=true,dbg=(;))
+function studyscale(state::State;SP=nothing,verbose::𝕓=true,dbg=(;))
     model,dis          = state.model,state.dis
     tmp                = state.SP 
     state.SP           = SP
@@ -217,7 +227,6 @@ function studyscale(state::State;SP,verbose::𝕓=true,dbg=(;))
     matfrob            = ∞norm(out.Lzz,type,types)
     vecfrob            = ∞norm(out.Lz ,type,types)
     ntype              = length(types)
-
     nnz,n              = sum(matfrob.>0),length(vecfrob)
     M                  = zeros(nnz,n)
     V                  = Vector{𝕣}(undef,nnz)
@@ -260,7 +269,7 @@ function studyscale(state::State;SP,verbose::𝕓=true,dbg=(;))
             @printf "    %2s-%-8s  " types[itype][1] types[itype][2]
             for jtype = 1:ntype
                 if matfrob[itype,jtype]==0
-                    @printf "     ."
+                    @printf "     ⋅"
                 else
                     @printf "%6i" magnitude(matfrob[itype,jtype])
                 end

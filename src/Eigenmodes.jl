@@ -18,22 +18,22 @@ Uses KrylovKit.jl. Freely based on VibrationGEPHelpers.jl and input from PetrKry
 See GIThub-blame for bug-credits.
 """
 struct geneig{ALGO} end
-function geneig{:SDP}(L::SparseArrays.CHOLMOD.FactorComponent,B=I,neig=5;maxiter=300,verbosity=0,krylovdim=2neig+6,seed=rand(size(A,1)),kwargs...)
+function geneig{:SDP}(L::SparseArrays.CHOLMOD.FactorComponent,B=I,neig=5;maxiter=300,verbosity=0,krylovdim=2neig+6,seed=rand(size(A,1)),normalize=true,kwargs...)
     val, vec, info = eigsolve(x->L\(B*(L'\x)),seed,neig,:LR; maxiter,verbosity,ishermitian=true,krylovdim,kwargs...)
     for vecᵢ ∈ vec
         vecᵢ .= ℜ.(L'\vecᵢ)
     end
     val .= 1 ./val
-    normalize!.(vec)
+    normalize && normalize!.(vec)
     return val, vec, info.converged
 end
-function geneig{:Complex}(luA::SparseArrays.UMFPACK.UmfpackLU,B,neig=5;maxiter=300,verbosity=0,krylovdim=2neig+6,seed=rand(𝕔,size(luA,1)),kwargs...) 
+function geneig{:Complex}(luA::SparseArrays.UMFPACK.UmfpackLU,B,neig=5;maxiter=300,verbosity=0,krylovdim=2neig+6,seed=rand(𝕔,size(luA,1)),normalize=true,kwargs...) 
     val, vec, info = eigsolve(x->B*(luA\x), seed,neig,:LR; maxiter,verbosity,ishermitian=false,krylovdim,kwargs...)
     for vecᵢ ∈ vec  
         vecᵢ .= luA\vecᵢ
     end
     val .= 1 ./val
-    normalize!.(vec)
+    normalize && normalize!.(vec)
     return val, vec, info.converged
 end
 function geneig{:Hermitian}(luA::SparseArrays.UMFPACK.UmfpackLU,B,neig=5;kwargs...) 
