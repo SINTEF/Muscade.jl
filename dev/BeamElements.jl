@@ -2,7 +2,7 @@ include("Rotations.jl")
 
 # # Euler beam element
 
-using StaticArrays, LinearAlgebra, Muscade
+using StaticArrays, LinearAlgebra, Muscade, GLMakie
 
 # Data structure containing the cross section material properties
 struct BeamCrossSection
@@ -45,8 +45,9 @@ end;
 ## Static Euler beam element, with two nodes, two Gauss points and 12 degrees of freedom. 
 const ngp        = 4
 const ndim       = 3
-const ndof       = 12
-const nnod       = 2;
+const nXdof      = 12
+const nUdof      = 3
+const nXnod      = 2;
 
 # Shape functions for a beam element with support ζ∈[-1/2,1/2]. Though the shape function matrices are sparse, do not "unroll" them.  That would be faster but considerably clutter the code                          
 yₐ(ζ) =            2ζ       # differential axial displacement or roll field
@@ -57,11 +58,11 @@ yᵥ(ζ) =        ζ^2   - 1/4  # deflection due to differenttial rotation (bend
 κᵥ(ζ) =                2;   # curvature. κᵥ = yᵥ′′. Divide by L .
 
 # Data structure describing an EulerBeam3D element as meshed
-struct EulerBeam3D{Mat} <: AbstractElement
+struct EulerBeam3D{Mat,Uforce} <: AbstractElement
     cₘ       :: SVector{3,𝕣}    # Position of the middle of the element, as meshed
     rₘ       :: Mat33{𝕣}        # Orientation of the element, as meshed, represented by a rotation matrix (from global to local)
     ζgp      :: SVector{ngp,𝕣}  # Location of the Gauss points for the normalized element with length 1
-    ζnod     :: SVector{nnod,𝕣} # Location of the nodes for the normalized element with length 1
+    ζnod     :: SVector{nXnod,𝕣} # Location of the nodes for the normalized element with length 1
     tgₘ      :: SVector{ndim,𝕣} # Vector connecting the nodes of the element in the global coordinate system
     tgₑ      :: SVector{ndim,𝕣} # Vector connecting the nodes of the element in the local coordinate system
     yₐ       :: SVector{ngp,𝕣}  # Value at gp of shape function for differential axial displacement or roll field
@@ -79,13 +80,18 @@ end;
 Muscade.nosecondorder(::Type{<:EulerBeam3D}) = Val(true)
 
 # Define nodes, classes, and field names of dofs
-Muscade.doflist(     ::Type{<:EulerBeam3D}) = 
+Muscade.doflist(     ::Type{EulerBeam3D{Mat,false}}) where{Mat} = 
         (inod = (1,1,1,1,1,1, 2,2,2,2,2,2), 
-         class= ntuple(i->:X,ndof), 
+         class= ntuple(i->:X,nXdof), 
          field= (:t1,:t2,:t3,:r1,:r2,:r3, :t1,:t2,:t3,:r1,:r2,:r3) )
+Muscade.doflist(     ::Type{EulerBeam3D{Mat,true}}) where{Mat} = 
+        (inod = (1,1,1,1,1,1, 2,2,2,2,2,2, 3,3,3), 
+         class= (ntuple(i->:X,nXdof)...,ntuple(i->:U,nUdof)...), 
+         field= (:t1,:t2,:t3,:r1,:r2,:r3, :t1,:t2,:t3,:r1,:r2,:r3,  :t1,:t2,:t3) )
 
 # Constructor for the EulerBeam3D element. Arguments: node list, material, and direction of the first bending axis in the global coordinate system.  
-function EulerBeam3D(nod::Vector{Node};mat,orient2::SVector{ndim,𝕣}=SVector(0.,1.,0.))
+EulerBeam3D(nod;kwargs...) = EulerBeam3D{false}(nod;kwargs...) # by default, EulerBeam3D does not have Udof.
+function EulerBeam3D{Udof}(nod::Vector{Node};mat,orient2::SVector{ndim,𝕣}=SVector(0.,1.,0.)) where {Udof}
     c       = coord(nod)
     ## Position of the middle of the element in the global coordinate system (as-meshed)
     cₘ      = SVector{ndim}((c[1]+c[2])/2)
@@ -107,15 +113,14 @@ function EulerBeam3D(nod::Vector{Node};mat,orient2::SVector{ndim,𝕣}=SVector(0
     ## Weight associated to each Gauss point
     dL    = SVector{ngp}(L/2*(18-sqrt(30))/36,L/2*(18+sqrt(30))/36  ,L/2*(18+sqrt(30))/36,L/2*(18-sqrt(30))/36  ) 
     ## Location ζgp of the Gauss points for a unit-length beam element, with nodes at ζnod=±1/2. 
-    ζgp     = SVector{ngp }(-1/2*sqrt(3/7+2/7*sqrt(6/5)),-1/2*sqrt(3/7-2/7*sqrt(6/5)), +1/2*sqrt(3/7-2/7*sqrt(6/5)),+1/2*sqrt(3/7+2/7*sqrt(6/5))) 
-    ζnod    = SVector{nnod }(-1/2  ,1/2  )
+    ζgp     = SVector{ngp  }(-1/2*sqrt(3/7+2/7*sqrt(6/5)),-1/2*sqrt(3/7-2/7*sqrt(6/5)), +1/2*sqrt(3/7-2/7*sqrt(6/5)),+1/2*sqrt(3/7+2/7*sqrt(6/5))) 
+    ζnod    = SVector{nXnod}(-1/2  ,1/2  )
     shapes  = (yₐ.(ζgp), yᵤ.(ζgp), yᵥ.(ζgp)*L, κₐ.(ζgp)/L, κᵤ.(ζgp)/L^2, κᵥ.(ζgp)/L)
-    return EulerBeam3D(cₘ,rₘ,ζgp,ζnod,tgₘ,tgₑ,shapes...,L,dL,mat)
+    return EulerBeam3D{typeof(mat),Udof}(cₘ,rₘ,ζgp,ζnod,tgₘ,tgₑ,shapes...,L,dL,mat)
 end;
 
 # Define now the residual function for the EulerBeam3D element.
-# (Il semble que la perfection soit atteinte non quand il n’y a plus rien à ajouter, mais quand il n’y a plus rien à retrancher. Antoine de Saint-Exupéry.)
-@espy function Muscade.residual(o::EulerBeam3D,   X,U,A,t,SP,dbg) 
+@espy function Muscade.residual(o::EulerBeam3D{Mat,Udof},   X,U,A,t,SP,dbg) where{Mat,Udof}
     P,ND                = constants(X),length(X)
     ## Compute all quantities at Gauss point, their time derivatives, including intrinsic roll rate and acceleration
     gp_,ε_,vₛₘ_,rₛₘ_,vₗ₂_,_ = kinematics(o,motion{P}(X))
@@ -126,12 +131,13 @@ end;
     TX₀                 = revariate{1}(X₀)
     Tgp,Tε,Tvₛₘ,_,_,_    = kinematics(o,TX₀,fast)
     gp∂X₀,ε∂X₀,vₛₘ∂X₀    = composeJacobian{P}((Tgp,Tε,Tvₛₘ),X₀)
-    ## Quadrature loop: compute resultants, and 
+    ## Quadrature loop: compute resultants
     gp                  = ntuple(ngp) do igp
         ☼x,☼κ           = gpval[igp].x, gpval[igp].κ   
         x∂X₀,κ∂X₀       = gp∂X₀[igp].x, gp∂X₀[igp].κ
         fᵢ,mᵢ,fₑ,mₑ     = ☼resultants(o.mat,ε,κ,x,rₛₘ,vᵢ)          # call the "resultant" function to compute loads (local coordinates) from strains/curvatures/etc. using material properties. Note that output is dual of input. 
-        R               = (fᵢ ∘₀ ε∂X₀ + mᵢ ∘₁ κ∂X₀ + fₑ ∘₁ x∂X₀ + mₑ ∘₁ vₛₘ∂X₀) * o.dL[igp]     # Contribution to the local nodal load of this Gauss point  [ndof] = scalar*[ndof] + [ndim]⋅[ndim,ndof] + [ndim]⋅[ndim,ndof]
+        fₑ              = Udof ? fₑ-∂0(U) : fₑ
+        R               = (fᵢ ∘₀ ε∂X₀ + mᵢ ∘₁ κ∂X₀ + fₑ ∘₁ x∂X₀ + mₑ ∘₁ vₛₘ∂X₀) * o.dL[igp]     # Contribution to the local nodal load of this Gauss point  [nXdof] = scalar*[nXdof] + [ndim]⋅[ndim,nXdof] + [ndim]⋅[ndim,nXdof]
         @named(R)
     end
     R                   = sum(gpᵢ.R for gpᵢ∈gp) 
@@ -199,18 +205,20 @@ to draw a longitudinal marking and `solid_color=:yellow`.
 All above options share the optional argument `line_color=:black`.
 
 """
-function Muscade.draw(axe,o::Vector{T}, Λ,X,U,A,t,SP,dbg;kwargs...) where{T<:EulerBeam3D}
+function Muscade.draw(axe,o::Vector{EulerBeam3D{Tmat,Udof}}, Λ,X,U,A,t,SP,dbg;kwargs...) where{Tmat,Udof}
     nel           = length(o)
-    args          = default{:EulerBeam3D}(kwargs,(;))
-    style         = default{:style   }(args,:simple)
-    draw_frame    = default{:frame   }(args,true  )
-    draw_marking  = default{:marking }(args,true  )
-    nseg          = default{:nseg    }(args,10     )
-    section       = default{:section }(args,zeros(2,0))
-    solid_color   = default{:color   }(args,:yellow)
-    line_color    = default{:color   }(args,:black)
+    args          = default{:EulerBeam3D}(kwargs,(;)     )
+    style         = default{:style      }(args,:simple   )
+    draw_frame    = default{:frame      }(args,true      )
+    draw_marking  = default{:marking    }(args,true      )
+    nseg          = default{:nseg       }(args,10        )
+    section       = default{:section    }(args,zeros(2,0))
+    solid_color   = default{:color      }(args,:yellow   )
+    line_color    = default{:color      }(args,:black    )
+    Uscale        = default{:Uscale     }(args,1.        )
     nsec          = size(section,2)
     X₀            = ∂0(X)
+    U₀            = ∂0(U)
     it1,ir1,it2,ir2 = SVector{3}(1:3),SVector{3}(4:6),SVector{3}(7:9),SVector{3}(10:12)
     if     style==:simple
         line = Array{𝕣,3}(undef,3,3,nel)
@@ -221,37 +229,54 @@ function Muscade.draw(axe,o::Vector{T}, Λ,X,U,A,t,SP,dbg;kwargs...) where{T<:Eu
         end
         rline = reshape(line,(3,3nel))
         lines!(  axe,rline,color = line_color                )    
-        scatter!(axe,rline,color = line_color, marker=:circle)    
+        scatter!(axe,rline,color = line_color, marker=:circle)  
     elseif style==:shape
         ζ = range(-1/2,1/2,nseg+1)
         x = Array{𝕣,3}(undef,3,nseg+2,nel)
+        rx = reshape(x,(3,(nseg+2)*nel))
         if draw_frame  
-            frame = 𝕣2(undef,3,9nel)
-        end    
+            frame = Array{𝕣,4}(undef,3,3,3,nel)  # idim, point-point-lift, ivec, iel
+            rframe = reshape(frame,(3,9nel)) 
+        end  
+        if Udof
+            ucrest  = Array{𝕣,3}(undef,3,6,nel) # idim, 6point-lift,iel
+            rucrest = reshape(ucrest,(3,6nel)) 
+        end  
         for (iel,oᵢ) = enumerate(o)
             cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp,L  = oᵢ.cₘ,oᵢ.rₘ,oᵢ.tgₘ,oᵢ.tgₑ,oᵢ.ζnod,oᵢ.ζgp,oᵢ.L   
             X₀ₑ = view(X₀,:,iel)
             vₛₘ,rₛₘ,uₗ₂,vₗ₂,cₛₘ = corotated(oᵢ,X₀ₑ) 
             if draw_frame
-                ℓ = oᵢ.L/3
-                for i = 1:3
-                    frame[:,9*(iel-1)+3*i-2] = cₛₘ
-                    frame[:,9*(iel-1)+3*i-1] = cₛₘ + ℓ*rₛₘ[:,i]
-                    frame[:,9*(iel-1)+3*i-0].= NaN
+                for ivec = 1:3
+                    frame[:,1,ivec,iel] = cₛₘ
+                    frame[:,2,ivec,iel] = cₛₘ + oᵢ.L/3*rₛₘ[:,ivec]
+                    frame[:,3,ivec,iel].= NaN
                 end
             end
+            if Udof
+                ucrest[:,1,iel] = cₛₘ - oᵢ.L/2*rₛₘ[:,1]
+                ucrest[:,2,iel] = cₛₘ - oᵢ.L/2*rₛₘ[:,1] + rₛₘ ∘₁ view(U₀,:,iel) * Uscale
+                ucrest[:,3,iel] = cₛₘ + oᵢ.L/2*rₛₘ[:,1] + rₛₘ ∘₁ view(U₀,:,iel) * Uscale
+                ucrest[:,4,iel] = cₛₘ + oᵢ.L/2*rₛₘ[:,1]
+                ucrest[:,5,iel] = cₛₘ - oᵢ.L/2*rₛₘ[:,1]
+                ucrest[:,6,iel].= NaN
+            end
             for (i,ζᵢ) ∈ enumerate(ζ)
-                y                       = SVector(yₐ(ζᵢ)*uₗ₂[1] , yᵤ(ζᵢ)*uₗ₂[2]+L*yᵥ(ζᵢ)*vₗ₂[3], yᵤ(ζᵢ)*uₗ₂[3]-L*yᵥ(ζᵢ)*vₗ₂[2])  
+                y          = SVector(yₐ(ζᵢ)*uₗ₂[1] , yᵤ(ζᵢ)*uₗ₂[2]+L*yᵥ(ζᵢ)*vₗ₂[3], yᵤ(ζᵢ)*uₗ₂[3]-L*yᵥ(ζᵢ)*vₗ₂[2])  
                 x[:,i,iel] = rₛₘ∘₁(tgₑ*ζᵢ+y)+cₛₘ 
             end        
             x[:,nseg+2,iel] .= NaN
         end
-        lines!(  axe,reshape(x,(3,(nseg+2)*nel)),color = line_color)
-        xnod = x[:,[1,nseg+1],:]
-        scatter!(axe,reshape(xnod,(3,2*nel)),color = line_color, marker=:circle)    
-        if draw_frame  # move to "draw shape"
-            lines!(axe,frame,color = :grey,linewidth=1)    
+        if Udof
+            lines!(axe,rucrest,color = :red,linewidth=1)    
         end
+        if draw_frame  
+            lines!(axe,rframe,color = :grey,linewidth=1)    
+        end
+        lines!(  axe,rx,color = line_color)
+        xnod  = view(x,:,[1,nseg+1],:)
+        rxnod = reshape(xnod,(3,2*nel))
+        scatter!(axe,rxnod,color = line_color, marker=:circle) 
     elseif style==:solid
         nsec≥2 || muscadeerror("An section description must be provided for 'solid' plot")
         ζ = range(-1/2,1/2,nseg+1)
@@ -265,6 +290,10 @@ function Muscade.draw(axe,o::Vector{T}, Λ,X,U,A,t,SP,dbg;kwargs...) where{T<:Eu
             rmark  = reshape(mark,(3,   (nseg+2)*nel  ))
             markrad = 1.01*maximum(section[1,:])
         end
+        if Udof
+            ucrest  = Array{𝕣,3}(undef,3,6,nel) # idim, 6point-lift,iel
+            rucrest = reshape(ucrest,(3,6nel)) 
+        end  
         for (iel,oᵢ) = enumerate(o)
             cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp,L  = oᵢ.cₘ,oᵢ.rₘ,oᵢ.tgₘ,oᵢ.tgₑ,oᵢ.ζnod,oᵢ.ζgp,oᵢ.L   
             X₀ₑ = view(X₀,:,iel)
@@ -272,6 +301,14 @@ function Muscade.draw(axe,o::Vector{T}, Λ,X,U,A,t,SP,dbg;kwargs...) where{T<:Eu
             vᵧ₁,vᵧ₂          = vec3(X₀ₑ,4:6), vec3(X₀ₑ,10:12)
             rₛ₁              = Rodrigues(vᵧ₁)
             rₛ₂              = Rodrigues(vᵧ₂)
+            if Udof
+                ucrest[:,1,iel] = cₛₘ - oᵢ.L/2*rₛₘ[:,1]
+                ucrest[:,2,iel] = cₛₘ - oᵢ.L/2*rₛₘ[:,1] + rₛₘ ∘₁ view(U₀,:,iel) * Uscale
+                ucrest[:,3,iel] = cₛₘ + oᵢ.L/2*rₛₘ[:,1] + rₛₘ ∘₁ view(U₀,:,iel) * Uscale
+                ucrest[:,4,iel] = cₛₘ + oᵢ.L/2*rₛₘ[:,1]
+                ucrest[:,5,iel] = cₛₘ - oᵢ.L/2*rₛₘ[:,1]
+                ucrest[:,6,iel].= NaN
+            end
             for (iseg,ζᵢ) ∈ enumerate(ζ)
                 y  = SVector(yₐ(ζᵢ)*uₗ₂[1] , yᵤ(ζᵢ)*uₗ₂[2]+L*yᵥ(ζᵢ)*vₗ₂[3], yᵤ(ζᵢ)*uₗ₂[3]-L*yᵥ(ζᵢ)*vₗ₂[2])  
                 xn = rₛₘ∘₁(tgₑ*ζᵢ+y)+cₛₘ # point on neutral axis
@@ -294,6 +331,9 @@ function Muscade.draw(axe,o::Vector{T}, Λ,X,U,A,t,SP,dbg;kwargs...) where{T<:Eu
         if draw_marking
             mark[:,nseg+2,:] .= NaN 
             lines!(  axe,rmark,color = line_color)    
+        end
+        if Udof
+            lines!(axe,rucrest,color = :red,linewidth=1)    
         end
     end
 end
