@@ -122,40 +122,33 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
         L2[ider]          = copy(L2[1])
     end    
     assemblebigmat!(L2,L2bigasm,asm,model,dis,out,(dbg...,solver=:EigXU))              # assemble all complete model matrices into L2
-    sparser!(L2,droptol)
-    nXdof,nUdof = getndof(model,(:X,:U))
-    iλ   =  1:nXdof
-    ix   = (nXdof+1):2nXdof
-    iu   = (2nXdof+1):(2nXdof+nUdof)
-    ixu  = (nXdof+1):(2nXdof+nUdof)
-    B    = sparse(ixu,ixu,ones(nXdof+nUdof)) # ndof×ndof
+    nXdof,nUdof           = getndof(model,(:X,:U))
+    ixu                   = (nXdof+1):(2nXdof+nUdof)
+    B                     = sparse(ixu,ixu,ones(nXdof+nUdof)) # ndof×ndof
 
     verbose && @printf("    Improving sparsity ")    
-    keep = [any(abs(L2ⱼ.nzval[i])>droptol for L2ⱼ∈L2) for i∈eachindex(L2[1].nzval)]
-    for L2ⱼ∈L2
-        sparser!(L2ⱼ,j->keep[j])
-    end
+    keep                  = sparser!(L2,droptol)
     verbose && @printf("from %i to %i nz terms\n",length(keep),sum(keep))    
 
     verbose && @printf("    Solving XU-eigenproblem for all ω\n")
-    L2₁  = L2[1]
-    ndof = 2nXdof+nUdof
-    A    = Sparse𝕔2(ndof,ndof,L2₁.colptr,L2₁.rowval,𝕔1(undef,length(L2₁.nzval)))
-    ΔΛXU = Vector{𝕣11}(undef,nω) # ΔΛXU[iω][imod][idof]
-    λ    = 𝕣11(undef,nω)         # λ⁻¹[ iω][imod]
-    nor  = 𝕣11(undef,nω)         # B[   iω][imod] 
-    ncv  = 𝕫1(undef,nω)          # ncv[ iω]
-    wrk  = zeros(ndof)           # wrk[ndof]
+    L2₁                   = L2[1]
+    ndof                  = 2nXdof+nUdof
+    A                     = Sparse𝕔2(ndof,ndof,L2₁.colptr,L2₁.rowval,𝕔1(undef,length(L2₁.nzval)))
+    ΔΛXU                  = Vector{𝕣11}(undef,nω) # ΔΛXU[iω][imod][idof]
+    λ                     = 𝕣11(undef,nω)         # λ⁻¹[ iω][imod]
+    nor                   = 𝕣11(undef,nω)         # B[   iω][imod] 
+    ncv                   = 𝕫1(undef,nω)          # ncv[ iω]
+    wrk                   = zeros(ndof)           # wrk[ndof]
 
-    ω                 = range(start=0.,step=Δω,length=nω) 
-    for (iω,ωᵢ)       = enumerate(ω)
-        A.nzval      .= 0.
-        for j         = 0:4
-            𝑖ωᵢʲ      = (𝑖*ωᵢ)^j
-            A.nzval .+= 𝑖ωᵢʲ *L2[j+1].nzval
+    ω                     = range(start=0.,step=Δω,length=nω) 
+    for (iω,ωᵢ)           = enumerate(ω)
+        A.nzval          .= 0.
+        for j             = 0:4
+            𝑖ωᵢʲ          = (𝑖*ωᵢ)^j
+            A.nzval     .+= 𝑖ωᵢʲ *L2[j+1].nzval
         end
         try 
-            if iω==1 LU = lu(A) 
+            if iω==1 LU   = lu(A) 
             else     lu!(LU ,A)
             end 
         catch 

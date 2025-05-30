@@ -524,9 +524,6 @@ function getlagrangian(eleobj::Eleobj,hasres::Val{true},haslag::Val{false},nso::
     L = Λ ∘₁ R
     return L,FB,eleres... 
 end
-# TODO in the following method, residual is called with partials with respect to Λ.  How to detect them, eliminate them bfore residual
-# and revert things after residual?
-# arguably addin! needs to provide some hints...
 function getlagrangian(eleobj::Eleobj,hasres::Val{true},haslag::Val{false},nso::Val{true}, Λ::SVector{Nx}, X::NTuple{Ndx,SVector{Nx}}, 
         U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na}, t::ℝ,SP,dbg,req...)     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
     X1,U1,A1,t1 = firstorderonly(X,U,A,t) 

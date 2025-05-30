@@ -87,13 +87,9 @@ function solve(::Type{FreqXU{OX,OU}},pstate,verbose::𝕓,dbg;
         L2[ider]          = copy(L2[1])
     end    
     assemblebigmat!(L2,L2bigasm,asm,model,dis,out,(dbg...,solver=:FreqXU))              # assemble all complete model matrices into L2
-    sparser!(L2,droptol)
 
     verbose && @printf("    Improving sparsity ")    
-    keep = [any(abs(L2ⱼ.nzval[i])>droptol for L2ⱼ∈L2) for i∈eachindex(L2[1].nzval)]
-    for L2ⱼ∈L2
-        sparser!(L2ⱼ,j->keep[j])
-    end
+    keep = sparser!(L2,droptol)
     verbose && @printf("from %i to %i nz terms\n",length(keep),sum(keep))    
 
 

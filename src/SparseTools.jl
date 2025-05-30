@@ -196,11 +196,13 @@ function sparser!(S::SparseMatrixCSC,tol=1e-9)
 end
 function sparser!(S::AbstractVector{SP},tol=1e-9) where{SP<:SparseMatrixCSC}
     tolm  = [tol*maximum(abs,Sᵢ) for Sᵢ∈S]
-    keep  = [any(abs(S[i].nzval[j]) ≥tolm[i] for i∈eachindex(S)) for j∈1:nnz(S[1])]
+    keep  = [any(abs(S[i].nzval[j]) >tolm[i] for i∈eachindex(S)) for j∈1:nnz(S[1])]
     for Sᵢ ∈ S
         sparser!(Sᵢ,keep)
     end
+    return keep
 end
+
 
 
 
