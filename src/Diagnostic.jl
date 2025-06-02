@@ -257,8 +257,6 @@ function studyscale(state::State;SP=nothing,verbose::𝕓=true,dbg=(;))
     scaleA = (; zip(Atypes, Ss[2nX+nU+1:2nX+nU+nA])...)
     scale  = (Λ=scaleΛ,X=scaleX,U=scaleU,A=scaleA)
 
-
-
     if verbose       
         @printf "\nlog₁₀ of the ∞-norms of the blocks of the Hessian (as computed with the current scaling of the model):\n\n                   "
         for jtype = 1:ntype

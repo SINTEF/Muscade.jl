@@ -42,29 +42,41 @@ addelement!( model, SingleDofCost, vec(Xnod[4])    ,class=:X, field=:t2,cost=Qua
 addelement!( model, SingleDofCost, vec(Xnod[7])    ,class=:X, field=:t3,cost=QuadraticFunction(0.,10.))
 #setscale!(model,)
 initialstate      = initialize!(model)   
-initialstate.time = 0.
 
-OX,OU             = 2,0
+xn = 1.
+λn = 1e4
+un = 1e3
+σₓᵤ     = (X=(t1 =xn,t2 =xn,t3 =xn,r1 =xn,r2 =xn,r3 =xn,
+             λt1=λn,λt2=λn,λt3=λn,λr1=λn,λr2=λn,λr3=λn),
+          U=(t1 =un,t2 =un,t3 =un,r1 =un,r2 =un,r3 =un))
+
+# dis             = Muscade.Disassembler(model)
+# dofgr           = Muscade.allXdofs(model,dis)
+# N               = [zeros(getndof(dofgr)),zeros(getndof(dofgr)),zeros(getndof(dofgr))]
+# Muscade.makeXUnorm!(N,dofgr,σₓᵤ)
+# @show N
+
+initialstate.time     = 0.
+
+OX,OU                 = 2,0
 if true # eigXU
     Δω                = 2^-6
     p                 = 13
     nmod              = 2
-   eiginc            = solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=true,verbosity=1,tol=1e-20)
+    eiginc            = solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=true,verbosity=1,tol=1e-20,σₓᵤ)
 
-    α = 2π*(0:19)/20
-    circle = 0.05*[cos.(α) sin.(α)]'
+    α                 = 2π*(0:19)/20
+    circle            = 0.05*[cos.(α) sin.(α)]'
     jmod              = [2]
     A                 = [100] 
     iω                = 11
     Uscale            = 0.002
     state             = increment{OX}(initialstate,eiginc,iω,jmod,A)
-    scala             = studyscale(state)
-    @show scala
-    using GLMakie
-    fig      = Figure(size = (500,500))
-    display(fig) # open interactive window (gets closed down by "save")
-    axe      = Axis3(fig[1,1],title="Test",xlabel="X",ylabel="Y",zlabel="Z",aspect=:data,viewmode=:fit,perspectiveness=.5)
-    draw(axe,state;EulerBeam3D=(;style=:shape,nseg=10,section = circle,marking=true,Uscale))
+    # using GLMakie
+    # fig      = Figure(size = (500,500))
+    # display(fig) # open interactive window (gets closed down by "save")
+    # axe      = Axis3(fig[1,1],title="Test",xlabel="X",ylabel="Y",zlabel="Z",aspect=:data,viewmode=:fit,perspectiveness=.5)
+    # draw(axe,state;EulerBeam3D=(;style=:shape,nseg=10,section = circle,marking=true,Uscale))
 
 
 

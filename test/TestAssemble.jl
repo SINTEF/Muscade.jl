@@ -143,6 +143,12 @@ end
     @test dofgr.scaleA == Float64[]
 end
 
+vec   = zeros(getndof(dofgr))
+Muscade.makevecfromfields!(vec,dofgr,(;X=(tx1=1.,tx2=2.,rx3=3.)))
+@testset "makevecfromfields" begin
+     @test vec ≈ [1.,2.,3.]
+end
+
 state = Muscade.State{1,1,1}(model,dis)
 Muscade.assemble!(out,asm,dis,model,state,(someunittest=true,))
 
@@ -150,5 +156,6 @@ Muscade.assemble!(out,asm,dis,model,state,(someunittest=true,))
     @test  out.Lλ  ≈ [-152130.71199858442, -3.0, 0.0]
     @test  out.Lλx ≈ sparse([1, 2, 3, 1, 2, 3, 1, 2, 3], [1, 1, 1, 2, 2, 2, 3, 3, 3], [10323.069597975566, 0.0, 0.0, 0.0, 1049.1635310247202, 5245.817655123601, 0.0, 5245.8176551236, 786872.6482685402], 3, 3)
 end
+
 
 end

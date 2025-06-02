@@ -99,6 +99,8 @@ function Disassembler(model::Model)
 end
 
 
+
+
 ######## state and initstate
 # at each step, contains the complete, unscaled state of the system
 mutable struct State{nΛder,nXder,nUder,TSP}
@@ -162,7 +164,7 @@ struct DofGroup
     jU     :: 𝕫1 
     jA     :: 𝕫1 
 
-    scaleΛ :: 𝕣1
+    scaleΛ :: 𝕣1              # scaleΛ[iΛ]
     scaleX :: 𝕣1
     scaleU :: 𝕣1
     scaleA :: 𝕣1
@@ -172,7 +174,8 @@ struct DofGroup
     fieldU :: Vector{Symbol}
     fieldA :: Vector{Symbol}
     DofGroup(nX,nU,nA, iΛ,iX,iU,iA,  jΛ,jX,jU,jA, Λs,Xs,Us,As, Λf,Xf,Uf,Af) = 
-      new(nX,nU,nA, collect(iΛ),collect(iX),collect(iU),collect(iA),  collect(jΛ),collect(jX),collect(jU),collect(jA), Λs,Xs,Us,As, Λf,Xf,Uf,Af)end
+      new(nX,nU,nA, collect(iΛ),collect(iX),collect(iU),collect(iA),  collect(jΛ),collect(jX),collect(jU),collect(jA), Λs,Xs,Us,As, Λf,Xf,Uf,Af)
+end
 
 function DofGroup(dis::Disassembler,iΛ,iX,iU,iA) 
     # constructor for dofgroup with permutation within each dof-class.  
@@ -234,6 +237,7 @@ allΛdofs(  model::Model,dis) = DofGroup(dis, 1:getndof(model,:X),𝕫[],𝕫[],
 allXdofs(  model::Model,dis) = DofGroup(dis, 𝕫[],1:getndof(model,:X),𝕫[],𝕫[])
 allUdofs(  model::Model,dis) = DofGroup(dis, 𝕫[],𝕫[],1:getndof(model,:U),𝕫[])
 allAdofs(  model::Model,dis) = DofGroup(dis, 𝕫[],𝕫[],𝕫[],1:getndof(model,:A))
+allXUdofs( model::Model,dis) = DofGroup(dis, 𝕫[],1:getndof(model,:X),1:getndof(model,:U),𝕫[])
 allΛXUdofs(model::Model,dis) = DofGroup(dis, 1:getndof(model,:X),1:getndof(model,:X),1:getndof(model,:U),𝕫[])
 allΛXUAdofs(model::Model,dis) = DofGroup(dis, 1:getndof(model,:X),1:getndof(model,:X),1:getndof(model,:U),1:getndof(model,:A))
 function selecteddofs(model::Model,dis,classes)
@@ -242,6 +246,52 @@ function selecteddofs(model::Model,dis,classes)
     iU = :U ∈ classes ? (1:getndof(model,:U)) : 𝕫[] 
     iA = :A ∈ classes ? (1:getndof(model,:A)) : 𝕫[] 
     return DofGroup(dis, iΛ,iX,iU,iA)
+end
+
+function makevecfromfields!(vec::AbstractVector,dg::DofGroup,in)
+    # in[:class][:doftype] = val
+    # vec   = zeros(getndof(dg))
+    if haskey(in,:Λ)
+        for i = 1:length(dg.iΛ)
+            iΛ,jΛ   = dg.iΛ[i],dg.jΛ[i]  # state.Λ[iΛ] <-> y[jΛ]*scaleΛ
+            field   = dg.fieldΛ[iΛ]
+            scale   = dg.scaleΛ[iΛ]
+            if haskey(in.Λ,field)
+                vec[jΛ] = in.Λ[field] / scale
+            end
+        end
+    end
+    if haskey(in,:X)
+        for i = 1:length(dg.iX)
+            iX,jX   = dg.iX[i],dg.jX[i]  # state.X[iX] <-> y[jX]*scaleX
+            field   = dg.fieldX[iX]
+            scale   = dg.scaleX[iX]
+            if haskey(in.X,field)
+                vec[jX] = in.X[field] / scale
+            end
+        end
+    end
+    if haskey(in,:U)
+        for i = 1:length(dg.iU)
+            iU,jU   = dg.iU[i],dg.jU[i]  # state.U[iU] <-> y[jU]*scaleU
+            field   = dg.fieldU[iU]
+            scale   = dg.scaleU[iU]
+            if haskey(in.U,field)
+                vec[jU] = in.U[field] / scale
+            end
+        end
+    end
+    if haskey(in,:A)
+        for i = 1:length(dg.iA)
+            iA,jA   = dg.iA[i],dg.jA[i]  # state.A[iA] <-> y[jA]*scaleA
+            field   = dg.fieldA[iA]
+            scale   = dg.scaleA[iA]
+            if haskey(in.A,field)
+                vec[jA] = in.A[field] / scale
+            end
+        end
+    end
+    return vec
 end
 
 ######## Prepare assembler datastructure "asm"

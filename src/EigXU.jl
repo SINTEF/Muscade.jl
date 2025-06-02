@@ -1,3 +1,15 @@
+function makeXUnorm!(vec,dofgr,σ,def=(1.,∞,∞))
+    # in.class.field[ider] = σ
+    getider(a::NamedTuple,ider,defᵢ) = map(aⱼ->getider(aⱼ,ider,defᵢ),a)
+    getider(a::NTuple    ,ider,defᵢ) = a[ider]
+    getider(a::𝕣         ,ider,defᵢ) = ider==1 ? a : defᵢ
+    for ider ∈ eachindex(vec)
+        vec[ider] .= def[ider]
+        makevecfromfields!(vec[ider],dofgr,getider(σ,ider,def[ider]))
+        vec[ider] .= vec[ider].^(-2)
+    end 
+end
+
 function make_λxu_sparsepattern(out) 
     L2(α,β) = out.L2[α,β][1,1]
     α       = [2,3,1,2,3,1,2,3]  #   [0 . .]
@@ -95,6 +107,7 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
     initialstate::State,
     droptol::𝕣=1e-10,
     nmod::𝕫=5,
+    σₓᵤ,
     kwargs...) where{OX,OU}
 
     #  Mostly constants
@@ -124,7 +137,10 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
     assemblebigmat!(L2,L2bigasm,asm,model,dis,out,(dbg...,solver=:EigXU))              # assemble all complete model matrices into L2
     nXdof,nUdof           = getndof(model,(:X,:U))
     ixu                   = (nXdof+1):(2nXdof+nUdof)
-    B                     = sparse(ixu,ixu,ones(nXdof+nUdof)) # ndof×ndof
+    B                     = sparse(ixu,ixu,𝕣1(undef,nXdof+nUdof)) # ndof×ndof
+    N                     = [𝕣1(undef,nXdof+nUdof) for ider = 1:3]
+    xu_dofgr              = allXUdofs(model,dis)                                        # NB same ordering of dofs in rhs as implied by pattern                                          
+    makeXUnorm!(N,xu_dofgr,σₓᵤ)   
 
     verbose && @printf("    Improving sparsity ")    
     keep                  = sparser!(L2,droptol)
@@ -142,6 +158,7 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
 
     ω                     = range(start=0.,step=Δω,length=nω) 
     for (iω,ωᵢ)           = enumerate(ω)
+        B.nzval          .= N[1]+ωᵢ^2*N[2]+ωᵢ^4*N[3]     
         A.nzval          .= 0.
         for j             = 0:4
             𝑖ωᵢʲ          = (𝑖*ωᵢ)^j
