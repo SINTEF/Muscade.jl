@@ -45,7 +45,7 @@ end
     @test maximum(abs.((K-ω²[5]*M)*v[5])./abs.(K*v[5])) < 2e-10
 end
 
-ω²,v,ncv = Muscade.geneig{:Complex}(K,M,neig;seed)
+ω²,v,ncv = Muscade.geneig{:complex}(K,M,neig;seed)
 @testset "eigenmodes Unsymmetric" begin
     @test ncv ≥ neig
     @test sqrt.(real(ω²[1:neig])) ≈ [3.138452911330836, 6.276898094304366, 9.415327820585714, 12.55373436187439, 15.692109989929069]
@@ -65,7 +65,7 @@ val, vec, info = Muscade.geneig{:Hermitian}(A,B,5)
     @test norm((A-val[2]*B)*vec[2]) < 1e-12
     @test eltype(val) == Float64
     @test eltype(vec[1]) == Float64
-    @test val ≈ [97.42994261281041, 1563.7139171137453, 8015.953728852298, 10198.390060238187, 10557.280821412856]
+    @test val[1:5] ≈ [97.42994261281041, 1563.7139171137453, 8015.953728852298, 10198.390060238187, 10557.280821412856]
 end
 end
 

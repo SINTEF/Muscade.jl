@@ -42,7 +42,7 @@ function solve(::Type{EigX{ℝ}},pstate,verbose,dbg;
     sparser!(M,droptol)
 
     verbose && @printf("    Solving Eigenvalues\n\n")
-    ω², Δx, ncv = geneig{:Hermitian}(K,M,nmod;kwargs...)
+    ω², Δx, ncv = geneig{:symmetric}(K,M,nmod;kwargs...)
 
     ncv≥nmod||muscadeerror(dbg,@sprintf("eigensolver only converged for %i out of %i modes",ncv,nmod))
     pstate[] = EigXℝincrement(dofgr[ind.X],sqrt.(ω²),Δx)
@@ -119,7 +119,7 @@ function solve(::Type{EigX{ℂ}},pstate,verbose,dbg;
     B,_   ,_        = blkasm([2,1,2],[1,2,2],[-I,M,C])
 
     verbose && @printf("\n    Solving Eigenvalues\n")
-    p, vec, ncv    = geneig{:Complex}(A,B,nmod;kwargs...)
+    p, vec, ncv    = geneig{:complex}(A,B,nmod;kwargs...)
     ncv≥nmod||muscadeerror(dbg,@sprintf("eigensolver only converged for %i out of %i modes",ncv,nmod))
     Δx             = [view(vecᵢ,nXdof+1:2nXdof) for vecᵢ ∈ vec]
 
