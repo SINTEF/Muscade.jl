@@ -1,6 +1,5 @@
 module Runtest
     using Test,Muscade
-    #using Literate, DocumenterCitations,Printf,Documenter
 
     @testset "Muscade.jl package" begin
         @testset "TestEspy" begin
