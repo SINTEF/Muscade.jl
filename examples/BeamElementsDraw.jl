@@ -1,3 +1,6 @@
+#Assumes that BeamElements.jl has been included previously
+using GLMakie
+
 """
 
 Drawing a `EulerBeam3D`.

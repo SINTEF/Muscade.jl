@@ -2,7 +2,7 @@ include("Rotations.jl")
 
 # # Euler beam element
 
-using StaticArrays, LinearAlgebra, Muscade, GLMakie
+using StaticArrays, LinearAlgebra, Muscade
 
 # Data structure containing the cross section material properties
 struct BeamCrossSection
