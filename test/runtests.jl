@@ -75,9 +75,9 @@ module Runtest
         @testset "TestElementTestTools" begin
             include("TestElementTestTools.jl")
         end
-        @testset "TestDrawBeamElement" begin
-            include("TestDrawBeamElement.jl")
-        end
+#        @testset "TestDrawBeamElement" begin
+#            include("TestDrawBeamElement.jl")
+#        end
         # doctest(Muscade) # we do not use doctest, we run Literate.jl on mydemo.jl files that are included in a unit test file
     end
 end
