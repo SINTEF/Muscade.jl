@@ -1,11 +1,5 @@
 module TestDirectXUA
 
-# cd("C:\\Users\\philippem\\.julia\\dev\\Muscade")
-# using Pkg 
-# Pkg.activate(".")
-
-
-
 using Test
 using Muscade
 using StaticArrays,SparseArrays
