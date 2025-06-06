@@ -12,8 +12,8 @@ requiredIncludeFiles = ["BeamElements.jl","Rotations.jl"]
  end
 
 
-using Pkg
-Pkg.activate(docs) 
+#using Pkg
+#Pkg.activate(docs) 
 
 using Muscade
 using Documenter, Literate, DocumenterCitations,Printf
