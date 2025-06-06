@@ -135,17 +135,18 @@ vec3(v,ind) = SVector{3}(v[i] for i∈ind);
 function corotated(o::EulerBeam3D,X₀,fast=justinvoke)
     cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp,L  = o.cₘ,o.rₘ,o.tgₘ,o.tgₑ,o.ζnod,o.ζgp,o.L   # As-meshed element coordinates and describing tangential vector
     uᵧ₁,vᵧ₁,uᵧ₂,vᵧ₂        = vec3(X₀,1:3), vec3(X₀,4:6), vec3(X₀,7:9), vec3(X₀,10:12)
-    vₗ₂,rₛₘ,vₛₘ              = fast(SVector(vᵧ₁...,vᵧ₂...)) do v
+    Δvᵧ,rₛₘ,vₛₘ              = fast(SVector(vᵧ₁...,vᵧ₂...)) do v
         vᵧ₁,vᵧ₂            = vec3(v,1:3), vec3(v,4:6)
         rₛ₁                = fast(Rodrigues,vᵧ₁)
         rₛ₂                = fast(Rodrigues,vᵧ₂)
-        vₗ₂                = 0.5*Rodrigues⁻¹(rₛ₂ ∘₁ rₛ₁&#39;)
-        rₛₘ                = fast(Rodrigues,vₗ₂) ∘₁ rₛ₁ ∘₁ o.rₘ
+        Δvᵧ               = 0.5*Rodrigues⁻¹(rₛ₂ ∘₁ rₛ₁&#39;)
+        rₛₘ                = fast(Rodrigues,Δvᵧ) ∘₁ rₛ₁ ∘₁ o.rₘ
         vₛₘ                = Rodrigues⁻¹(rₛₘ)
-        return vₗ₂,rₛₘ,vₛₘ
+        return Δvᵧ,rₛₘ,vₛₘ
     end
     cₛ               = 0.5*(uᵧ₁+uᵧ₂)
-    uₗ₂              = rₛₘ&#39;∘₁(uᵧ₂+tgₘ*ζnod[2]-cₛ)-tgₑ*ζnod[2]    #Local displacement of node 2
+    uₗ₂              = rₛₘ&#39; ∘₁ (uᵧ₂+tgₘ*ζnod[2]-cₛ)-tgₑ*ζnod[2]    #Local displacement of node 2
+    vₗ₂              = rₛₘ&#39; ∘₁ Δvᵧ
     return vₛₘ,rₛₘ,uₗ₂,vₗ₂,cₛ+cₘ
 end;</code></pre><p>Finally, specify how to draw a beam element</p><pre><code class="language-julia hljs">function Muscade.draw(axe,o::Vector{EulerBeam3D{Tmat,Udof}}, Λ,X,U,A,t,SP,dbg;kwargs...) where{Tmat,Udof}
     nel           = length(o)
@@ -278,4 +279,4 @@ end;</code></pre><p>Finally, specify how to draw a beam element</p><pre><code cl
             lines!(axe,rucrest,color = :red,linewidth=1)
         end
     end
-end</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="Elements.html">« Implementing new elements</a><a class="docs-footer-nextpage" href="StaticBeamAnalysis.html">Static analysis of a beam »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.11.4 on <span class="colophon-date" title="Friday 30 May 2025 10:00">Friday 30 May 2025</span>. Using Julia version 1.10.9.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+end</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="Elements.html">« Implementing new elements</a><a class="docs-footer-nextpage" href="StaticBeamAnalysis.html">Static analysis of a beam »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.11.4 on <span class="colophon-date" title="Friday 6 June 2025 20:32">Friday 6 June 2025</span>. Using Julia version 1.10.9.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
