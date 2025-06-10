@@ -1,9 +1,5 @@
 module TestSparseTools
 
-# cd("C:\\Users\\philippem\\.julia\\dev\\Muscade")
-# using Pkg 
-# Pkg.activate(".")
-
 using Test,SparseArrays
 using Muscade
 
