@@ -22,19 +22,14 @@ function assemblebigmat!(L2::Vector{Sparse𝕣2},L2bigasm,asm,model,dis,out::Ass
     for L2ᵢ∈L2
         zero!(L2ᵢ)
     end
-#    map!(zero!,L2)
     for     α ∈ λxu 
         for β ∈ λxu
             Lαβ = out.L2[α,β]
             for     αder = 1:size(Lαβ,1)
                 for βder = 1:size(Lαβ,2)
                     ider =  αder+βder-1   
-                    sgn  = isodd(αder) ? +1 : -1 # TODO Antisymmetry for odd derivatives? conjugation? Check theory
-#                    if α==ind.Λ && β==ind.U # what?
-                        addin!(L2bigasm,L2[ider],Lαβ[αder,βder],α,β,sgn) 
-#                    else
-#                        addin!(L2bigasm,L2[ider],Lαβ[αder,βder],α,β,sgn) 
-#                    end
+                    sgn  = isodd(αder) ? +1 : -1 # TODO Antisymmetry for odd derivatives? conjugation? Check theory.  See also DirectXUA
+                    addin!(L2bigasm,L2[ider],Lαβ[αder,βder],α,β,sgn) 
                 end
             end
         end
