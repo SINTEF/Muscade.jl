@@ -76,9 +76,9 @@ function addin!(out::AssemblySweepX{ORDER},asm,iele,scale,eleobj::E,Λ,X::NTuple
             a          = a₂*x′ + a₃*x″
             b          = b₂*x′ + b₃*x″
             vx         = x 
-            vx′        = x′ - a.*δr 
-            vx″        = x″ - b.*δr 
-            Lλ,FB      = getresidual(eleobj,(vx,vx′,vx″),U,A,t,SP,dbg)
+            vx′        = x′ - a .*δr 
+            vx″        = x″ - b .*δr 
+            Lλ,FB      = getresidual(eleobj,promote(vx,vx′,vx″),U,A,t,SP,dbg)
             Lλ         = Lλ .* scale.X
             add_value!(out.Lλ ,asm[1],iele,Lλ)
             add_∂!{1}( out.Lλ ,asm[1],iele,Lλ)  # rhs = R - C⋅a - M⋅b 
