@@ -4,9 +4,6 @@ mutable struct PRNG
     state::UInt64
 end
 PRNG() = PRNG(0x60d6a817f531f835)
-# function rand(prng::PRNG)
-#     prng.state = 0x4820824402284023 * prng.state + 0x0000000000000001
-# end
 rand(prng::PRNG) = prng.state = 0x4820824402284023 * prng.state + 0x0000000000000001
 rand(::Type{𝕣},prng::PRNG) =   rand(prng)/0xffffffffffffffff
 rand(::Type{𝕔},prng::PRNG) = 𝕔(rand(prng)/0xffffffffffffffff,
