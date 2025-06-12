@@ -16,6 +16,11 @@ function rand(::Type{T}, siz, prng=PRNG()) where{T}
     return out
 end
 
+function normalize∞!(vec) # ensures that the largest term is 1 (with zero ℑ part)
+    imax = argmax(ℜ(conj(vecᵢ)*vecᵢ) for vecᵢ∈vec )
+    vec ./= vec[imax]
+end
+
 """
     λ,v,ncv = geneig{ALGO}(A,B,neig=5)
 
@@ -41,7 +46,8 @@ function geneig{:complex}(luA::SparseArrays.UMFPACK.UmfpackLU,B,neig=5;maxiter=3
         vecᵢ .= luA\vecᵢ
     end
     val .= 1 ./val
-    normalize && normalize!.(vec)
+    normalize && normalize∞!.(vec)
+
     return val, vec, info.converged
 end
 function geneig{:Hermitian}(luA::SparseArrays.UMFPACK.UmfpackLU,B,neig=5;kwargs...) 
@@ -54,7 +60,7 @@ function geneig{:symmetric}(luA::SparseArrays.UMFPACK.UmfpackLU,B,neig=5;maxiter
         vecᵢ .= luA\vecᵢ
     end
     val .= 1 ./val
-    normalize && normalize!.(vec)
+    normalize && normalize∞!.(vec)
     return ℜ.(val), ℜ.(vec), info.converged
 end
 function geneig{:SDP}(L::SparseArrays.CHOLMOD.FactorComponent,B=I,neig=5;maxiter=300,verbosity=0,seed=rand(𝕣,size(L,1)),normalize=true,kwargs...)
@@ -63,7 +69,7 @@ function geneig{:SDP}(L::SparseArrays.CHOLMOD.FactorComponent,B=I,neig=5;maxiter
         vecᵢ .= ℜ.(L'\vecᵢ)
     end
     val .= 1 ./val
-    normalize && normalize!.(vec)
+    normalize && normalize∞!.(vec)
     return val, vec, info.converged
 end
 

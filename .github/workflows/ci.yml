@@ -4,6 +4,8 @@ on:
     branches:
       - main
       - dev
+      - EigXU
+      - eigxu
     tags: '*'
     pull_request:  
 env:
