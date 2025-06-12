@@ -1,4 +1,15 @@
 
+# A pseudo random number generator that will always generate the same sequence of Float64 ∈ [0,1[, hopefully on any machine
+mutable struct PRNG
+    state::UInt64
+end
+PRNG() = PRNG(0x60d6a817f531f835)
+function rand(prng::PRNG)
+    prng.state = 0x4820824402284023 * prng.state + 0x0000000000000001
+    return prng.state/0xffffffffffffffff
+end
+
+
 """
     λ,v,ncv = geneig{ALGO}(A,B,neig=5)
 
@@ -18,7 +29,7 @@ Uses KrylovKit.jl. Freely based on VibrationGEPHelpers.jl and input from PetrKry
 See GIThub-blame for bug-credits.
 """
 struct geneig{ALGO} end
-function geneig{:complex}(luA::SparseArrays.UMFPACK.UmfpackLU,B,neig=5;maxiter=300,verbosity=0,seed=rand(𝕔,size(luA,1)),normalize=true,kwargs...) 
+function geneig{:complex}(luA::SparseArrays.UMFPACK.UmfpackLU,B,neig=5;maxiter=300,verbosity=0,seed=Base.rand(𝕔,size(luA,1)),normalize=true,kwargs...) 
     val, vec, info = eigsolve(x->B*(luA\x), seed,neig,:LR; maxiter,verbosity,ishermitian=false,kwargs...)
     for vecᵢ ∈ vec  
         vecᵢ .= luA\vecᵢ
@@ -31,7 +42,7 @@ function geneig{:Hermitian}(luA::SparseArrays.UMFPACK.UmfpackLU,B,neig=5;kwargs.
     val, vec, info = geneig{:complex}(luA,B,neig;kwargs...) 
     return ℜ.(val), ℜ.(vec), info
 end
-function geneig{:symmetric}(luA::SparseArrays.UMFPACK.UmfpackLU,B,neig=5;maxiter=300,verbosity=0,seed=rand(𝕣,size(luA,1)),normalize=true,kwargs...) 
+function geneig{:symmetric}(luA::SparseArrays.UMFPACK.UmfpackLU,B,neig=5;maxiter=300,verbosity=0,seed=Base.rand(𝕣,size(luA,1)),normalize=true,kwargs...) 
     val, vec, info = eigsolve(x->B*(luA\x), seed,neig,:LR; maxiter,verbosity,issymmetric=false,kwargs...)
     for vecᵢ ∈ vec  
         vecᵢ .= luA\vecᵢ
@@ -40,7 +51,7 @@ function geneig{:symmetric}(luA::SparseArrays.UMFPACK.UmfpackLU,B,neig=5;maxiter
     normalize && normalize!.(vec)
     return ℜ.(val), ℜ.(vec), info.converged
 end
-function geneig{:SDP}(L::SparseArrays.CHOLMOD.FactorComponent,B=I,neig=5;maxiter=300,verbosity=0,seed=rand(size(L,1)),normalize=true,kwargs...)
+function geneig{:SDP}(L::SparseArrays.CHOLMOD.FactorComponent,B=I,neig=5;maxiter=300,verbosity=0,seed=Base.rand(size(L,1)),normalize=true,kwargs...)
     val, vec, info = eigsolve(x->L\(B*(L'\x)),seed,neig,:LR; maxiter,verbosity,ishermitian=true,kwargs...)
     for vecᵢ ∈ vec
         vecᵢ .= ℜ.(L'\vecᵢ)

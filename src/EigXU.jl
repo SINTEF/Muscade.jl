@@ -172,7 +172,7 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
         end
 
         λ⁻¹, ΔΛXU[iω], ncv[iω] = geneig{:symmetric}(A,B,nmod;normalize=false,kwargs...)
-        @show maximum(abs.(A*ΔΛXU[iω][1]-B*λ⁻¹[1]*ΔΛXU[iω][1]))/maximum(abs.(A*ΔΛXU[iω][1])) # taking the real part is a problem
+        @show maximum(abs.(A*ΔΛXU[iω][1]-B*λ⁻¹[1]*ΔΛXU[iω][1]))/maximum(abs.(A*ΔΛXU[iω][1])) 
 
         nor[iω]                = 𝕣1(undef,ncv[iω])
         λ[iω]                  = 1 ./λ⁻¹

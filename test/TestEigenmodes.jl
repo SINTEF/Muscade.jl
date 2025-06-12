@@ -67,5 +67,14 @@ val, vec, info = Muscade.geneig{:Hermitian}(A,B,5)
     @test eltype(vec[1]) == Float64
     @test val[1:5] ≈ [97.42994261281041, 1563.7139171137453, 8015.953728852298, 10198.390060238187, 10557.280821412856]
 end
+
+
+prng = Muscade.PRNG()
+for i = 1:1000
+    Muscade.rand(prng)
+end
+@testset "PRNG"  begin
+    @test Muscade.rand(prng) ≈ 0.20397242392159248
+end
 end
 
