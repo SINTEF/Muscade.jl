@@ -17,7 +17,7 @@ function rand(::Type{T}, siz, prng=PRNG()) where{T}
 end
 
 function normalize∞!(vec) # ensures that the largest term is 1 (with zero ℑ part)
-    imax = argmax(ℜ(conj(vecᵢ)*vecᵢ) for vecᵢ∈vec )
+    imax  = argmax(abs2(vecᵢ) for vecᵢ∈vec)
     vec ./= vec[imax]
 end
 
