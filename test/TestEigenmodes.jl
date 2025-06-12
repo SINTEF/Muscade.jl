@@ -74,7 +74,11 @@ for i = 1:1000
     Muscade.rand(prng)
 end
 @testset "PRNG"  begin
-    @test Muscade.rand(prng) ≈ 0.20397242392159248
+    @test Muscade.rand(               prng) == 0x3437896a07724b50
+    @test Muscade.rand(        𝕣,     prng) ≈  0.2545926007405381
+    @test Muscade.rand(Muscade.𝕔,     prng) ≈  0.7486213851416701 + 0.6275505319491158im
+    @test Muscade.rand(        𝕣,(3,),prng) ≈ [0.8782731486726022, 0.012802569134446011, 0.951492794322102]
+    @test Muscade.rand(Muscade.𝕔,(3,),prng) ≈ [ 0.36488033085747434 + 0.8903375908937614im,  0.1594058396324966 + 0.6106617364462621im,  0.6055981407460042 + 0.8626386513074227im]
 end
 end
 
