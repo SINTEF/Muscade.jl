@@ -223,9 +223,12 @@ function studyscale(state::State;SP=nothing,verbose::𝕓=true,dbg=(;))
     out,asm,dofgr      = prepare(AssemblyStudyScale,model,dis)
     assemble!(out,asm,dis,model,state,(dbg...,solver=:studyscale))
     state.SP           = tmp
+    Z                  = zeros(getndof(dofgr))
+    getdof!(state,0,Z,dofgr) 
     type,types         = listdoftypes(dis)
     matfrob            = ∞norm(out.Lzz,type,types)
     vecfrob            = ∞norm(out.Lz ,type,types)
+    Zfrob              = ∞norm(Z      ,type,types)
     ntype              = length(types)
     nnz,n              = sum(matfrob.>0),length(vecfrob)
     M                  = zeros(nnz,n)
@@ -258,7 +261,7 @@ function studyscale(state::State;SP=nothing,verbose::𝕓=true,dbg=(;))
     scale  = (Λ=scaleΛ,X=scaleX,U=scaleU,A=scaleA)
 
     if verbose       
-        @printf "\nlog₁₀ of the ∞-norms of the blocks of the Hessian (as computed with the current scaling of the model):\n\n                   "
+        @printf "\nlog₁₀ of the ∞-norms of the blocks of the Hessian (as computed with the current scaling of the model):\n\n                    "
         for jtype = 1:ntype
             @printf "%1s%-4s " types[jtype][1] types[jtype][2]
         end
@@ -274,7 +277,11 @@ function studyscale(state::State;SP=nothing,verbose::𝕓=true,dbg=(;))
             end
             @printf "\n"
         end
-        @printf "\nlog₁₀ of the ∞-norms of the blocks of the gradient(as computed with the current scaling of the model):\n\n                 "
+        @printf "\nlog₁₀ of the ∞-norms of the blocks of the gradient (as computed with the current scaling of the model):\n\n                    "
+        for jtype = 1:ntype
+            @printf "%1s%-4s " types[jtype][1] types[jtype][2]
+        end
+        @printf "\n                 "
         for itype = 1:ntype
             if vecfrob[itype]==0
                 @printf "     ."
@@ -282,12 +289,30 @@ function studyscale(state::State;SP=nothing,verbose::𝕓=true,dbg=(;))
                 @printf "%6i" magnitude(vecfrob[itype])
             end
         end
-        @printf "\n\nMagnitudes of the scaling:\n\n                 "
+        @printf "\n\nlog₁₀ of the ∞-norms of the blocks of the dofs (as computed with the current scaling of the model):\n\n                    "
+        for jtype = 1:ntype
+            @printf "%1s%-4s " types[jtype][1] types[jtype][2]
+        end
+        @printf "\n                 "
+        for itype = 1:ntype
+            if vecfrob[itype]==0
+                @printf "     ."
+            else
+                @printf "%6i" magnitude(Zfrob[itype])
+            end
+        end
+        @printf "\n\nMagnitudes of the scaling:\n\n                    "
+        for jtype = 1:ntype
+            @printf "%1s%-4s " types[jtype][1] types[jtype][2]
+        end
+        @printf "\n                 "
         for itype = 1:ntype
              @printf "%6i" s[itype]
         end
-        @printf "\n\nlog₁₀ of the condition number of the matrix of ∞-norms of the blocks of the Hessian = %i\n\n" magnitude(cond(matfrob))
-        @printf "\nlog₁₀ of the ∞-norms of the blocks of the SCALED Hessian:\n\n                 "
+        @printf "\n\nlog₁₀ of the ∞-norms of the blocks of the SCALED Hessian:\n\n                    "
+        for jtype = 1:ntype
+            @printf "%1s%-4s " types[jtype][1] types[jtype][2]
+        end
         @printf "\n"
         for itype = 1:ntype
             @printf "    %2s-%-8s  " types[itype][1] types[itype][2]
@@ -300,7 +325,8 @@ function studyscale(state::State;SP=nothing,verbose::𝕓=true,dbg=(;))
             end
             @printf "\n"
         end
-        @printf "\n\nlog₁₀ of the condition number of the matrix of ∞-norms of the blocks of the SCALED Hessian = %i\n\n" magnitude(cond(scaledfrob))
+        @printf "\n\nlog₁₀ of the condition number of the matrix of ∞-norms of the blocks of the SCALED Hessian = %i\n" magnitude(cond(scaledfrob))
+        @printf "log₁₀ of the condition number of the matrix of ∞-norms of the blocks of the Hessian = %i\n\n" magnitude(cond(matfrob))
     end    
     return scale
 end

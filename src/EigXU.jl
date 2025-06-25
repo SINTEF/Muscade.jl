@@ -145,43 +145,34 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
     verbose && @printf("    Solving XU-eigenproblem for all ω\n")
     L2₁                   = L2[1]
     ndof                  = 2nXdof+nUdof
-#    A                     = Sparse𝕔2(ndof,ndof,L2₁.colptr,L2₁.rowval,𝕔1(undef,length(L2₁.nzval)))
-    A                     = Sparse𝕣2(ndof,ndof,L2₁.colptr,L2₁.rowval,𝕣1(undef,length(L2₁.nzval)))
+    A                     = Sparse𝕣2(ndof,ndof,L2₁.colptr,L2₁.rowval,𝕣1(undef,length(L2₁.nzval))) # but could be complex
     ΔΛXU                  = Vector{𝕣11}(undef,nω) # ΔΛXU[iω][imod][idof]
-    λ                     = 𝕣11(undef,nω)         # λ⁻¹[ iω][imod]
-    nor                   = 𝕣11(undef,nω)         # B[   iω][imod] 
+    λ                     = 𝕣11(undef,nω)         # λ[   iω][imod]
+    nor                   = 𝕣11(undef,nω)         # nor[ iω][imod] 
     ncv                   = 𝕫1(undef,nω)          # ncv[ iω]
     wrk                   = zeros(ndof)           # wrk[ndof]
 
     ω                     = range(start=0.,step=Δω,length=nω) 
     for (iω,ωᵢ)           = enumerate(ω)
-        B.nzval          .= N[1]+ωᵢ^2*N[2]+ωᵢ^4*N[3]     
-        A.nzval          .= L2[1].nzval+ωᵢ^2*L2[3].nzval+ωᵢ^4*L2[5].nzval     
-        # A.nzval          .= 0.   # Hard enough with a real eigenproblem, we skip the complex part
-        # for j             = 0:4
-        #     𝑖ωᵢʲ          = (𝑖*ωᵢ)^j
-        #     A.nzval     .+= 𝑖ωᵢʲ *L2[j+1].nzval
-        # end
+        B.nzval          .= N[1]        + ωᵢ^2*N[2]        + ωᵢ^4*N[3]     
+        A.nzval          .= L2[1].nzval + ωᵢ^2*L2[3].nzval + ωᵢ^4*L2[5].nzval     # complex if exponents 1 and 3 included
         try 
             if iω==1 LU   = lu(A) 
             else     lu!(LU ,A)
             end 
+            λ⁻¹, ΔΛXU[iω], ncv[iω] = geneig{:symmetric}(A,B,nmod;normalize=false,kwargs...)
+            nor[iω]                = 𝕣1(undef,ncv[iω])
+            λ[iω]                  = 1 ./λ⁻¹
+            for imod               = 1:ncv[iω]
+                Δ                  = ΔΛXU[iω][imod]
+                wrk[ixu]          .= view(Δ,ixu)                   # this copy can be optimised by viewing the classes in Δ, operating on out.L2[α,β][αder,βder], and combining over derivatives.  Is it worth the effort?   
+                Anorm              = √(ℜ(1/2*wrk  ∘₁ (A ∘₁ wrk)))  # ΔΛXU is real, A is complex Hermitian, so square norm is real: (imag part is zero to machine precision)
+                Δ                .*= 2.575829303549/Anorm          # corresponds to a probability of exceedance of 0.01                        
+                nor[iω][imod]      = ℜ(Δ ∘₁ (B ∘₁ Δ))/(2log(2)) 
+            end
         catch 
-            verbose && @printf("\n")
-            muscadeerror(@sprintf("A matrix factorization failed for ω=%f",ωᵢ));
-        end
-
-        λ⁻¹, ΔΛXU[iω], ncv[iω] = geneig{:symmetric}(A,B,nmod;normalize=false,kwargs...)
-        @show maximum(abs.(A*ΔΛXU[iω][1]-B*λ⁻¹[1]*ΔΛXU[iω][1]))/maximum(abs.(A*ΔΛXU[iω][1])) 
-
-        nor[iω]                = 𝕣1(undef,ncv[iω])
-        λ[iω]                  = 1 ./λ⁻¹
-        for imod               = 1:ncv[iω]
-            Δ                  = ΔΛXU[iω][imod]
-            wrk[ixu]          .= view(Δ,ixu)                   # this copy can be optimised by viewing the classes in Δ, operating on out.L2[α,β][αder,βder], and combining over derivatives.  Is it worth the effort?   
-            Anorm              = √(ℜ(1/2*wrk  ∘₁ (A ∘₁ wrk)))  # ΔΛXU is real, A is complex Hermitian, so square norm is real: (imag part is zero to machine precision)
-            Δ                ./= Anorm                        
-            nor[iω][imod]      = ℜ(Δ ∘₁ (B ∘₁ Δ))/(2log(2)) 
+#            verbose && @printf("\n")
+            muscadewarning(@sprintf("Factorization of matrix A failed for ω=%f",ωᵢ));
         end
     end    
     any(ncv.<nmod) && verbose && muscadewarning("Some eigensolutions did not converge",4)

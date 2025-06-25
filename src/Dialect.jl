@@ -258,9 +258,22 @@ const idvec = IdVec()
 @inline Base.getindex(::IdVec,i) = i
 
 """
-    imod(i,n) = mod(i-1,n)+1
+    mod_onebased(i,n) = mod(i-1,n)+1
 
 For `i::ℤ`, returns a value in `{1,...n}`.  This differs
 from `mod` which return a value in `[0,n[`   
 """
-imod(i::ℤ,n) = mod(i-1,n)+1
+mod_onebased(i::ℤ,n) = mod(i-1,n)+1
+
+"""
+    columnmatrix(v)
+
+Reshape a vector into a matrix of size `(length(v),1)`    
+"""
+columnmatrix(v::Vector) = reshape(v,(length(v),1))
+"""
+    rowmatrix(v)
+
+Reshape a vector into a matrix of size `(1,length(v))`    
+"""
+rowmatrix(   v::Vector) = reshape(v,(1,length(v)))
