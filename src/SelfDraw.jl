@@ -1,5 +1,5 @@
 # Model drawing
-# typestable kernel
+# typestable kernel for one element type
 function draw_(axe,dis::EletypDisassembler,eleobj,iele,state,dbg;kwargs...)  
     nel      = length(iele)
     nXder    = length(state.X)
@@ -15,7 +15,7 @@ function draw_(axe,dis::EletypDisassembler,eleobj,iele,state,dbg;kwargs...)
         for jder ∈ eachindex(state.X)               
             X[jder][:,i] = state.X[jder][index.X]
         end
-        for jder ∈ eachindex(state.U)             
+        for jder ∈ eachindex(state.U) 
             U[jder][:,i] = state.U[jder][index.U]
         end
         A[:,i]  = state.A[index.A]
