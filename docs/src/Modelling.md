@@ -18,9 +18,11 @@ model           = Model(:TestModel)
 n1              = addnode!(model,[0.]) 
 n2              = addnode!(model,[1.])
 e1              = addelement!(model,Hold,[n1];field=:tx1)                       # Hold first node
-e2              = addelement!(model,DofLoad,[n2];field=:tx1,value=t->3t)        # Increase load on second node
+@once id1 load(t) = 3t
+e2              = addelement!(model,DofLoad,[n2];field=:tx1,value=load)        # Increase load on second node
+@once id2 res(X,X′,X″,t)  = 12SVector(X[1]-X[2],X[2]-X[1])
 e3              = addelement!(model,QuickFix,[n1,n2];inod=(1,2),field=(:tx1,:tx1),
-                              res=(X,X′,X″,t)->12SVector(X[1]-X[2],X[2]-X[1]))  # Linear elastic spring with stiffness 12
+                              res=res)  # Linear elastic spring with stiffness 12
 initialstate    = initialize!(model)
 state           = solve(SweepX{0};initialstate,time=[0.,1.],verbose=false)      # Solve the problem
 tx1,_           = getdof(state[2],field=:tx1,nodID=[n2])                        # Extract the displacement of the free node
@@ -42,6 +44,8 @@ The definition of a model is done in three phases:
 [`setdof!`](@ref) can be used to set the value of specific dofs for more specific initial conditions.
 
 `Muscade` does not provide a mesher. There are some general purposes meshers with Julia API, which outputs could be used to generate calls to [`addnode!`](@ref) and [`addelement!`](@ref).
+
+Note that two `function`s, `load` and `res` are defined in the script, and then passed as argument to element constructors. In the script it is *recommended* (but not compulsory) to annotate the function definition with the macro[`@once`](@ref).  The first argument must be a unique variable name. The second argument is the function definition.  The macro prevents the function to be re-parsed if unchanged, which in turn prevents unnecessary recompilations of Muscade when the script is runned multiple times in a session. 
 
 The model - either finitialized or under construction, can be examined using [`describe`](@ref) and [`getndof`](@ref).  
 
@@ -70,9 +74,9 @@ help?> Hold
 
 With a few exceptions for testing and demonstration, `Muscade` does not provide physical elements.  However, it provides several general purpose elements  to introduce loads, costs or  constraints.
 
-[`DofLoad`](@ref) adds a time-varying load on a single X-dof.  Elements for more general loads, in particular, consistent loads on element boundaries or domain, or follower loads, need to be implemented if required.
+[`DofLoad`](@ref) adds a time-varying load on a single ``X``-dof.  Elements for more general loads, in particular, consistent loads on element boundaries or domain, or follower loads, need to be implemented if required.
 
-[`DofCost`](@ref) adds a cost as a function of either X-dofs ,U-dofs (and/or their derivatives), A-dofs and time, or as a function of A-dofs alone. Elements for costs on unknwn distributed load *fields* (over boundary or domain) must be provided by apps if required.
+[`DofCost`](@ref) adds a cost as a function of either ``X``-dofs ,``U``-dofs (and/or their derivatives), ``A``-dofs and time, or as a function of ``A``-dofs alone. Elements for costs on unknwn distributed load *fields* (over boundary or domain) must be provided by apps if required.
 
 [`SingleDofCost`](@ref) provides a simplified syntax for costs on a single dof.
 
@@ -84,7 +88,7 @@ With a few exceptions for testing and demonstration, `Muscade` does not provide 
 
 [`ElementConstraint`](@ref) adds a constraint to a function of internal results from one element. The constraints can switch over time between equality, inequality and "off". Inequality constraints are handled using a modified interior point method.
 
-[`Hold`](@ref) provides a simplified syntax to set a single X-dof to zero.
+[`Hold`](@ref) provides a simplified syntax to set a single ``X``-dof to zero.
 
 [`QuickFix`](@ref) allows to rapidly create a simple element, with limitations in functionality. 
 
@@ -102,7 +106,7 @@ Analyses may fail due to singular matrix.  The source of the singularity can be 
 
  [`getdof`](@ref) allows to obtain dofs which are directly stored in `state`, by specifying class, field and node.
 
-[`getresult`](@ref) (used in combination with [`Muscade.@request`](@ref)) allows to obtain "element-results".  Element-results are intermediate values that are computed within [`Muscade.lagrangian`](@ref) or [`Muscade.residual`](@ref), but are (generaly) not returned, because the API for these functions does not open for this.  In mechanics,  [`Muscade.residual`](@ref) would take displacements as inputs (X-dofs) and from them compute the forces that must act on the element to cause these displacements. Element-results woudl then include quantities such as stresses and strains.  To be requestable, a variable must be tagged in [`Muscade.lagrangian`](@ref) or [`Muscade.residual`](@ref), prefixing its name with `☼` (`\sun`) at the right hand of an assigment.
+[`getresult`](@ref) (used in combination with [`Muscade.@request`](@ref)) allows to obtain "element-results".  Element-results are intermediate values that are computed within [`Muscade.lagrangian`](@ref) or [`Muscade.residual`](@ref), but are (generaly) not returned, because the API for these functions does not open for this.  In mechanics,  [`Muscade.residual`](@ref) would take displacements as inputs (``X``-dofs) and from them compute the forces that must act on the element to cause these displacements. Element-results woudl then include quantities such as stresses and strains.  To be requestable, a variable must be tagged in [`Muscade.lagrangian`](@ref) or [`Muscade.residual`](@ref), prefixing its name with `☼` (`\sun`) at the right hand of an assigment.
 
 These element-results are not stored in the `State`, and tagging variables does not result in either increase storage or computing time: [`getresult`](@ref) will compute requested values on the fly by calling a modified version of [`Muscade.lagrangian`](@ref) or [`Muscade.residual`](@ref) generated by [`@espy`](@ref).  This also implies that one does not need to decide on what variables to store before an anlysis, a great advantage for heavy analyses.
 
@@ -128,8 +132,7 @@ A guideline for handling units without [problems](https://en.wikipedia.org/wiki/
 - **Users** convert Muscade outputs just before printing them out `printf("stress [MPa] %f",stress → MPa)`.
 
 Excellent packages exist for the handling of units ([`Unitful.jl`](https://painterqubits.github.io/Unitful.jl/stable/) ).  These packages have zero
-runtime overhead, and allow to verify code for unit consistency (`Muscade` does not provide this). However, it is arguably not possible to make these packages work with `Muscade`: In `Muscade`, `3←(pound/foot^3)` is of type `Float64`.  A comparable operation in [`Unitful.jl`](https://painterqubits.github.io/Unitful.jl/stable/)  
-would output a variable with a *type* containing data about dimensionality. `Muscade` handles various arrays of quantities with different dimensionality: such a solution would result in arrays of heterogeneous types. `Muscade` does not allow this, as this would result in catastrophic loss of performance due to [type instability](@ref typestab).
+runtime overhead, and allow to verify code for unit consistency (`Muscade` does not provide this). However, it is arguably not possible to make these packages work with `Muscade`: In `Muscade`, `3←(pound/foot^3)` is of type `Float64`.  A comparable operation in [`Unitful.jl`](https://painterqubits.github.io/Unitful.jl/stable/) would output a variable with a *type* containing data about dimensionality. `Muscade` handles various arrays of quantities with different dimensionality: such a solution would result in arrays of heterogeneous types. `Muscade` does not allow this, as this would result in catastrophic loss of performance due to [type instability](@ref typestab).
 
 ## Drawing
 

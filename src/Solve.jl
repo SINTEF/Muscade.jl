@@ -1,4 +1,3 @@
-using Printf
 abstract type AbstractSolver  end
 """
     solve(Solver;dbg=(;),verbose=true,silenterror=false,kwargs...)
@@ -20,7 +19,6 @@ See also: [`SweepX`](@ref), [`DirectXUA`](@ref), [`initialize!`](@ref)
 function solve(Solver::Type{<:AbstractSolver};dbg=NamedTuple(),verbose::𝕓=true,silenterror::𝕓=false,catcherror::𝕓=true,kwargs...) 
     verbose && printstyled("\n\n\nMuscade:",bold=true,color=:cyan)
     verbose && printstyled(@sprintf(" %s solver\n\n",Symbol(Solver)),color=:cyan)
-
     pstate = Ref{Any}() # state is not a return argument of the solver, so that partial results are not lost on error
     if catcherror
         try
@@ -29,7 +27,7 @@ function solve(Solver::Type{<:AbstractSolver};dbg=NamedTuple(),verbose::𝕓=tru
         catch exn
             silenterror || report(exn)
             silenterror || printstyled("\nAborting the analysis.",color=:red)
-            silenterror || println(" Function 'solve' should still be returning results obtained so far.")
+            silenterror || println(" Function 'solve' still returns any results obtained before the exception.")
         end
     else
         t = @elapsed solve(Solver,pstate,verbose,(dbg...,solver=Symbol(Solver));kwargs...)  

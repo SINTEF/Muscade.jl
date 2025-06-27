@@ -2,13 +2,6 @@
 # implement sincos
 # differentiate x^0 at x=0
 
-
-
-
-using   StaticArrays
-using   SpecialFunctions
-using   Printf
-
 ## Type and construction
 const SV = SVector  
 const SA = SArray 
@@ -69,6 +62,7 @@ function Base.convert(::Type{∂ℝ{Pa,Na,Ra}},b::∂ℝ{Pb,Nb,Rb}) where{Pa,Pb,
 end
 
 # Pack and unpack
+precedence( ::Type{Union{}})                              = 0
 precedence( ::Type{<:∂ℝ{P,N,R}}) where{P,N,R<:ℝ}          = P
 npartial(   ::Type{<:∂ℝ{P,N,R}}) where{P,N,R<:ℝ}          = N
 precedence( ::Type{<:ℝ})                                  = 0
@@ -84,10 +78,11 @@ Generate a precedence `P` that is higher than the precedence of the arguments.
 
 See also: [`variate`](@ref), [`δ`](@ref), [`value`](@ref), [`∂`](@ref), [`VALUE`](@ref), [`value_∂`](@ref)
 """
-constants(tup::Tuple) = constants(tup...) 
-constants( a,args...) = max(constants(a),constants(args...))
-constants( a)         = 1+precedence(a) 
-constants( ::Nothing) = 0
+constants(tup::Tuple)   = constants(tup...) 
+constants( a,args...)   = max(constants(a),constants(args...))
+constants( a)           = 1+precedence(a) 
+constants(tup::Tuple{}) = 1 
+constants( ::Nothing)   = 1
 
 # variate
 struct δ{P,N,R}                end # need dum, because syntax δ{P,N,R}() collides with default constructor
@@ -155,6 +150,7 @@ See also: [`constants`](@ref), [`variate`](@ref), [`δ`](@ref), [`∂`](@ref), [
 value{P}(a::∂ℝ{P,N,R}) where{P,N,R   } = a.x
 value{P}(a::R        ) where{P  ,R<:ℝ} = a
 value{P}(a::SA       ) where{P       } = value{P}.(a)
+value{P}(a::Tuple    ) where{P       } = Tuple(value{P}(aᵢ) for aᵢ∈a) 
 
 # ∂{P}(a) is handled as ∂{P,1}(a) and returns a scalar 
 """
@@ -177,8 +173,15 @@ See also: [`constants`](@ref), [`variate`](@ref), [`δ`](@ref), [`value`](@ref),
 ∂{P  }(a::            R  ) where{  P,  R<:ℝ} = zero(R)
 ∂{P  }(a::     ∂ℝ{P,1,R} ) where{  P,  R   } = a.dx[1]
 ∂{P  }(a::SV{N,∂ℝ{P,1,R}}) where{  P,N,R   } = SV{  N,R}(a[i].dx[1] for i=1:N     ) # ∂(a,x)[i]    = ∂a[i]/∂x
-#∂{P,N}(a::SA{M,∂ℝ{P,N,R}}) where{M,P,N,R}  = SA{(M...,N),R}(a[i].dx[j] for i∈eachindex(a),j∈1:N) # ∂(a,x)[i,...,j] = ∂a[i,...]/∂x[j]
-#∂{P,N}(a::SA{M,       R }) where{M,P,N,R}  = SA{(M...,N),R}(zero(R)    for i∈eachindex(a),j∈1:N)
+
+# SArray was designed before Julia allowed Tuples (here: M) as type parameters.  Hence they used Tuple{M} instead
+∂{P,N}(a::SM{      M1,M2       ,∂ℝ{P,N,R}}) where{M1,M2      ,P,N,R} = SA{Tuple{M1,M2,N       },R}(a[i].dx[j] for i∈eachindex(a),j∈1:N) # ∂(a,x)[i,...,j] = ∂a[i,...]/∂x[j]
+∂{P,N}(a::SM{      M1,M2       ,       R }) where{M1,M2      ,P,N,R} = SA{Tuple{M1,M2,N       },R}(zero(R)    for i∈eachindex(a),j∈1:N)
+∂{P,N}(a::SA{Tuple{M1,M2,M3   },∂ℝ{P,N,R}}) where{M1,M2,M3   ,P,N,R} = SA{Tuple{M1,M2,M3    ,N},R}(a[i].dx[j] for i∈eachindex(a),j∈1:N) # ∂(a,x)[i,...,j] = ∂a[i,...]/∂x[j]
+∂{P,N}(a::SA{Tuple{M1,M2,M3   },       R }) where{M1,M2,M3   ,P,N,R} = SA{Tuple{M1,M2,M3    ,N},R}(zero(R)    for i∈eachindex(a),j∈1:N)
+∂{P,N}(a::SA{Tuple{M1,M2,M3,M4},∂ℝ{P,N,R}}) where{M1,M2,M3,M4,P,N,R} = SA{Tuple{M1,M2,M3,M4 ,N},R}(a[i].dx[j] for i∈eachindex(a),j∈1:N) # ∂(a,x)[i,...,j] = ∂a[i,...]/∂x[j]
+∂{P,N}(a::SA{Tuple{M1,M2,M3,M4},       R }) where{M1,M2,M3,M4,P,N,R} = SA{Tuple{M1,M2,M3,M4 ,N},R}(zero(R)    for i∈eachindex(a),j∈1:N)
+∂{P,N}(a::Tuple                           ) where{            P,N  } = Tuple(∂{P,N}(aᵢ) for aᵢ∈a) 
 """
     y,yₓ = value_∂{P,N}(Y)
     y,y′ = value_∂{P  }(Y)

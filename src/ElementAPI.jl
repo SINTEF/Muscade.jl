@@ -11,6 +11,8 @@ See also: [`noFB`](@ref)
 """
 const noFB=nothing
 
+zilch(a::SArray{S}) where{S} = zeros(SArray{S,𝕣})
+zilch(a::AbstractArray)      = zeros(𝕣,size(a))
 """
     position = ∂0(X)
 
@@ -30,7 +32,7 @@ a static solver), the output is a vector of zeros.
 
 See also: [`∂0`](@ref),[`∂2`](@ref),[`getsomedofs`](@ref)  
 """
-∂1(y)   = length(y) ≥2 ? y[2] : zeros(SVector{length(y[1])})
+∂1(y)   = length(y) ≥2 ? y[2] : zilch(y[1])
 
 """
     position = ∂2(X)
@@ -41,9 +43,9 @@ a static solver), the output is a vector of zeros.
 
 See also: [`∂0`](@ref),[`∂1`](@ref),[`getsomedofs`](@ref)  
 """
-∂2(y)   = length(y) ≥3 ? y[3] : zeros(SVector{length(y[1])})
+∂2(y)   = length(y) ≥3 ? y[3] : zilch(y[1])
 ∂n(n)   = (∂0,∂1,∂2)[n+1] # type unstable
-∂n(y,ider) = length(y) ≥ider+1 ? y[ider+1] : zeros(SVector{length(y[1])}) # slow
+∂n(y,ider) = length(y) ≥ider+1 ? y[ider+1] : zilch(y[1]) # slow
 
 """
     rotations = getsomedofs(X,[3,6])
@@ -73,96 +75,6 @@ See also: [`addnode!`](@ref), [`addelement!`](@ref), [`describe`](@ref), [`solve
 """
 coord(nod::AbstractVector{Node}) = [n.coord for n∈nod]
 
-struct motion{P,D}      end 
-struct motion_{P,Q}     end 
-"""
-    P = constants(X,U,A,t)
-    x = Muscade.motion{P}(X)
-
-Transform a `NTuple` of `SVector`s, for example the vector `X` provided as an input to
-`residual` or `Lagrangian` into a `SVector` of `∂ℝ`.  This can be used by an element to 
-compute time derivatives, for example Euler, Coriolis and centrifugal accelerations, 
-or strain rates.
-
-Some principles of safe automatic differentiation must be adhered to:
-- the function that uses `Muscade.motion` must also 'unpack' : no variable that is touched by 
-  the output of `Muscade.motion` must be returned by the function without having been unpacked
-  by `Muscade.position`, `Muscade.velocity` or `Muscade.acceleration`.
-- The precendence `P` must be calculated using `constants` with all variables that are input to 
-  the function and may be differentiated.
-- If other levels of automatic differentiation are introduced within the function, unpack in reverse
-  order of packing.    
-
-See [`Muscade.position`](@ref), [`Muscade.velocity`](@ref), [`Muscade.acceleration`](@ref)
-"""
-motion{ P,D}(  a::NTuple{D,SV{N,R}}) where{D,P,N,R        } = SV{N}(motion_{P,P+D-1}(ntuple(j->a[j][i],D)) for i=1:N)
-motion_{P,Q  }(a::NTuple{D,     R }) where{D,P  ,R<:Real,Q} = ∂ℝ{Q,1}(motion_{P,Q-1}(a),SV(motion_{P,Q-1}(a[2:D]))) 
-motion_{P,P  }(a::NTuple{D,     R }) where{D,P  ,R<:Real  } = a[1]
-struct position{P,Q}     end 
-struct velocity{P,Q}     end 
-struct acceleration{P,Q} end 
-
-"""
-    P = constants(X,U,A,t)
-    N = length(X)
-    x = Muscade.motion{P,ND}(X)
-    E = f(x)    
-    ε = Muscade.position{P,N}(E)
-
-Extract the position from a variable that is a function of the output of `Muscade.motion`.
-
-See [`Muscade.motion`](@ref), [`Muscade.velocity`](@ref), [`Muscade.acceleration`](@ref)
-"""
-function position{P,Q}(a::ℝ) where{P,Q}
-    if     Q==1                            a 
-    elseif Q==2               value{P+Q-1}(a)
-    elseif Q==3  value{P+Q-2}(value{P+Q-1}(a))
-    else muscadeerror((P=P,Q=Q,a=typeof(a)),"'position' requires Q∈{1,2,3}")
-    end
-end
-  
-"""
-    P = constants(X,U,A,t)
-    N = length(X)
-    x = Muscade.motion{P,N}(X)
-    E = f(x)    
-    ̇ε = Muscade.velocity{P,N}(E)
-
-Extract the velocity or rate from a variable that is a function of the output of `Muscade.motion`.
-
-See [`Muscade.motion`](@ref), [`Muscade.position`](@ref), [`Muscade.acceleration`](@ref)
-"""
-function velocity{P,Q}(a::ℝ) where{P,Q}
-    if     Q==1                          0.   
-    elseif Q==2               ∂{P+Q-1,1}(a)[1]
-    elseif Q==3  value{P+Q-2}(∂{P+Q-1,1}(a)[1]) 
-    else muscadeerror((P=P,Q=Q,a=typeof(a)),"'velocity' requires Q∈{1,2,3}")
-    end
-end  
-"""
-    P = constants(X,U,A,t)
-    N = length(X)
-    x = Muscade.motion{P,N}(X)
-    E = f(x)    
-    ̈ε = Muscade.acceleration{P,N}(E)
-
-Extract the velocity or rate from a variable that is a function of the output of `Muscade.motion`.
-
-See [`Muscade.motion`](@ref), [`Muscade.position`](@ref), [`Muscade.velocity`](@ref)
-"""
-function acceleration{P,Q}(a::ℝ) where{P,Q}
-    if     Q==1                        0.
-    elseif Q==2                        0.
-    elseif Q==3  ∂{P+Q-2,1}(∂{P+Q-1,1}(a)[1])[1]
-    else muscadeerror((P=P,Q=Q,a=typeof(a)),"'acceleration' requires Q∈{1,2,3}")
-    end
-end  
-
-#acceleration{P,Q}(a::ℝ) where{P,Q} = ∂{P+Q-2,1}(∂{P+Q-1,1}(a)[1])[1]
-position{P,Q}(    a::AbstractVector) where{P,Q} = position{P,Q}.(a)
-velocity{P,Q}(    a::AbstractVector) where{P,Q} = velocity{P,Q}.(a)
-acceleration{P,Q}(a::AbstractVector) where{P,Q} = acceleration{P,Q}.(a)
-
 
 """
     Muscade.doflist(::Type{E<:AbstractElement})
@@ -180,9 +92,19 @@ In `Λ`, `X`, `U` and `A` handed by Muscade to `residual` or `lagrangian`,
 the dofs in the vectors will follow the order in the doflist. Element developers
 are free to number their dofs by node, by field, or in any other way.
 
-See also: [`lagrangian`](@ref), [`residual`](@ref)  ∂
+See also: [`lagrangian`](@ref), [`residual`](@ref), [`nosecondorder`](@ref)  
 """
 doflist(     ::Type{E}) where{E<:AbstractElement}  = muscadeerror(@sprintf("method 'Muscade.doflist' must be provided for elements of type '%s'\n",E))
+
+"""
+    nosecondorder(::Type{E<:AbstractElement})
+
+Elements that define `residual` which would give excessive compilation and/or execution time if differentiated
+to the second order should provide a flag to limit differentiation to first order by implementing:   
+
+    Muscade.nosecondorder(     ::Type{<:MyElementType}) = Val(true)
+"""
+nosecondorder(     ::Type{<:AbstractElement}) = Val(false)
 
 """
     @espy function Muscade.lagrangian(eleobj::MyElement,Λ,X,U,A,t,SP,dbg)
@@ -210,7 +132,7 @@ doflist(     ::Type{E}) where{E<:AbstractElement}  = muscadeerror(@sprintf("meth
 - `FB` feedback from the element to the solver (for example: can `γ` be 
   reduced?). Return `noFB` of the element has no feedback to provide.
 
-See also: [`residual`](@ref), [`doflist`](@ref), [`@espy`](@ref), [`∂0`](@ref), [`∂1`](@ref), [`∂2`](@ref), [`noFB`](@ref)
+See also: [`residual`](@ref), [`doflist`](@ref), [`@espy`](@ref), [`∂0`](@ref), [`∂1`](@ref), [`∂2`](@ref), [`noFB`](@ref), 
 """
 lagrangian()=nothing
 
@@ -240,19 +162,21 @@ end
 - `FB` feedback from the element to the solver (for example: can `γ` be 
   reduced?). Return `noFB` of the element has no feedback to provide.
 
-See also: [`lagrangian`](@ref), [`doflist`](@ref), [`@espy`](@ref), [`∂0`](@ref), [`∂1`](@ref), [`∂2`](@ref), [`noFB`](@ref)
+See also: [`lagrangian`](@ref), [`nosecondorder`](@ref), [`doflist`](@ref), [`@espy`](@ref), [`∂0`](@ref), [`∂1`](@ref), [`∂2`](@ref), [`noFB`](@ref)
 """
 residual()=nothing
 """
-    Muscade.draw(ElementType,axe,o, Λ,X,U,A,t,SP,dbg;kwargs...)
+For parametric element types
+    Muscade.draw(axe,o::AbstractVector{Teleobj}, Λ,X,U,A,t,SP,dbg;kwargs...) where{Teleobj<:MyElement}
+For non-parametric element types, one can simplify the above to:
+    Muscade.draw(axe,o::AbstractVector{MyElement}, Λ,X,U,A,t,SP,dbg;kwargs...)
 
 Inputs are:
-- `ElementType`, the method must dispatch on this `DataType`.
 - `axe`, a `GLMakie` axe
 - `o` a `AbstractVector` of element objects, of length `nel`.
 - `Λ` a matrix of size `(nXdof,nel)`
-- `X` a `NTuple` of matrices of size `(nXdof,nel)`
-- `U` a `NTuple` of matrices of size `(nUdof,nel)`
+- `X` a `NTuple` (over the derivatives) of matrices of size `(nXdof,nel)`
+- `U` a `NTuple` (over the derivatives) of matrices of size `(nUdof,nel)`
 - `A` a matrix of size `(nAdof,nel)`
 - `t` time
 - `SP` solver parameters
@@ -261,7 +185,6 @@ Inputs are:
 
 See also: [`lagrangian`](@ref), [`residual`](@ref), [`doflist`](@ref)
 """
-draw(axe,::AbstractElement,args...;kwargs...) = nothing # by default, an element draws nothing
-
+draw(axe,::AbstractVector{E},args...;kwargs...) where{E<:AbstractElement} = nothing # by default, an element draws nothing
 
 

@@ -1,4 +1,3 @@
-using Printf,MacroTools
 
 ######################## Helper functions
 ☼tag(s::Symbol)  = string(s)[1]=='☼' # \sun  
@@ -92,7 +91,7 @@ merge(::Nothing, ::Nothing) = nothing
     return code_tuple(t...)
     return c
 end
-
+Base.haskey(::Nothing,a) = false
 
 ######################## Generate new function code
 # ✓check,✔Check,∎QED,⋆star,♢diamond,☼sun,☐Box
@@ -348,7 +347,7 @@ From an anotated function code, generate
 The macro is not general: it is designed for `residual` and `lagrangian`,
 which for performance have to be programmed in "immutable" style: they must
 never mutate variables (this implies in particular, no adding into
-an array in a loop over Gauss points). So @espy only supports the specific
+an array in a loop over Gauss points). So `@espy` only supports the specific
 programming constructs needed in this style.
 
 The following is an example of anotated code:

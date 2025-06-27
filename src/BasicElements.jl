@@ -16,7 +16,7 @@ An element to apply costs on combinations of dofs.
                                  if `class==:A`, `cost(A,costargs...)→ℝ` 
                                  `X` and `U` are tuples (derivates of dofs...), and `∂0(X)`,`∂1(X)`,`∂2(X)` 
                                  must be used by `cost` to access the value and derivatives of `X` (resp. `U`) 
-- `costargs::NTuple`
+- `[costargs::NTuple=() or NamedTuple] of additional arguments passed to `cost``
 
 
 # Requestable internal variables
@@ -25,7 +25,7 @@ An element to apply costs on combinations of dofs.
 # Example
 ```
 ele1 = addelement!(model,DofCost,[nod1],xinod=(1,),field=(:tx1,),
-       class=:I,cost=(X,U,A,t)->X[1]^2
+       class=:I,cost=(X,U,A,t;X0)->(X[1]-X0)^2,costargs=(;X0=0.27)
 ```
 
 See also: [`SingleDofCost`](@ref), [`ElementCost`](@ref), [`addelement!`](@ref)  
@@ -65,35 +65,37 @@ as input to the `ElementCost` constructor.
 
 # Named arguments to the constructor
 - `req`                 A request for element-results to be extracted from the target element, see [`@request`](@ref).
-                        The request is formulated as if adressed directly to the target element (no "prefixing" with 
-                        `eleres`, see "Requestable internal variables")
-- `cost`                a cost function `cost(eleres,X,U,A,t,costargs...)→ℝ`
+                        The request is formulated as if adressed directly to the target element.
+- `cost`                A cost function `cost(eleres,X,U,A,t,costargs...)→ℝ`. 
+                        `eleres` is the output of the above-mentionned request to the target element.     
                         `X` and `U` are tuples (derivates of dofs...), and `∂0(X)`,`∂1(X)`,`∂2(X)` 
                         must be used by `cost` to access the value and derivatives of `X` (resp. `U`).
                         `X`, `U` and `A` are the degrees of freedom of the element `ElementType`.
-- `costargs=(;)`        A named tuple of additional arguments to the cost function 
-- `ElementType`         The named of the constructor for the relevant element 
+- `[costargs::NTuple=() or NamedTuple]` Additional arguments passed to `cost`.
+- `ElementType`         The named of the constructor for the relevant element.
 - `elementkwargs`       A named tuple containing the named arguments of the `ElementType` constructor.     
-
 
 # Requestable internal variables
 
-From `ElementConstraint` one can request
-- `cost`               The value of the cost
-
-From the target element once can request
-- `eleres(...)`        where `...` is the list of requestables from the target element.  It must be "prefixed" by 
-                       `eleres` to prevent possible confusion with variables requestable from `ElementConstraint`.
+Not to be confused with the `req` provided as input to `addelement!` when adding an `ElementCost`, one can, after 
+the analysis, request results from `ElementConstraint` 
+- `cost`               The value of `cost(eleres,X,U,A,t,costargs...)`.
+- `eleres(...)`        where `...` is the list of requestables wanted from the target element.  The "prefix"  
+                       `eleres` is there to prevent possible confusion with variables requestable from `ElementConstraint`.  
+                       For example `@request cost` would extract the value of the `ElementConstraint`'s function `cost`, while
+                       `@request eleres(cost)` refers to the value of a variable called `cost` in the target element. 
 
 # Example
 ```
-@once cost(eleres,X,U,A,t) = eleres.Fh^2
+@once cost(eleres,X,U,A,t;Fh0) = (eleres.Fh-Fh0)^2
 ele1 = addelement!(model,ElementCost,[nod1];req=@request(Fh),
-                   cost=cost,ElementType=AnchorLine,
+                   cost=cost,
+                   costargs = (;Fh0=0.27)
+                   ElementType=AnchorLine,
                    elementkwargs=(Λₘtop=[5.,0,0], xₘbot=[250.,0], L=290., buoyancy=-5e3))
 ```
 
-See also: [`SingleDofCost`](@ref), [`DofCost`](@ref), [`@request`](@ref) 
+See also: [`SingleDofCost`](@ref), [`DofCost`](@ref), [`@request`](@ref), [`@once`](@ref) 
 """
 struct ElementCost{Teleobj,Treq,Tcost,Tcostargs} <: AbstractElement
     eleobj   :: Teleobj
@@ -101,7 +103,7 @@ struct ElementCost{Teleobj,Treq,Tcost,Tcostargs} <: AbstractElement
     cost     :: Tcost     
     costargs :: Tcostargs
 end
-function ElementCost(nod::Vector{Node};req,cost,costargs=(;),ElementType,elementkwargs)
+function ElementCost(nod::Vector{Node};req,cost,costargs=(),ElementType,elementkwargs)
     eleobj   = ElementType(nod;elementkwargs...)
     return ElementCost(eleobj,(eleres=req,),cost,costargs)
 end
@@ -111,8 +113,10 @@ doflist( ::Type{<:ElementCost{Teleobj}}) where{Teleobj} = doflist(Teleobj)
     L,FB,☼eleres = getlagrangian(o.eleobj,Λ,X,U,A,t,SP,(dbg...,via=ElementCost),req.eleres)
     ☼cost        = o.cost(eleres,X,U,A,t,o.costargs...) 
     return L+cost,FB
-end    
+end   
 
+draw(axe,eleobj::Vector{Teleobj}, Λ,X,U,A, t,SP,dbg;kwargs...) where{Teleobj<:ElementCost} = 
+      draw(axe,[eᵢ.eleobj for eᵢ∈eleobj], Λ,X,U,A, t,SP,dbg;kwargs...)
 """
     SingleDofCost{Derivative,Class,Field,Tcost} <: AbstractElement
 
@@ -124,7 +128,7 @@ An element with a single node, for adding a cost to a given dof.
 - `cost::Function`, where 
     - `cost(x::ℝ,t::ℝ[,costargs...]) → ℝ` if `class` is `:X` or `:U`, and 
     - `cost(x::ℝ,    [,costargs...]) → ℝ` if `class` is `:A`.
-- `costargs::NTuple=()`
+- `[costargs::NTuple=() or NamedTuple] of additional arguments passed to `cost``
 - `derivative::Int=0` 0, 1 or 2 - which time derivative of the dof enters the cost. 	    
 
 # Requestable internal variables
@@ -154,16 +158,14 @@ end
 """
     SingleUdof{XField,Ufield,Tcost} <: AbstractElement
 
-An that creates a Udof, and associates a cost to its value.
-Thev alue of the Udof is applied as a load to a Xdof on the same node.  
+An element that creates a Udof, and associates a cost to its value.
+The value of the Udof is applied as a load to a Xdof on the same node.  
 
 # Named arguments to the constructor
 - `Xfield::Symbol`.
 - `Ufield::Symbol`.
-- `cost::Function`, where 
-    `cost(x::ℝ,t::ℝ[,costargs...]) → ℝ` if `class` is `:X` or `:U`, and 
-    `cost(x::ℝ,    [,costargs...]) → ℝ` if `class` is `:A`.
-- `costargs::NTuple`
+- `cost::Function`, where `cost(u::ℝ,t::ℝ[,costargs...]) → ℝ` 
+- `[costargs::NTuple=() or NamedTuple] of additional arguments passed to `cost``
 
 # Requestable internal variables
 - `cost`, the value of the cost.
@@ -173,7 +175,7 @@ Thev alue of the Udof is applied as a load to a Xdof on the same node.
 using Muscade
 model = Model(:TestModel)
 node  = addnode!(model,𝕣[0,0])
-e     = addelement!(model,SingleUdofCost,[node];Xfield=:tx,Ufield=:utx,
+e     = addelement!(model,SingleUdof,[node];Xfield=:tx,Ufield=:utx,
                     costargs=(3.,),cost=(x,t,three)->(x/three)^2)
 ```    
 
@@ -187,7 +189,7 @@ SingleUdof(nod::Vector{Node};Xfield::Symbol,Ufield::Symbol,cost::Tcost,costargs:
 doflist( ::Type{SingleUdof{Tcost,Tcostargs,Xfield,Ufield}}) where{Tcost,Tcostargs,Xfield,Ufield} = (inod=(1,1),class=(:X,:U),field=(Xfield,Ufield))
 @espy function lagrangian(o::SingleUdof, Λ,X,U,A,t,SP,dbg)
     λ, u = Λ[1], ∂0(U)[1]
-    return o.cost(u)-λ*u,noFB
+    return o.cost(u,t,o.costargs...)-λ*u,noFB
 end    
 
 #-------------------------------------------------
@@ -346,10 +348,10 @@ struct DofConstraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λi
     mode     :: Tmode # mode(t)->symbol, or Symbol for Aconstraints
 end
 function DofConstraint(nod::Vector{Node};xinod::NTuple{Nx,𝕫}=(),xfield::NTuple{Nx,Symbol}=(),
-                                      uinod::NTuple{Nu,𝕫}=(),ufield::NTuple{Nu,Symbol}=(),
-                                      ainod::NTuple{Na,𝕫}=(),afield::NTuple{Na,Symbol}=(),
-                                      λinod::𝕫, λclass::Symbol, λfield::Symbol,
-                                      gap::Function ,gargs=(),mode::Function) where{Nx,Nu,Na} 
+                                         uinod::NTuple{Nu,𝕫}=(),ufield::NTuple{Nu,Symbol}=(),
+                                         ainod::NTuple{Na,𝕫}=(),afield::NTuple{Na,Symbol}=(),
+                                         λinod::𝕫, λclass::Symbol, λfield::Symbol,
+                                         gap::Function ,gargs=(),mode::Function) where{Nx,Nu,Na} 
     (λclass==:X && (Nu>0||Na>0)) && muscadeerror("Constraints with λclass=:X must have zero U-dofs and zero A-dofs") 
     (λclass==:A && (Nx>0||Nu>0)) && muscadeerror("Constraints with λclass=:A must have zero X-dofs and zero U-dofs") 
     return DofConstraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,
@@ -444,11 +446,11 @@ The Lagrangian multiplier introduced by this optimisation constraint is of class
 - `λinod::𝕫`            The element-node number of the Lagrange multiplier.
 - `λfield::Symbol`      The field of the Lagrange multiplier.
 - `req`                 A request for element-results to be extracted from the target element, see [`@request`](@ref).
-                        The request is formulated as if adressed directly to the target element (no "prefixing" with 
-                        `eleres`, see "Requestable internal variables")
+                        The request is formulated as if adressed directly to the target element.
 - `gₛ::𝕣=1.`             A scale for the gap.
 - `λₛ::𝕣=1.`             A scale for the Lagrange multiplier.
-- `gap`                 a gap function `gap(eleres,X,U,A,t,gargs...)→ℝ`
+- `gap`                 A gap function `gap(eleres,X,U,A,t,gargs...)→ℝ`.
+                        `eleres` is the output of the above-mentionned request to the target element. 
                         `X` and `U` are tuples (derivates of dofs...), and `∂0(X)`,`∂1(X)`,`∂2(X)` 
                         must be used by `cost` to access the value and derivatives of `X` (resp. `U`).
                         `X`, `U` and `A` are the degrees of freedom of the element `ElementType`.
@@ -462,14 +464,15 @@ The Lagrangian multiplier introduced by this optimisation constraint is of class
 
 # Requestable internal variables
 
-From `ElementConstraint` one can request
+Not to be confused with the `req` provided as input to `addelement!` when adding an `ElementConstraint`, one can, after 
+the analysis, request results from `ElementConstraint` 
 - `λ`                   The constraints Lagrange multiplier
 - `gap`                 The constraints gap function
+- `eleres(...)`         where `...` is the list of requestables wanted from the target element.  The "prefix"  
+                        `eleres` is there to prevent possible confusion with variables requestable from `ElementConstraint`.  
+                        For example `@request gap` would extract the value of the `ElementConstraint`'s function `gap`, while
+                        `@request eleres(gap)` refers to the value of a variable called `gap` in the target element. 
 
-From the target element on can request
-- `eleres(...)`         where `...` is the list of requestables from the target element.  It must be "prefixed" by 
-                        `eleres` to prevent possible confusion with variables requestable from `ElementConstraint`.
-δX
 # Example
 
 ```
@@ -480,7 +483,7 @@ ele1 = addelement!(model,ElementCoonstraint,[nod1];req=@request(Fh),
                    elementkwargs=(Δxₘtop=[5.,0,0], xₘbot=[250.,0],L=290., buoyancy=-5e3))
 ```
 
-See also: [`Hold`](@ref), [`DofConstraint`](@ref), [`off`](@ref), [`equal`](@ref), [`positive`](@ref), [`@request`](@ref)
+See also: [`Hold`](@ref), [`DofConstraint`](@ref), [`off`](@ref), [`equal`](@ref), [`positive`](@ref), [`@request`](@ref), [`@once`](@ref)
 """
 struct ElementConstraint{Teleobj,λinod,λfield,Nu,Treq,Tg,Tgargs,Tmode} <: AbstractElement
     eleobj   :: Teleobj
@@ -513,6 +516,8 @@ doflist( ::Type{<:ElementConstraint{Teleobj,λinod,λfield}}) where{Teleobj,λin
     end
     return L,(λ=λ,g=gap,mode=m)
 end
+draw(axe,eleobj::AbstractVector{Teleobj}, Λ,X,U,A, t,SP,dbg;kwargs...) where{Teleobj<:ElementConstraint} = 
+      draw(axe,[eᵢ.eleobj for eᵢ∈eleobj], Λ,X,U,A, t,SP,dbg;kwargs...)
 
 #-------------------------------------------------
 
@@ -566,12 +571,12 @@ another element, during an analysis.
 Instead of adding the element to be monitored directly into the model,
 add this element with the element to be monitored as argument.
 
-Inputs and outs get @show'n to screen
+Inputs and outputs are @show'n. 
 
 # Named arguments to the constructor
 
 - `ElementType`         The the type of element to be monitored-
-- `trigger`            A function that takes `dbg` as an input and returns a boolean 
+- `trigger`             A function that takes `dbg` as an input and returns a boolean 
                         (`true`) to printout.
 - `elementkwargs`       a `NamedTuple` containing the named arguments of the `ElementType` constructor.
 

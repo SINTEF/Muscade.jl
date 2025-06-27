@@ -1,4 +1,3 @@
-using StaticArrays,Printf
 
 # model datastructure - private, structure may change, use accessor functions
 """
@@ -96,9 +95,9 @@ getidof(E::DataType,class)        = findall(doflist(E).class.==class)
     getndof(model|Element,class)
     getndof(model|Element,(class1,class2,[,...]))
 
-where `class` can be any of `:X`, `:U`, `:A`: get the number of dofs of the
-specified dof-classes (default: all classes) for the variable `model` or the type
-`Element`.
+where `class` can be any of `:X`, `:U`, `:A`: get the number of dofs of each
+specified dof-classes for the variable `model` or the type
+`Element`.  If no class is specified `getndof` return the asum of the number of dofs of all classes.
 
 See also: [`describe`](@ref)
 """

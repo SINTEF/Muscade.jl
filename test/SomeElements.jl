@@ -26,7 +26,7 @@ Turbine(nod::Vector{Node};seadrag,sea,skydrag,sky) = Turbine(SVector(coord(nod)[
     R  = -o.sea(t,x)*o.seadrag*(1+A[1]) - o.sky(t,x)*o.skydrag*(1+A[2])
     return R,noFB 
 end
-function Muscade.draw(::Type{<:Turbine},axe,o, Λ,X,U,A, t,SP,dbg;kwargs...)
+function Muscade.draw(axe,o::Vector{Teleobj}, Λ,X,U,A, t,SP,dbg;kwargs...) where{Teleobj<:Turbine}
     nel        = length(o)
     a          = 𝕣2(undef,3,3*nel)
     Δz         = default{:height   }(kwargs,20     )/2
@@ -81,7 +81,7 @@ p = SVector(   2.82040487827,  -24.86027164695,   153.69500343165, -729.52107422
     return L,noFB
 end
 
-function Muscade.draw(::Type{<:AnchorLine},axe,o, Λ,X,U,A, t,SP,dbg;kwargs...)
+function Muscade.draw(axe,o::Vector{AnchorLine}, Λ,X,U,A, t,SP,dbg;kwargs...)
     nel           = length(o)
     blue          = default{:blue         }(kwargs,:blue )
     red           = default{:red          }(kwargs,:red  )
@@ -162,7 +162,7 @@ Spring{D}(nod::Vector{Node};EI) where{D}= Spring{D}(coord(nod)[1],coord(nod)[2],
     ☼EI      = o.EI*exp10(A[2]) 
     Δx       = x₁-x₂
     ☼L       = norm(Δx)
-    ☼T       = EI*(L-L₀)
+    ☼T       = EI*(L-L₀)/L₀   
     F₁       = Δx/L*T # external force on node 1
     R        = vcat(F₁,-F₁)
     return R,noFB
@@ -182,11 +182,11 @@ struct SdofOscillator <: AbstractElement
     M₁ :: 𝕣
     M₂ :: 𝕣
 end
-SdofOscillator(nod::Vector{Node};K₁::𝕣,K₂::𝕣=0.,C₁::𝕣,C₂::𝕣=0.,M₁::𝕣,M₂::𝕣=0.) = SdofOscillator(K₁,K₂,C₁,C₂,M₁,M₂)
+SdofOscillator(nod::Vector{Node};K₁=0.::𝕣,K₂::𝕣=0.,C₁=0.::𝕣,C₂::𝕣=0.,M₁=0.::𝕣,M₂::𝕣=0.) = SdofOscillator(K₁,K₂,C₁,C₂,M₁,M₂)
 @espy function Muscade.residual(o::SdofOscillator, X,U,A, t,SP,dbg) 
     x,x′,x″,u = ∂0(X)[1], ∂1(X)[1], ∂2(X)[1], ∂0(U)[1]
     R         = SVector(-u +o.K₁*x +o.K₂*x^2  +o.C₁*x′ +o.C₂*x′^2 +o.M₁*x″ +o.M₂*x″^2)
     return R,noFB
 end
-Muscade.doflist( ::Type{SdofOscillator})  = (inod =(1 ,1 ), class=(:X,:U), field=(:x,:u))
+Muscade.doflist( ::Type{SdofOscillator})  = (inod =(1 ,1 ), class=(:X,:U), field=(:tx1,:tu1))
 

@@ -1,11 +1,5 @@
-test    = @__DIR__
-muscade = normpath(joinpath(test,".."))
-docs    = normpath(joinpath(test,"../docs"))
-using Pkg
-Pkg.activate(test)
-using Muscade # seems necessary for doc test to work on a cold start
 module Runtest
-    using Test,Literate, DocumenterCitations,Printf,Documenter,Muscade
+    using Test,Muscade
 
     @testset "Muscade.jl package" begin
         @testset "TestEspy" begin
@@ -17,8 +11,11 @@ module Runtest
         @testset "TestAdiff" begin
             include("TestAdiff.jl")
         end
-        @testset "TestMultiplex" begin
-            include("TestMultiplex.jl")
+        @testset "TestTaylor" begin
+            include("TestTaylor.jl")
+        end
+        @testset "TestFunctors" begin
+            include("TestFunctors.jl")
         end
         @testset "TestModelDescription" begin
             include("TestModelDescription.jl")
@@ -38,32 +35,48 @@ module Runtest
         @testset "TestDirectXUA001" begin
             include("TestDirectXUA001.jl")
         end
+        @testset "TestFreqXU" begin
+            include("TestFreqXU.jl")
+        end
         @testset "TestScale" begin
             include("TestScale.jl")
         end
         @testset "TestDofConstraints" begin
             include("TestDofConstraints.jl")
         end
-        @testset "ElementCost" begin
+        @testset "TestElementCost" begin
             include("TestElementCost.jl")
         end
-        @testset "BeamElement" begin
+        @testset "TestBeamElement" begin
             include("TestBeamElement.jl")
         end
-        @testset "Rotations" begin
+        @testset "TestRotations" begin
             include("TestRotations.jl")
         end
         @testset "TestUnit" begin
             include("TestUnit.jl")
         end
-        @testset "TestBlockSparse" begin
-            include("TestBlockSparse.jl")
+        @testset "TestSparseTools" begin
+            include("TestSparseTools.jl")
+        end
+        @testset "TestFFT" begin
+            include("TestFFT.jl")
+        end
+        @testset "TestEigenmodes" begin
+            include("TestEigenmodes.jl")
+        end
+        @testset "TestEigX" begin
+            include("TestEigX.jl")
         end
         @testset "TestFiniteDifferences" begin
             include("TestFiniteDifferences.jl")
         end
-        doctest(Muscade)
+        @testset "TestElementTestTools" begin
+            include("TestElementTestTools.jl")
+        end
+#        @testset "TestDrawBeamElement" begin
+#            include("TestDrawBeamElement.jl")
+#        end
+        # doctest(Muscade) # we do not use doctest, we run Literate.jl on mydemo.jl files that are included in a unit test file
     end
 end
-
-Pkg.activate(muscade) 

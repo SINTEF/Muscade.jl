@@ -1,5 +1,5 @@
 # # 3D rotations
-
+using LinearAlgebra, StaticArrays
 """
     BeamElements.sinc1(x)
 
@@ -13,7 +13,7 @@ See also [`scac`](@ref)
 sinc1(x) = sinc(x/π) 
 function sinc1′(x)
     if abs(x)>1e-3
-        s,c=sin(x),cos(x)
+        s,c=sincos(x)
         c/x -s/x^2
     else
         x² = x*x
@@ -22,7 +22,7 @@ function sinc1′(x)
 end
 function sinc1″(x)
     if abs(x)>1e-1
-        s,c=sin(x),cos(x)
+        s,c=sincos(x)
         -s/x -2c/x^2 +2s/x^3
     else
         x² = x*x
@@ -31,7 +31,7 @@ function sinc1″(x)
 end
 function sinc1‴(x)
     if abs(x)>0.4
-        s,c=sin(x),cos(x)
+        s,c=sincos(x)
         -c/x +3s/x^2 +6c/x^3 -6s/x^4
     else
         x² = x*x
@@ -50,8 +50,6 @@ Muscade.@DiffRule1(sinc1″,              sinc1‴( a.x)                * a.dx )
 Muscade.@DiffRule1(sinc1‴,              sinc1⁗( a.x)                * a.dx )
 Muscade.@DiffRule1(sinc1⁗,              sinc1⁗′(a.x)                * a.dx )
 
-
-# sinc1(acos(x)), differentiable to fourth order over ]-1,1] 
 """
     BeamElements.scac(x)
 
@@ -62,7 +60,7 @@ See also [`sinc1`](@ref)
 """
 function scac(x)
     dx = x-1  
-    if abs(dx)>1e-2 
+    if abs(dx)>1e-3 
         sinc1(acos(x))
     else  # deliberately a long Taylor series (5th order): this function will be adiffed at least to 2nd order, up to 4th order
         y = 1 + dx*(1/3 + dx*(-2/90 + dx*(0.0052911879917544626 + dx*(-0.0016229317117234072 + dx*(0.0005625))))) 
@@ -115,16 +113,8 @@ See also [`spin`](@ref), [`spin⁻¹`](@ref), [`Rodrigues⁻¹`](@ref), [`adjust
 function Rodrigues(v::Vec3) 
     S = spin(v)
     θ = norm(v)
-    return I + sinc1(θ)*S + sinc1(θ/2)^2/2*S*S  
+    return LinearAlgebra.I + sinc1(θ)*S + sinc1(θ/2)^2/2*S*S  
 end
-"""
-    v1 = BeamElements.normalize(v::SVector{3})
-
-Compute a unit vector of same direction as `v`.  Fails
-if `|v|==0`.
-"""
-normalize(v)     = v/norm(v)
-# create a rotation vector that acts on u to make it colinear with v.  Fails if |u|=0, |v|=0 or θ=π
 """
     M = BeamElements.adjust(u::SVector{3},v::SVector{3})
 
@@ -140,3 +130,21 @@ function adjust(u::Vec3{R},v::Vec3{R}) where{R}
     θ   = atan(s,c)
     return w/sinc1(θ)
 end
+"""
+    M = BeamElements.intrinsicrotationrates(rₑ::NTuple{ND,SMatrix{3,3}}) where{ND}
+
+Transform a `NTuple` containing a rotation matrix and its extrinsic time derivatives,
+into a `NTuple` containing a (zero) rotation vector and its intrinsic time derivatives.
+
+See also [`spin`](@ref), [`spin⁻¹`](@ref), [`Rodrigues`](@ref), [`Rodrigues⁻¹`](@ref).
+"""
+function intrinsicrotationrates(rₑ::NTuple{ND,SMatrix{3,3}}) where{ND}
+    vᵢ₀ =              (SVector(0,0,0),                                                                           )
+    vᵢ₁ = ND<1 ? vᵢ₀ : (vᵢ₀...        , spin⁻¹(∂0(rₑ)' ∘₁ ∂1(rₑ))                                                 ) 
+    vᵢ  = ND<2 ? vᵢ₁ : (vᵢ₁...                                   ,   spin⁻¹(∂1(rₑ)' ∘₁ ∂1(rₑ) + ∂0(rₑ)' ∘₁ ∂2(rₑ)))  
+    return vᵢ
+end
+
+
+
+;

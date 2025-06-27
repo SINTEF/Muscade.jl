@@ -3,7 +3,6 @@
 #
 # In VScode, use the "Fast Unicode math characters" plugging
 # To interrupt Julia, CTRL-j,k
-using Printf,StaticArrays
 import Base.Threads.@spawn, Base.Threads.nthreads
 
 ## Basic types
@@ -38,6 +37,16 @@ an alias for abstract type `Real`. For use in dispatching.
 `ℝ11` is an `AbstractVector` of `AbstractVector`.
 """        
 const ℝ  = Real
+"""
+    ℂ (\\bbC)
+
+an alias for abstract type `Complex{<:Real}`. For use in dispatching.
+`ℂ1`... `ℂ4` are `AbstractArrays` of dimensions 1 to 4.
+`ℂ11` is an `AbstractVector` of `AbstractVector`.
+"""        
+const ℂ  = Complex{<:Real}
+
+
 # concrete types for allocation
 """
     𝕓 (\\bbb)
@@ -70,6 +79,14 @@ an alias for `Float64`. For use in `struct` definitions.
 """
 const 𝕣  = Float64
 """
+    𝕔 (\\bbc)
+
+an alias for `Complex{Float64}`. For use in `struct` definitions.
+`𝕔1`... `𝕔4` are `Arrays` of dimensions 1 to 4.
+`𝕔11` is a `Vector` of `Vector`.
+"""
+const 𝕔  = Complex{Float64}
+"""
     ϵ (\\epsilon)
 
 an alias for `Base.eps(𝕣)`. 
@@ -80,10 +97,26 @@ const ϵ  = Base.eps(𝕣)
 
 an alias for `Base.inf`. 
 """
-const ∞  = Base.Inf
+const ∞      = Base.Inf  # \infty
+const 𝑖      = im        # \iti
+const ℜ     =  real     # \Re 
+const ℑ     =  imag     # \Im
+const expπ𝑖 = cispi  
+const exp𝑖  = cis
+"""
+    𝕫log2(i::𝕫)
+
+Compute the integer `log2` of an integer, fails if `i` is not a power of two.
+"""
+function 𝕫log2(i::𝕫) 
+    a = 63-leading_zeros(i)
+    b = trailing_zeros(i) 
+    a==b || error("Input must be a power of 2")
+    return a
+end
 
 # define arrays of these
-for T in (:𝔹,:ℕ,:ℤ,:ℝ)
+for T in (:𝔹,:ℕ,:ℤ,:ℝ,:ℂ)
     #@eval export $T
     @eval const  $(Symbol(T,:x)) = AbstractArray{t} where {t<: $T}
     #@eval export $(Symbol(T,:x))  
@@ -93,19 +126,22 @@ for T in (:𝔹,:ℕ,:ℤ,:ℝ)
         #@eval export $TN
     end
 end
-for T in (:𝕓,:𝕟,:𝕫,:𝕣)
+for T in (:𝕓,:𝕟,:𝕫,:𝕣,:𝕔)
     #@eval export $T
-    Ts = Symbol(T,:s)
     for N in (:1,:2,:3,:4)
         TN = Symbol(T,N)
         @eval const  $TN = Array{$T,$N}
         #@eval export $TN
     end
 end
-const ℝ11 = AbstractVector{A} where {A<:ℝ1}
-const ℤ11 = AbstractVector{A} where {A<:ℤ1}
-const 𝕣11 = Vector{Vector{𝕣}}
-const 𝕫11 = Vector{Vector{𝕫}}
+const ℝ11      = AbstractVector{A} where {A<:ℝ1}
+const ℤ11      = AbstractVector{A} where {A<:ℤ1}
+const ℂ11      = AbstractVector{A} where {A<:ℂ1}
+const 𝕣11      = Vector{Vector{𝕣}}
+const 𝕫11      = Vector{Vector{𝕫}}
+const 𝕔11      = Vector{Vector{𝕔}}
+const Sparse𝕣2 = SparseMatrixCSC{𝕣,𝕫}
+const Sparse𝕔2 = SparseMatrixCSC{𝕔,𝕫}
 
 ## Miscellaneous
 subtypeof(a::AbstractVector,b::AbstractVector) = a[a .<: Union{b...}]
@@ -176,24 +212,25 @@ copies(n,a::T) where{T} = NTuple{n,T}(deepcopy(a) for i∈1:n)
 
 using MacroTools: postwalk,gensym_ids,rmlines,unblock 
 """
-    @once f(x)= x^2 
+    @once tag f(x)= x^2 
     
 do not parse the definition of function `f` again if not modified.
 Using in a script, this prevents recompilations in `Muscade` or applications
-based on it when they receive such functions as argument
+based on it when they receive such functions as argument.
+
+`tag` must be a legal variable name, and unique to this invocation of `@once`  
 """    
-macro once(ex)
+macro once(tag,ex)
     ex  = postwalk(rmlines,ex)
     ex  = postwalk(unblock,ex)
     qex = QuoteNode(ex)
-    ex  = esc(ex)
-    tag = gensym("tag")
-    return quote
-        if ~@isdefined($tag) || $tag≠$qex
+    tag = Symbol("tag_for_the_once_macro_",tag)
+    return esc(quote
+        if  ~@isdefined($tag) || $tag≠$qex
             $tag = $qex
             $ex    
         end 
-    end
+    end)
 end
 """
     default{:fieldname}(namedtuple,defval)
@@ -202,6 +239,28 @@ attempt to get a field `fieldname` from a `NamedTuple`. If `namedtuple` does not
 such a field - or is not a `NamedTuple`, return `defval`.
 """
 struct default{S} end
+default{S}(t::T,d=nothing) where{S,T<:Base.Pairs} = default{S}((;t...),d)
 default{S}(t::T,d=nothing) where{S,T<:NamedTuple} = hasfield(T,S) ? getfield(t,S) : d
 default{S}(t::T,d=nothing) where{S,T            } =                                 d
 
+
+"""
+An "identity vector"
+
+id = IdVec
+i  = 9834987
+id[i] == i # true for any i
+
+See also Julia's `identity` function.
+"""
+struct IdVec end
+const idvec = IdVec()
+@inline Base.getindex(::IdVec,i) = i
+
+"""
+    imod(i,n) = mod(i-1,n)+1
+
+For `i::ℤ`, returns a value in `{1,...n}`.  This differs
+from `mod` which return a value in `[0,n[`   
+"""
+imod(i::ℤ,n) = mod(i-1,n)+1

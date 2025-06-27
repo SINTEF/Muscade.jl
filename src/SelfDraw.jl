@@ -1,4 +1,6 @@
-function draw_(axe,dis::EletypDisassembler,eleobj,iele,state,dbg;kwargs...)  # typestable kernel
+# Model drawing
+# typestable kernel
+function draw_(axe,dis::EletypDisassembler,eleobj,iele,state,dbg;kwargs...)  
     nel      = length(iele)
     nXder    = length(state.X)
     nUder    = length(state.U) 
@@ -14,11 +16,11 @@ function draw_(axe,dis::EletypDisassembler,eleobj,iele,state,dbg;kwargs...)  # t
             X[jder][:,i] = state.X[jder][index.X]
         end
         for jder ∈ eachindex(state.U)             
-            U[jder][:,i] = state.X[jder][index.U]
+            U[jder][:,i] = state.U[jder][index.U]
         end
         A[:,i]  = state.A[index.A]
     end
-    draw(eltype(eleobj),axe, eleobj, Λ,X,U,A, state.time,state.SP,(dbg...,iele=iele);kwargs...)
+    draw(axe, eleobj, Λ,X,U,A, state.time,state.SP,(dbg...,iele=iele);kwargs...)
     return
 end
 
@@ -59,4 +61,40 @@ function draw(axe,state::State;kwargs...)   # whole model
         iele                = eachindex(eleobj)
         draw_(axe,dis,eleobj,iele,state,(ieletyp=ieletyp,);kwargs...) # call kernel
     end
-end    
+end   
+
+"""
+    axe = Muscade.SpyAxe
+
+Spoof a GLMakie `axe` object so that calls like
+
+    using Muscade: lines!
+    lines!(  axe,args...;kwargs...) 
+    
+result in `args` and `kwargs` being stored in `axe`, allowing to test functions that generate plots.
+Results are accessed by for example
+
+    axe.call[3].fun        
+    axe.call[3].args[2]
+
+To get the name of the 3rd GLMakie function that was called, and the
+2nd input argument of the call.
+
+Only `lines!`, `scatter!` and `mesh!`  are implemented, but more functions can
+easily be added.
+
+In given Julia session, if GLMakie is used, then Muscade: lines! (etc.) cannot be used,
+and conversedly: restart Julia when switching.  
+
+The reason is that Muscade defines `lines!` (etc.) instead of overloading it.
+This is deliberate, to allow Muscade to run unit tests of graphical generation, without making
+GLMakie a dependency of Muscade.  This again is because element developers remain free
+to base `draw` for their suite of elements on other graphic packages.
+"""
+struct SpyAxe
+    call::Vector{Any}
+end
+SpyAxe() = SpyAxe(Any[])
+lines!(  axe::SpyAxe,args...;kwargs...) = push!(axe.call,(fun=:lines!  ,args=args,kwargs=kwargs))
+scatter!(axe::SpyAxe,args...;kwargs...) = push!(axe.call,(fun=:scatter!,args=args,kwargs=kwargs))
+mesh!(   axe::SpyAxe,args...;kwargs...) = push!(axe.call,(fun=:mesh!   ,args=args,kwargs=kwargs))

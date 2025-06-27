@@ -99,6 +99,8 @@ function Disassembler(model::Model)
 end
 
 
+
+
 ######## state and initstate
 # at each step, contains the complete, unscaled state of the system
 mutable struct State{nΛder,nXder,nUder,TSP}
@@ -162,7 +164,7 @@ struct DofGroup
     jU     :: 𝕫1 
     jA     :: 𝕫1 
 
-    scaleΛ :: 𝕣1
+    scaleΛ :: 𝕣1              # scaleΛ[iΛ]
     scaleX :: 𝕣1
     scaleU :: 𝕣1
     scaleA :: 𝕣1
@@ -172,7 +174,8 @@ struct DofGroup
     fieldU :: Vector{Symbol}
     fieldA :: Vector{Symbol}
     DofGroup(nX,nU,nA, iΛ,iX,iU,iA,  jΛ,jX,jU,jA, Λs,Xs,Us,As, Λf,Xf,Uf,Af) = 
-      new(nX,nU,nA, collect(iΛ),collect(iX),collect(iU),collect(iA),  collect(jΛ),collect(jX),collect(jU),collect(jA), Λs,Xs,Us,As, Λf,Xf,Uf,Af)end
+      new(nX,nU,nA, collect(iΛ),collect(iX),collect(iU),collect(iA),  collect(jΛ),collect(jX),collect(jU),collect(jA), Λs,Xs,Us,As, Λf,Xf,Uf,Af)
+end
 
 function DofGroup(dis::Disassembler,iΛ,iX,iU,iA) 
     # constructor for dofgroup with permutation within each dof-class.  
@@ -186,16 +189,16 @@ function DofGroup(dis::Disassembler,iΛ,iX,iU,iA)
 end
 # use a dof-vector to decrement/increment/set/get the corresponding dofs in a State
 function decrement!(s::State,ider::𝕫,y::AbstractVector{𝕣},gr::DofGroup) 
-    for i ∈ eachindex(gr.iΛ); s.Λ[ider][gr.iΛ[i]] -= y[gr.jΛ[i]] * gr.scaleΛ[i]; end
-    for i ∈ eachindex(gr.iX); s.X[ider][gr.iX[i]] -= y[gr.jX[i]] * gr.scaleX[i]; end
-    for i ∈ eachindex(gr.iU); s.U[ider][gr.iU[i]] -= y[gr.jU[i]] * gr.scaleU[i]; end
-    for i ∈ eachindex(gr.iA); s.A[      gr.iA[i]] -= y[gr.jA[i]] * gr.scaleA[i]; end
+    if ider≤length(s.Λ) for i ∈ eachindex(gr.iΛ); s.Λ[ider][gr.iΛ[i]] -= y[gr.jΛ[i]] * gr.scaleΛ[i]; end end
+    if ider≤length(s.X) for i ∈ eachindex(gr.iX); s.X[ider][gr.iX[i]] -= y[gr.jX[i]] * gr.scaleX[i]; end end
+    if ider≤length(s.U) for i ∈ eachindex(gr.iU); s.U[ider][gr.iU[i]] -= y[gr.jU[i]] * gr.scaleU[i]; end end
+    if ider==1          for i ∈ eachindex(gr.iA); s.A[      gr.iA[i]] -= y[gr.jA[i]] * gr.scaleA[i]; end end
 end
 function increment!(s::State,ider::𝕫,y::AbstractVector{𝕣},gr::DofGroup) 
-    for i ∈ eachindex(gr.iΛ); s.Λ[ider][gr.iΛ[i]] += y[gr.jΛ[i]] * gr.scaleΛ[i]; end
-    for i ∈ eachindex(gr.iX); s.X[ider][gr.iX[i]] += y[gr.jX[i]] * gr.scaleX[i]; end
-    for i ∈ eachindex(gr.iU); s.U[ider][gr.iU[i]] += y[gr.jU[i]] * gr.scaleU[i]; end
-    for i ∈ eachindex(gr.iA); s.A[      gr.iA[i]] += y[gr.jA[i]] * gr.scaleA[i]; end
+    if ider≤length(s.Λ) for i ∈ eachindex(gr.iΛ); s.Λ[ider][gr.iΛ[i]] += y[gr.jΛ[i]] * gr.scaleΛ[i]; end end
+    if ider≤length(s.X) for i ∈ eachindex(gr.iX); s.X[ider][gr.iX[i]] += y[gr.jX[i]] * gr.scaleX[i]; end end
+    if ider≤length(s.U) for i ∈ eachindex(gr.iU); s.U[ider][gr.iU[i]] += y[gr.jU[i]] * gr.scaleU[i]; end end
+    if ider==1          for i ∈ eachindex(gr.iA); s.A[      gr.iA[i]] += y[gr.jA[i]] * gr.scaleA[i]; end end
 end
 function set!(s::State,der::𝕫,y::AbstractVector{𝕣},gr::DofGroup) 
     s.Λ[der+1] .= 0
@@ -234,6 +237,7 @@ allΛdofs(  model::Model,dis) = DofGroup(dis, 1:getndof(model,:X),𝕫[],𝕫[],
 allXdofs(  model::Model,dis) = DofGroup(dis, 𝕫[],1:getndof(model,:X),𝕫[],𝕫[])
 allUdofs(  model::Model,dis) = DofGroup(dis, 𝕫[],𝕫[],1:getndof(model,:U),𝕫[])
 allAdofs(  model::Model,dis) = DofGroup(dis, 𝕫[],𝕫[],𝕫[],1:getndof(model,:A))
+allXUdofs( model::Model,dis) = DofGroup(dis, 𝕫[],1:getndof(model,:X),1:getndof(model,:U),𝕫[])
 allΛXUdofs(model::Model,dis) = DofGroup(dis, 1:getndof(model,:X),1:getndof(model,:X),1:getndof(model,:U),𝕫[])
 allΛXUAdofs(model::Model,dis) = DofGroup(dis, 1:getndof(model,:X),1:getndof(model,:X),1:getndof(model,:U),1:getndof(model,:A))
 function selecteddofs(model::Model,dis,classes)
@@ -244,9 +248,55 @@ function selecteddofs(model::Model,dis,classes)
     return DofGroup(dis, iΛ,iX,iU,iA)
 end
 
+function makevecfromfields!(vec::AbstractVector,dg::DofGroup,in)
+    # in[:class][:doftype] = val
+    # vec   = zeros(getndof(dg))
+    if haskey(in,:Λ)
+        for i = 1:length(dg.iΛ)
+            iΛ,jΛ   = dg.iΛ[i],dg.jΛ[i]  # state.Λ[iΛ] <-> y[jΛ]*scaleΛ
+            field   = dg.fieldΛ[iΛ]
+            scale   = dg.scaleΛ[iΛ]
+            if haskey(in.Λ,field)
+                vec[jΛ] = in.Λ[field] / scale
+            end
+        end
+    end
+    if haskey(in,:X)
+        for i = 1:length(dg.iX)
+            iX,jX   = dg.iX[i],dg.jX[i]  # state.X[iX] <-> y[jX]*scaleX
+            field   = dg.fieldX[iX]
+            scale   = dg.scaleX[iX]
+            if haskey(in.X,field)
+                vec[jX] = in.X[field] / scale
+            end
+        end
+    end
+    if haskey(in,:U)
+        for i = 1:length(dg.iU)
+            iU,jU   = dg.iU[i],dg.jU[i]  # state.U[iU] <-> y[jU]*scaleU
+            field   = dg.fieldU[iU]
+            scale   = dg.scaleU[iU]
+            if haskey(in.U,field)
+                vec[jU] = in.U[field] / scale
+            end
+        end
+    end
+    if haskey(in,:A)
+        for i = 1:length(dg.iA)
+            iA,jA   = dg.iA[i],dg.jA[i]  # state.A[iA] <-> y[jA]*scaleA
+            field   = dg.fieldA[iA]
+            scale   = dg.scaleA[iA]
+            if haskey(in.A,field)
+                vec[jA] = in.A[field] / scale
+            end
+        end
+    end
+    return vec
+end
+
 ######## Prepare assembler datastructure "asm"
 
-# asm[iarray,ieletyp][ieledof/ientry,iele] has value zero for terms from element gradient/hessian that are not to be added in. Otherwise, the value they
+# asm[iarray,ieletyp][ieledof/i,iele] has value zero for terms from element gradient/hessian that are not to be added in. Otherwise, the value they
 # have is where in the matrix/vector/nzval to put the values.
 # Example: for stiffness matrix iarray=2, beam element ieletyp=3, put the 4th entry (column major) of the iele=5th element into
 # the asm[2,3][4,5]-th non-zero value (nzval) of the stiffness matrix for the solver.
@@ -298,8 +348,8 @@ function asmfullmat!(asm,iasm,jasm,nimoddof,njmoddof)
         for iele=1:nele, jeledof=1:njeledof, ieledof=1:nieledof
             imoddof,jmoddof = iasm[ieletyp][ieledof,iele], jasm[ieletyp][jeledof,iele]
             if (imoddof≠0)  &&  (jmoddof≠0)
-                ientry = ieledof+nieledof*(jeledof-1)
-                asm[ieletyp][ientry,iele] = imoddof+nimoddof*(jmoddof-1)
+                i = ieledof+nieledof*(jeledof-1)
+                asm[ieletyp][i,iele] = imoddof+nimoddof*(jmoddof-1)
             end
         end
     end
@@ -373,8 +423,8 @@ function asmmat!(asm,iasm,jasm,nimoddof,njmoddof)
         for iele=1:nele, jeledof=1:njeledof, ieledof=1:nieledof
             if (iasm[ieletyp][ieledof,iele]≠0)  &&  (jasm[ieletyp][jeledof,iele]≠0)
                 ipair += 1
-                ientry = ieledof+nieledof*(jeledof-1) 
-                asm[ieletyp][ientry,iele] = K[ipair]  
+                i = ieledof+nieledof*(jeledof-1) 
+                asm[ieletyp][i,iele] = K[ipair]  
             end
         end
     end
@@ -396,8 +446,6 @@ end
 
 abstract type Assembly end # solver define concrete "assemblies" which is a collection of matrices and solvers wanted for a phase in the solution process
 
-
-# sequential, called by the solver
 function assemble!(out::Assembly,asm,dis,model,state,dbg) 
     zero!(out)
     for ieletyp = 1:lastindex(model.eleobj)
@@ -414,7 +462,7 @@ function assemble_!(out::Assembly,asm,dis,eleobj,state::State{nΛder,nXder,nUder
         Ue    = NTuple{nUder}(u[index.U] for u∈state.U)
         Ae    = state.A[index.A]
         addin!(out,asm,iele,scale,eleobj[iele],Λe,Xe,Ue,Ae, state.time,SP,(dbg...,iele=iele)) # defined by solver.  Called for each element. But the asm that is passed
-    end                                                                                       # is of the form asm[iarray][ientry,iele], because addin! will add to all arrays in one pass
+    end                                                                                       # is of the form asm[iarray][i,iele], because addin! will add to all arrays in one pass
 end
 
 ############# Tools for addin!
@@ -429,7 +477,7 @@ Set to zero all elements of an arrays. If `a` is sparse,
 the vector `nzval` of values is set to zero and the sparsity structure is unchanged.
 """ 
 
-function zero!(out::DenseArray)
+function zero!(out::AbstractArray)
     for i∈eachindex(out)
         out[i] = 0
     end
@@ -441,53 +489,35 @@ function zero!(out::AbstractSparseArray)
 end
 
 #### extract value or derivatives from a SVector 'a' of adiffs, and add it directly into vector, full matrix or nzval of sparse matrix 'out'.
-function add_value!(out::𝕣1,asm,iele,a::SVector{M,∂ℝ{P,N,𝕣}},ias) where{P,N,M}
-    # asm[ientry,iel]
-    for (ientry,ia) ∈ enumerate(ias)
-        iout = asm[ientry,iele]
-        if iout≠0
-            out[iout]+=a[ia].x
+
+# out[asm[:   ,iele]] += a
+# out[asm[iasm,iele]] += a      # pick: 'a' is only a part of the element vector (FreqXU)   
+# out[asm[:,   iele]] += a[ia]  # split: parts of 'a' are assembled (DirectXUA)   
+# out[asm[iasm,iele]] += a[ia]  # not used
+function add_value!(out::𝕣1,asm,iele,a::SVector{Na,<:ℝ};ia=1:Na,iasm=idvec) where{Na}
+    for (i,iaᵢ) ∈ enumerate(ia)
+        iout = asm[iasm[i],iele]
+        if iout≠0 
+            out[iout]+=VALUE(a[iaᵢ]) 
         end
     end
 end   
-function add_value!(out::𝕣1,asm,iele,a::SVector{M,𝕣},ias) where{M}
-    for (ientry,ia) ∈ enumerate(ias)
-        iout = asm[ientry,iele]
-        if iout≠0
-            out[iout]+=a[ia]
+
+struct   add_∂!{P,T} end # to allow syntax with type-parameter P: priority, and T (transpose)
+function add_∂!{P,T}(out::Array,asm,iele,a::SVector{Na,∂ℝ{P,Nda,R}};ia=1:Na,ida=1:Nda,iasm=idvec,idasm=idvec) where{P,Nda,R,Na,T}
+    for (i,iaᵢ) ∈ enumerate(ia), (j,idaⱼ) ∈ enumerate(ida)
+        k = if T==:transpose idasm[j]+length(ida)*( iasm[i]-1)   
+        else                  iasm[i]+length( ia)*(idasm[j]-1)  
         end
-    end
-end   
-add_value!(out,asm,iele,a) = add_value!(out,asm,iele,a,eachindex(a)) 
-struct add_∂!{P} end 
-function add_∂!{P}(out::Array,asm,iele,a::SVector{M,∂ℝ{P,N,R}},i1as,i2as) where{P,N,R,M}
-    for (i1asm,i1a) ∈ enumerate(i1as), (i2asm,i2a) ∈ enumerate(i2as)
-        ientry = i1asm+length(i1as)*(i2asm-1)
-        iout = asm[ientry,iele]
+        iout = asm[k,iele]
         if iout≠0
-            out[iout]+=a[i1a].dx[i2a]  
+            out[iout]+=a[iaᵢ].dx[idaⱼ]  
         end
     end
 end  
-add_∂!{P}(out::SparseMatrixCSC,args...) where{P}                      = add_∂!{P}(out.nzval,args...)
-add_∂!{P}(out::Array,asm,iele,a::SVector{M,R},args...) where{P,M,R}   = nothing
-add_∂!{P}(out::Array,asm,iele,a::SVector{M,∂ℝ{P,N,R}}) where{P,N,R,M} = add_∂!{P}(out,asm,iele,a,SVector{M}(1:M),SVector{N}(1:N))
-
-# i1as and i2as are indices BEFORE transposition
-struct add_∂ᵀ!{P} end 
-function add_∂ᵀ!{P}(out::Array,asm,iele,a::SVector{M,∂ℝ{P,N,R}},i1as,i2as) where{P,N,R,M}
-    for (i1asm,i1a) ∈ enumerate(i1as), (i2asm,i2a) ∈ enumerate(i2as)
-        ientry = i2asm+length(i2as)*(i1asm-1)
-        iout = asm[ientry,iele]
-        if iout≠0
-            out[iout]+=a[i1a].dx[i2a]  
-        end
-    end
-end  
-add_∂ᵀ!{P}(out::SparseMatrixCSC,args...) where{P}                      = add_∂ᵀ!{P}(out.nzval,args...)
-add_∂ᵀ!{P}(out::Array,asm,iele,a::SVector{M,R},args...) where{P,M,R}   = nothing
-add_∂ᵀ!{P}(out::Array,asm,iele,a::SVector{M,∂ℝ{P,N,R}}) where{P,N,R,M} = add_∂ᵀ!{P}(out,asm,iele,a,SVector{M}(1:M),SVector{N}(1:N))
-
+add_∂!{P  }(                                     args...;kwargs...) where{P       } = add_∂!{P,:notranspose}(args...;kwargs...) 
+add_∂!{P,T}(out::SparseMatrixCSC,                args...;kwargs...) where{P,     T} = add_∂!{P,T}(out.nzval, args...;kwargs...)
+add_∂!{P,T}(out::Array,asm,iele,a::SVector{Na,R},args...;kwargs...) where{P,Na,R,T} = nothing
 
 
 ####### called by addin!, and by nested elements to "get a Lagrangian" and "get a residual"
@@ -497,47 +527,59 @@ add_∂ᵀ!{P}(out::Array,asm,iele,a::SVector{M,∂ℝ{P,N,R}}) where{P,N,R,M} =
 #
 # Note that getLagrangian receives Λ::SVector. addin! by contrast receives Λ::NTuple{SVector}, this is not a bug
 
-function getresidual(eleobj::Eleobj,  
-    X::NTuple{Ndx,SVector{Nx}},
-    U::NTuple{Ndu,SVector{Nu}},
-    A::           SVector{Na} ,
-    t::ℝ,SP,dbg,req...)     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
-    
-    if hasmethod(residual  ,(Eleobj,       NTuple,NTuple,𝕣1,𝕣,NamedTuple,NamedTuple))
-        R,FB,eleres... = residual(  eleobj,  X,U,A,t,SP,dbg,req...)
-        hasnan(R ) && muscadeerror((dbg...,t=t,R =R ),@sprintf("residual(%s,...) returned NaN in R or derivatives",Eleobj))  
-        hasnan(FB) && muscadeerror((dbg...,t=t,FB=FB),@sprintf("residual(%s,...) returned NaN in FB or derivatives",Eleobj))  
 
-    elseif hasmethod(lagrangian,(Eleobj,NTuple,NTuple,NTuple,𝕣1,𝕣,NamedTuple,NamedTuple))
-        P   = constants(∂0(X),∂0(U),A,t)
-        Λ   = δ{P,Nx,𝕣}() 
-        L,FB,eleres... = lagrangian(eleobj,Λ,X,U,A,t,SP,dbg,req...)    
-        hasnan(L ) && muscadeerror((dbg...,t=t,R =R ),@sprintf("lagrangian(%s,...) returned NaN in L or derivatives",Eleobj))  
-        hasnan(FB) && muscadeerror((dbg...,t=t,FB=FB),@sprintf("lagrangian(%s,...) returned NaN in FB or derivatives",Eleobj))  
-        R = ∂{P,Nx}(L)
-    else 
-        muscadeerror((dbg...,t=t,SP=SP),@sprintf("Element %s must have method 'Muscade.lagrangian' or/and 'Muscade.residual' with correct interface",Eleobj))
-    end
+## Type unstable(?) stopgap.  Solution? Get @espy to generate hasresidual(  ::Eleobj)=true, with false fallback
+hasresidual(  ::Eleobj) where{Eleobj} = Val(hasmethod(residual  ,(Eleobj,       NTuple,NTuple,𝕣1,𝕣,NamedTuple,NamedTuple)))
+haslagrangian(::Eleobj) where{Eleobj} = Val(hasmethod(lagrangian,(Eleobj,NTuple,NTuple,NTuple,𝕣1,𝕣,NamedTuple,NamedTuple)))
+
+function getresidual(eleobj::Eleobj,X,U,A,t,SP,dbg,req...) where{Eleobj} 
+    R,FB,eleres... = getresidual(eleobj,hasresidual(eleobj),haslagrangian(eleobj),nosecondorder(Eleobj),X,U,A,t,SP,dbg,req...) 
+    hasnan(R,FB) && muscadeerror((dbg...,t=t,SP=SP ),@sprintf("residual(%s,...) returned NaN in R, FB or derivatives",Eleobj))  
     return R,FB,eleres...
 end
+function getresidual(eleobj::Eleobj,hasres::Val{true},haslag,nso::Val{false}, X::NTuple{Ndx,SVector{Nx}}, 
+        U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na} ,t::ℝ,SP,dbg,req...)     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
+    residual(  eleobj,  X,U,A,t,SP,dbg,req...)
+end
+function getresidual(eleobj::Eleobj,hasres::Val{true},haslag,nso::Val{true}, X::NTuple{Ndx,SVector{Nx}}, 
+        U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na} ,t::ℝ,SP,dbg,req...)     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
+    X1,U1,A1,t1 = firstorderonly(X,U,A,t)
+    residual(  eleobj,  X1,U1,A1,t1,SP,dbg,req...)
+end
+function getresidual(eleobj::Eleobj,hasres::Val{false},haslag::Val{true},nso, X::NTuple{Ndx,SVector{Nx}}, 
+        U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na} ,t::ℝ,SP,dbg,req...)     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
+    P               = constants(∂0(X),∂0(U),A,t)
+    Λ               = δ{P,Nx,𝕣}() 
+    L,FB,eleres...  = lagrangian(eleobj,Λ,X,U,A,t,SP,dbg,req...)    
+    R               = ∂{P,Nx}(L)
+    return R,FB,eleres...
+end
+getresidual(eleobj::Eleobj,hasres::Val{false},haslag::Val{false},nso, X,U,A,t,SP,dbg,req...) where{Eleobj} =
+    muscadeerror((dbg...,t=t,SP=SP),@sprintf("Element %s must have method 'Muscade.lagrangian' or/and 'Muscade.residual' with correct interface",Eleobj))
 
-function getlagrangian(eleobj::Eleobj,  
-    Λ::           SVector{Nx} ,  
-    X::NTuple{Ndx,SVector{Nx}},
-    U::NTuple{Ndu,SVector{Nu}},
-    A::           SVector{Na} ,
-    t::ℝ,SP,dbg,req...)     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
-    #                            eleobj,Λ,     X,     U,     A, t,SP,        dbg
-    if     hasmethod(lagrangian,(Eleobj,NTuple,NTuple,NTuple,𝕣1,𝕣,NamedTuple,NamedTuple))
-        L,FB,eleres... = lagrangian(eleobj,Λ,X,U,A,t,SP,dbg,req...)
-        hasnan(L,FB) && muscadeerror((dbg...,t=t,SP=SP),@sprintf("lagrangian(%s,...) returned NaN in L, FB or derivatives",Eleobj))   
-    #                           eleobj,       X,     U,     A, t,SP,        dbg  
-    elseif hasmethod(residual  ,(Eleobj,       NTuple,NTuple,𝕣1,𝕣,NamedTuple,NamedTuple))
-        R,FB,eleres... = residual(  eleobj,  X,U,A,t,SP,dbg,req...)
-        hasnan(R,FB) && muscadeerror((dbg...,t=t,SP=SP),@sprintf("residual(%s,...) returned NaN in R, FB or derivatives",Eleobj)) 
-        L = Λ ∘₁ R
-    else
-        muscadeerror((dbg...,t=t,SP=SP),@sprintf("Element %s must have method 'Muscade.lagrangian' or/and 'Muscade.residual' with correct interface",Eleobj))
-    end
+function getlagrangian(eleobj::Eleobj, Λ::SVector{Nx}, X::NTuple{Ndx,SVector{Nx}}, 
+        U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na}, t::ℝ,SP,dbg,req...)     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
+    L,FB,eleres... = getlagrangian(eleobj,hasresidual(eleobj),haslagrangian(eleobj),nosecondorder(Eleobj),Λ,X,U,A,t,SP,dbg,req...)    
+    hasnan(L,FB) && muscadeerror((dbg...,t=t,SP=SP),@sprintf("lagrangian(%s,...) returned NaN in L, FB or derivatives",Eleobj)) 
+    return L,FB,eleres...  
+end
+function getlagrangian(eleobj::Eleobj,hasres,haslag::Val{true},nso, Λ::SVector{Nx}, X::NTuple{Ndx,SVector{Nx}}, 
+        U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na}, t::ℝ,SP,dbg,req...)     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
+    out = lagrangian(eleobj,Λ,X,U,A,t,SP,dbg,req...)
+    L,FB,eleres... = lagrangian(eleobj,Λ,X,U,A,t,SP,dbg,req...)
+end
+function getlagrangian(eleobj::Eleobj,hasres::Val{true},haslag::Val{false},nso::Val{false}, Λ::SVector{Nx}, X::NTuple{Ndx,SVector{Nx}}, 
+        U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na}, t::ℝ,SP,dbg,req...)     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
+    R,FB,eleres... = residual(  eleobj,  X,U,A,t,SP,dbg,req...)
+    L = Λ ∘₁ R
     return L,FB,eleres... 
 end
+function getlagrangian(eleobj::Eleobj,hasres::Val{true},haslag::Val{false},nso::Val{true}, Λ::SVector{Nx}, X::NTuple{Ndx,SVector{Nx}}, 
+        U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na}, t::ℝ,SP,dbg,req...)     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
+    X1,U1,A1,t1 = firstorderonly(X,U,A,t) 
+    R,FB,eleres... = residual(  eleobj,  X1,U1,A1,t1,SP,dbg,req...)
+    L           = Λ ∘₁ backtohigherorder(R,eltype(Λ)) # to avoid loosing symmetry of Hessian...
+    return L,FB,eleres... 
+end
+getlagrangian(eleobj::Eleobj,hasres::Val{false},haslag::Val{false},nso, Λ,X,U,A,t,SP,dbg,req...)     where{Eleobj} =
+    muscadeerror((dbg...,t=t,SP=SP),@sprintf("Element %s must have method 'Muscade.lagrangian' or/and 'Muscade.residual' with correct interface",Eleobj))

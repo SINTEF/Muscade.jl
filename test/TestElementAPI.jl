@@ -64,43 +64,4 @@ T = Spring{2}
 end
 
 
-const X1 = (SVector{3,𝕣}(1,2,3),)
-const X2 = (SVector{3,𝕣}(1,2,3),SVector{3,𝕣}(4,5,6))
-const X3 = (SVector{3,𝕣}(1,2,3),SVector{3,𝕣}(4,5,6),SVector{3,𝕣}(7,8,9))
-const X4 = (variate{1,3}(SVector{3,𝕣}(1,2,3)),)
-const X5 = (variate{1,3}(SVector{3,𝕣}(1,2,3)),variate{1,3}(SVector{3,𝕣}(4,5,6)))
-const X6 = (variate{1,3}(SVector{3,𝕣}(1,2,3)),variate{1,3}(SVector{3,𝕣}(4,5,6)),variate{1,3}(SVector{3,𝕣}(7,8,9)))
-const P  = 2
-Y1=Muscade.motion{P,1}(X1)
-Y2=Muscade.motion{P,2}(X2)
-Y3=Muscade.motion{P,3}(X3)
-Y4=Muscade.motion{P,1}(X4)
-Y5=Muscade.motion{P,2}(X5)
-Y6=Muscade.motion{P,3}(X6)
-@testset "motion" begin
-    @test Muscade.position{P,1}(Y1) === SVector{3,𝕣}(1,2,3)
-    @test Muscade.velocity{P,1}(Y1) === SVector{3,𝕣}(0,0,0)
-    @test Muscade.acceleration{P,1}(Y1) === SVector{3,𝕣}(0,0,0)
-
-    @test Muscade.position{P,2}(Y2) === SVector{3,𝕣}(1,2,3)
-    @test Muscade.velocity{P,2}(Y2) === SVector{3,𝕣}(4,5,6)
-    @test Muscade.acceleration{P,2}(Y2) === SVector{3,𝕣}(0,0,0)
-
-    @test Muscade.position{P,3}(Y3) === SVector{3,𝕣}(1,2,3)
-    @test Muscade.velocity{P,3}(Y3) === SVector{3,𝕣}(4,5,6)
-    @test Muscade.acceleration{P,3}(Y3) === SVector{3,𝕣}(7,8,9)
-
-    @test Muscade.position{P,1}(Y4) === variate{1,3}(SVector{3,𝕣}(1,2,3))
-    @test Muscade.velocity{P,1}(Y4) === SVector{3,𝕣}(0,0,0)
-    @test Muscade.acceleration{P,1}(Y4) === SVector{3,𝕣}(0,0,0)
-
-    @test Muscade.position{P,2}(Y5) === variate{1,3}(SVector{3,𝕣}(1,2,3))
-    @test Muscade.velocity{P,2}(Y5) === variate{1,3}(SVector{3,𝕣}(4,5,6))
-    @test Muscade.acceleration{P,2}(Y5) === SVector{3,𝕣}(0,0,0)
-
-    @test Muscade.position{P,3}(Y6) === variate{1,3}(SVector{3,𝕣}(1,2,3))
-    @test Muscade.velocity{P,3}(Y6) === variate{1,3}(SVector{3,𝕣}(4,5,6))
-    @test Muscade.acceleration{P,3}(Y6) === variate{1,3}(SVector{3,𝕣}(7,8,9))
-end
-
 end

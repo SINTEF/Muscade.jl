@@ -9,18 +9,18 @@ eletyp(model::Model) = eltype.(model.eleobj)
 
 ## Nodal results
 """
-    dofres = getdof(state;[class=:X],field=:somefield,nodID=[nodids...],[orders=[0]])
+    dofres = getdof(state;[class=:X],field=:somefield,nodID=[nodids...],[order=0])
 
 Obtain the value of dofs of the same class and field, at various nodes and for various states.
 
-If `state` is a vector, the output `dofres` has size `(ndof,nder+1,nstate)`.
-If `state` is a scalar, the output `dofres` has size `(ndof,nder+1)`.
+If `state` is a vector, the output `dofres` has size `(ndof,nstate)`.
+If `state` is a scalar, the output `dofres` has size `(ndof,)`.
 
 See also: [`getresult`](@ref), [`addnode!`](@ref), [`solve`](@ref)
 """
 function getdof(state::State;kwargs...)  
     dofres = getdof([state];kwargs...)
-    return reshape(dofres,size(dofres)[1:2]) 
+    return reshape(dofres,size(dofres)[1]) 
 end
 function getdof(state::Vector{S};class::Symbol=:X,field::Symbol,nodID::Vector{NodID}=NodID[],order::ℤ=0)where {S<:State}
         class ∈ [:Λ,:X,:U,:A] || muscadeerror(sprintf("Unknown dof class %s",class))

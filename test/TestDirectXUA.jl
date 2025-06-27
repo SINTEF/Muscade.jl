@@ -1,11 +1,5 @@
 module TestDirectXUA
 
-# cd("C:\\Users\\philippem\\.julia\\dev\\Muscade")
-# using Pkg 
-# Pkg.activate(".")
-
-
-
 using Test
 using Muscade
 using StaticArrays,SparseArrays
@@ -35,17 +29,18 @@ n3              = addnode!(model,𝕣[]) # anode for spring
 e1              = addelement!(model,El1,[n1], K=1.,C=0.05,M=1.)
 e2              = addelement!(model,El1,[n2], K=0.,C=0.0 ,M=1.)
 e3              = addelement!(model,Spring{1},[n1,n2,n3], EI=1.1)
-@once f(x) = x^2
-@once l1(tx1,t) = (tx1-0.1*sin(t))^2
-@once l2(tx1,t) = (tx1-0.1*cos(t))^2
+@once f f(x) = x^2
+@once fu fu(u,t) = u^2
+@once l1 l1(tx1,t) = (tx1-0.1*sin(t))^2
+@once l2 l2(tx1,t) = (tx1-0.1*cos(t))^2
 e4              = addelement!(model,SingleDofCost,[n3];class=:A,field=:ΞL₀,     cost=f)
 e5              = addelement!(model,SingleDofCost,[n3];class=:A,field=:ΞEI,     cost=f)
 e6              = addelement!(model,SingleDofCost,[n1];class=:A,field=:ΞC ,     cost=f)
 e7              = addelement!(model,SingleDofCost,[n1];class=:A,field=:ΞM ,     cost=f)
 e8              = addelement!(model,SingleDofCost,[n2];class=:A,field=:ΞC ,     cost=f)
 e9              = addelement!(model,SingleDofCost,[n2];class=:A,field=:ΞM ,     cost=f)
-e10             = addelement!(model,SingleUdof   ,[n1];Xfield=:tx1,Ufield=:utx1,cost=f)
-e11             = addelement!(model,SingleUdof   ,[n2];Xfield=:tx1,Ufield=:utx1,cost=f)
+e10             = addelement!(model,SingleUdof   ,[n1];Xfield=:tx1,Ufield=:utx1,cost=fu)
+e11             = addelement!(model,SingleUdof   ,[n2];Xfield=:tx1,Ufield=:utx1,cost=fu)
 e12             = addelement!(model,SingleDofCost,[n1];class=:X,field=:tx1,     cost=l1)
 e13             = addelement!(model,SingleDofCost,[n2];class=:X,field=:tx1,     cost=l2)
 
@@ -61,7 +56,7 @@ FAST             = true
 
 dis             = state0.dis
 
-out,asm,dofgr = Muscade.prepare(Muscade.AssemblyDirect{OX,OU,IA},model,dis,fastresidual=true)#;Uwhite=true,Xwhite=true,XUindep=true,UAindep=true,XAindep=true)
+out,asm,dofgr = Muscade.prepare(Muscade.AssemblyDirect{OX,OU,IA},model,dis)#;Uwhite=true,Xwhite=true,XUindep=true,UAindep=true,XAindep=true)
 zero!(out)
 state           = [Muscade.State{1,OX+1,OU+1}(copy(state0,SP=(γ=0.,iter=1))) for i = 1:nstep]
 for i=1:nstep

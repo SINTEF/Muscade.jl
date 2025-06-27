@@ -18,17 +18,19 @@ struct FloaterOnCalmWater <: AbstractElement
 end
 FloaterOnCalmWater(nod::Vector{Node};K,C,M  )  = FloaterOnCalmWater(K,C,M)
 
-Muscade.doflist(::Type{<:FloaterOnCalmWater}) = (inod = (ntuple(i-> 1,3)...,ntuple(i-> 1,3)...,ntuple(i-> 1,6)...,                  ntuple(i-> 1,6)...           ),                                             
-                                                 class= (ntuple(i->:X,3)...,ntuple(i->:U,3)...,ntuple(i->:A,6)...,                  ntuple(i->:A,6)...          ), 
-                                                 field= (floatermotion...  ,floatermotion...  ,ntuple(i->Symbol(:M,idx[i]),6)...,   ntuple(i->Symbol(:C,idx[i]),6)...))
+Muscade.nosecondorder(::Type{<:FloaterOnCalmWater}) = Val(true)
+
+Muscade.doflist(::Type{<:FloaterOnCalmWater}) = (inod  = (ntuple(i-> 1,3)...,ntuple(i-> 1,3)...,ntuple(i-> 1,6)...,                  ntuple(i-> 1,6)...           ),                                             
+                                                 class = (ntuple(i->:X,3)...,ntuple(i->:U,3)...,ntuple(i->:A,6)...,                  ntuple(i->:A,6)...          ), 
+                                                 field = (floatermotion...  ,floatermotion...  ,ntuple(i->Symbol(:M,idx[i]),6)...,   ntuple(i->Symbol(:C,idx[i]),6)...))
 
 @espy function Muscade.residual(o::FloaterOnCalmWater,   X,U,A,t,SP,dbg) 
     x,x′,x″    = ∂0(X),∂1(X),∂2(X)   
     ☼u         = ∂0(U)
     a          = exp10.(A)
-    ☼r₂        = (o.M.*fold(a[@SVector [i for i∈1:6 ]]))∘x″
-    ☼r₁        = (o.C.*fold(a[@SVector [i for i∈7:12]]))∘x′
-    ☼r₀        = o.K∘x
+    ☼r₂        = (o.M.*fold(a[@SVector [i for i∈1:6 ]]))∘₁x″
+    ☼r₁        = (o.C.*fold(a[@SVector [i for i∈7:12]]))∘₁x′
+    ☼r₀        = o.K∘₁x
     return r₀+r₁+r₂-u,  noFB
 end
 
@@ -100,9 +102,9 @@ e4        = [addelement!(modelXUA,SingleDecayAcost  ,[n1];          field=f,fac,
 surgeInt    = linear_interpolation(T, surgeMeas)
 swayInt     = linear_interpolation(T, swayMeas)
 yawInt      = linear_interpolation(T, yawMeas)
-@once devSurge(surge,t)     = 1e-1 ^-2 * (surge-surgeInt(t))^2
-@once devSway(sway,t)       = 1e-1 ^-2 * (sway-swayInt(t))^2
-@once devYaw(yaw,t)         = 1e-1 ^-2 * (yaw-yawInt(t))^2
+@once surge devSurge(surge,t)     = 1e-1 ^-2 * (surge-surgeInt(t))^2
+@once sway devSway(sway,t)       = 1e-1 ^-2 * (sway-swayInt(t))^2
+@once yaw devYaw(yaw,t)         = 1e-1 ^-2 * (yaw-yawInt(t))^2
 e5             = addelement!(modelXUA,SingleDofCost,[n1];class=:X,field=:surge,    cost=devSurge)
 e6             = addelement!(modelXUA,SingleDofCost,[n1];class=:X,field=:sway,     cost=devSway)
 e7             = addelement!(modelXUA,SingleDofCost,[n1];class=:X,field=:yaw,      cost=devYaw);
@@ -117,7 +119,7 @@ e7             = addelement!(modelXUA,SingleDofCost,[n1];class=:X,field=:yaw,   
 #Solve inverse problem
 initialstateXUA    = initialize!(modelXUA;time=0.)
 stateXUA         = solve(DirectXUA{2,0,1};initialstate=initialstateXUA,time=T,
-                        maxiter=100,saveiter=true,fastresidual=true,
+                        maxiter=100,saveiter=true,
                         maxΔx=1e-5,maxΔλ=Inf,maxΔu=1e-5,maxΔa=1e-5);
 
 # Fetch and display estimated model parameters

@@ -13,7 +13,7 @@ mutable struct AssemblySweepX{ORDER,Tλ,Tλx} <: Assembly
     firstiter :: 𝕓   
     line      :: 𝕓
 end   
-function AssemblySweepX{ORDER}(model,dis) where{ORDER}
+function prepare(::Type{AssemblySweepX{ORDER}},model,dis) where{ORDER}
     Xdofgr             = allXdofs(model,dis)  # dis: the model's disassembler
     ndof               = getndof(Xdofgr)
     narray,neletyp     = 2,getneletyp(model)
@@ -57,8 +57,8 @@ function addin!(out::AssemblySweepX{ORDER},asm,iele,scale,eleobj::E,Λ,X::NTuple
             Lλ,FB      = getresidual(eleobj,(vx,vx′,vx″),U,A,t,SP,dbg)
             Lλ         = Lλ .* scale.X
             add_value!(out.Lλ ,asm[1],iele,Lλ             )
-            add_∂!{1}( out.Lλ ,asm[1],iele,Lλ,1:Nx,(Nx+1,))  # rhs = R - C⋅a - M⋅b 
-            add_∂!{1}( out.Lλx,asm[2],iele,Lλ,1:Nx,1:Nx   )
+            add_∂!{1}( out.Lλ ,asm[1],iele,Lλ,ia=1:Nx,ida=(Nx+1,))  # rhs = R - C⋅a - M⋅b 
+            add_∂!{1}( out.Lλx,asm[2],iele,Lλ,ia=1:Nx,ida=1:Nx   )
         else
             δX         = δ{1,Nx,𝕣}(scale.X)
             if     ORDER==0  Lλ,FB = getresidual(eleobj,(∂0(X)+δX,                         ),U,A,t,SP,dbg)
@@ -76,9 +76,9 @@ function addin!(out::AssemblySweepX{ORDER},asm,iele,scale,eleobj::E,Λ,X::NTuple
             a          = a₂*x′ + a₃*x″
             b          = b₂*x′ + b₃*x″
             vx         = x 
-            vx′        = x′ - a.*δr 
-            vx″        = x″ - b.*δr 
-            Lλ,FB      = getresidual(eleobj,(vx,vx′,vx″),U,A,t,SP,dbg)
+            vx′        = x′ - a .*δr 
+            vx″        = x″ - b .*δr 
+            Lλ,FB      = getresidual(eleobj,promote(vx,vx′,vx″),U,A,t,SP,dbg)
             Lλ         = Lλ .* scale.X
             add_value!(out.Lλ ,asm[1],iele,Lλ)
             add_∂!{1}( out.Lλ ,asm[1],iele,Lλ)  # rhs = R - C⋅a - M⋅b 
@@ -143,7 +143,7 @@ states           = solve(SweepX{2};initialstate=initialstate,time=0:10)
 
 A vector of length equal to that of the named input argument `time` containing the states at the time steps.                       
 
-See also: [`solve`](@ref), [`initialize!`](@ref), [`findlastassigned`](@ref), [`studysingular`](@ref) 
+See also: [`solve`](@ref), [`initialize!`](@ref), [`findlastassigned`](@ref), [`studysingular`](@ref), [`DirectXUA`](@ref), [`FreqXU`](@ref)  
 """
 struct        SweepX{ORDER} <: AbstractSolver end
 function solve(SX::Type{SweepX{ORDER}},pstate,verbose,dbg;
@@ -154,7 +154,7 @@ function solve(SX::Type{SweepX{ORDER}},pstate,verbose,dbg;
                     saveiter::𝔹=false,
                     maxLineIter::ℤ=50,sfac::𝕣=.5,γfac::𝕣=.5) where{ORDER}
     model,dis        = initialstate.model,initialstate.dis
-    out,asm,Xdofgr   = AssemblySweepX{ORDER}(model,dis)  
+    out,asm,Xdofgr   = prepare(AssemblySweepX{ORDER},model,dis)  
     ndof             = getndof(Xdofgr)
     if ORDER≥1    x′ = 𝕣1(undef,ndof) end 
     if ORDER≥2    x″ = 𝕣1(undef,ndof) end 

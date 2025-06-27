@@ -10,13 +10,13 @@ model           = Model(:TestModel)
 node            = addnode!(model,𝕣[])
 ele             = addelement!(model,SdofOscillator,[node], K₁=1.,K₂=.3,C₁=1.,C₂=2.,M₁=3.)
 initialstate    = initialize!(model;time=0.)
-initialstate    = setdof!(initialstate,[1.];field=:x,nodID=[node],order=1)                                          
+initialstate    = setdof!(initialstate,[1.];field=:tx1,nodID=[node],order=1)                                          
 T               = 0.4 *(1:100)
 state           = solve(SweepX{2};  initialstate,time= T,verbose=false,catcherror=true)
 
-X  = getdof(state;field=:x,nodID=[node],order=0)
-X′ = getdof(state;field=:x,nodID=[node],order=1)
-X″ = getdof(state;field=:x,nodID=[node],order=2)
+X  = getdof(state;field=:tx1,nodID=[node],order=0)
+X′ = getdof(state;field=:tx1,nodID=[node],order=1)
+X″ = getdof(state;field=:tx1,nodID=[node],order=2)
 
 @testset "SDof oscillator output" begin
     @test X[ 1:10:end] ≈ [0.3653456491624315, 0.039495394592936224, -0.9800856952523974, 0.0204208015740059, 0.10202734361080085, -0.08876358375431506, 0.020279004568508258, 0.009410960025011333, -0.01164572216979256, 0.0044937076208295505]
@@ -37,15 +37,15 @@ end
 model           = Model(:TestModel)
 node            = addnode!(model,𝕣[])
 ele             = addelement!(model,SdofOscillator,[node], K₁=1.,K₂=.3,C₁=1.,C₂=2.,M₁=3.)
-drag            = addelement!(model,DryFriction,[node], fieldx=:x,friction=0.1)
+drag            = addelement!(model,DryFriction,[node], fieldx=:tx1,friction=0.1)
 initialstate    = Muscade.State{1,3,1}(copy(initialize!(model),time=0.,SP=nothing))  # recast to force the state to have 2nd derivatives, 
 initialstate.X[2][1] = 1.                                                   # so we can set initial velocity
 T               = 0.15 *(1:100)
 state           = solve(SweepX{2};  initialstate,time= T,verbose=false,catcherror=true)
 
-X  = getdof(state;field=:x,nodID=[node],order=0)
-X′ = getdof(state;field=:x,nodID=[node],order=1)
-X″ = getdof(state;field=:x,nodID=[node],order=2)
+X  = getdof(state;field=:tx1,nodID=[node],order=0)
+X′ = getdof(state;field=:tx1,nodID=[node],order=1)
+X″ = getdof(state;field=:tx1,nodID=[node],order=2)
 
 @testset "DryFriction oscillator output, Δx=0" begin
     @test X[ 1:10:end] ≈ [0.14456443480393982,  0.7975704237766761,  0.5807448605308462,  0.025592798296295478, -0.4191499109805254, -0.47980495035837123, -0.327180958763213, -0.14250971878268207, -0.02302664416796214,  0.0049513031770612665]
@@ -58,7 +58,7 @@ end
 model           = Model(:TestModel)
 node            = addnode!(model,𝕣[])
 ele             = addelement!(model,SdofOscillator,[node], K₁=1.,K₂=.3,C₁=1.,C₂=2.,M₁=3.)
-drag            = addelement!(model,DryFriction,[node], fieldx=:x,friction=0.1,Δx=0.3)
+drag            = addelement!(model,DryFriction,[node], fieldx=:tx1,friction=0.1,Δx=0.3)
 initialstate    = Muscade.State{1,3,1}(copy(initialize!(model),time=0.,SP=nothing))  # recast to force the state to have 2nd derivatives, 
 initialstate.X[2][1] = 1.                                           # so we can set initial velocity
 T               = 0.15 *(1:100)

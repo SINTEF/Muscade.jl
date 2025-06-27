@@ -1,4 +1,4 @@
-#module TestAdiff
+module TestAdiff
 using Muscade
 using Test,StaticArrays
 
@@ -119,4 +119,5 @@ y3 = atan(s3,c3)
     end
 
 end # testset Adiff
-#end
+
+end

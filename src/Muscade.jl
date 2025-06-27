@@ -1,12 +1,13 @@
 module Muscade
-    using  Printf,SparseArrays,StaticArrays,LinearAlgebra
+    using  Printf,SparseArrays,StaticArrays,LinearAlgebra,SpecialFunctions,MacroTools
+    using KrylovKit: KrylovKit,eigsolve
 
     include("Dialect.jl")
-    export ℝ,ℤ,𝕣,𝕫,𝔹,𝕓
+    export ℝ,ℤ,𝕣,𝕫,𝔹,𝕓,ℂ
     export ℝ1,ℤ1,𝕣1,𝕫1,𝔹1,𝕓1
     export ℝ2,ℤ2,𝕣2,𝕫2,𝔹2,𝕓2
     export ℝ11,ℤ11,𝕣11,𝕫11,𝔹11,𝕓11
-    export toggle,@once,default
+    export toggle,default,@once,imod
 
     include("Adiff.jl")
     export  ∂ℝ #\partial \bbR
@@ -14,8 +15,12 @@ module Muscade
     export  value,VALUE,∂,value_∂ # \partial, \nabla
     export  constants,precedence,npartial,norm
 
-    include("Multiplex.jl")
-    
+    include("Taylor.jl")
+    export  motion,motion⁻¹,revariate,compose,fast,justinvoke,composevalue,composeJacobian 
+
+    include("Functors.jl")
+    export QuadraticFunction,FunctionFromVector 
+
     include("Dots.jl")
     export dots,∘₀,∘₁,∘₂,⊗
 
@@ -25,7 +30,6 @@ module Muscade
 
     include("Exceptions.jl")
     export muscadeerror
-
 
     include("ModelDescription.jl")
     export AbstractElement
@@ -49,7 +53,7 @@ module Muscade
     include("Solve.jl")
     export solve
 
-    include("BlockSparse.jl")
+    include("SparseTools.jl")
     export prepare,cat!,addin!,zero!,getblock
     
     include("FiniteDifferences.jl")
@@ -59,6 +63,15 @@ module Muscade
 
     include("DirectXUA.jl")
     export DirectXUA
+
+    include("EigX.jl")
+    export EigX,increment
+
+    include("EigXU.jl")
+    export EigXU
+
+    include("FreqXU.jl")
+    export FreqXU
 
     include("Diagnostic.jl")
     export studyscale,studysingular,describe
@@ -73,5 +86,10 @@ module Muscade
     export ←,→
 
     include("ElementTestTools.jl")
+    export diffed_residual,diffed_lagrangian,print_element_array
 
+    include("FFT.jl")
+    #export getδf,getδt(n3,δf3′),𝔉𝕣(g.(t3),δt3),𝔉𝕣⁻¹(X3′′,δf3)
+
+    include("Eigenmodes.jl")
 end

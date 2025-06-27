@@ -36,3 +36,11 @@ function report(::MuscadeException)
     Base.show_backtrace(stdout,setdiff(cs[nex][2],backtrace())[2:end-1])
     print("\n\n")
 end
+function muscadewarning(str,indent=0)
+    for i = 1:indent
+        print(" ")
+    end
+    printstyled("Warning: ",bold=true,color=:red)
+    printstyled(str,color=:red)
+    print("\n")
+end

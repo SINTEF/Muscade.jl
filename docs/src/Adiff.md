@@ -1,8 +1,12 @@
 # Automatic differentiation
 
-`Muscade` has its own implementation of forward automatic differentiation for historical reasons: Prototypes automaticdifferentiation of `Muscade` where developed in parallel with [`ForwardDiff.jl`](https://juliadiff.org/ForwardDiff.jl/stable/).  While the inner workings of [`ForwardDiff.jl`](https://juliadiff.org/ForwardDiff.jl/stable/) and `Muscade`'s version are similar ( with `ForwardDiff.jl` probably having better performance), the API are quite different.
+## History
 
-`Muscade` evaluates second derivative of the Lagrangian, using dneste *forward* differentiation, which is far from optimal.  An ambition is to make use of reverse differentiation (using [`Zygote.jl`](https://fluxml.ai/Zygote.jl/latest/), [`Enzyme.jl`](https://docs.sciml.ai/Enzyme/stable/) or similar).
+`Muscade` has its own implementation of forward automatic differentiation for historical reasons: Prototypes automatic differentiation of `Muscade` where developed in parallel with [`ForwardDiff.jl`](https://juliadiff.org/ForwardDiff.jl/stable/).  While the inner workings of [`ForwardDiff.jl`](https://juliadiff.org/ForwardDiff.jl/stable/) and `Muscade`'s version are similar ( with `ForwardDiff.jl` probably having better performance), the API are quite different.
+
+`Muscade` evaluates second derivative of the Lagrangian, using nested *forward* differentiation, which is far from optimal.  An ambition is to make use of reverse differentiation (using [`Zygote.jl`](https://fluxml.ai/Zygote.jl/latest/), [`Enzyme.jl`](https://docs.sciml.ai/Enzyme/stable/) or similar).
+
+## Usage
 
 `Muscade`s automatic differentiation is used as follows:
 
@@ -45,3 +49,6 @@ y   = value{P}(y1)
 yₓ  = ∂{P,N}(y2)
 ```
 
+## Taylor expansions
+
+One way to accelerate automatic differentiation of complicated functions can be to compose the differentiation of simpler functions, in particular function with smaller inputs.  Use [`fast`](@ref) for basic applications, and [`revariate`](@ref) and [`compose`](@ref) for advanced usage. 

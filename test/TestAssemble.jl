@@ -14,24 +14,14 @@ X        = @SVector [1.,2.]
 U        = @SVector 𝕣[]
 A        = @SVector [0.,0.]  # [Δseadrag,Δskydrag]
 
-#                         eleobj, Λ, X,  U,  A, t, SP,     dbg
-L,Lλ,Lx,Lu,La  = Muscade.gradient(turbine,Λ ,[X],[U],A, 0.,nothing,(;))
-
+out = diffed_residual(turbine;X=(X,),U=(U,),A)
 @testset "Turbine gradient" begin
-    @test Lλ            ≈ [-2, -3]
-    @test Lx            ≈ [0, 0]
-    @test length(Lu)    == 0
-    @test La            ≈ [-2, -3]
+    @test out.R                   ≈ [-2, -3]    # R
+    @test out.∇R[2][1]            ≈ [0 0;0 0]    # Lx
+    @test size(out.∇R[3][1])      == (2,0)        # Lu
+    @test out.∇R[4][1]            ≈ [-2 0;0 -3]  # La
 end
 
-Lλ,Lx,Lu,La   = Muscade.test_static_element(turbine;Λ,X,U,A,verbose=false)
-
-@testset "test_static_element" begin
-    @test Lλ            ≈ [-2, -3]
-    @test Lx            ≈ [0, 0]
-    @test length(Lu)    == 0
-    @test La            ≈ [-2, -3]
-end
 
 # ###  AnchorLine
 
@@ -42,12 +32,12 @@ X        = @SVector [0.,0.,0.]
 U        = @SVector 𝕣[]
 A        = @SVector [0.,0.]  # [Δseadrag,Δskydrag]
 #                             eleobj, Λ, X,  U,  A, t, SP,     dbg
-L,Lλ,Lx,Lu,La   = Muscade.gradient(anchorline,Λ ,[X],[U],A, 0.,nothing,(;))
+out   = Muscade.diffed_lagrangian(anchorline;Λ ,X=(X,),U=(U,),A)
 @testset "anchorline1" begin
-    @test Lλ            ≈ [-12.25628901693551, 0.2607721067433087, 24.51257803387102]
-    @test Lx            ≈ [-0.91509745608786, 0.14708204066349, 1.3086506986891027]
-    @test length(Lu)    == 0
-    @test La            ≈ [-156.06324599170992, 12.517061123678818]
+    @test out.∇L[1][1]              ≈ [-12.25628901693551, 0.2607721067433087, 24.51257803387102]
+    @test out.∇L[2][1]            ≈ [-0.91509745608786, 0.14708204066349, 1.3086506986891027]
+    @test length(out.∇L[3][1])    == 0
+    @test out.∇L[4][1]            ≈ [-156.06324599170992, 12.517061123678818]
 end
 
 model           = Model(:TestModel)
@@ -125,7 +115,7 @@ Lλ          = Muscade.asmvec!(asmvec,dofgr,dis)
     @test asmvec[1] == [1; 2;;]
     @test asmvec[2] == [1; 2; 3;;]
 end
-out,asm,dofgr = Muscade.AssemblySweepX{0}(model,dis)
+out,asm,dofgr = Muscade.prepare(Muscade.AssemblySweepX{0},model,dis)
 Muscade.zero!(out)
 @testset "prepare" begin
     @test  out.Lλ ≈ [0,0,0]
@@ -153,6 +143,12 @@ end
     @test dofgr.scaleA == Float64[]
 end
 
+vec   = zeros(getndof(dofgr))
+Muscade.makevecfromfields!(vec,dofgr,(;X=(tx1=1.,tx2=2.,rx3=3.)))
+@testset "makevecfromfields" begin
+     @test vec ≈ [1.,2.,3.]
+end
+
 state = Muscade.State{1,1,1}(model,dis)
 Muscade.assemble!(out,asm,dis,model,state,(someunittest=true,))
 
@@ -160,5 +156,6 @@ Muscade.assemble!(out,asm,dis,model,state,(someunittest=true,))
     @test  out.Lλ  ≈ [-152130.71199858442, -3.0, 0.0]
     @test  out.Lλx ≈ sparse([1, 2, 3, 1, 2, 3, 1, 2, 3], [1, 1, 1, 2, 2, 2, 3, 3, 3], [10323.069597975566, 0.0, 0.0, 0.0, 1049.1635310247202, 5245.817655123601, 0.0, 5245.8176551236, 786872.6482685402], 3, 3)
 end
+
 
 end
