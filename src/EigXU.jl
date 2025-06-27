@@ -166,9 +166,9 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
             for imod               = 1:ncv[iω]
                 Δ                  = ΔΛXU[iω][imod]
                 wrk[ixu]          .= view(Δ,ixu)                   # this copy can be optimised by viewing the classes in Δ, operating on out.L2[α,β][αder,βder], and combining over derivatives.  Is it worth the effort?   
-                Anorm              = √(ℜ(1/2*wrk  ∘₁ (A ∘₁ wrk)))  # ΔΛXU is real, A is complex Hermitian, so square norm is real: (imag part is zero to machine precision)
+                Anorm              = √(ℜ(wrk  ∘₁ (A ∘₁ wrk))/2)  # ΔΛXU is real, A is complex Hermitian, so square norm is real: (imag part is zero to machine precision)
                 Δ                .*= 2.575829303549/Anorm          # corresponds to a probability of exceedance of 0.01                        
-                nor[iω][imod]      = ℜ(Δ ∘₁ (B ∘₁ Δ))/(2log(2)) 
+                nor[iω][imod]      = √(ℜ(Δ ∘₁ (B ∘₁ Δ))/2) 
             end
         catch 
 #            verbose && @printf("\n")
