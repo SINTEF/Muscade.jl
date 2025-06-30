@@ -1,5 +1,168 @@
-#Assumes that BeamElements.jl has been included previously
-using GLMakie
+#Assumes that BeamElements.jl has been included previously, and that "using GLMakie" has been invoked
+
+function Muscade.allocate_drawdata(axe,o::AbstractVector{EulerBeam3D{Tmat,Udof}};kwargs...) where{Tmat,Udof}
+    # define constant inputs to the drawing process
+    args                 = default{:EulerBeam3D     }(kwargs,(;)     )  
+    section              = default{:section         }(args,zeros(2,0))  
+    nsec                 = size(section,2)                            
+    opt=(
+            nel          = length(o)                                  ,
+            style        = default{:style           }(args,:simple   ),                       
+            draw_frame   = default{:frame           }(args,true      ),                       
+            draw_marking = default{:marking         }(args,true      ),                       
+            nseg         = default{:nseg            }(args,10        ),                       
+            solid_color  = default{:solid_          }(args,:yellow   ),                       
+            line_color   = default{:line_color      }(args,:black    ),                       
+            Uscale       = default{:Uscale          }(args,1.        ),   
+            Udof         = Udof                                       ,
+            nsec         = nsec                                       ,                    
+            section      = section                                    ,
+            markrad      = nsec==0 ? 0. : 1.01*maximum(section[1,:])      
+        )
+    opt.style==:solid && nsec<2 && muscadeerror("An section description must be provided for 'solid' plot")
+
+    # we are going to allocate many arrays. The plotting process has options about what to draw and what to leave out.
+    # To save memory, we set nel_something to zero if the corresponding arrays are not needed.
+    nel_shape         = opt.style==:shape                     ? opt.nel   : 0
+    nel_shape_frame   = opt.draw_frame                        ? nel_shape : 0
+    nel_shape_udof    = opt.Udof                              ? nel_shape : 0
+    nel_solid         = opt.style==:solid                     ? opt.nel   : 0 
+    nel_solid_marking = opt.draw_marking                      ? nel_solid : 0
+    nel_solid_udof    = opt.Udof                              ? nel_solid : 0
+
+    # This tuple contains all the "mutables", whose contents will change from step to step
+    mut=(
+            node         = 𝕣2(undef,3,3*opt.nel)                        ,
+            shape_x      = 𝕣2(undef,3,(opt.nseg+2)*nel_shape)           ,   
+            shape_frame  = 𝕣2(undef,3,3*3*nel_shape_frame)              , # idim, point-point-lift, ivec, iel
+            shape_ucrest = 𝕣2(undef,3,6*nel_shape_udof)                 , # idim, 6point-lift,iel
+            solid_vertex = 𝕣2(undef,3,opt.nsec*(opt.nseg+1)*nel_solid)  , 
+            solid_face   = 𝕫2(undef,2*opt.nsec* opt.nseg   *nel_solid,3),
+            solid_mark   = 𝕣2(undef,3,(opt.nseg+2)*nel_solid_marking)   ,     
+            solid_ucrest = 𝕣2(undef,3,6*nel_solid_udof)               # idim, 6point-lift,iel
+        )   
+    # mut=(
+    #         node  = Array{𝕣,3}(undef,3,3,nel_node)                 ,
+    #         shape_x      = Array{𝕣,3}(undef,3,opt.nseg+2,nel_shape)         ,   
+    #         shape_frame  = Array{𝕣,4}(undef,3,3,3,nel_shape_frame)          , # idim, point-point-lift, ivec, iel
+    #         shape_ucrest = Array{𝕣,3}(undef,3,6,nel_shape_udof)             , # idim, 6point-lift,iel
+    #         solid_vertex = Array{𝕣,4}(undef,3,opt.nsec, opt.nseg+1 ,nel_solid) , 
+    #         solid_face   = Array{𝕫,5}(undef,2,opt.nsec, opt.nseg   ,nel_solid,3),
+    #         solid_mark   = Array{𝕣,3}(undef,3,opt.nseg+2 ,nel_solid_marking),     
+    #         solid_ucrest = Array{𝕣,3}(undef,3,6,nel_solid_udof)               # idim, 6point-lift,iel
+    #     )   
+
+    # we set some terms to NaN (GLMakie idiom to lift the pen) once and for all    
+
+
+    return mut,opt
+end
+
+
+
+function Muscade.update_drawdata(axe,o::AbstractVector{EulerBeam3D{Tmat,Udof}},oldmut,opt, Λ,X,U,A,t,SP,dbg) where{Tmat,Udof} 
+    mut           = oldmut 
+    X₀            = ∂0(X)
+    U₀            = ∂0(U)
+    it1,ir1,it2,ir2 = SVector{3}(1:3),SVector{3}(4:6),SVector{3}(7:9),SVector{3}(10:12)
+    node = reshape(mut.node,(3,3,opt.nel))
+    for (iel,oᵢ) = enumerate(o)
+        node[:,1,iel] = oᵢ.cₘ - oᵢ.tgₘ/2 + X₀[it1,iel]
+        node[:,2,iel] = oᵢ.cₘ + oᵢ.tgₘ/2 + X₀[it2,iel]
+        node[:,3,iel].= NaN  
+    end
+    if opt.style==:shape
+        ζ = range(-1/2,1/2,opt.nseg+1)
+        if opt.draw_frame shape_frame  = reshape(mut.shape_frame ,(3,3,3       ,opt.nel)) end
+        if opt.Udof       shape_ucrest = reshape(mut.shape_ucrest,(3,6         ,opt.nel)) end
+        shape_x                        = reshape(mut.shape_x     ,(3,opt.nseg+2,opt.nel))
+        for (iel,oᵢ) = enumerate(o)
+            cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp,L  = oᵢ.cₘ,oᵢ.rₘ,oᵢ.tgₘ,oᵢ.tgₑ,oᵢ.ζnod,oᵢ.ζgp,oᵢ.L   
+            X₀ₑ = view(X₀,:,iel)
+            vₛₘ,rₛₘ,uₗ₂,vₗ₂,cₛₘ = corotated(oᵢ,X₀ₑ) 
+            if opt.draw_frame
+                for ivec = 1:3
+                    shape_frame[:,1,ivec,iel] = cₛₘ
+                    shape_frame[:,2,ivec,iel] = cₛₘ + oᵢ.L/3*rₛₘ[:,ivec]
+                    shape_frame[:,3,ivec,iel].= NaN
+                end
+            end
+            if opt.Udof
+                shape_ucrest[:,1,iel] = cₛₘ - oᵢ.L/2*rₛₘ[:,1]
+                shape_ucrest[:,2,iel] = cₛₘ - oᵢ.L/2*rₛₘ[:,1] + rₛₘ ∘₁ view(U₀,:,iel) * opt.Uscale
+                shape_ucrest[:,3,iel] = cₛₘ + oᵢ.L/2*rₛₘ[:,1] + rₛₘ ∘₁ view(U₀,:,iel) * opt.Uscale
+                shape_ucrest[:,4,iel] = cₛₘ + oᵢ.L/2*rₛₘ[:,1]
+                shape_ucrest[:,5,iel] = cₛₘ - oᵢ.L/2*rₛₘ[:,1]
+                shape_ucrest[:,6,iel].= NaN
+            end
+            for (i,ζᵢ) ∈ enumerate(ζ)
+                y          = SVector(yₐ(ζᵢ)*uₗ₂[1] , yᵤ(ζᵢ)*uₗ₂[2]+L*yᵥ(ζᵢ)*vₗ₂[3], yᵤ(ζᵢ)*uₗ₂[3]-L*yᵥ(ζᵢ)*vₗ₂[2])  
+                shape_x[:,i         ,iel] = rₛₘ∘₁(tgₑ*ζᵢ+y)+cₛₘ 
+                shape_x[:,opt.nseg+2,iel].= NaN
+            end        
+        end
+    elseif opt.style==:solid
+        ζ = range(-1/2,1/2,opt.nseg+1)
+        idx(iel,iseg,isec) = mod_onebased(isec,opt.nsec)+opt.nsec*(iseg-1+(opt.nseg+1)*(iel-1)) # 1st index into rvertex
+        if opt.Udof         solid_ucrest   = reshape(mut.solid_ucrest,(3,6          ,opt.nel)) end
+        if opt.draw_marking solid_mark     = reshape(mut.solid_mark  ,(3,opt.nseg+2 ,opt.nel)) end
+        solid_face                         = reshape(mut.solid_face  ,(2,opt.nsec, opt.nseg   ,opt.nel,3))
+        solid_vertex                       = reshape(mut.solid_vertex,(3,opt.nsec, opt.nseg+1 ,opt.nel))
+        for (iel,oᵢ) = enumerate(o)
+            cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp,L  = oᵢ.cₘ,oᵢ.rₘ,oᵢ.tgₘ,oᵢ.tgₑ,oᵢ.ζnod,oᵢ.ζgp,oᵢ.L   
+            X₀ₑ = view(X₀,:,iel)
+            vₛₘ,rₛₘ,uₗ₂,vₗ₂,cₛₘ = corotated(oᵢ,X₀ₑ) 
+            vᵧ₁,vᵧ₂          = vec3(X₀ₑ,4:6), vec3(X₀ₑ,10:12)
+            rₛ₁              = Rodrigues(vᵧ₁)
+            rₛ₂              = Rodrigues(vᵧ₂)
+            if opt.Udof
+                solid_ucrest[:,1,iel] = cₛₘ - oᵢ.L/2*rₛₘ[:,1]
+                solid_ucrest[:,2,iel] = cₛₘ - oᵢ.L/2*rₛₘ[:,1] + rₛₘ ∘₁ view(U₀,:,iel) * opt.Uscale
+                solid_ucrest[:,3,iel] = cₛₘ + oᵢ.L/2*rₛₘ[:,1] + rₛₘ ∘₁ view(U₀,:,iel) * opt.Uscale
+                solid_ucrest[:,4,iel] = cₛₘ + oᵢ.L/2*rₛₘ[:,1]
+                solid_ucrest[:,5,iel] = cₛₘ - oᵢ.L/2*rₛₘ[:,1]
+                solid_ucrest[:,6,iel].= NaN            
+            end
+            for (iseg,ζᵢ) ∈ enumerate(ζ)
+                y  = SVector(yₐ(ζᵢ)*uₗ₂[1] , yᵤ(ζᵢ)*uₗ₂[2]+L*yᵥ(ζᵢ)*vₗ₂[3], yᵤ(ζᵢ)*uₗ₂[3]-L*yᵥ(ζᵢ)*vₗ₂[2])  
+                xn = rₛₘ∘₁(tgₑ*ζᵢ+y)+cₛₘ # point on neutral axis
+                v  = (iseg-1)/opt.nseg*Rodrigues⁻¹(rₛ₂ ∘₁ rₛ₁')
+                r  = Rodrigues(v) ∘₁ rₛ₁ ∘₁ rₘ  
+                if opt.draw_marking 
+                    solid_mark[:,    iseg  ,iel] = xn .+ r[:,2]*opt.markrad 
+                    solid_mark[:,opt.nseg+2,iel].= NaN 
+                end
+                for isec = 1:opt.nsec
+                    solid_vertex[:,isec,iseg,iel] = xn .+ r[:,2]*opt.section[1,isec] + r[:,3]*opt.section[2,isec] 
+                    if iseg≤opt.nseg
+                        i1,i2,i3,i4 = idx(iel,iseg,isec),idx(iel,iseg  ,isec+1),idx(iel,iseg+1,isec  ),idx(iel,iseg+1,isec+1)
+                        solid_face[1,isec,iseg,iel,:] = SVector(i1,i2,i4)    
+                        solid_face[2,isec,iseg,iel,:] = SVector(i1,i4,i3)   
+                    end
+                end
+            end  
+        end
+    end
+    return mut
+end
+
+
+
+function Muscade.draw!(axe,::Type{EulerBeam3D{Tmat,Udof}},obs,opt) where{Tmat,Udof}
+    scatter!(                                          axe, obs.node                         ,color = opt.line_color, marker=:circle)  
+    opt.style==:simple &&                     lines!(  axe, obs.node                         ,color = opt.line_color                )    
+    opt.style==:shape  &&                     lines!(  axe, obs.shape_x                      ,color = opt.line_color                )
+    opt.style==:shape  && opt.draw_frame   && lines!(  axe, obs.shape_frame                  ,color = :grey         ,linewidth=1    )    
+    opt.style==:shape  && opt.Udof         && lines!(  axe, obs.shape_ucrest                 ,color = :red          ,linewidth=1    )    
+    opt.style==:solid  &&                     mesh!(   axe, obs.solid_vertex, obs.solid_face ,color = opt.solid_color               )  
+    opt.style==:solid  && opt.draw_marking && lines!(  axe, obs.solid_mark                   ,color = opt.line_color                )    
+    opt.style==:solid  && opt.Udof         && lines!(  axe, obs.solid_ucrest                 ,color = :red          ,linewidth=1    )    
+end
+
+
+
+
+
 
 """
 
@@ -29,135 +192,3 @@ to draw a longitudinal marking and `solid_color=:yellow`.
 All above options share the optional argument `line_color=:black`.
 
 """
-function Muscade.draw(axe,o::Vector{EulerBeam3D{Tmat,Udof}}, Λ,X,U,A,t,SP,dbg;kwargs...) where{Tmat,Udof}
-    nel           = length(o)
-    args          = default{:EulerBeam3D}(kwargs,(;)     )
-    style         = default{:style      }(args,:simple   )
-    draw_frame    = default{:frame      }(args,true      )
-    draw_marking  = default{:marking    }(args,true      )
-    nseg          = default{:nseg       }(args,10        )
-    section       = default{:section    }(args,zeros(2,0))
-    solid_color   = default{:color      }(args,:yellow   )
-    line_color    = default{:color      }(args,:black    )
-    Uscale        = default{:Uscale     }(args,1.        )
-    nsec          = size(section,2)
-    X₀            = ∂0(X)
-    U₀            = ∂0(U)
-    it1,ir1,it2,ir2 = SVector{3}(1:3),SVector{3}(4:6),SVector{3}(7:9),SVector{3}(10:12)
-    if     style==:simple
-        line = Array{𝕣,3}(undef,3,3,nel)
-        for (iel,oᵢ) = enumerate(o)
-            line[:,1,iel] = oᵢ.cₘ - oᵢ.tgₘ/2 + X₀[it1,iel]
-            line[:,2,iel] = oᵢ.cₘ + oᵢ.tgₘ/2 + X₀[it2,iel]
-            line[:,3,iel].= NaN
-        end
-        rline = reshape(line,(3,3nel))
-        lines!(  axe,rline,color = line_color                )    
-        scatter!(axe,rline,color = line_color, marker=:circle)  
-    elseif style==:shape
-        ζ = range(-1/2,1/2,nseg+1)
-        x = Array{𝕣,3}(undef,3,nseg+2,nel)
-        rx = reshape(x,(3,(nseg+2)*nel))
-        if draw_frame  
-            frame = Array{𝕣,4}(undef,3,3,3,nel)  # idim, point-point-lift, ivec, iel
-            rframe = reshape(frame,(3,9nel)) 
-        end  
-        if Udof
-            ucrest  = Array{𝕣,3}(undef,3,6,nel) # idim, 6point-lift,iel
-            rucrest = reshape(ucrest,(3,6nel)) 
-        end  
-        for (iel,oᵢ) = enumerate(o)
-            cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp,L  = oᵢ.cₘ,oᵢ.rₘ,oᵢ.tgₘ,oᵢ.tgₑ,oᵢ.ζnod,oᵢ.ζgp,oᵢ.L   
-            X₀ₑ = view(X₀,:,iel)
-            vₛₘ,rₛₘ,uₗ₂,vₗ₂,cₛₘ = corotated(oᵢ,X₀ₑ) 
-            if draw_frame
-                for ivec = 1:3
-                    frame[:,1,ivec,iel] = cₛₘ
-                    frame[:,2,ivec,iel] = cₛₘ + oᵢ.L/3*rₛₘ[:,ivec]
-                    frame[:,3,ivec,iel].= NaN
-                end
-            end
-            if Udof
-                ucrest[:,1,iel] = cₛₘ - oᵢ.L/2*rₛₘ[:,1]
-                ucrest[:,2,iel] = cₛₘ - oᵢ.L/2*rₛₘ[:,1] + rₛₘ ∘₁ view(U₀,:,iel) * Uscale
-                ucrest[:,3,iel] = cₛₘ + oᵢ.L/2*rₛₘ[:,1] + rₛₘ ∘₁ view(U₀,:,iel) * Uscale
-                ucrest[:,4,iel] = cₛₘ + oᵢ.L/2*rₛₘ[:,1]
-                ucrest[:,5,iel] = cₛₘ - oᵢ.L/2*rₛₘ[:,1]
-                ucrest[:,6,iel].= NaN
-            end
-            for (i,ζᵢ) ∈ enumerate(ζ)
-                y          = SVector(yₐ(ζᵢ)*uₗ₂[1] , yᵤ(ζᵢ)*uₗ₂[2]+L*yᵥ(ζᵢ)*vₗ₂[3], yᵤ(ζᵢ)*uₗ₂[3]-L*yᵥ(ζᵢ)*vₗ₂[2])  
-                x[:,i,iel] = rₛₘ∘₁(tgₑ*ζᵢ+y)+cₛₘ 
-            end        
-            x[:,nseg+2,iel] .= NaN
-        end
-        if Udof
-            lines!(axe,rucrest,color = :red,linewidth=1)    
-        end
-        if draw_frame  
-            lines!(axe,rframe,color = :grey,linewidth=1)    
-        end
-        lines!(  axe,rx,color = line_color)
-        xnod  = view(x,:,[1,nseg+1],:)
-        rxnod = reshape(xnod,(3,2*nel))
-        scatter!(axe,rxnod,color = line_color, marker=:circle) 
-    elseif style==:solid
-        nsec≥2 || muscadeerror("An section description must be provided for 'solid' plot")
-        ζ = range(-1/2,1/2,nseg+1)
-        vertex             = Array{𝕣,4}(undef,3,  nsec, nseg+1 ,nel  ) 
-        face               = Array{𝕫,5}(undef,  2,nsec, nseg   ,nel,3) 
-        rvertex            = reshape(vertex,(3,   nsec*(nseg+1)*nel  ))
-        rface              = reshape(face,  (   2*nsec* nseg   *nel,3))
-        idx(iel,iseg,isec) = imod(isec,nsec)+nsec*(iseg-1+(nseg+1)*(iel-1)) # 1st index into rvertex
-        if draw_marking
-            mark   = Array{𝕣,3}(undef,3, nseg+2 ,nel  )     
-            rmark  = reshape(mark,(3,   (nseg+2)*nel  ))
-            markrad = 1.01*maximum(section[1,:])
-        end
-        if Udof
-            ucrest  = Array{𝕣,3}(undef,3,6,nel) # idim, 6point-lift,iel
-            rucrest = reshape(ucrest,(3,6nel)) 
-        end  
-        for (iel,oᵢ) = enumerate(o)
-            cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp,L  = oᵢ.cₘ,oᵢ.rₘ,oᵢ.tgₘ,oᵢ.tgₑ,oᵢ.ζnod,oᵢ.ζgp,oᵢ.L   
-            X₀ₑ = view(X₀,:,iel)
-            vₛₘ,rₛₘ,uₗ₂,vₗ₂,cₛₘ = corotated(oᵢ,X₀ₑ) 
-            vᵧ₁,vᵧ₂          = vec3(X₀ₑ,4:6), vec3(X₀ₑ,10:12)
-            rₛ₁              = Rodrigues(vᵧ₁)
-            rₛ₂              = Rodrigues(vᵧ₂)
-            if Udof
-                ucrest[:,1,iel] = cₛₘ - oᵢ.L/2*rₛₘ[:,1]
-                ucrest[:,2,iel] = cₛₘ - oᵢ.L/2*rₛₘ[:,1] + rₛₘ ∘₁ view(U₀,:,iel) * Uscale
-                ucrest[:,3,iel] = cₛₘ + oᵢ.L/2*rₛₘ[:,1] + rₛₘ ∘₁ view(U₀,:,iel) * Uscale
-                ucrest[:,4,iel] = cₛₘ + oᵢ.L/2*rₛₘ[:,1]
-                ucrest[:,5,iel] = cₛₘ - oᵢ.L/2*rₛₘ[:,1]
-                ucrest[:,6,iel].= NaN
-            end
-            for (iseg,ζᵢ) ∈ enumerate(ζ)
-                y  = SVector(yₐ(ζᵢ)*uₗ₂[1] , yᵤ(ζᵢ)*uₗ₂[2]+L*yᵥ(ζᵢ)*vₗ₂[3], yᵤ(ζᵢ)*uₗ₂[3]-L*yᵥ(ζᵢ)*vₗ₂[2])  
-                xn = rₛₘ∘₁(tgₑ*ζᵢ+y)+cₛₘ # point on neutral axis
-                v  = (iseg-1)/nseg*Rodrigues⁻¹(rₛ₂ ∘₁ rₛ₁')
-                r  = Rodrigues(v) ∘₁ rₛ₁ ∘₁ rₘ  
-                if draw_marking 
-                    mark[:,iseg,iel] = xn .+ r[:,2]*markrad 
-                end
-                for isec = 1:nsec
-                    vertex[:,isec,iseg,iel] = xn .+ r[:,2]*section[1,isec] + r[:,3]*section[2,isec] 
-                    if iseg≤nseg
-                        i1,i2,i3,i4 = idx(iel,iseg,isec),idx(iel,iseg  ,isec+1),idx(iel,iseg+1,isec  ),idx(iel,iseg+1,isec+1)
-                        face[1,isec,iseg,iel,:] = SVector(i1,i2,i4)    
-                        face[2,isec,iseg,iel,:] = SVector(i1,i4,i3)   
-                    end
-                end
-            end  
-        end
-        mesh!(   axe,rvertex, rface    , color = solid_color) 
-        if draw_marking
-            mark[:,nseg+2,:] .= NaN 
-            lines!(  axe,rmark,color = line_color)    
-        end
-        if Udof
-            lines!(axe,rucrest,color = :red,linewidth=1)    
-        end
-    end
-end

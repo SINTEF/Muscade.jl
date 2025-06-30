@@ -80,7 +80,7 @@ module Muscade
     export setdof!,getdof,getresult,findlastassigned,eletyp
 
     include("SelfDraw.jl")
-    export draw,request2draw
+    export allocate_drawdata,update_drawdata,draw!,request2draw
 
     include("Unit.jl")
     export ←,→

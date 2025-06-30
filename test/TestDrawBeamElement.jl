@@ -1,9 +1,10 @@
-module TestDrawBeamElement
+#module TestDrawBeamElement
 using Muscade, StaticArrays, Test
 using Printf
 using Muscade: lines!,scatter!,mesh!
 
 include("../examples/BeamElements.jl")
+include("../examples/BeamElementsDraw.jl")
 
 # Beam simply supported at both ends  
 L   = 1;  # Beam length [m]
@@ -45,33 +46,45 @@ setdof!(state,  [1.       ,  1.3        , 1.6                     ],nodID=nodid[
 circle = 0.05*[cos.(α) sin.(α)]'
 square = 0.1*[1 -1 -1 1;1 1 -1 -1]
 
-axe = Muscade.SpyAxe()
-#draw(axe,state;EulerBeam3D=(;style=:simple))
-draw(axe,state;EulerBeam3D=(;style=:shape,nseg=10,frame=true,Uscale=0.1))
-draw(axe,state;EulerBeam3D=(;style=:solid,nseg=10,section = circle,marking=true,Uscale=0.1))
+axe = Muscade.SpyAxis()
+draw!(axe,state;EulerBeam3D=(;style=:simple))
+draw!(axe,state;EulerBeam3D=(;style=:shape,nseg=10,frame=true,Uscale=0.1))
+draw!(axe,state;EulerBeam3D=(;style=:solid,nseg=10,section = circle,marking=true,Uscale=0.1))
 @testset "drawing" begin
-    @test  axe.call[1].fun == :lines!
-    @test  axe.call[1].args[1][:,1:5] ≈ [ 0.0134968  0.0355003  0.359701    0.337697   0.0134968;
+    @test axe.call[1].fun == :scatter!
+    @test axe.call[1].args[1][][:,1:2] ≈ [  0.0150628   0.336131;
+                                          0.0118553  -0.0150178;
+                                         -0.000945   -0.00591755 ] rtol=1e-4
+    @test axe.call[2].fun == :lines!
+    @test axe.call[2].args[1][][:,1:2] ≈ [  0.0150628   0.336131;
+                                          0.0118553  -0.0150178;
+                                         -0.000945   -0.00591755 ] rtol=1e-4
+    @test axe.call[4].fun == :lines!
+    @test axe.call[4].args[1][][:,1:5] ≈ [  0.0150628   0.0466323   0.0787699    0.111307     0.144076;
+                                          0.0118553   0.0121641   0.0118317    0.0108489    0.00920646;
+                                         -0.000945   -0.0050873  -0.00640313  -0.00564867  -0.00358008 ] rtol=1e-4
+    @test axe.call[1].fun == :scatter!
+    @test axe.call[1].args[1][][:,1:2] ≈ [  0.0150628   0.336131;
+                                          0.0118553  -0.0150178;
+                                         -0.000945   -0.00591755 ] rtol=1e-4
+    @test axe.call[5].fun == :lines!
+    @test axe.call[5].args[1][][:,1:2] ≈ [  0.175597     0.283664 ;
+                                         -0.00158125  -0.0113104 ;
+                                         -0.00343127  -0.0273596 ] rtol=1e-4
+    @test  axe.call[6].fun == :lines!
+    @test  axe.call[6].args[1][][:,1:5] ≈ [ 0.0134968  0.0355003  0.359701    0.337697   0.0134968;
                                           0.0130125  0.0775831  0.0483956  -0.016175   0.0130125;
                                           0.0324613  0.105581   0.0337958  -0.0393238  0.0324613] rtol=1e-4
-    @test axe.call[2].fun == :lines!
-    @test  axe.call[2].args[1][:,1:2] ≈ [  0.175597     0.283664 ;
-                                          -0.00158125  -0.0113104 ;
-                                          -0.00343127  -0.0273596 ] rtol=1e-4
-    @test axe.call[3].fun == :lines!
-    @test  axe.call[3].args[1][:,1:5] ≈ [  0.0150628   0.0464197    0.078392     0.110811     0.14351;
-                                           0.0118553   0.0112004    0.0101185    0.0086003    0.00663665 ;
-                                          -0.000945   -0.00565553  -0.00741332  -0.00697455  -0.00509537 ] rtol=1e-4
-    @test axe.call[4].fun == :scatter!
-    @test  axe.call[4].args[1][:,1:6] ≈ [   0.0150628   0.336131     0.336131    0.699053   0.699053    1.00528 ;
-                                            0.0118553  -0.0150178   -0.0150178   0.0118042  0.0118042   0.000708444 ;
-                                           -0.000945   -0.00591755  -0.00591755  0.0133323  0.0133323  -0.0545434 ] rtol=1e-4
-    @test axe.call[5].fun == :mesh!
-    @test axe.call[5].args[1][:,1:10] ≈ [ 0.010907    0.0134416   0.016135    0.0187234  0.0209534  0.0226069  0.0235219  0.0236088    0.0228593   0.0213465;
+    @test axe.call[7].fun == :scatter!
+    @test axe.call[7].args[1][][:,1:2] ≈ [  0.0150628   0.336131;
+                                          0.0118553  -0.0150178;
+                                         -0.000945   -0.00591755 ] rtol=1e-4
+    @test axe.call[8].fun == :mesh!
+    @test axe.call[8].args[1][][:,1:10] ≈ [ 0.010907    0.0134416   0.016135    0.0187234  0.0209534  0.0226069  0.0235219  0.0236088    0.0228593   0.0213465;
                                           0.0568619   0.0613883   0.061066    0.0559267  0.0464733  0.0336313  0.0186577  0.00301825  -0.0117562  -0.0242193;
                                          -0.0223258  -0.00756755  0.00783893  0.0223856  0.0346485  0.0434272  0.0478625  0.0475202    0.0424337   0.0331011] rtol = 1e-4
-    @test axe.call[5].args[2][1:10,:]' == [  1   1   2   2   3   3   4   4   5   5;  2  22   3  23   4  24   5  25   6  26; 22  21  23  22  24  23  25  24  26  25]
+    @test axe.call[8].args[2][][1:10,:]' == [  1   1   2   2   3   3   4   4   5   5;  2  22   3  23   4  24   5  25   6  26; 22  21  23  22  24  23  25  24  26  25]
 end
 
-end# module
+#end# module
 
