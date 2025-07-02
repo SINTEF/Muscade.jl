@@ -77,9 +77,11 @@ coord(nod::AbstractVector{Node}) = [n.coord for n∈nod]
 
 
 """
+
     Muscade.doflist(::Type{E<:AbstractElement})
 
-Elements must overload Muscade's `doflist` function.  
+Elements must provide a method for `Muscade.doflist`.  
+
 The method must take the element type as only input, and return
 a `NamedTuple` with fieldnames `inod`,`class` and `field`.  The tuple-fields
 are `NTuple`s of the same length.  For example
@@ -92,7 +94,7 @@ In `Λ`, `X`, `U` and `A` handed by Muscade to `residual` or `lagrangian`,
 the dofs in the vectors will follow the order in the doflist. Element developers
 are free to number their dofs by node, by field, or in any other way.
 
-See also: [`lagrangian`](@ref), [`residual`](@ref), [`nosecondorder`](@ref)  
+See also: [`Muscade.lagrangian`](@ref), [`Muscade.residual`](@ref), [`Muscade.nosecondorder`](@ref)  
 """
 doflist(     ::Type{E}) where{E<:AbstractElement}  = muscadeerror(@sprintf("method 'Muscade.doflist' must be provided for elements of type '%s'\n",E))
 
@@ -100,7 +102,7 @@ doflist(     ::Type{E}) where{E<:AbstractElement}  = muscadeerror(@sprintf("meth
     nosecondorder(::Type{E<:AbstractElement})
 
 Elements that define `residual` which would give excessive compilation and/or execution time if differentiated
-to the second order should provide a flag to limit differentiation to first order by implementing:   
+to the second order can implement a method after the below pattern to limit differentiation to first order:   
 
     Muscade.nosecondorder(     ::Type{<:MyElementType}) = Val(true)
 """
@@ -111,6 +113,8 @@ nosecondorder(     ::Type{<:AbstractElement}) = Val(false)
         ...
         return L,FB
     end
+
+Elements must implement a method for `Muscade.lagrangian` or [`Muscade.residual`](@ref).
 
 # Inputs
 - `eleobj` an element object
@@ -132,7 +136,7 @@ nosecondorder(     ::Type{<:AbstractElement}) = Val(false)
 - `FB` feedback from the element to the solver (for example: can `γ` be 
   reduced?). Return `noFB` of the element has no feedback to provide.
 
-See also: [`residual`](@ref), [`doflist`](@ref), [`@espy`](@ref), [`∂0`](@ref), [`∂1`](@ref), [`∂2`](@ref), [`noFB`](@ref), 
+See also: [`Muscade.residual`](@ref), [`Muscade.doflist`](@ref), [`@espy`](@ref), [`∂0`](@ref), [`∂1`](@ref), [`∂2`](@ref), [`noFB`](@ref), 
 """
 lagrangian()=nothing
 
@@ -142,6 +146,7 @@ lagrangian()=nothing
     return R,FB
 end
 
+Elements must implement a method for `Muscade.residual` or [`Muscade.lagrangian`](@ref).
 
 # Inputs
 - `eleobj` an element object
@@ -162,18 +167,51 @@ end
 - `FB` feedback from the element to the solver (for example: can `γ` be 
   reduced?). Return `noFB` of the element has no feedback to provide.
 
-See also: [`lagrangian`](@ref), [`nosecondorder`](@ref), [`doflist`](@ref), [`@espy`](@ref), [`∂0`](@ref), [`∂1`](@ref), [`∂2`](@ref), [`noFB`](@ref)
+See also: [`Muscade.lagrangian`](@ref), [`Muscade.nosecondorder`](@ref), [`Muscade.doflist`](@ref), [`@espy`](@ref), [`∂0`](@ref), [`∂1`](@ref), [`∂2`](@ref), [`noFB`](@ref)
 """
 residual()=nothing
 """
-For parametric element types
-    Muscade.draw(axe,o::AbstractVector{Teleobj}, Λ,X,U,A,t,SP,dbg;kwargs...) where{Teleobj<:MyElement}
-For non-parametric element types, one can simplify the above to:
-    Muscade.draw(axe,o::AbstractVector{MyElement}, Λ,X,U,A,t,SP,dbg;kwargs...)
+    mut,opt = Muscade.allocate_drawdata(axis,eleobjs;kwargs...)
+
+Elements that are to be displayed in graphical output must implement a method for `Muscade.allocate_drawdata`.
+
+The method is to allocate `opt`, a `NamedTuple` of data that will not be mutated from frame to frame,
+but are usefull in [`Muscade.update_drawdata`](@ref) or [`Muscade.draw!`](@ref).
+
+The method is also to allocate `mut`, a `NamedTuple` of data that will be mutated from frame to frame.  When
+implementing graphics with `GLMakie.jl`, the fields of `mut` must be exactly the updatable inputs provided to
+`GLMakie.jl`'s drawing primitives: in [`Muscade.draw!`](@ref)
+    lines!(axis,mut.x,mut.y)
+is acceptable, but 
+    lines!(axis,mut.x[:,s],mut.y[:,s])
+    lines!(axis,mut.a.x,mut.a.y)
+are not.
+
+The content of `Arrays` in `opt` and `mut` can be `undef`-ined.
 
 Inputs are:
-- `axe`, a `GLMakie` axe
-- `o` a `AbstractVector` of element objects, of length `nel`.
+- `axis` the "canvas" to draw on, typicaly a `GLMakie.jl` `Axis`.
+- `eleobjs` an `AbstractVector` of element objects, of length `nel`.
+- `kwargs` a `NamedTuple` containing the keyword arguments provided by the user. See [`default`](@ref).
+
+See also: [`Muscade.update_drawdata`](@ref), [`Muscade.draw!`](@ref)
+"""
+allocate_drawdata(axis,::AbstractVector{E};kwargs...)                    where{E<:AbstractElement} = nothing,nothing # mut,opt
+"""
+    mut = Muscade.update_drawdata(  axis,::AbstractVector{E},oldmut,opt, Λ,X,U,A,t,SP,dbg)
+
+Elements that are to be displayed in graphical output must implement a method for `Muscade.allocate_drawdata`.
+
+For parametric element types
+    Muscade.update_drawdata(axis,o::AbstractVector{Teleobj}, Λ,X,U,A,t,SP,dbg;kwargs...) where{Teleobj<:MyElement}
+For non-parametric element types, one can simplify the above to:
+    Muscade.update_drawdata(axis,o::AbstractVector{MyElement}, Λ,X,U,A,t,SP,dbg;kwargs...)
+
+Inputs are:
+- `axis` the "canvas" to draw on, typicaly a `GLMakie.jl` `Axis`.
+- `eleobjs` an `AbstractVector` of element objects, of length `nel`.
+- `oldmut` the output `mut` of `Muscade.allocate_drawdata` or of a previous call to `Muscade.update_drawdata`.
+- `opt` the output `opt` of `Muscade.allocate_drawdata`
 - `Λ` a matrix of size `(nXdof,nel)`
 - `X` a `NTuple` (over the derivatives) of matrices of size `(nXdof,nel)`
 - `U` a `NTuple` (over the derivatives) of matrices of size `(nUdof,nel)`
@@ -183,12 +221,33 @@ Inputs are:
 - `dbg` debuging information
 - `kwargs` a `NamedTuple` containing the keyword arguments provided by the user. See [`default`](@ref).
 
-See also: [`lagrangian`](@ref), [`residual`](@ref), [`doflist`](@ref)
+See also: [`Muscade.allocate_drawdata`](@ref), [`Muscade.draw!`](@ref)
 """
-# allocate_drawdata() = nothing
-# update_drawdata()   = nothing 
-# draw!()             = nothing  
-allocate_drawdata(axe,::AbstractVector{E};kwargs...)                    where{E<:AbstractElement} = nothing,nothing # mut,opt
-update_drawdata(  axe,::AbstractVector{E},oldmut,opt, Λ,X,U,A,t,SP,dbg) where{E<:AbstractElement} = nothing         # mut
-draw!(            axe,::Type{E}          ,obs,opt)                      where{E<:AbstractElement} = nothing         # nothing
+update_drawdata(axis,::AbstractVector{E},oldmut,opt, Λ,X,U,A,t,SP,dbg) where{E<:AbstractElement} = nothing         # mut
+"""
+    Muscade.draw!(axis,MyElement,mut,opt)
+
+Elements that are to be displayed in graphical output must implement a method for `Muscade.draw!`.
+
+Inputs are:
+- `axis` the "canvas" to draw on, typicaly a `GLMakie.jl` `Axis`.
+- `MyElement` used for dispatching to the right method.
+- `mut` is a `NamedTuple`, as output by [`Muscade.update_drawdata`](@ref).  More specificaly, if implementing
+   graphics with `GLMakie.jl`, `mut` has been
+- `opt` is as returned by [`Muscade.allocate_drawdata`](@ref)
+
+When implementing graphics with `GLMakie.jl`, the fields of `mut` must be exactly the updatable inputs provided to
+`GLMakie.jl`'s drawing primitives: in [`Muscade.draw!`](@ref)
+    lines!(axis,mut.x,mut.y)
+is acceptable, but 
+    lines!(axis,mut.x[:,s],mut.y[:,s])
+or    
+    lines!(axis,mut.a.x,mut.a.y)
+are not. The reason is that when doing graphics with `GLMakie.jl`, `Muscade` will wrap each field of `mut`
+into an `Observable` before calling the elements' methods `draw!`.  This allows `Muscade` to update the graphics 
+by just calling [`Muscade.update_drawdata`](@ref) for each element.
+
+See also: [`Muscade.allocate_drawdata`](@ref), [`Muscade.update_drawdata`](@ref)
+"""
+draw!(axis,::Type{E},obs,opt) where{E<:AbstractElement} = nothing         # nothing
 

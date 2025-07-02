@@ -5,7 +5,7 @@
 # Model drawing
 # typestable kernel
 
-using Observables
+using Observables: Observable
 
 Graphic{Tobs,Topt,Taxis} = @NamedTuple{obs::Tobs, opt::Topt, axis::Taxis}
 # Single call draw! for one element type
@@ -44,7 +44,17 @@ end
     graphic = draw!(axis   ,state[,els];kwargs...)
               draw!(graphic,state[,els];kwargs...)
 
-`axis` a GLMakie               
+Plot all or part of a `Model`.
+
+Currently, only `GLMakie.jl` is supported and tested, but `Muscade` is designed to allow application developers to 
+chose other graphic system, including exporting data to Paraview. `GLMakie.jl` is thus not a dependency of `Muscade`,
+and must be installed and invoked (`using`) separately to run demos provided with `Muscade`.
+
+Application developers can implement methods [`Muscade.allocate_drawdata`](@ref), [`Muscade.update_drawdata`](@ref) and
+[`Muscade.draw!`](@ref) to make their element "drawable".
+
+`axis` a `GLMakie.jl` `Axis`, a `Muscade.SpyAxis` (for automated testing of graphic generation), and in the future 
+         a HDF5/VTK file handle for export of data to Paraview.   
 `state` a single `State`.
 `els` specifies which elements to draw and can be either
 - a vector of `EleID`s (obtained from [`addelement!`](@ref)`), all corresponding
@@ -54,8 +64,8 @@ end
 `kwargs...` is any additional key words arguments that will be passed to the `draw` method of each element, 
 for example to specify colors, etc.  See the elements' documentation.
 
-The outout `graphicdata` can be handed to [`drawupdate!`](@ref) to update the drawning with e.g. another 
-time step.
+When a plot of the `Model` is first generated, `axis` must be provided, and `draw!` returns `graphic`. `graphic` can
+then be provided for further calls to `draw!` to update the graphic.
 
 See also: [`getdof`](@ref), [`@request`](@ref), [`@espy`](@ref), [`addelement!`](@ref), [`solve`](@ref)
 """
