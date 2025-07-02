@@ -32,7 +32,7 @@ function draw_!(axis,dis::EletypDisassembler,eleobj::AbstractVector{Eletyp},iele
         for jder ∈ eachindex(state.X)               
             X[jder][:,i] = state.X[jder][index.X]
         end
-        for jder ∈ eachindex(state.U)             
+        for jder ∈ eachindex(state.U) 
             U[jder][:,i] = state.U[jder][index.U]
         end
         A[:,i]  = state.A[index.A]

@@ -126,11 +126,15 @@ for imod = 1:maximum(eiginc.ncv)
     for iω= 1:nω
         if imod≤eiginc.ncv[iω]
             nor[iω] = eiginc.nor[iω][imod]
+            λ[  iω] = eiginc.λ[  iω][imod]
         else
             nor[iω] = NaN
+            λ[  iω] = NaN
         end
     end
     scatter!(axe,ω,nor,markersize=2,color=:black)
+    scatter!(axe,ω,λ  ,markersize=2,color=:red  )
+    scatter!(axe,ω,nor./λ  ,markersize=2,color=:green  )
 end
 nωₚ = findlast(ωₚ .< ω[end])
 scatter!(axe,ωₚ[1:nωₚ],ones(nωₚ))
