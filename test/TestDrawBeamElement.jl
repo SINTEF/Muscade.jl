@@ -61,7 +61,7 @@ graphic = draw!(axe,state;EulerBeam3D=(;style=:simple))
                                           0.0118553  -0.0150178;
                                          -0.000945   -0.00591755 ] rtol=1e-4
 end
-Muscade.drawupdate!(graphic,state2;EulerBeam3D=(;style=:simple))
+draw!(graphic,state2;EulerBeam3D=(;style=:simple))
 @testset "drawupdate simple" begin
     @test axe.call[1].args[1][][:,1:2].-1 ≈ [  0.0150628   0.336131;
                                           0.0118553  -0.0150178;
@@ -92,7 +92,7 @@ graphic = draw!(axe,state;EulerBeam3D=(;style=:shape,nseg=10,frame=true,Uscale=0
                                           0.0130125  0.0775831  0.0483956  -0.016175   0.0130125;
                                           0.0324613  0.105581   0.0337958  -0.0393238  0.0324613] rtol=1e-4
 end
-Muscade.drawupdate!(graphic,state2;EulerBeam3D=(;style=:shape))
+draw!(graphic,state2;EulerBeam3D=(;style=:shape))
 @testset "drawupdate shape" begin
     @test axe.call[1].args[1][][:,1:2].-1 ≈ [  0.0150628   0.336131;
                                               0.0118553  -0.0150178;
@@ -123,7 +123,7 @@ graphic = draw!(axe,state;EulerBeam3D=(;style=:solid,nseg=10,section = circle,ma
                                          -0.0223258  -0.00756755  0.00783893  0.0223856  0.0346485  0.0434272  0.0478625  0.0475202    0.0424337   0.0331011] rtol = 1e-4
     @test axe.call[2].args[2][][1:10,:]' == [  1   1   2   2   3   3   4   4   5   5;  2  22   3  23   4  24   5  25   6  26; 22  21  23  22  24  23  25  24  26  25]
 end
-Muscade.drawupdate!(graphic,state2;EulerBeam3D=(;style=:solid))
+draw!(graphic,state2;EulerBeam3D=(;style=:solid))
 @testset "drawing solid" begin
     @test axe.call[1].args[1][][:,1:2] ≈ [ 1.01506   1.33613 ;
                                            1.01186   0.984982;
