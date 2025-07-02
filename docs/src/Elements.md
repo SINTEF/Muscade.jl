@@ -395,6 +395,6 @@ When developing a new element, it is advisable to test the constructor, and `res
 
 Generaly, automatic differentiation is unproblematic, but when advanced tools are used (e.g. [`revariate`](@ref) and [`compose`](@ref)), then the derivatives should be inspected.  See [`diffed_residual`](@ref) and [`diffed_lagrangian`](@ref) to compute the derivatives of `R` and `L` returned by `residual` and `lagrangian` respectively. 
 
-See also [`Muscade.SpyAxe`](@ref) for testing of graphic generating functions such as [`Muscade.draw`](@ref).
+See also [`Muscade.SpyAxis`](@ref) for testing of graphic generating functions such as [`Muscade.draw`](@ref).
 
 

@@ -82,7 +82,7 @@ eigincX = solve(EigX{ℝ};state=initialstate,nmod=10)
 # fig      = Figure(size = (500,500))
 # display(fig) # open interactive window (gets closed down by "save")
 # axe      = Axis3(fig[1,1],title="Test",xlabel="X",ylabel="Y",zlabel="Z",aspect=:data,viewmode=:fit,perspectiveness=.5)
-# draw(axe,state;EulerBeam3D=(;style=:shape,nseg=10,marking=true,Uscale))
+# draw!(axe,state;EulerBeam3D=(;style=:shape,nseg=10,marking=true,Uscale))
 
 
 
@@ -108,8 +108,8 @@ eiginc            = solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=true,v
 # display(fig) # open interactive window (gets closed down by "save")
 # axe      = Axis3(fig[1,1],title="Test",xlabel="X",ylabel="Y",zlabel="Z",aspect=:data,viewmode=:fit,perspectiveness=.5)
 
-# draw(axe,initialstate;EulerBeam3D=(;style=:shape,nseg=10,marking=true,Uscale));
-# draw(axe,       state;EulerBeam3D=(;style=:shape,nseg=10,marking=true,Uscale));
+# draw!(axe,initialstate;EulerBeam3D=(;style=:shape,nseg=10,marking=true,Uscale));
+# draw!(axe,       state;EulerBeam3D=(;style=:shape,nseg=10,marking=true,Uscale));
 
 
 

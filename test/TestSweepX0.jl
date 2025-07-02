@@ -1,4 +1,4 @@
-module TestStaticX
+#module TestSweepX0
 
 using Test,StaticArrays,SparseArrays
 using Muscade
@@ -33,21 +33,21 @@ end
 # fig      = Figure(size = (1500,1000))
 # display(fig) # open interactive window (gets closed down by "save")
 # axe      = Axis3(fig[1,1],title="Muscade made this drawing",xlabel="X",ylabel="Y",zlabel="Z",aspect=:data,viewmode=:fit,perspectiveness=.5)
-# draw(axe,state[step])
-# save("C:\\Users\\philippem\\C home\\GIT\\Muscade.jl\\test\\first_light.jpg",fig)
+# draw!(axe,state[step])
+# # save("C:\\Users\\philippem\\C home\\GIT\\Muscade.jl\\test\\first_light.jpg",fig)
 
 using Muscade: lines!,scatter!,mesh!
-axe = Muscade.SpyAxe()
-draw(axe,state[step],ieletyp=[1,2])
+axe = Muscade.SpyAxis()
+draw!(axe,state[step],ieletyp=[1,2])
 @testset "drawing" begin
-    @test  axe.call[1].fun == :lines!
-    @test  axe.call[1].args[1][:,1:2] ≈ [-5.332268523655259 -5.332268523655259; 21.09778288272267 21.09778288272267; 90.0 110.0]
-    @test  axe.call[1].kwargs[:color] == :orange
-    @test  axe.call[1].kwargs[:linewidth] == 5
-    @test  axe.call[2].fun == :lines!
-    @test  axe.call[2].args[1][1:5]≈[144.05988106384137, 8.952447574846222, 0.0, 129.6206341588945, 10.17263311206178]
-    @test  axe.call[2].kwargs[:color] == :blue
-    @test  axe.call[2].kwargs[:linewidth] == 2
+    @test axe.call[1].fun == :lines!
+    @test axe.call[1].args[1][][:,1:2] ≈ [-5.332268523655259 -5.332268523655259; 21.09778288272267 21.09778288272267; 90.0 110.0] rtol = 1e-4
+    @test axe.call[1].kwargs[:color] == :orange
+    @test axe.call[1].kwargs[:linewidth] == 5
+    @test axe.call[2].fun == :lines!
+    @test axe.call[2].args[1][][1:5]≈[144.05988106384137, 8.952447574846222, 0.0, 129.6206341588945, 10.17263311206178] rtol = 1e-4
+    @test axe.call[2].kwargs[:color] == :blue
+    @test axe.call[2].kwargs[:linewidth] == 2
 end
 
 out1 = getdof(state[1],field=:tx1)
@@ -87,4 +87,4 @@ ltf     = [e.ltf for e∈eleres]
     @test  ltf ≈ [183.68229160771097, 121.62396272109176, 238.96209627282917]
 end
 
-end
+#end

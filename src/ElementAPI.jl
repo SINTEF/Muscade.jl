@@ -185,13 +185,10 @@ Inputs are:
 
 See also: [`lagrangian`](@ref), [`residual`](@ref), [`doflist`](@ref)
 """
-###draw(axe,::AbstractVector{E},args...;kwargs...) where{E<:AbstractElement} = nothing # by default, an element draws nothing
-
-# allocate_drawdata(axe,o::AbstractVector{E};kwargs...) where{E<:AbstractElement} = nothing,nothing            # return mut,opt
-# update_drawdata(  axe,o::AbstractVector{E},mut,opt, Λ,X,U,A,t,SP,dbg) where{E<:AbstractElement} = nothing # return mut
-# draw!(           axe, ::Type{          E},mut,opt) where{E<:AbstractElement} = nothing                                               # return nothing     by default, an element draws nothing
-allocate_drawdata() = nothing
-update_drawdata()  =  nothing # return mut
-draw!() = nothing                                               # return nothing     by default, an element draws nothing
-
+# allocate_drawdata() = nothing
+# update_drawdata()   = nothing 
+# draw!()             = nothing  
+allocate_drawdata(axe,::AbstractVector{E};kwargs...)                    where{E<:AbstractElement} = nothing,nothing # mut,opt
+update_drawdata(  axe,::AbstractVector{E},oldmut,opt, Λ,X,U,A,t,SP,dbg) where{E<:AbstractElement} = nothing         # mut
+draw!(            axe,::Type{E}          ,obs,opt)                      where{E<:AbstractElement} = nothing         # nothing
 

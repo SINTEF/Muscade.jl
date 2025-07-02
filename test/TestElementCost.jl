@@ -49,12 +49,12 @@ for i ∈ eachindex(EL)
     Am[:,i]    .= A
 end
 
-using Muscade: lines!,scatter!,mesh!
-axe = Muscade.SpyAxe()
-draw(axe,EL, Λm,Xm,Um,Am, 0.,nothing,(;))
+using Muscade: lines!,scatter!,mesh!,SpyAxis
+axe = SpyAxis()
+draw!(axe,EL, Λm,Xm,Um,Am, 0.,nothing,(;))
 @testset "drawing" begin
      @test  axe.call[1].fun == :lines!
-     @test  axe.call[1].args[1][:,1:11] ≈ [ 126.035    113.802     101.568    89.3348   77.1015  64.8682   52.6348   40.4015   28.1682   15.9348    3.70151  ;
+     @test  axe.call[1].args[1][][:,1:11] ≈ [ 126.035    113.802     101.568    89.3348   77.1015  64.8682   52.6348   40.4015   28.1682   15.9348    3.70151  ;
                                           2.62093    2.87957     3.13821   3.39686   3.6555   3.91414   4.17278   4.43143   4.69007   4.94871   5.20735  ;
                                            0.0        0.854088    3.43297   7.78682  14.0004  22.1945   32.5286   45.2038   60.4668   78.6144   99.9998    ] atol=0.001
      @test  axe.call[1].kwargs[:color] == :blue
