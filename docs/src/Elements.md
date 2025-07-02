@@ -66,7 +66,7 @@ The implementation of a element requires
 - **[`Muscade.doflist`](@ref)** specifies the degrees of freedom (dofs) of the element.
 - **[`Muscade.residual`](@ref)** (either this of [`Muscade.lagrangian`](@ref)) takes element dofs as input and returns the element's additive contribution to the residual of a non-linear system of equations,
 - **[`Muscade.lagrangian`](@ref)** (either this of [`Muscade.residual`](@ref)) takes element dofs as input and returns the element's additive contribution to a target function,
-- **[`Muscade.allocate_drawdata`](@ref)**, **[`Muscade.update_drawdata`](@ref)** and **[`Muscade.draw!`](@ref)** (optional) to draw all the elements of the same element type.
+- **[`Muscade.allocate_drawing`](@ref)**, **[`Muscade.update_drawing`](@ref)** and **[`Muscade.display_drawing!`](@ref)** (optional) to draw all the elements of the same element type.
 
 Each element must implement *either* [`Muscade.lagrangian`](@ref) *or* [`Muscade.residual`](@ref), depending on what is more natural: a beam element will implement [`Muscade.residual`](@ref) (element reaction forces as a function of nodal displacements), while an element representing a strain sensor will implement [`Muscade.lagrangian`](@ref) (log-of the probability density of the strain, given an uncertain measurement).
 
@@ -326,17 +326,16 @@ See the page on [automatic differentiation](Adiff.md).
 
 
 
-## Method for graphics: `Muscade.allocate_drawdata`, `Muscade.update_drawdata` and `Muscade.draw!`
+## Method for graphics: `Muscade.allocate_drawing`, `Muscade.update_drawing` and `Muscade.display_drawing!`
 
 ### Optional
+ethods for all of [`Muscade.allocate_drawing`](@ref), [`Muscade.update_drawing`](@ref) and [`Muscade.display_drawing!`](@ref) method. Alternatively, they must implement neither of these three methods: in this case, the element will be invisible if the user requests a drawing of the element.
 
-Elements *can* implement mthods for all of [`Muscade.allocate_drawdata`](@ref), [`Muscade.update_drawdata`](@ref) and [`Muscade.draw!`](@ref) method. Alternatively, they must implement neither of these three methods: in this case, the element will be invisible if the user requests a drawing of the element.
-
-None of `Muscade` built-in elements implement methods for `draw`: because `Muscade` has no inherent interpretation of the various `X` dofs in these generic elements, there is no graphical representation associated to them.  
+None of `Muscade`'s built-in elements implements methods for `draw`: because `Muscade` has no inherent interpretation of the various `X` dofs in these generic elements, there is no graphical representation associated to them.  
 
 ### Graphic engine
 
-By design, `Muscade` does not prescribe the use of any specific graphic package. Element developers are to be able to implement `Muscade.allocate_drawdata`, `Muscade.update_drawdata` and `Muscade.draw!` for the graphic system of their choice, for example using [`Makie.jl`](https://docs.makie.org/) and [`WriteVTK.jl`](https://juliavtk.github.io/WriteVTK.jl/stable/) for Paraview. Neither `Makie.jl` nor `WriteVTK.jl` are dependencies of `Muscade`.  The user of the application based on these elements will then have to pass the relevant first argument `axis` to the method of `Muscade.draw!` that draws the model.
+By design, `Muscade` does not prescribe the use of any specific graphic package. Element developers are to be able to implement `Muscade.allocate_drawing`, `Muscade.update_drawing` and `Muscade.display_drawing!` for the graphic system of their choice, for example using [`Makie.jl`](https://docs.makie.org/) and [`WriteVTK.jl`](https://juliavtk.github.io/WriteVTK.jl/stable/) for Paraview. Neither `Makie.jl` nor `WriteVTK.jl` are dependencies of `Muscade`.  The user of the application based on these elements will then have to pass the relevant first argument `axis` to the method of `Muscade.display_drawing!` that draws the model.
 
 On the other hand, testing, examples and applications created by the `Muscade` team, so far are all based on `GLMakie.jl`. It might be necessary to adjust the code of `Muscade` to support other graphics systems, comments and pull requests are welcome.
 
@@ -346,20 +345,19 @@ The ambivalence can be found in the docstrings for the elements' graphic methods
 
 Graphics packages typicaly create graphical objects (points, lines, patches etc.), and the construction of such objects is quite costly.  `Muscade.jl` limits the number of graphics objects using two techniques: update and vectorisation.
 
-#### Update
+#### Updating
 
-`GLMakie.jl`, and other graphic systems allow to create a collection of graphic objects to represent a "model", and then to update the numerical values stored in the object.  For this reason,
-an element's graphics methods are divided in three phases:
+`GLMakie.jl`, and other graphic systems allow to create a collection of graphic objects to represent a "model", and then to update the numerical values stored in the object.  For this reason, an element's graphics methods are divided in three phases:
 
-1) [`Muscade.allocate_drawdata`](@ref): The allocation of memory to be passed to the graphical object constructors.
-2) [`Muscade.update_drawdata`](@ref): The updating of the above memory with relevant values for a `State` of the `Model`.
-3) [`Muscade.draw!`](@ref): The creation of the graphics objects, by passing the above memory.
+1) [`Muscade.allocate_drawing`](@ref): The allocation of memory to be passed to the graphical object constructors.
+2) [`Muscade.update_drawing`](@ref): The updating of the above memory with relevant values for a `State` of the `Model`.
+3) [`Muscade.display_drawing!`](@ref): The creation of the graphics objects, by passing the above memory.
 
-The initial call to `draw!` on a `Model` will call the above three methods in sequence.  In additional call (typicaly to create new frames of an animation), only the memory update is carried out.  When using `GLMakie.jl`, `Muscade` wraps the above memory in an `Observable`, and this way when the memory is updated, so is the figure. 
+The initial call to `draw!` on a `Model` will call the above three methods in sequence for each element type.  In additional call (typicaly to create new frames of an animation), only the memory update is carried out.  When using `GLMakie.jl`, `Muscade` wraps the above memory in an `Observable`, and this way when the memory is updated, so is the figure. 
 
 #### Vectorization
 
-The element's method for  `Muscade.allocate_drawdata`, `Muscade.update_drawdata` and `Muscade.draw!` draw all elements of the same type, in one call. This allows to exploit that e.g. in `Makie.jl` multiple lines can be drawn in one call to `lines!` by using `NaN`s to "lift the pen".
+The element's method for  [`Muscade.allocate_drawing`](@ref), [`Muscade.update_drawing`](@ref) and [`Muscade.display_drawing!`](@ref) act on all elements of the same type, in one call. This allows to exploit that e.g. in `Makie.jl` multiple lines can be drawn in one call to `lines!` by using `NaN`s to "lift the pen".
 
 ### Keyword arguments
 
@@ -367,24 +365,24 @@ When requesting a drawing of all or part of the model, the user can provide spec
 The user can for example require
 
 ```julia
-draw(model;linewidth=2)
+draw!(model;linewidth=2)
 ```
 
-The element's `draw` method *must* accept an arbitrary list of keyword arguments.  Keywords arguments not used by the method are automaticaly ignored.  In order not to fail if a *used* keyword argument is not provided by the user, the following syntax can be used in the element's `draw` method.   
+The element's [`Muscade.allocate_drawing`](@ref) method *must* accept an arbitrary list of keyword arguments.  Keywords arguments not used by the method are automaticaly ignored.  In order not to fail if a *used* keyword argument is not provided by the user, the following syntax can be used in the element's `draw` method.   
 
 ```julia
-function Muscade.draw(...)
+function Muscade.allocate_drawing(...)
     ...
-    linewith = default{:linewidth}(kwargs,2.)
+    opt = (...,linewith = default{:linewidth}(kwargs,2.),...)
     ...
 end
 ```
 
 which can be read: if `kwargs.linewidth` exists, the set `linewidth` to its value, otherwise, set it to `2.`.
 
-The user has facilities to draw only selected element types or selected elements, so the element's `draw` method does not need to implement a switch on *whether* to draw.
+The user has facilities to draw only selected element types or selected elements, so the element's `Muscade.allocate_drawing` method does not need to implement a switch on *whether* to draw.
 
-See [`examples/BeamElements.jl`](StaticBeamAnalysis.md) for an example of implementation.  See also 
+See `Muscade/test/SomeElements.jl` for simple examples of implementation.  See also [`examples/BeamElements.jl`](StaticBeamAnalysis.md) for an advanced example of implementation where there are options to create completely different drawings of teh same element.  
 
 ### Getting element results
 
@@ -419,6 +417,6 @@ When developing a new element, it is advisable to test the constructor, and `res
 
 Generaly, automatic differentiation is unproblematic, but when advanced tools are used (e.g. [`revariate`](@ref) and [`compose`](@ref)), then the derivatives should be inspected.  See [`diffed_residual`](@ref) and [`diffed_lagrangian`](@ref) to compute the derivatives of `R` and `L` returned by `residual` and `lagrangian` respectively. 
 
-See also [`Muscade.SpyAxis`](@ref) for testing of graphic generating functions such as [`Muscade.draw!`](@ref).
+See also [`Muscade.SpyAxis`](@ref) for testing of graphic generating functions such as [`Muscade.display_drawing!`](@ref).
 
 

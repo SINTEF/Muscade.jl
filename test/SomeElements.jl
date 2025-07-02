@@ -26,7 +26,7 @@ Turbine(nod::Vector{Node};seadrag,sea,skydrag,sky) = Turbine(SVector(coord(nod)[
     R  = -o.sea(t,x)*o.seadrag*(1+A[1]) - o.sky(t,x)*o.skydrag*(1+A[2])
     return R,noFB 
 end
-function Muscade.allocate_drawdata(axe,o::AbstractVector{Teleobj};kwargs...) where{Teleobj<:Turbine}
+function Muscade.allocate_drawing(axe,o::AbstractVector{Teleobj};kwargs...) where{Teleobj<:Turbine}
     nel        = length(o)
     mut        = (;a=𝕣2(undef,3,3*nel))
     opt        = (Δz        = default{:height   }(kwargs,20     )/2,
@@ -34,7 +34,7 @@ function Muscade.allocate_drawdata(axe,o::AbstractVector{Teleobj};kwargs...) whe
                   linewidth = default{:linewidth}(kwargs,5      ) )
     return mut,opt
 end
-function Muscade.update_drawdata(  axe,o::AbstractVector{Teleobj},mut,opt, Λ,X,U,A,t,SP,dbg) where{Teleobj<:Turbine}
+function Muscade.update_drawing(  axe,o::AbstractVector{Teleobj},mut,opt, Λ,X,U,A,t,SP,dbg) where{Teleobj<:Turbine}
     nel              = length(o)
     for iel          = 1:nel
         i            = 3*(iel-1)
@@ -47,7 +47,7 @@ function Muscade.update_drawdata(  axe,o::AbstractVector{Teleobj},mut,opt, Λ,X,
     end
     return mut
 end
-function Muscade.draw!(            axe,::Type{<:Turbine},obs,opt) 
+function Muscade.display_drawing!(            axe,::Type{<:Turbine},obs,opt) 
     lines!(axe,obs.a,color=opt.color, linewidth=opt.linewidth)
 end
 
@@ -93,7 +93,7 @@ Muscade.doflist(     ::Type{<:AnchorLine}) = (inod =(1   ,1   ,1   ,2  ,2       
     return L,noFB
 end
 
-function Muscade.allocate_drawdata(axe,o::AbstractVector{E};kwargs...) where{E<:AnchorLine} 
+function Muscade.allocate_drawing(axe,o::AbstractVector{E};kwargs...) where{E<:AnchorLine} 
     nel           = length(o)
     req           = @request (Xtop,ΔXtop,ΔXchain,cr,xaf,ltf)
     opt = (
@@ -117,7 +117,7 @@ function Muscade.allocate_drawdata(axe,o::AbstractVector{E};kwargs...) where{E<:
          ) 
     return mut,opt
 end
-function Muscade.update_drawdata(  axe,o::AbstractVector{E},mut,opt, Λ,X,U,A,t,SP,dbg) where{E<:AnchorLine} 
+function Muscade.update_drawing(  axe,o::AbstractVector{E},mut,opt, Λ,X,U,A,t,SP,dbg) where{E<:AnchorLine} 
     nel = length(o)
     for iel = 1:nel
         iline = (opt.ncat+1)*(iel-1)
@@ -150,7 +150,7 @@ function Muscade.update_drawdata(  axe,o::AbstractVector{E},mut,opt, Λ,X,U,A,t,
     return mut
 end
 
-function Muscade.draw!(            axe,::Type{<:AnchorLine},obs,opt) 
+function Muscade.display_drawing!(            axe,::Type{<:AnchorLine},obs,opt) 
     lines!(  axe,obs.Xline  ,color=opt.blue , linewidth  = opt.linewidth) # line
     lines!(  axe,obs.Xexc   ,color=opt.red  , linewidth  = opt.linewidth) # excentricity
     lines!(  axe,obs.Xfloor ,color=opt.green, linewidth  = opt.linewidth) # seafloor

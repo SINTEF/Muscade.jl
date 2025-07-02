@@ -114,9 +114,9 @@ doflist( ::Type{<:ElementCost{Teleobj}}) where{Teleobj} = doflist(Teleobj)
     ☼cost        = o.cost(eleres,X,U,A,t,o.costargs...) 
     return L+cost,FB
 end   
-allocate_drawdata(axe,eleobj::AbstractVector{Teleobj};kwargs...)                    where{Teleobj<:ElementCost} = allocate_drawdata(axe,[eᵢ.eleobj for eᵢ∈eleobj];kwargs...)
-update_drawdata(  axe,eleobj::AbstractVector{Teleobj},oldmut,opt, Λ,X,U,A,t,SP,dbg) where{Teleobj<:ElementCost} = update_drawdata(  axe,[eᵢ.eleobj for eᵢ∈eleobj],oldmut,opt, Λ,X,U,A,t,SP,dbg)  
-draw!(            axe,::Type{<:ElementCost{Teleobj}},obs,opt)                       where{Teleobj}              = draw!(            axe,Teleobj,obs,opt)
+allocate_drawing(axe,eleobj::AbstractVector{Teleobj};kwargs...)                    where{Teleobj<:ElementCost} = allocate_drawing(axe,[eᵢ.eleobj for eᵢ∈eleobj];kwargs...)
+update_drawing(  axe,eleobj::AbstractVector{Teleobj},oldmut,opt, Λ,X,U,A,t,SP,dbg) where{Teleobj<:ElementCost} = update_drawing(  axe,[eᵢ.eleobj for eᵢ∈eleobj],oldmut,opt, Λ,X,U,A,t,SP,dbg)  
+display_drawing!(            axe,::Type{<:ElementCost{Teleobj}},obs,opt)                       where{Teleobj}              = display_drawing!(            axe,Teleobj,obs,opt)
 
 
 """
@@ -518,9 +518,9 @@ doflist( ::Type{<:ElementConstraint{Teleobj,λinod,λfield}}) where{Teleobj,λin
     end
     return L,(λ=λ,g=gap,mode=m)
 end
-allocate_drawdata(axe,eleobj::AbstractVector{Teleobj};kwargs...)                          where{Teleobj<:ElementConstraint} = allocate_drawdata(axe,[eᵢ.eleobj for eᵢ∈eleobj];kwargs...)
-update_drawdata(  axe,eleobj::AbstractVector{Teleobj},oldmut,opt, Λ,X,U,A,t,SP,dbg)       where{Teleobj<:ElementConstraint} = update_drawdata(  axe,[eᵢ.eleobj for eᵢ∈eleobj],oldmut,opt, Λ,X,U,A,t,SP,dbg)  
-draw!(            axe,::Type{<:ElementConstraint{Teleobj}},obs,opt)                       where{Teleobj}                    = draw!(            axe,Teleobj,obs,opt)
+allocate_drawing(axe,eleobj::AbstractVector{Teleobj};kwargs...)                          where{Teleobj<:ElementConstraint} = allocate_drawing(axe,[eᵢ.eleobj for eᵢ∈eleobj];kwargs...)
+update_drawing(  axe,eleobj::AbstractVector{Teleobj},oldmut,opt, Λ,X,U,A,t,SP,dbg)       where{Teleobj<:ElementConstraint} = update_drawing(  axe,[eᵢ.eleobj for eᵢ∈eleobj],oldmut,opt, Λ,X,U,A,t,SP,dbg)  
+display_drawing!(            axe,::Type{<:ElementConstraint{Teleobj}},obs,opt)                       where{Teleobj}                    = display_drawing!(            axe,Teleobj,obs,opt)
 
 #-------------------------------------------------
 

@@ -9,13 +9,14 @@ using Observables: Observable
 
 Graphic{Tobs,Topt,Taxis} = @NamedTuple{obs::Tobs, opt::Topt, axis::Taxis}
 # Single call draw! for one element type
-function draw!(axis,eleobj::AbstractVector{Eletyp}, Λ,X,U,A,t,SP,dbg;kwargs...) where{Eletyp<:AbstractElement}
-    mut,opt = allocate_drawdata(axis,eleobj;kwargs...)
-    mut     = update_drawdata(  axis,eleobj,mut,opt, Λ,X,U,A,t,SP,dbg)
+function draw_element!(axis,eleobj::AbstractVector{Eletyp}, Λ,X,U,A,t,SP,dbg;kwargs...) where{Eletyp<:AbstractElement}
+    mut,opt = allocate_drawing(axis,eleobj;kwargs...)
+    mut     = update_drawing(  axis,eleobj,mut,opt, Λ,X,U,A,t,SP,dbg)
     obs     = isnothing(mut) ? nothing : map(Observable,mut)
-    draw!(                      axis,Eletyp,obs,opt)
+    display_drawing!(                      axis,Eletyp,obs,opt)
     return obs,opt
 end
+# Typestable draw! for all elements of given type
 function draw_!(axis,dis::EletypDisassembler,eleobj::AbstractVector{Eletyp},iele,state,dbg;kwargs...) where{Eletyp} 
     nel      = length(iele)
     nXder    = length(state.X)
@@ -36,7 +37,7 @@ function draw_!(axis,dis::EletypDisassembler,eleobj::AbstractVector{Eletyp},iele
         end
         A[:,i]  = state.A[index.A]
     end
-    obs,opt = draw!(axis,eleobj, Λ,X,U,A,state.time,state.SP,dbg;kwargs...)
+    obs,opt = draw_element!(axis,eleobj, Λ,X,U,A,state.time,state.SP,dbg;kwargs...)
     return (obs=obs,opt=opt,axis=axis)
 end
 
@@ -50,8 +51,8 @@ Currently, only `GLMakie.jl` is supported and tested, but `Muscade` is designed 
 chose other graphic system, including exporting data to Paraview. `GLMakie.jl` is thus not a dependency of `Muscade`,
 and must be installed and invoked (`using`) separately to run demos provided with `Muscade`.
 
-Application developers can implement methods [`Muscade.allocate_drawdata`](@ref), [`Muscade.update_drawdata`](@ref) and
-[`Muscade.draw!`](@ref) to make their element "drawable".
+Application developers can implement methods [`Muscade.allocate_drawing`](@ref), [`Muscade.update_drawing`](@ref) and
+[`Muscade.display_drawing!`](@ref) to make their element "drawable".
 
 `axis` a `GLMakie.jl` `Axis`, a `Muscade.SpyAxis` (for automated testing of graphic generation), and in the future 
          a HDF5/VTK file handle for export of data to Paraview.   
@@ -100,9 +101,6 @@ function draw!(axis,state::State;kwargs...)   # whole model
 end   
 
 # to update an existing graphic
-function to_observable!(obs::Observable,v)
-    obs[] = v
-end
 function draw_!(graphic::Graphic,dis::EletypDisassembler,eleobj::AbstractVector{Eletyp},iele,state,dbg;kwargs...) where{Eletyp} 
     nel      = length(iele)
     nXder    = length(state.X)
@@ -124,9 +122,11 @@ function draw_!(graphic::Graphic,dis::EletypDisassembler,eleobj::AbstractVector{
         A[:,i]  = state.A[index.A]
     end
     mut     = map(Observables.to_value,graphic.obs)
-    mut     = update_drawdata(graphic.axis,eleobj,mut,graphic.opt, Λ,X,U,A,state.time,state.SP,(dbg...,iele=iele))
-    foreach(to_observable!,graphic.obs,mut) # TODO do syntax
-    draw!(                    graphic.axis,Eletyp,graphic.obs,graphic.opt)
+    mut     = update_drawing(graphic.axis,eleobj,mut,graphic.opt, Λ,X,U,A,state.time,state.SP,(dbg...,iele=iele))
+    foreach(graphic.obs,mut) do obsᵢ,mutᵢ
+        obsᵢ[] = mutᵢ
+    end
+    display_drawing!(graphic.axis,Eletyp,graphic.obs,graphic.opt)
 end
 function draw!(graphic::Vector{Graphic},state::State;kwargs...)   # whole model
     for ieletyp ∈ eachindex(state.model.eleobj)

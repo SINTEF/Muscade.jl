@@ -51,7 +51,7 @@ end
 
 using Muscade: lines!,scatter!,mesh!,SpyAxis
 axe = SpyAxis()
-draw!(axe,EL, Λm,Xm,Um,Am, 0.,nothing,(;))
+Muscade.draw_element!(axe,EL, Λm,Xm,Um,Am, 0.,nothing,(;))
 @testset "drawing" begin
      @test  axe.call[1].fun == :lines!
      @test  axe.call[1].args[1][][:,1:11] ≈ [ 126.035    113.802     101.568    89.3348   77.1015  64.8682   52.6348   40.4015   28.1682   15.9348    3.70151  ;

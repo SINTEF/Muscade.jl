@@ -1,6 +1,6 @@
 #Assumes that BeamElements.jl has been included previously, and that "using GLMakie" has been invoked
 
-function Muscade.allocate_drawdata(axe,o::AbstractVector{EulerBeam3D{Tmat,Udof}};kwargs...) where{Tmat,Udof}
+function Muscade.allocate_drawing(axe,o::AbstractVector{EulerBeam3D{Tmat,Udof}};kwargs...) where{Tmat,Udof}
     # define constant inputs to the drawing process
     args                 = default{:EulerBeam3D     }(kwargs,(;)     )  
     section              = default{:section         }(args,zeros(2,0))  
@@ -60,7 +60,7 @@ end
 
 
 
-function Muscade.update_drawdata(axe,o::AbstractVector{EulerBeam3D{Tmat,Udof}},oldmut,opt, Λ,X,U,A,t,SP,dbg) where{Tmat,Udof} 
+function Muscade.update_drawing(axe,o::AbstractVector{EulerBeam3D{Tmat,Udof}},oldmut,opt, Λ,X,U,A,t,SP,dbg) where{Tmat,Udof} 
     mut           = oldmut 
     X₀            = ∂0(X)
     U₀            = ∂0(U)
@@ -148,7 +148,7 @@ end
 
 
 
-function Muscade.draw!(axe,::Type{EulerBeam3D{Tmat,Udof}},obs,opt) where{Tmat,Udof}
+function Muscade.display_drawing!(axe,::Type{EulerBeam3D{Tmat,Udof}},obs,opt) where{Tmat,Udof}
     scatter!(                                          axe, obs.node                         ,color = opt.line_color, marker=:circle)  
     opt.style==:simple &&                     lines!(  axe, obs.node                         ,color = opt.line_color                )    
     opt.style==:shape  &&                     lines!(  axe, obs.shape_x                      ,color = opt.line_color                )

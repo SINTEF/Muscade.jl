@@ -171,20 +171,24 @@ See also: [`Muscade.lagrangian`](@ref), [`Muscade.nosecondorder`](@ref), [`Musca
 """
 residual()=nothing
 """
-    mut,opt = Muscade.allocate_drawdata(axis,eleobjs;kwargs...)
+    mut,opt = Muscade.allocate_drawing(axis,eleobjs;kwargs...)
 
-Elements that are to be displayed in graphical output must implement a method for `Muscade.allocate_drawdata`.
+Elements that are to be displayed in graphical output must implement a method for `Muscade.allocate_drawing`.
 
 The method is to allocate `opt`, a `NamedTuple` of data that will not be mutated from frame to frame,
-but are usefull in [`Muscade.update_drawdata`](@ref) or [`Muscade.draw!`](@ref).
+but are usefull in [`Muscade.update_drawing`](@ref) or [`Muscade.display_drawing!`](@ref).
 
 The method is also to allocate `mut`, a `NamedTuple` of data that will be mutated from frame to frame.  When
 implementing graphics with `GLMakie.jl`, the fields of `mut` must be exactly the updatable inputs provided to
-`GLMakie.jl`'s drawing primitives: in [`Muscade.draw!`](@ref)
+`GLMakie.jl`'s drawing primitives: in [`Muscade.display_drawing!`](@ref)
+
     lines!(axis,mut.x,mut.y)
+
 is acceptable, but 
+
     lines!(axis,mut.x[:,s],mut.y[:,s])
     lines!(axis,mut.a.x,mut.a.y)
+
 are not.
 
 The content of `Arrays` in `opt` and `mut` can be `undef`-ined.
@@ -194,24 +198,28 @@ Inputs are:
 - `eleobjs` an `AbstractVector` of element objects, of length `nel`.
 - `kwargs` a `NamedTuple` containing the keyword arguments provided by the user. See [`default`](@ref).
 
-See also: [`Muscade.update_drawdata`](@ref), [`Muscade.draw!`](@ref)
+See also: [`Muscade.update_drawing`](@ref), [`Muscade.display_drawing!`](@ref)
 """
-allocate_drawdata(axis,::AbstractVector{E};kwargs...)                    where{E<:AbstractElement} = nothing,nothing # mut,opt
+allocate_drawing(axis,::AbstractVector{E};kwargs...)                    where{E<:AbstractElement} = nothing,nothing # mut,opt
 """
-    mut = Muscade.update_drawdata(  axis,::AbstractVector{E},oldmut,opt, Λ,X,U,A,t,SP,dbg)
+    mut = Muscade.update_drawing(  axis,::AbstractVector{E},oldmut,opt, Λ,X,U,A,t,SP,dbg)
 
-Elements that are to be displayed in graphical output must implement a method for `Muscade.allocate_drawdata`.
+Elements that are to be displayed in graphical output must implement a method for `Muscade.allocate_drawing`.
 
 For parametric element types
-    Muscade.update_drawdata(axis,o::AbstractVector{Teleobj}, Λ,X,U,A,t,SP,dbg;kwargs...) where{Teleobj<:MyElement}
+
+    Muscade.update_drawing(axis,o::AbstractVector{Teleobj}, Λ,X,U,A,t,SP,dbg;kwargs...) 
+        where{Teleobj<:MyElement}
+
 For non-parametric element types, one can simplify the above to:
-    Muscade.update_drawdata(axis,o::AbstractVector{MyElement}, Λ,X,U,A,t,SP,dbg;kwargs...)
+
+    Muscade.update_drawing(axis,o::AbstractVector{MyElement}, Λ,X,U,A,t,SP,dbg;kwargs...)
 
 Inputs are:
 - `axis` the "canvas" to draw on, typicaly a `GLMakie.jl` `Axis`.
 - `eleobjs` an `AbstractVector` of element objects, of length `nel`.
-- `oldmut` the output `mut` of `Muscade.allocate_drawdata` or of a previous call to `Muscade.update_drawdata`.
-- `opt` the output `opt` of `Muscade.allocate_drawdata`
+- `oldmut` the output `mut` of `Muscade.allocate_drawing` or of a previous call to `Muscade.update_drawing`.
+- `opt` the output `opt` of `Muscade.allocate_drawing`
 - `Λ` a matrix of size `(nXdof,nel)`
 - `X` a `NTuple` (over the derivatives) of matrices of size `(nXdof,nel)`
 - `U` a `NTuple` (over the derivatives) of matrices of size `(nUdof,nel)`
@@ -221,33 +229,36 @@ Inputs are:
 - `dbg` debuging information
 - `kwargs` a `NamedTuple` containing the keyword arguments provided by the user. See [`default`](@ref).
 
-See also: [`Muscade.allocate_drawdata`](@ref), [`Muscade.draw!`](@ref)
+See also: [`Muscade.allocate_drawing`](@ref), [`Muscade.display_drawing!`](@ref)
 """
-update_drawdata(axis,::AbstractVector{E},oldmut,opt, Λ,X,U,A,t,SP,dbg) where{E<:AbstractElement} = nothing         # mut
+update_drawing(axis,::AbstractVector{E},oldmut,opt, Λ,X,U,A,t,SP,dbg) where{E<:AbstractElement} = nothing         # mut
 """
-    Muscade.draw!(axis,MyElement,mut,opt)
+    Muscade.display_drawing!(axis,MyElement,mut,opt)
 
-Elements that are to be displayed in graphical output must implement a method for `Muscade.draw!`.
+Elements that are to be displayed in graphical output must implement a method for `Muscade.display_drawing!`.
 
 Inputs are:
 - `axis` the "canvas" to draw on, typicaly a `GLMakie.jl` `Axis`.
 - `MyElement` used for dispatching to the right method.
-- `mut` is a `NamedTuple`, as output by [`Muscade.update_drawdata`](@ref).  More specificaly, if implementing
+- `mut` is a `NamedTuple`, as output by [`Muscade.update_drawing`](@ref).  More specificaly, if implementing
    graphics with `GLMakie.jl`, `mut` has been
-- `opt` is as returned by [`Muscade.allocate_drawdata`](@ref)
+- `opt` is as returned by [`Muscade.allocate_drawing`](@ref)
 
 When implementing graphics with `GLMakie.jl`, the fields of `mut` must be exactly the updatable inputs provided to
-`GLMakie.jl`'s drawing primitives: in [`Muscade.draw!`](@ref)
-    lines!(axis,mut.x,mut.y)
-is acceptable, but 
-    lines!(axis,mut.x[:,s],mut.y[:,s])
-or    
-    lines!(axis,mut.a.x,mut.a.y)
-are not. The reason is that when doing graphics with `GLMakie.jl`, `Muscade` will wrap each field of `mut`
-into an `Observable` before calling the elements' methods `draw!`.  This allows `Muscade` to update the graphics 
-by just calling [`Muscade.update_drawdata`](@ref) for each element.
+`GLMakie.jl`'s drawing primitives: in [`Muscade.display_drawing!`](@ref)
 
-See also: [`Muscade.allocate_drawdata`](@ref), [`Muscade.update_drawdata`](@ref)
+    lines!(axis,mut.x,mut.y)
+
+is acceptable, but 
+
+    lines!(axis,mut.x[:,s],mut.y[:,s])
+    lines!(axis,mut.a.x,mut.a.y)
+
+are not. The reason is that when doing graphics with `GLMakie.jl`, `Muscade` will wrap each field of `mut`
+into an `Observable` before calling the elements' methods `display_drawing!`.  This allows `Muscade` to update the graphics 
+by just calling [`Muscade.update_drawing`](@ref) for each element.
+
+See also: [`Muscade.allocate_drawing`](@ref), [`Muscade.update_drawing`](@ref)
 """
-draw!(axis,::Type{E},obs,opt) where{E<:AbstractElement} = nothing         # nothing
+display_drawing!(axis,::Type{E},obs,opt) where{E<:AbstractElement} = nothing         # nothing
 
