@@ -166,8 +166,6 @@ directly to a `sparse` returned by `assemble!`, `assemble!` can no longer be cal
 1) deepcopy the returned matrix
 2) apply `sparser!` to the copy
 3) after a new call to `assemble!` use `keep` when copying `nzval`  
-TODO create a method to support that 
-
 """
 function sparser!(S::SparseMatrixCSC,keep::Function) 
     ndrop               = 0
