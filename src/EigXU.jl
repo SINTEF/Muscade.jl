@@ -156,7 +156,7 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
     for (iω,ωᵢ)           = enumerate(ω)
         B.nzval          .= N[1]        + ωᵢ^2*N[2]        + ωᵢ^4*N[3]     
         A.nzval          .= L2[1].nzval + ωᵢ^2*L2[3].nzval + ωᵢ^4*L2[5].nzval     # complex if exponents 1 and 3 included
-        try 
+ #       try 
             if iω==1 LU   = lu(A) 
             else     lu!(LU ,A)
             end 
@@ -167,13 +167,17 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
                 Δ                  = ΔΛXU[iω][imod]
                 wrk[ixu]          .= view(Δ,ixu)                   # this copy can be optimised by viewing the classes in Δ, operating on out.L2[α,β][αder,βder], and combining over derivatives.  Is it worth the effort?   
                 Anorm              = √(ℜ(wrk  ∘₁ (A ∘₁ wrk))/2)  # ΔΛXU is real, A is complex Hermitian, so square norm is real: (imag part is zero to machine precision)
+                if iω>1 && imod≤nmod
+                    if dot(Δ,ΔΛXU[iω-1][imod]) < 0
+                        Anorm = -Anorm
+                    end
+                end
                 Δ                .*= 2.575829303549/Anorm          # corresponds to a probability of exceedance of 0.01                        
                 nor[iω][imod]      = √(ℜ(Δ ∘₁ (B ∘₁ Δ))/2) 
             end
-        catch 
-#            verbose && @printf("\n")
-            muscadewarning(@sprintf("Factorization of matrix A failed for ω=%f",ωᵢ));
-        end
+        # catch 
+        #     muscadewarning(@sprintf("Factorization of matrix A failed for ω=%f",ωᵢ));
+        # end
     end    
     any(ncv.<nmod) && verbose && muscadewarning("Some eigensolutions did not converge",4)
     pstate[] = EigXUincrement(allΛXUdofs(model,dis),ω,ncv,λ,nor,ΔΛXU)
@@ -202,13 +206,25 @@ vibrating structure
 See also: [`EigXU`](@ref)
 """
 function increment{OX}(initialstate,eiginc::EigXUincrement,iω::𝕫,imod::AbstractVector{𝕫},A::AbstractVector) where{OX} 
-    state            = State{1,OX+1,1}(copy(initialstate)) 
-    ω, ΔΛXU           = eiginc.ω[iω], eiginc.ΔΛXU[iω]
+    state       = State{1,OX+1,1}(copy(initialstate)) 
+    ω, ΔΛXU     = eiginc.ω[iω], eiginc.ΔΛXU[iω]
     maximum(imod)≤length(eiginc.λ) || muscadeerror(@sprintf("eiginc only has %n modes for iω=%i.",length(ω),iω))
     for (i,imodᵢ)∈enumerate(imod)  
         for iOX = 0:OX
             increment!(state,iOX+1,ℜ.(ω^iOX*A[i]*ΔΛXU[imodᵢ]),eiginc.dofgr)
         end
     end
+    return state
+end
+
+# scales Λ,X and U differently (so is no longer a solution state) and only updates 0th derivatives. For graphical outputs
+function visualincrement(initialstate,eiginc::EigXUincrement,iω::𝕫,imod::𝕫;Λscale::𝕣=1.,Xscale::𝕣=1.,Uscale::𝕣=1.) 
+    imod≤length(eiginc.λ) || muscadeerror(@sprintf("eiginc only has %n modes for iω=%i.",length(ω),iω))
+    model,dis             = initialstate.model, initialstate.dis
+    gr, ΔΛXU              = eiginc.dofgr, eiginc.ΔΛXU[iω][imod]
+    state                 = State{1,1,1}(copy(initialstate)) 
+    for i ∈ eachindex(gr.iΛ); state.Λ[1][gr.iΛ[i]] += ΔΛXU[gr.jΛ[i]] * gr.scaleΛ[i] *Λscale end
+    for i ∈ eachindex(gr.iX); state.X[1][gr.iX[i]] += ΔΛXU[gr.jX[i]] * gr.scaleX[i] *Xscale end
+    for i ∈ eachindex(gr.iU); state.U[1][gr.iU[i]] += ΔΛXU[gr.jU[i]] * gr.scaleU[i] *Uscale end
     return state
 end

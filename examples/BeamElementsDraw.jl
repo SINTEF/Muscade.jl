@@ -41,20 +41,6 @@ function Muscade.allocate_drawing(axe,o::AbstractVector{EulerBeam3D{Tmat,Udof}};
             solid_mark   = 𝕣2(undef,3,(opt.nseg+2)*nel_solid_marking)   ,     
             solid_ucrest = 𝕣2(undef,3,6*nel_solid_udof)               # idim, 6point-lift,iel
         )   
-    # mut=(
-    #         node  = Array{𝕣,3}(undef,3,3,nel_node)                 ,
-    #         shape_x      = Array{𝕣,3}(undef,3,opt.nseg+2,nel_shape)         ,   
-    #         shape_frame  = Array{𝕣,4}(undef,3,3,3,nel_shape_frame)          , # idim, point-point-lift, ivec, iel
-    #         shape_ucrest = Array{𝕣,3}(undef,3,6,nel_shape_udof)             , # idim, 6point-lift,iel
-    #         solid_vertex = Array{𝕣,4}(undef,3,opt.nsec, opt.nseg+1 ,nel_solid) , 
-    #         solid_face   = Array{𝕫,5}(undef,2,opt.nsec, opt.nseg   ,nel_solid,3),
-    #         solid_mark   = Array{𝕣,3}(undef,3,opt.nseg+2 ,nel_solid_marking),     
-    #         solid_ucrest = Array{𝕣,3}(undef,3,6,nel_solid_udof)               # idim, 6point-lift,iel
-    #     )   
-
-    # we set some terms to NaN (GLMakie idiom to lift the pen) once and for all    
-
-
     return mut,opt
 end
 

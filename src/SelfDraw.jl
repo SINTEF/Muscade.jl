@@ -5,7 +5,7 @@
 # Model drawing
 # typestable kernel
 
-using Observables: Observable
+using Observables: Observables,Observable
 
 Graphic{Tobs,Topt,Taxis} = @NamedTuple{obs::Tobs, opt::Topt, axis::Taxis}
 # Single call draw! for one element type
@@ -101,7 +101,9 @@ function draw!(axis,state::State;kwargs...)   # whole model
 end   
 
 # to update an existing graphic
+draw_!(graphic::Graphic{Nothing},dis::EletypDisassembler,eleobj::AbstractVector{Eletyp},iele,state,dbg;kwargs...) where{Eletyp} = nothing
 function draw_!(graphic::Graphic,dis::EletypDisassembler,eleobj::AbstractVector{Eletyp},iele,state,dbg;kwargs...) where{Eletyp} 
+    graphic.obs
     nel      = length(iele)
     nXder    = length(state.X)
     nUder    = length(state.U) 

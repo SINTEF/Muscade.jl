@@ -41,8 +41,6 @@ Xnod        = addnode!(model,XnodeCoord)
 Unod        = addnode!(model,UnodeCoord)
 mesh        = hcat(Xnod,Xnod[mod_onebased.(iels.+1,nel)],Unod)
 addelement!(model,EulerBeam3D{hasU},mesh;mat=mat,orient2=SVector(0.,0.,1.))
-# [addelement!(model, Hold         , [Xnod[  1]]           ; field) for field∈(:t1,:t2,:t3,:r1)] 
-# [addelement!(model, Hold         , [Xnod[end]]           ; field) for field∈(:t1,:t2,:t3    )] 
 
 # Ucost
 addelement!( model, SingleDofCost, Muscade.columnmatrix(Unod         )    ,class=:U, field=:t1,cost=QuadraticFunction(0.,.1  ))
@@ -70,73 +68,80 @@ OX,OU                 = 2,0
 # @show N
 
 ## EigX analysis
-eigincX = solve(EigX{ℝ};state=initialstate,nmod=10)
-ωₚ                = eigincX.ω
-
-
-# ## draw EigX vector
-# jmod              = [10]
-# A                 = [100] 
-# state             = increment{OX}(initialstate,eigincX,jmod,A);
-# using GLMakie
-# fig      = Figure(size = (500,500))
-# display(fig) # open interactive window (gets closed down by "save")
-# axe      = Axis3(fig[1,1],title="Test",xlabel="X",ylabel="Y",zlabel="Z",aspect=:data,viewmode=:fit,perspectiveness=.5)
-# draw!(axe,state;EulerBeam3D=(;style=:shape,nseg=10,marking=true,Uscale))
-
-
+#eigincX = solve(EigX{ℝ};state=initialstate,nmod=10)
+#ωₚ                = eigincX.ω
 
 ## EigXU analysis
 Δω                = 2^-6 
 p                 = 11
 nmod              = 5
-eiginc            = solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=true,verbosity=1,tol=1e-20,σₓᵤ)
+#eigincXU          = solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=true,verbosity=1,tol=1e-20,σₓᵤ)
 
 
-
-
-
-# ## draw EigXU vector
-# jmod              = [1]
-# A                 = [5000] 
-# iω                = 4
-# Uscale            = 0.0005
-# state             = increment{OX}(initialstate,eiginc,iω,jmod,A);
-
-# using GLMakie
-# fig      = Figure(size = (500,500))
-# display(fig) # open interactive window (gets closed down by "save")
-# axe      = Axis3(fig[1,1],title="Test",xlabel="X",ylabel="Y",zlabel="Z",aspect=:data,viewmode=:fit,perspectiveness=.5)
-
-# draw!(axe,initialstate;EulerBeam3D=(;style=:shape,nseg=10,marking=true,Uscale));
-# draw!(axe,       state;EulerBeam3D=(;style=:shape,nseg=10,marking=true,Uscale));
-
-
-
-## draw error graph
+### draw ###########################################
 using GLMakie
-fig      = Figure(size = (500,500))
-display(fig) # open interactive window (gets closed down by "save")
-axe      = Axis(fig[1,1],title="Information content",xlabel="ω [rad/s]",ylabel="magnitude of error",yscale=log)
+
+## Organize the figure
+fig      = Figure(size = (1500,900))
 nω = 2^p
 ω   = range(start=0.,step=Δω,length=nω) 
+
+
+display(fig) # open interactive window (gets closed down by "save")
+
+panelFreqs = fig[1,1]        
+panelNorm  = panelFreqs[1,1] 
+axisNorm   = Axis(panelNorm,xlabel="ω [rad/s]",ylabel="magnitude of error",yscale=log10)
+panelSlide = panelFreqs[2,1] 
+panelModel = fig[1,2]        
+axisModel  = Axis3(panelModel,title="Eigenmode",xlabel="X",ylabel="Y",zlabel="Z",aspect=:data,viewmode=:fit,perspectiveness=.5)
+
+## sliders
+sg = SliderGrid(panelSlide,
+                (label="ω"      , range = ω        , startvalue = 0,snap=true,update_while_dragging=true,format = "{:.1f} rad/s"),
+                (label="mode"   , range = 1:nmod   , startvalue = 1,snap=true,update_while_dragging=true                        ),
+                (label="X scale", range = -5:0.01:5, startvalue = 0,snap=true,update_while_dragging=true,format = "10^{:.1f}"   ),
+                (label="U scale", range = -5:0.01:5, startvalue = 0,snap=true,update_while_dragging=true,format = "10^{:.1f}"   ))
+obs = (ω      = sg.sliders[1].value,
+       imode  = sg.sliders[2].value,
+       Xscale = sg.sliders[3].value,
+       Uscale = sg.sliders[4].value)
+
+
+## norm spectre
 nor = 𝕣1(undef,nω)
 λ   = 𝕣1(undef,nω)
-for imod = 1:maximum(eiginc.ncv)
+for imod = 1:maximum(eigincXU.ncv)
     for iω= 1:nω
-        if imod≤eiginc.ncv[iω]
-            nor[iω] = eiginc.nor[iω][imod]
-            λ[  iω] = eiginc.λ[  iω][imod]
+        if imod≤eigincXU.ncv[iω]
+            nor[iω] = eigincXU.nor[iω][imod]
+            λ[  iω] = eigincXU.λ[  iω][imod]
         else
             nor[iω] = NaN
             λ[  iω] = NaN
         end
     end
-    scatter!(axe,ω,nor,markersize=2,color=:black)
-    scatter!(axe,ω,λ  ,markersize=2,color=:red  )
-    scatter!(axe,ω,nor./λ  ,markersize=2,color=:green  )
+    scatter!(axisNorm,ω,nor,markersize=2,color=:black)
 end
 nωₚ = findlast(ωₚ .< ω[end])
-scatter!(axe,ωₚ[1:nωₚ],ones(nωₚ))
-;
 
+iω  = map(obs.ω) do ω
+    round(Int64,ω/Δω)+1
+end       
+nor = map(obs.imode,iω) do imode,iω 
+    eigincXU.nor[iω][imode]
+end
+
+scatter!(axisNorm,obs.ω,nor,color=:red,markersize=10)
+#scatter!(axisNorm,ωₚ[1:nωₚ],ones(nωₚ),color=:red)
+
+## Model
+
+draw!(axisModel,initialstate;EulerBeam3D=(;style=:shape,nseg=10,marking=true));  # draw initial state once to keep on screen
+graphic = draw!(axisModel,initialstate;EulerBeam3D=(;style=:shape,nseg=10,marking=true)); # and twice to start the pump
+_ = map(iω,obs.imode,obs.Xscale,obs.Uscale) do iω,imod,Xscale,Uscale # Then observe the sliders
+    state = Muscade.visualincrement(initialstate,eigincXU,iω,imod;Xscale=exp10(Xscale),Uscale=exp10(Uscale))
+    draw!(graphic,state;EulerBeam3D=(;style=:shape,nseg=10,marking=true));
+end
+
+;

@@ -148,24 +148,24 @@ Eliminate terms that do not satisfy a criteria from the storage of a sparse matr
 `keep` is a `Function` which to an index into `S.nzval` associate `true` if storage is to be kept for this term
 and `false` otherwise. Alternatively, `keep` can be a `Vector{Bool}`
 
-Example
+# Examples
 
-`sparser!(S,i->abs(S.nzval[i])>tol)`
-`sparser!(S,keep)`
-`sparser!([S1,S2],1e-9)`
-`sparser!(S1,S2],1e-9)`
-
-!!! warning
-In the first example, the `keep` *function* accesses `S.nzval[i]`, and the term is then mutated by `sparser!`. 
-Any criteria requiring multipe access to *nzval* must build a `Vector` before calling `sparser!`.
+    sparser!(S,i->abs(S.nzval[i])>tol)
+    sparser!(S,keep)
+    sparser!([S1,S2],1e-9)
+    sparser!(S1,S2],1e-9)
 
 !!! warning
-Note that `assemble!` computes the `nzval` of a sparse, assumning that its sparsity structure `colptr` and `rowval`
-is unchanged since sparse storage was allocated by `asmmat` in `prepare`.  In other words, if applying `sparser!`
-directly to a `sparse` returned by `assemble!`, `assemble!` can no longer be called for this matrix. In that case,
-1) deepcopy the returned matrix
-2) apply `sparser!` to the copy
-3) after a new call to `assemble!` use `keep` when copying `nzval`  
+    In the first example, the `keep` *function* accesses `S.nzval[i]`, and the term is then mutated by `sparser!`. 
+    Any criteria requiring multipe access to *nzval* must build a `Vector` before calling `sparser!`.
+
+!!! warning
+    Note that `assemble!` computes the `nzval` of a sparse, assumning that its sparsity structure `colptr` and `rowval`
+    is unchanged since sparse storage was allocated by `asmmat` in `prepare`.  In other words, if applying `sparser!`
+    directly to a `sparse` returned by `assemble!`, `assemble!` can no longer be called for this matrix. In that case,
+    1) deepcopy the returned matrix
+    2) apply `sparser!` to the copy
+    3) after a new call to `assemble!` use `keep` when copying `nzval`  
 """
 function sparser!(S::SparseMatrixCSC,keep::Function) 
     ndrop               = 0
