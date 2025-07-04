@@ -250,6 +250,7 @@ function draw(initialstate,eiginc::EigXUincrement,;kwargs...)
     ## Organize the window
 
     fig             = Figure(size = (1500,900))
+    GLMakie.activate!( title = "Muscade.jl" )
     display(fig) # open interactive window (gets closed down by "save")
     panelFreqs      = fig[1,1]        
     panelNorm       = panelFreqs[1,1] 
@@ -260,22 +261,37 @@ function draw(initialstate,eiginc::EigXUincrement,;kwargs...)
     axisModel       = Axis3(panelModel,title="EigXU mode shape",aspect=:data,viewmode=:free,perspectiveness=.5,clip=false)
 
     ## sliders
-
+    ω0 = eiginc.ω[div(length(eiginc.ω),3)]
     sg = SliderGrid(panelSlide,
-                    (label="ω"      , range = eiginc.ω        , startvalue = 0,snap=true,update_while_dragging=true,format = "{:.1f} rad/s"),
-                    (label="mode"   , range = 1:eiginc.nmod   , startvalue = 1,snap=true,update_while_dragging=true                        ),
-                    (label="X scale", range = -5:0.01:5       , startvalue = 0,snap=true,update_while_dragging=true,format = "10^{:.1f}"   ),
-                    (label="U scale", range = -5:0.01:5       , startvalue = 0,snap=true,update_while_dragging=true,format = "10^{:.1f}"   ))
+                    (label="ω"      , range = eiginc.ω        , startvalue = ω0,snap=true,update_while_dragging=true,format = "{:.1f} rad/s"),
+                    (label="mode"   , range = 1:eiginc.nmod   , startvalue = 1 ,snap=true,update_while_dragging=true                        ),
+                    (label="X scale", range = -5:0.01:5       , startvalue = 0 ,snap=true,update_while_dragging=true,format = "10^{:.1f}"   ),
+                    (label="U scale", range = -5:0.01:5       , startvalue = 0 ,snap=true,update_while_dragging=true,format = "10^{:.1f}"   ))
     obs = (ω      = sg.sliders[1].value,
            imode  = sg.sliders[2].value,
            Xscale = sg.sliders[3].value,
            Uscale = sg.sliders[4].value)
+    iωs  = map(obs.ω) do ω
+        round(Int64,ω/step(eiginc.ω))+1
+    end       
+    nors = map(obs.imode,iωs) do imode,iω 
+        eiginc.nor[iω][imode]
+    end
 
+    ## Model
+
+    args.draw_shadow && draw!(axisModel,initialstate;args.shadow...); # draw initial state once to keep on screen
+    
+    graphic = draw!(axisModel,initialstate;args.model...);                             # and twice to start the pump
+    _ = map(iωs,obs.imode,obs.Xscale,obs.Uscale) do iω,imod,Xscale,Uscale                                    # Then observe the sliders
+        state = Muscade.visualincrement(initialstate,eiginc,iω,imod;Xscale=exp10(Xscale),Uscale=exp10(Uscale))
+        draw!(graphic,state;args.model...);
+    end
     ## norm spectre
 
     nω  = length(eiginc.ω)
     nor = 𝕣1(undef,nω)
-    λ   = 𝕣1(undef,nω)
+    #λ   = 𝕣1(undef,nω)
     for imod = 1:maximum(eiginc.ncv)
         for iω= 1:nω
             if imod≤eiginc.ncv[iω]
@@ -288,21 +304,6 @@ function draw(initialstate,eiginc::EigXUincrement,;kwargs...)
         end
         scatter!(axisNorm,eiginc.ω,nor,markersize=1,color=:black)
     end
-    iω  = map(obs.ω) do ω
-        round(Int64,ω/step(eiginc.ω))+1
-    end       
-    nor = map(obs.imode,iω) do imode,iω 
-        eiginc.nor[iω][imode]
-    end
-    scatter!(axisNorm,obs.ω,nor,color=:red,markersize=10)
+    scatter!(axisNorm,obs.ω,nors,color=:red,markersize=10)
 
-    ## Model
-
-    args.draw_shadow && draw!(axisModel,initialstate;args.shadow...); # draw initial state once to keep on screen
-    
-    graphic = draw!(axisModel,initialstate;args.model...);                             # and twice to start the pump
-    _ = map(iω,obs.imode,obs.Xscale,obs.Uscale) do iω,imod,Xscale,Uscale                                    # Then observe the sliders
-        state = Muscade.visualincrement(initialstate,eiginc,iω,imod;Xscale=exp10(Xscale),Uscale=exp10(Uscale))
-        draw!(graphic,state;args.model...);
-    end
 end
