@@ -156,7 +156,7 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
     for (iω,ωᵢ)           = enumerate(ω)
         B.nzval          .= N[1]        + ωᵢ^2*N[2]        + ωᵢ^4*N[3]     
         A.nzval          .= L2[1].nzval + ωᵢ^2*L2[3].nzval + ωᵢ^4*L2[5].nzval     # complex if exponents 1 and 3 included
- #       try 
+        # try 
             if iω==1 LU   = lu(A) 
             else     lu!(LU ,A)
             end 
@@ -168,7 +168,8 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
                 wrk[ixu]          .= view(Δ,ixu)                   # this copy can be optimised by viewing the classes in Δ, operating on out.L2[α,β][αder,βder], and combining over derivatives.  Is it worth the effort?   
                 Anorm              = √(ℜ(wrk  ∘₁ (A ∘₁ wrk))/2)  # ΔΛXU is real, A is complex Hermitian, so square norm is real: (imag part is zero to machine precision)
                 if iω>1 && imod≤nmod
-                    if dot(Δ,ΔΛXU[iω-1][imod]) < 0
+#                    if dot(Δ,ΔΛXU[iω-1][imod]) < 0
+                    if sum(Δ[idof]*ΔΛXU[iω-1][imod][idof] for idof ∈ λxu_dofgr.jX) < 0
                         Anorm = -Anorm
                     end
                 end

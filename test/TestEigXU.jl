@@ -67,10 +67,6 @@ OX,OU                 = 2,0
 # Muscade.makeXUnorm!(N,dofgr,σₓᵤ)
 # @show N
 
-## EigX analysis
-#eigincX = solve(EigX{ℝ};state=initialstate,nmod=10)
-#ωₚ                = eigincX.ω
-
 ## EigXU analysis
 Δω                = 2^-6 
 p                 = 11
@@ -82,7 +78,7 @@ nmod              = 5
 using GLMakie
 
 ## Organize the figure
-fig      = Figure(size = (1500,900))
+fig      = Figure(size = (1500,900),title="EigXU results")
 nω = 2^p
 ω   = range(start=0.,step=Δω,length=nω) 
 
@@ -93,8 +89,9 @@ panelFreqs = fig[1,1]
 panelNorm  = panelFreqs[1,1] 
 axisNorm   = Axis(panelNorm,xlabel="ω [rad/s]",ylabel="magnitude of error",yscale=log10)
 panelSlide = panelFreqs[2,1] 
-panelModel = fig[1,2]        
-axisModel  = Axis3(panelModel,title="Eigenmode",xlabel="X",ylabel="Y",zlabel="Z",aspect=:data,viewmode=:fit,perspectiveness=.5)
+panelModel = fig[1,2:3]        
+Box(panelModel, cornerradius = 20,z=1., color = :transparent)
+axisModel  = Axis3(panelModel,title="EigXU mode shape",xlabel="X",ylabel="Y",zlabel="Z",aspect=:data,viewmode=:fit,perspectiveness=.5,clip=false)
 
 ## sliders
 sg = SliderGrid(panelSlide,
@@ -121,7 +118,7 @@ for imod = 1:maximum(eigincXU.ncv)
             λ[  iω] = NaN
         end
     end
-    scatter!(axisNorm,ω,nor,markersize=2,color=:black)
+    scatter!(axisNorm,ω,nor,markersize=1,color=:black)
 end
 nωₚ = findlast(ωₚ .< ω[end])
 
@@ -133,15 +130,14 @@ nor = map(obs.imode,iω) do imode,iω
 end
 
 scatter!(axisNorm,obs.ω,nor,color=:red,markersize=10)
-#scatter!(axisNorm,ωₚ[1:nωₚ],ones(nωₚ),color=:red)
 
 ## Model
+draw!(          axisModel,initialstate;EulerBeam3D=(;style=:shape,nseg=1,line_color=:grey,Udof=false)); # draw initial state once to keep on screen
 
-draw!(axisModel,initialstate;EulerBeam3D=(;style=:shape,nseg=10,marking=true));  # draw initial state once to keep on screen
-graphic = draw!(axisModel,initialstate;EulerBeam3D=(;style=:shape,nseg=10,marking=true)); # and twice to start the pump
+graphic = draw!(axisModel,initialstate;EulerBeam3D=(;style=:shape,nseg=1)); # and twice to start the pump
 _ = map(iω,obs.imode,obs.Xscale,obs.Uscale) do iω,imod,Xscale,Uscale # Then observe the sliders
     state = Muscade.visualincrement(initialstate,eigincXU,iω,imod;Xscale=exp10(Xscale),Uscale=exp10(Uscale))
-    draw!(graphic,state;EulerBeam3D=(;style=:shape,nseg=10,marking=true));
+    draw!(graphic,state;EulerBeam3D=(;style=:shape,nseg=1));
 end
 
 ;
