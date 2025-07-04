@@ -1,6 +1,8 @@
 module Muscade
-    using  Printf,SparseArrays,StaticArrays,LinearAlgebra,SpecialFunctions,MacroTools
+    using Printf,SparseArrays,StaticArrays,LinearAlgebra,SpecialFunctions,MacroTools
     using KrylovKit: KrylovKit,eigsolve
+    using GLMakie
+
 
     include("Dialect.jl")
     export ℝ,ℤ,𝕣,𝕫,𝔹,𝕓,ℂ
@@ -68,7 +70,7 @@ module Muscade
     export EigX,increment
 
     include("EigXU.jl")
-    export EigXU
+    export EigXU,draw
 
     include("FreqXU.jl")
     export FreqXU

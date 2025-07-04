@@ -20,7 +20,6 @@ un         = 1e3
 
 ## beam in space
 include("../examples/BeamElements.jl")
-include("../examples/BeamElementsDraw.jl")
 
 L    = 1;    # Beam length [m]
 q    = 0.0;  # Uniform lateral load [N/m]
@@ -73,71 +72,78 @@ p                 = 11
 nmod              = 5
 #eigincXU          = solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=true,verbosity=1,tol=1e-20,σₓᵤ)
 
+α                 = 2π*(1:8)/8
+circle            = 0.05*[cos.(α) sin.(α)]'
+draw(initialstate,eigincXU;shadow = (;EulerBeam3D=(;style=:shape,nseg=1,line_color=:grey,Udof=false)),
+                           model  = (;EulerBeam3D=(;style=:solid,nseg=1,section=circle))           )
 
-### draw ###########################################
-using GLMakie
+# ### draw ###########################################
+# using GLMakie
 
-## Organize the figure
-fig      = Figure(size = (1500,900),title="EigXU results")
-nω = 2^p
-ω   = range(start=0.,step=Δω,length=nω) 
-
-
-display(fig) # open interactive window (gets closed down by "save")
-
-panelFreqs = fig[1,1]        
-panelNorm  = panelFreqs[1,1] 
-axisNorm   = Axis(panelNorm,xlabel="ω [rad/s]",ylabel="magnitude of error",yscale=log10)
-panelSlide = panelFreqs[2,1] 
-panelModel = fig[1,2:3]        
-Box(panelModel, cornerradius = 20,z=1., color = :transparent)
-axisModel  = Axis3(panelModel,title="EigXU mode shape",xlabel="X",ylabel="Y",zlabel="Z",aspect=:data,viewmode=:fit,perspectiveness=.5,clip=false)
-
-## sliders
-sg = SliderGrid(panelSlide,
-                (label="ω"      , range = ω        , startvalue = 0,snap=true,update_while_dragging=true,format = "{:.1f} rad/s"),
-                (label="mode"   , range = 1:nmod   , startvalue = 1,snap=true,update_while_dragging=true                        ),
-                (label="X scale", range = -5:0.01:5, startvalue = 0,snap=true,update_while_dragging=true,format = "10^{:.1f}"   ),
-                (label="U scale", range = -5:0.01:5, startvalue = 0,snap=true,update_while_dragging=true,format = "10^{:.1f}"   ))
-obs = (ω      = sg.sliders[1].value,
-       imode  = sg.sliders[2].value,
-       Xscale = sg.sliders[3].value,
-       Uscale = sg.sliders[4].value)
+# ## Organize the figure
+# fig      = Figure(size = (1500,900),title="EigXU results")
+# nω = 2^p
+# ω   = range(start=0.,step=Δω,length=nω) 
 
 
-## norm spectre
-nor = 𝕣1(undef,nω)
-λ   = 𝕣1(undef,nω)
-for imod = 1:maximum(eigincXU.ncv)
-    for iω= 1:nω
-        if imod≤eigincXU.ncv[iω]
-            nor[iω] = eigincXU.nor[iω][imod]
-            λ[  iω] = eigincXU.λ[  iω][imod]
-        else
-            nor[iω] = NaN
-            λ[  iω] = NaN
-        end
-    end
-    scatter!(axisNorm,ω,nor,markersize=1,color=:black)
-end
-nωₚ = findlast(ωₚ .< ω[end])
+# display(fig) # open interactive window (gets closed down by "save")
 
-iω  = map(obs.ω) do ω
-    round(Int64,ω/Δω)+1
-end       
-nor = map(obs.imode,iω) do imode,iω 
-    eigincXU.nor[iω][imode]
-end
+# panelFreqs = fig[1,1]        
+# panelNorm  = panelFreqs[1,1] 
+# axisNorm   = Axis(panelNorm,xlabel="ω [rad/s]",ylabel="magnitude of error",yscale=log10)
+# panelSlide = panelFreqs[2,1] 
+# panelModel = fig[1,2:3]        
+# Box(panelModel, cornerradius = 20,z=1., color = :transparent)
+# axisModel  = Axis3(panelModel,title="EigXU mode shape",aspect=:data,viewmode=:free,perspectiveness=.5,clip=false)
 
-scatter!(axisNorm,obs.ω,nor,color=:red,markersize=10)
+# ## sliders
+# sg = SliderGrid(panelSlide,
+#                 (label="ω"      , range = ω        , startvalue = 0,snap=true,update_while_dragging=true,format = "{:.1f} rad/s"),
+#                 (label="mode"   , range = 1:nmod   , startvalue = 1,snap=true,update_while_dragging=true                        ),
+#                 (label="X scale", range = -5:0.01:5, startvalue = 0,snap=true,update_while_dragging=true,format = "10^{:.1f}"   ),
+#                 (label="U scale", range = -5:0.01:5, startvalue = 0,snap=true,update_while_dragging=true,format = "10^{:.1f}"   ))
+# obs = (ω      = sg.sliders[1].value,
+#        imode  = sg.sliders[2].value,
+#        Xscale = sg.sliders[3].value,
+#        Uscale = sg.sliders[4].value)
 
-## Model
-draw!(          axisModel,initialstate;EulerBeam3D=(;style=:shape,nseg=1,line_color=:grey,Udof=false)); # draw initial state once to keep on screen
 
-graphic = draw!(axisModel,initialstate;EulerBeam3D=(;style=:shape,nseg=1)); # and twice to start the pump
-_ = map(iω,obs.imode,obs.Xscale,obs.Uscale) do iω,imod,Xscale,Uscale # Then observe the sliders
-    state = Muscade.visualincrement(initialstate,eigincXU,iω,imod;Xscale=exp10(Xscale),Uscale=exp10(Uscale))
-    draw!(graphic,state;EulerBeam3D=(;style=:shape,nseg=1));
-end
+# ## norm spectre
+# nor = 𝕣1(undef,nω)
+# λ   = 𝕣1(undef,nω)
+# for imod = 1:maximum(eigincXU.ncv)
+#     for iω= 1:nω
+#         if imod≤eigincXU.ncv[iω]
+#             nor[iω] = eigincXU.nor[iω][imod]
+#             λ[  iω] = eigincXU.λ[  iω][imod]
+#         else
+#             nor[iω] = NaN
+#             λ[  iω] = NaN
+#         end
+#     end
+#     scatter!(axisNorm,ω,nor,markersize=1,color=:black)
+# end
+
+# iω  = map(obs.ω) do ω
+#     round(Int64,ω/Δω)+1
+# end       
+# nor = map(obs.imode,iω) do imode,iω 
+#     eigincXU.nor[iω][imode]
+# end
+
+# scatter!(axisNorm,obs.ω,nor,color=:red,markersize=10)
+
+# ## Model
+#     α      = 2π*(1:8)/8
+#     circle = 0.05*[cos.(α) sin.(α)]'
+
+
+# draw!(          axisModel,initialstate;EulerBeam3D=(;style=:shape,nseg=1,line_color=:grey,Udof=false)); # draw initial state once to keep on screen
+
+# graphic = draw!(axisModel,initialstate;EulerBeam3D=(;style=:solid,nseg=1,section=circle)); # and twice to start the pump
+# _ = map(iω,obs.imode,obs.Xscale,obs.Uscale) do iω,imod,Xscale,Uscale # Then observe the sliders
+#     state = Muscade.visualincrement(initialstate,eigincXU,iω,imod;Xscale=exp10(Xscale),Uscale=exp10(Uscale))
+#     draw!(graphic,state;EulerBeam3D=(;style=:solid,nseg=1,section=circle));
+# end
 
 ;

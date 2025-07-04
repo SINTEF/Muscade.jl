@@ -335,11 +335,10 @@ None of `Muscade`'s built-in elements implements methods for `draw`: because `Mu
 
 ### Graphic engine
 
-By design, `Muscade` does not prescribe the use of any specific graphic package. Element developers are to be able to implement `Muscade.allocate_drawing`, `Muscade.update_drawing` and `Muscade.display_drawing!` for the graphic system of their choice, for example using [`Makie.jl`](https://docs.makie.org/) and [`WriteVTK.jl`](https://juliavtk.github.io/WriteVTK.jl/stable/) for Paraview. Neither `Makie.jl` nor `WriteVTK.jl` are dependencies of `Muscade`.  The user of the application based on these elements will then have to pass the relevant first argument `axis` to the method of `Muscade.display_drawing!` that draws the model.
+The element interface with `Muscade.allocate_drawing`, `Muscade.update_drawing` and `Muscade.display_drawing!` is taylored to [`GLMakie.jl`](https://docs.makie.org/), allowing to create and update graphical representation of the element. `Muscade` provides [`draw!`](@ref) to draw (or update a drawing of) the state of a model.
 
-On the other hand, testing, examples and applications created by the `Muscade` team, so far are all based on `GLMakie.jl`. It might be necessary to adjust the code of `Muscade` to support other graphics systems, comments and pull requests are welcome.
-
-The ambivalence can be found in the docstrings for the elements' graphic methods.  For example, the first argument to these methods is described as `axis`, familiar to `Makie.jl` users, but could be a strcuture containing a handle to a `VTK` file instead.
+It should be quite feasible to support the creation of files for, e.g., Paraview, or the use of other graphic engines. Element developers can implement methods of `Muscade.allocate_drawing`, `Muscade.update_drawing` and `Muscade.display_drawing!` for the graphic system of their choice, for example using [`WriteVTK.jl`](https://juliavtk.github.io/WriteVTK.jl/stable/) for Paraview. 
+It is *hoped*, but not tested, that [`draw!`](@ref) will be suitable for [`WriteVTK.jl`](https://juliavtk.github.io/WriteVTK.jl/stable/) without modification.
 
 ### Graphics performance
 

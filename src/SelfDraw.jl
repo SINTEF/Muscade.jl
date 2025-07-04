@@ -5,7 +5,6 @@
 # Model drawing
 # typestable kernel
 
-using Observables: Observables,Observable
 
 Graphic{Tobs,Topt,Taxis} = @NamedTuple{obs::Tobs, opt::Topt, axis::Taxis}
 # Single call draw! for one element type
@@ -123,7 +122,7 @@ function draw_!(graphic::Graphic,dis::EletypDisassembler,eleobj::AbstractVector{
         end
         A[:,i]  = state.A[index.A]
     end
-    mut     = map(Observables.to_value,graphic.obs)
+    mut     = map(to_value,graphic.obs)
     mut     = update_drawing(graphic.axis,eleobj,mut,graphic.opt, Λ,X,U,A,state.time,state.SP,(dbg...,iele=iele))
     foreach(graphic.obs,mut) do obsᵢ,mutᵢ
         obsᵢ[] = mutᵢ
@@ -156,11 +155,10 @@ function draw!(graphic::Graphic,state::State,::Type{E};kwargs...) where{E<:Abstr
 end    
 
 """
-    axis = Muscade.SpyAxis
+    axis = Muscade.SpyAxis()
 
-Spoof a GLMakie `axis` object so that calls like
+Spoof a GLMakie `Axis` object so that calls like
 
-    using Muscade: lines!
     lines!(  axis,args...;kwargs...) 
     
 result in `args` and `kwargs` being stored in `axis`, allowing to test functions that generate plots.
@@ -170,23 +168,15 @@ Results are accessed by for example
     axis.call[3].args[2]
 
 To get the name of the 3rd GLMakie function that was called, and the
-2nd input argument of the call.
+2nd input argument of this call.
 
-Only `lines!`, `scatter!` and `mesh!`  are implemented for now, but more functions can
+Only `lines!`, `scatter!` and `mesh!` logging functions are implemented for now, but more functions can
 easily be added.
-
-In given Julia session, if GLMakie is used, then Muscade: lines! (etc.) cannot be used,
-and conversedly: restart Julia when switching.  
-
-The reason is that Muscade defines `lines!` (etc.) instead of overloading it.
-This is deliberate, to allow Muscade to run unit tests of graphical generation, without making
-GLMakie a dependency of Muscade.  This again is because element developers remain free
-to base `draw` for their suite of elements on other graphic packages.
 """
 struct SpyAxis
     call::Vector{Any}
 end
 SpyAxis() = SpyAxis(Any[])
-lines!(  axis::SpyAxis,args...;kwargs...) = push!(axis.call,(fun=:lines!  ,args=args,kwargs=kwargs))
-scatter!(axis::SpyAxis,args...;kwargs...) = push!(axis.call,(fun=:scatter!,args=args,kwargs=kwargs))
-mesh!(   axis::SpyAxis,args...;kwargs...) = push!(axis.call,(fun=:mesh!   ,args=args,kwargs=kwargs))
+GLMakie.lines!(  axis::SpyAxis,args...;kwargs...) = push!(axis.call,(fun=:lines!  ,args=args,kwargs=kwargs))
+GLMakie.scatter!(axis::SpyAxis,args...;kwargs...) = push!(axis.call,(fun=:scatter!,args=args,kwargs=kwargs))
+GLMakie.mesh!(   axis::SpyAxis,args...;kwargs...) = push!(axis.call,(fun=:mesh!   ,args=args,kwargs=kwargs))

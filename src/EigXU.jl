@@ -47,9 +47,10 @@ function assemblebigvec!(L1,L1bigasm,asm,model,dis,out::AssemblyDirect{OX,OU,0},
     end
 end
 
-struct EigXUincrement
+struct EigXUincrement{Tω}
+    nmod  :: 𝕫
     dofgr :: DofGroup
-    ω     :: 𝕣1          # [iω] 
+    ω     ::Tω           # [iω] range
     ncv   :: 𝕫1          # [iω]
     λ     :: 𝕣11         # [iω][imod]
     nor   :: 𝕣11         # [iω][imod]
@@ -94,7 +95,7 @@ the ΛXU-eigenvalue problem at frequencies ωᵢ = Δω*i with i∈{0,...,2ᵖ-1
 - an object of type `EigXUincrement` for use with [`increment`](@ref) to create a snapshot of the
   oscillating system.
 
-See also: [`solve`](@ref), [`initialize!`](@ref), [`studysingular`](@ref), [`SweepX`](@ref), [`DirectXUA`](@ref)
+See also: [`increment`](@ref),[`EigXU`](@ref), [`solve`](@ref), [`initialize!`](@ref), [`studysingular`](@ref), [`SweepX`](@ref), [`DirectXUA`](@ref)
 """
 struct EigXU{OX,OU} <: AbstractSolver end 
 
@@ -167,11 +168,8 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
                 Δ                  = ΔΛXU[iω][imod]
                 wrk[ixu]          .= view(Δ,ixu)                   # this copy can be optimised by viewing the classes in Δ, operating on out.L2[α,β][αder,βder], and combining over derivatives.  Is it worth the effort?   
                 Anorm              = √(ℜ(wrk  ∘₁ (A ∘₁ wrk))/2)  # ΔΛXU is real, A is complex Hermitian, so square norm is real: (imag part is zero to machine precision)
-                if iω>1 && imod≤nmod
-#                    if dot(Δ,ΔΛXU[iω-1][imod]) < 0
-                    if sum(Δ[idof]*ΔΛXU[iω-1][imod][idof] for idof ∈ λxu_dofgr.jX) < 0
+                if iω>1  &&  imod≤nmod  &&  sum(Δ[idof]*ΔΛXU[iω-1][imod][idof] for idof∈λxu_dofgr.jX)<0
                         Anorm = -Anorm
-                    end
                 end
                 Δ                .*= 2.575829303549/Anorm          # corresponds to a probability of exceedance of 0.01                        
                 nor[iω][imod]      = √(ℜ(Δ ∘₁ (B ∘₁ Δ))/2) 
@@ -181,7 +179,7 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
         # end
     end    
     any(ncv.<nmod) && verbose && muscadewarning("Some eigensolutions did not converge",4)
-    pstate[] = EigXUincrement(allΛXUdofs(model,dis),ω,ncv,λ,nor,ΔΛXU)
+    pstate[] = EigXUincrement(nmod,allΛXUdofs(model,dis),ω,ncv,λ,nor,ΔΛXU)
     verbose && @printf("\n")
     return
 end
@@ -228,4 +226,83 @@ function visualincrement(initialstate,eiginc::EigXUincrement,iω::𝕫,imod::�
     for i ∈ eachindex(gr.iX); state.X[1][gr.iX[i]] += ΔΛXU[gr.jX[i]] * gr.scaleX[i] *Xscale end
     for i ∈ eachindex(gr.iU); state.U[1][gr.iU[i]] += ΔΛXU[gr.jU[i]] * gr.scaleU[i] *Uscale end
     return state
+end
+"""
+
+    draw(eiginc,initialstate;[draw_shadow=true],[shadow=...],[model=...])
+
+Taking the output `eiginc` obtained from an `EigXU`, and the state `initstate` provided to `EigXU`, provide
+a GUI to explore the results.
+
+Optional keyword arguements are
+- `draw_shadow` whether to superimpose a drawing of `initstate`
+- `shadow` a `NamedTuple` with any arguments to be passed to `draw!` `initstate`
+- `model` a `NamedTuple` with any arguments to be passed to `draw!` the `EigXU` modes.
+
+See also [`EigXU`](@ref)
+"""
+function draw(initialstate,eiginc::EigXUincrement,;kwargs...)
+
+    defaults  = (draw_shadow=true,shadow=(;),model=(;))     
+    args      = Base.merge(defaults,kwargs)
+
+
+    ## Organize the window
+
+    fig             = Figure(size = (1500,900))
+    display(fig) # open interactive window (gets closed down by "save")
+    panelFreqs      = fig[1,1]        
+    panelNorm       = panelFreqs[1,1] 
+    axisNorm        = Axis(panelNorm,xlabel="ω [rad/s]",ylabel="magnitude of error",yscale=log10)
+    panelSlide      = panelFreqs[2,1] 
+    panelModel      = fig[1,2:3]        
+    Box(panelModel, cornerradius = 20,z=1., color = :transparent)
+    axisModel       = Axis3(panelModel,title="EigXU mode shape",aspect=:data,viewmode=:free,perspectiveness=.5,clip=false)
+
+    ## sliders
+
+    sg = SliderGrid(panelSlide,
+                    (label="ω"      , range = eiginc.ω        , startvalue = 0,snap=true,update_while_dragging=true,format = "{:.1f} rad/s"),
+                    (label="mode"   , range = 1:eiginc.nmod   , startvalue = 1,snap=true,update_while_dragging=true                        ),
+                    (label="X scale", range = -5:0.01:5       , startvalue = 0,snap=true,update_while_dragging=true,format = "10^{:.1f}"   ),
+                    (label="U scale", range = -5:0.01:5       , startvalue = 0,snap=true,update_while_dragging=true,format = "10^{:.1f}"   ))
+    obs = (ω      = sg.sliders[1].value,
+           imode  = sg.sliders[2].value,
+           Xscale = sg.sliders[3].value,
+           Uscale = sg.sliders[4].value)
+
+    ## norm spectre
+
+    nω  = length(eiginc.ω)
+    nor = 𝕣1(undef,nω)
+    λ   = 𝕣1(undef,nω)
+    for imod = 1:maximum(eiginc.ncv)
+        for iω= 1:nω
+            if imod≤eiginc.ncv[iω]
+                nor[iω] = eiginc.nor[iω][imod]
+                #λ[  iω] = eiginc.λ[  iω][imod]
+            else
+                nor[iω] = NaN
+                #λ[  iω] = NaN
+            end
+        end
+        scatter!(axisNorm,eiginc.ω,nor,markersize=1,color=:black)
+    end
+    iω  = map(obs.ω) do ω
+        round(Int64,ω/step(eiginc.ω))+1
+    end       
+    nor = map(obs.imode,iω) do imode,iω 
+        eiginc.nor[iω][imode]
+    end
+    scatter!(axisNorm,obs.ω,nor,color=:red,markersize=10)
+
+    ## Model
+
+    args.draw_shadow && draw!(axisModel,initialstate;args.shadow...); # draw initial state once to keep on screen
+    
+    graphic = draw!(axisModel,initialstate;args.model...);                             # and twice to start the pump
+    _ = map(iω,obs.imode,obs.Xscale,obs.Uscale) do iω,imod,Xscale,Uscale                                    # Then observe the sliders
+        state = Muscade.visualincrement(initialstate,eiginc,iω,imod;Xscale=exp10(Xscale),Uscale=exp10(Uscale))
+        draw!(graphic,state;args.model...);
+    end
 end

@@ -1,4 +1,4 @@
-#module TestSweepX0
+module TestSweepX0
 
 using Test,StaticArrays,SparseArrays
 using Muscade
@@ -87,4 +87,4 @@ ltf     = [e.ltf for e∈eleres]
     @test  ltf ≈ [183.68229160771097, 121.62396272109176, 238.96209627282917]
 end
 
-#end
+end
