@@ -214,8 +214,8 @@ function Muscade.allocate_drawing(axis,o::AbstractVector{EulerBeam3D{Tmat,Udof}}
     args                 = default{:EulerBeam3D     }(kwargs,(;)     )  
     section              = default{:section         }(args,zeros(2,0))  
     nsec                 = size(section,2)                            
-    opt = (merge((style=:shape,draw_frame=false,draw_marking=true,nseg=1,
-                  solid_color=:yellow,line_color=:black,Uscale=1.,Udof=true),args)...,
+    opt = (default(args,(style=:shape,draw_frame=false,draw_marking=true,nseg=1,
+                  solid_color=:yellow,line_color=:black,Uscale=1.,Udof=true))...,
             nel          = length(o)                                  ,
             nsec         = nsec                                       ,                    
             section      = section                                    ,
@@ -223,7 +223,6 @@ function Muscade.allocate_drawing(axis,o::AbstractVector{EulerBeam3D{Tmat,Udof}}
         )
 
     opt.style==:solid && nsec<2 && muscadeerror("An section description must be provided for 'solid' plot")
-
     # we are going to allocate many arrays. The plotting process has options about what to draw and what to leave out.
     # To save memory, we set nel_something to zero if the corresponding arrays are not needed.
     nel_shape         = opt.style==:shape ? opt.nel   : 0
@@ -250,6 +249,7 @@ function Muscade.update_drawing(axis,o::AbstractVector{EulerBeam3D{Tmat,Udof}},o
     X₀            = ∂0(X)
     U₀            = ∂0(U)
     it1,ir1,it2,ir2 = SVector{3}(1:3),SVector{3}(4:6),SVector{3}(7:9),SVector{3}(10:12)
+    nsec              = size(opt.section,2) 
     node = reshape(mut.node,(3,3,opt.nel))
     for (iel,oᵢ) = enumerate(o)
         node[:,1,iel] = oᵢ.cₘ - oᵢ.tgₘ/2 + X₀[it1,iel]

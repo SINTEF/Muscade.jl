@@ -242,10 +242,7 @@ Optional keyword arguements are
 See also [`EigXU`](@ref)
 """
 function draw(initialstate,eiginc::EigXUincrement,;kwargs...)
-
-    defaults  = (draw_shadow=true,shadow=(;),model=(;))     
-    args      = Base.merge(defaults,kwargs)
-
+    args = default(kwargs, (draw_shadow=true, shadow=(;),model=(;)))
 
     ## Organize the window
 
@@ -261,6 +258,7 @@ function draw(initialstate,eiginc::EigXUincrement,;kwargs...)
     axisModel       = Axis3(panelModel,title="EigXU mode shape",aspect=:data,viewmode=:free,perspectiveness=.5,clip=false)
 
     ## sliders
+
     ω0 = eiginc.ω[div(length(eiginc.ω),3)]
     sg = SliderGrid(panelSlide,
                     (label="ω"      , range = eiginc.ω        , startvalue = ω0,snap=true,update_while_dragging=true,format = "{:.1f} rad/s"),
@@ -287,6 +285,7 @@ function draw(initialstate,eiginc::EigXUincrement,;kwargs...)
         state = Muscade.visualincrement(initialstate,eiginc,iω,imod;Xscale=exp10(Xscale),Uscale=exp10(Uscale))
         draw!(graphic,state;args.model...);
     end
+
     ## norm spectre
 
     nω  = length(eiginc.ω)

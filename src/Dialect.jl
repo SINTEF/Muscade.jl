@@ -242,7 +242,7 @@ struct default{S} end
 default{S}(t::T,d=nothing) where{S,T<:Base.Pairs} = default{S}((;t...),d)
 default{S}(t::T,d=nothing) where{S,T<:NamedTuple} = hasfield(T,S) ? getfield(t,S) : d
 default{S}(t::T,d=nothing) where{S,T            } =                                 d
-
+default(in,def) = Base.merge(def,in)
 
 """
 An "identity vector"
