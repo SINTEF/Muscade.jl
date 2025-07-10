@@ -47,27 +47,6 @@ state2.X[1] .+= 1.
 circle = 0.05*[cos.(α) sin.(α)]'
 square = 0.1*[1 -1 -1 1;1 1 -1 -1]
 
-# axis     = Muscade.SpyAxis()
-# graphic = draw!(axis,state;EulerBeam3D=(;style=:simple))
-# @testset "drawing simple" begin
-#     @test axis.call[1].fun == :scatter!
-#     @test axis.call[1].args[1][][:,1:2] ≈ [  0.0150628   0.336131;
-#                                           0.0118553  -0.0150178;
-#                                          -0.000945   -0.00591755 ] rtol=1e-4
-#     @test axis.call[2].fun == :lines!
-#     @test axis.call[2].args[1][][:,1:2] ≈ [  0.0150628   0.336131;
-#                                           0.0118553  -0.0150178;
-#                                          -0.000945   -0.00591755 ] rtol=1e-4
-# end
-# draw!(graphic,state2;EulerBeam3D=(;style=:simple))
-# @testset "drawupdate simple" begin
-#     @test axis.call[1].args[1][][:,1:2].-1 ≈ [  0.0150628   0.336131;
-#                                           0.0118553  -0.0150178;
-#                                          -0.000945   -0.00591755 ] rtol=1e-4
-#     @test axis.call[2].args[1][][:,1:2].-1 ≈ [  0.0150628   0.336131;
-#                                           0.0118553  -0.0150178;
-#                                          -0.000945   -0.00591755 ] rtol=1e-4
-# end
 
 # f(i) = axis.call[i].fun, axis.call[i].args[1][][:,1:2]
 axis     = Muscade.SpyAxis()

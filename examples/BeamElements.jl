@@ -122,13 +122,13 @@ end;
 @espy function Muscade.residual(o::EulerBeam3D{Mat,Udof},   X,U,A,t,SP,dbg) where{Mat,Udof}
     P,ND                = constants(X),length(X)
     ## Compute all quantities at Gauss point, their time derivatives, including intrinsic roll rate and acceleration
-    gp_,ε_,vₛₘ_,rₛₘ_,vₗ₂_,_ = kinematics(o,motion{P}(X))
+    gp_,ε_,vₛₘ_,rₛₘ_,vₗ₂_,_,_ = kinematics(o,motion{P}(X))
     gpval,☼ε , rₛₘ       = motion⁻¹{P,ND}(gp_,ε_,rₛₘ_  ) 
     vᵢ                  = intrinsicrotationrates(rₛₘ)
     ## compute all Jacobians of the above quantities with respect to X₀
     X₀                  = ∂0(X)
     TX₀                 = revariate{1}(X₀)
-    Tgp,Tε,Tvₛₘ,_,_,_    = kinematics(o,TX₀,fast)
+    Tgp,Tε,Tvₛₘ,_,_,_,_  = kinematics(o,TX₀,fast)
     gp∂X₀,ε∂X₀,vₛₘ∂X₀    = composeJacobian{P}((Tgp,Tε,Tvₛₘ),X₀)
     ## Quadrature loop: compute resultants
     gp                  = ntuple(ngp) do igp
@@ -155,7 +155,7 @@ function kinematics(o::EulerBeam3D,X₀,fast=justinvoke)
         x            = rₛₘ∘₁(tgₑ*ζgp[igp]+y)+cₛₘ 
         (κ=κ,x=x)  
     end
-    return gp,ε,vₛₘ,rₛₘ,vₗ₂,uₗ₂
+    return gp,ε,vₛₘ,rₛₘ,vₗ₂,uₗ₂,cₛₘ
 end
 
 vec3(v,ind) = SVector{3}(v[i] for i∈ind);
@@ -201,7 +201,7 @@ the circumference by repeating the first point at the end).  It has optional arg
 to draw a longitudinal marking and `solid_color=:yellow`.
  
 Other optional arguments (and their default values) are
-- `Udof = true` wether to draw U-forces
+- `Udof` (`true` iff element has Udofs) wether to draw U-forces.
 - `draw_frame = false` wether to draw the local reference frame of each element
 - `draw_marking = true` wether to draw "longitudinal marking" along the element.  Will only draw if style=:solid.
 - `nseg = 1` number of segments to display the shape of a deformed element
@@ -214,13 +214,12 @@ function Muscade.allocate_drawing(axis,o::AbstractVector{EulerBeam3D{Tmat,Udof}}
     section              = default{:section         }(args,zeros(2,0))  
     nsec                 = size(section,2)                            
     opt = (default(args,(style=:shape,draw_frame=false,draw_marking=true,nseg=1,
-                  solid_color=:yellow,line_color=:black,Uscale=1.,Udof=true))...,
+                  solid_color=:yellow,line_color=:black,Uscale=1.,Udof=Udof))...,
             nel          = length(o)                                  ,
             nsec         = nsec                                       ,                    
             section      = section                                    ,
             markrad      = nsec==0 ? 0. : 1.01*maximum(section[1,:])      
         )
-
     opt.style==:solid && nsec<2 && muscadeerror("An section description must be provided for 'solid' plot")
     nel_shape         = opt.style==:shape ? opt.nel   : 0
     nel_shape_frame   = opt.draw_frame    ? nel_shape : 0
@@ -354,9 +353,9 @@ struct StrainGaugeOnEulerBeam3D{Ngauge,Teleobj,Treq} <: AbstractElement
     K3       :: SVector{  Ngauge,𝕣}  
     L        :: 𝕣
 end
-function StrainGaugeOnEulerBeam3D(nod::Vector{Node};P,D,L,Constructor=EulerBeam3D,elementkwargs)  # Teleobj because we may wrap wrapped beams
+function StrainGaugeOnEulerBeam3D(nod::Vector{Node};P,D,L,Constructor=EulerBeam3D,toEulerBeam3D)  # Teleobj because we may wrap wrapped beams
     req       = @request (ε,κ)
-    eleobj    = Constructor(nod;elementkwargs...)
+    eleobj    = Constructor(nod;toEulerBeam3D...)
     all(P[1,:].==0.) || muscadeerror("In arguments of StrainGaugeOnEulerBeam3D, P[1,:] must all be zero")
     E         =  D[1,:].^2
     K1        =  D[1,:].*(D[3,:].*P[2,:].-D[2,:].*P[3,:])  
@@ -373,28 +372,31 @@ Muscade.doflist( ::Type{<:StrainGaugeOnEulerBeam3D{Ngauge,Teleobj}}) where{Ngaug
     return R,FB
 end   
 function Muscade.allocate_drawing(axis,o::AbstractVector{Gauge};kwargs...) where{Gauge<:StrainGaugeOnEulerBeam3D{Ngauge}} where{Ngauge}  
-    optt,mutt    = Muscade.allocate_drawing(axis,[oᵢ.eleobj for oᵢ∈o];kwargs...)
+    mutt,optt    = Muscade.allocate_drawing(axis,[oᵢ.eleobj for oᵢ∈o];kwargs...)
+    args         = default{:StrainGaugeOnEulerBeam3D}(kwargs,(;)     ) 
+    opt          = default(args,(gauge_color=:blue,expand=1.02,target=optt))
     nel          = length(o)
-    x            = 𝕣1(undef,3,3*Ngauge*nel)       # 3D, end1-end2-nan, ngauge, nel
+    x            = 𝕣2(undef,3,3*Ngauge*nel)       # 3D, end1-end2-nan, ngauge, nel
     rx           = reshape(x,3,3,Ngauge,nel)
     rx[:,3,:,:] .= NaN
-    opt          = (target=optt, gaugecolor=default{:gaugecolor}(kwargs,:green))
     mut          = (target=mutt, gauge=x)
-    return opt,mut
+    
+    return mut,opt
 end
-function Muscade.update_drawing(  axis,o::AbstractVector{Gauge},oldmut,opt, Λ,X,U,A,t,SP,dbg) where{Gauge<:StrainGaugeOnEulerBeam3D} 
+function Muscade.update_drawing(  axis,o::AbstractVector{Gauge},oldmut,opt, Λ,X,U,A,t,SP,dbg) where{Gauge<:StrainGaugeOnEulerBeam3D{Ngauge}} where{Ngauge} 
     X₀                   = ∂0(X)
-    rx                   = reshape(oldmut.x,3,3,Ngauge,nel)
+    nel                  = length(o)
+    rx                   = reshape(oldmut.gauge,3,3,Ngauge,nel)
     for (iel,oᵢ) ∈ enumerate(o)
-        gp,ε,vₛₘ,rₛₘ,vₗ₂,c = kinematics(oᵢ.eleobj,view(X₀,:,iel))
-        rx[:,1,:,iel]    = rₛₘ ∘ (oᵢ.P .+ oᵢ.L*oᵢ.R) + c
-        rx[:,2,:,iel]    = rₛₘ ∘ (oᵢ.P .- oᵢ.L*oᵢ.R) + c
+        gp,ε,vₛₘ,rₛₘ,vₗ₂,uₗ₂,cₛₘ = kinematics(oᵢ.eleobj,view(X₀,:,iel))
+        rx[:,1,:,iel]    = rₛₘ ∘₁ (oᵢ.P*opt.expand .+ oᵢ.L*oᵢ.D) .+ cₛₘ
+        rx[:,2,:,iel]    = rₛₘ ∘₁ (oᵢ.P*opt.expand .- oᵢ.L*oᵢ.D) .+ cₛₘ
     end
-    mutt = Muscade.update_drawing(  axis,[eᵢ.eleobj for eᵢ∈eleobj],oldmut.target,opt.target, Λ,X,U,A,t,SP,dbg) 
-    mut  = (target=mutt,gauge = oldmut.x )
+    mutt = Muscade.update_drawing(  axis,[eᵢ.eleobj for eᵢ∈o],oldmut.target,opt.target, Λ,X,U,A,t,SP,dbg) 
+    mut  = (target=mutt,gauge = oldmut.gauge )
     return mut
 end
-function Muscade.display_drawing!(axis,::Type{<:StrainGaugeOnEulerBeam3D},obs,opt)                          
-    Muscade.display_drawing!(            axis,[eᵢ.eleobj for eᵢ∈eleobj],obs.target,opt.target)
-    lines!(axis,obs.x,color = opt.gauge_color )
+function Muscade.display_drawing!(axis,::Type{<:StrainGaugeOnEulerBeam3D{Ngauge,Teleobj}},obs,opt) where{Ngauge,Teleobj}                         
+    lines!(axis,obs.gauge,color = opt.gauge_color ,linewidth=3)
+    Muscade.display_drawing!(axis,Teleobj,obs.target,opt.target)
 end
