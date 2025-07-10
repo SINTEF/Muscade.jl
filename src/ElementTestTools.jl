@@ -49,7 +49,7 @@ The output is a `NamedTuple` with fields `Λ`, `X`, `U`, `A`, `t`, `SP` echoing 
 See also: [`diffed_residual`](@ref), [`print_element_array`](@ref)
 """     
 function diffed_lagrangian(ele::eletyp; Λ,X,U,A, t::𝕣=0.,SP=nothing) where{eletyp<:AbstractElement}
-    Nx,Nu,Na         = Muscade.getndof(eletyp,(:X,:U,:A))
+    Nx,Nu,Na         = getndof(eletyp,(:X,:U,:A))
     OX,OU,IA         = length(X)-1,length(U)-1,1
 
     @assert length(   Λ ) == Nx
@@ -61,10 +61,11 @@ function diffed_lagrangian(ele::eletyp; Λ,X,U,A, t::𝕣=0.,SP=nothing) where{e
     ndof      = (Nx,   Nx,   Nu, Na)
     nder      = ( 1, OX+1, OU+1, IA)
     Np        = Nx + Nx*(OX+1) + Nu*(OU+1) + Na*IA # number of partials 
-    Λ∂        =              SVector{Nx}(∂²ℝ{1,Np}(Λ[      idof],                           idof)   for idof=1:Nx)
-    X∂        = ntuple(ider->SVector{Nx}(∂²ℝ{1,Np}(X[ider][idof],Nx+Nx*(ider-1)            +idof)   for idof=1:Nx),OX+1)
-    U∂        = ntuple(ider->SVector{Nu}(∂²ℝ{1,Np}(U[ider][idof],Nx+Nx*(OX+1)  +Nu*(ider-1)+idof)   for idof=1:Nu),OU+1)
-    A∂        =              SVector{Na}(∂²ℝ{1,Np}(A[      idof],Nx+Nx*(OX+1)  +Nu*(OU+1)  +idof)   for idof=1:Na)
+    T         = ∂ℝ{2, Np, ∂ℝ{1, Np, Float64}}
+    Λ∂        =              SVector{Nx,T}(∂²ℝ{1,Np}(Λ[      idof],                           idof)   for idof=1:Nx)
+    X∂        = ntuple(ider->SVector{Nx,T}(∂²ℝ{1,Np}(X[ider][idof],Nx+Nx*(ider-1)            +idof)   for idof=1:Nx),OX+1)
+    U∂        = ntuple(ider->SVector{Nu,T}(∂²ℝ{1,Np}(U[ider][idof],Nx+Nx*(OX+1)  +Nu*(ider-1)+idof)   for idof=1:Nu),OU+1)
+    A∂        =              SVector{Na,T}(∂²ℝ{1,Np}(A[      idof],Nx+Nx*(OX+1)  +Nu*(OU+1)  +idof)   for idof=1:Na)
 
     L,FB      = lagrangian(ele, Λ∂,X∂,U∂,A∂,t,SP,(;calledby=:test_element))
 

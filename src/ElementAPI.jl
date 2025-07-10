@@ -252,9 +252,8 @@ When implementing graphics with `GLMakie.jl`, the fields of `mut` must be exactl
 is acceptable, but 
 
     lines!(axis,mut.x[:,s],mut.y[:,s])
-    lines!(axis,mut.a.x,mut.a.y)
 
-are not. The reason is that when doing graphics with `GLMakie.jl`, `Muscade` will wrap each field of `mut`
+is not. The reason is that when doing graphics with `GLMakie.jl`, `Muscade` will recursively wrap each field of `mut`
 into an `Observable` before calling the elements' methods `display_drawing!`.  This allows `Muscade` to update the graphics 
 by just calling [`Muscade.update_drawing`](@ref) for each element.
 

@@ -70,6 +70,43 @@ The implementation of a element requires
 
 Each element must implement *either* [`Muscade.lagrangian`](@ref) *or* [`Muscade.residual`](@ref), depending on what is more natural: a beam element will implement [`Muscade.residual`](@ref) (element reaction forces as a function of nodal displacements), while an element representing a strain sensor will implement [`Muscade.lagrangian`](@ref) (log-of the probability density of the strain, given an uncertain measurement).
 
+Here is a template of the code that may or must be supplied:
+
+```julia
+struct MyElement <: AbstractElement
+    ...
+end
+Muscade.doflist(     ::Type{MyElement})  = 
+        (inod = (...), 
+         class= (...), 
+         field= (...) )
+
+function MyElement(nod::Vector{Node};...) 
+    ...
+    return eleobj
+end
+Muscade.nosecondorder(::Type{<:MyElement}) = Val(true)
+@espy function Muscade.residual(o::MyElement,   X,U,A,t,SP,dbg) 
+    ...
+    return R,noFB  
+end
+@espy function Muscade.lagrangian(o::MyElement,  Λ,X,U,A,t,SP,dbg) 
+    ...
+    return L,noFB
+end
+function Muscade.allocate_drawing(axis,o::AbstractVector{MyElement};kwargs...) 
+    ...
+    return mut,opt
+end
+function Muscade.update_drawing(axis,o::AbstractVector{MyElement},mut,opt, Λ,X,U,A,t,SP,dbg) 
+    ...
+    return mut
+end
+function Muscade.display_drawing!(axis,::Type{MyElement},obs,opt) 
+    ...
+end
+```
+
 ## [DataType](@id struct)
 
 For a new element type `MyELement`, the datatype is defined as
@@ -328,8 +365,25 @@ See the page on [automatic differentiation](Adiff.md).
 
 ## Method for graphics: `Muscade.allocate_drawing`, `Muscade.update_drawing` and `Muscade.display_drawing!`
 
+### Template
+The element can provide methods of the form
+
+```julia
+function Muscade.allocate_drawing(axis,o::AbstractVector{MyElement};kwargs...) 
+    ...
+    return mut,opt
+end
+function Muscade.update_drawing(axis,o::AbstractVector{MyElement},mut,opt, Λ,X,U,A,t,SP,dbg) 
+    ...
+    return mut
+end
+function Muscade.display_drawing!(axis,::Type{MyElement},obs,opt) 
+    ...
+end
+```
+
 ### Optional
-ethods for all of [`Muscade.allocate_drawing`](@ref), [`Muscade.update_drawing`](@ref) and [`Muscade.display_drawing!`](@ref) method. Alternatively, they must implement neither of these three methods: in this case, the element will be invisible if the user requests a drawing of the element.
+Methods for all of [`Muscade.allocate_drawing`](@ref), [`Muscade.update_drawing`](@ref) and [`Muscade.display_drawing!`](@ref) method. Alternatively, they must implement neither of these three methods: in this case, the element will be invisible if the user requests a drawing of the element.
 
 None of `Muscade`'s built-in elements implements methods for `draw`: because `Muscade` has no inherent interpretation of the various `X` dofs in these generic elements, there is no graphical representation associated to them.  
 
@@ -367,21 +421,34 @@ The user can for example require
 draw!(model;linewidth=2)
 ```
 
-The element's [`Muscade.allocate_drawing`](@ref) method *must* accept an arbitrary list of keyword arguments.  Keywords arguments not used by the method are automaticaly ignored.  In order not to fail if a *used* keyword argument is not provided by the user, the following syntax can be used in the element's `draw` method.   
+The element's [`Muscade.allocate_drawing`](@ref) method *must* accept an arbitrary list of keyword arguments.  Keywords arguments not used by the method are automaticaly ignored.  What instructions can be provided, how they are structured and what effect they will have on the graphics depends on the elements. 
+
+In order not to fail if a *used* keyword argument is not provided by the user, the following mechanisms can be used:  The first is
 
 ```julia
-function Muscade.allocate_drawing(...)
-    ...
-    opt = (...,linewith = default{:linewidth}(kwargs,2.),...)
+function Muscade.allocate_drawing(axis,o::AbstractVector{MyElement};kwargs...) 
+    # instead of width = kwargs.linewidth
+    with = default{:linewidth}(kwargs,2.)
     ...
 end
 ```
 
-which can be read: if `kwargs.linewidth` exists, the set `linewidth` to its value, otherwise, set it to `2.`.
+which can be read: if `kwargs.linewidth` exists, the set `width` to its value, otherwise, set it to `2.`.  The second mechanism is
 
-The user has facilities to draw only selected element types or selected elements, so the element's `Muscade.allocate_drawing` method does not need to implement a switch on *whether* to draw.
+```julia
+function Muscade.allocate_drawing(axis,o::AbstractVector{MyElement};kwargs...) 
+    defaults = (linewidth=2.,someotherkey=defaultvalue)
+    opt = (default(kwargs,defaults))
+    ...
+end
+```
 
-See `Muscade/test/SomeElements.jl` for simple examples of implementation.  See also [`examples/BeamElements.jl`](StaticBeamAnalysis.md) for an advanced example of implementation where there are options to create completely different drawings of teh same element.  
+
+which creates a new `NamedTuple` `opt` from `kwargs`.  For keys in `defaults` not found in `kwargs`, use the value from `defaults`.
+
+`Muscade` provides facilities to draw only selected element types or selected elements, so the element's `Muscade.allocate_drawing` method does not need to implement a switch on *whether* to draw.
+
+See `Muscade/test/SomeElements.jl` for simple examples of implementation.  See also [`examples/BeamElements.jl`](StaticBeamAnalysis.md) for an advanced example of implementation where there are options to create completely different drawings of the same element.  
 
 ### Getting element results
 

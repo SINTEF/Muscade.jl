@@ -210,7 +210,7 @@ end
 
 copies(n,a::T) where{T} = NTuple{n,T}(deepcopy(a) for i∈1:n)
 
-using MacroTools: postwalk,gensym_ids,rmlines,unblock 
+
 """
     @once tag f(x)= x^2 
     

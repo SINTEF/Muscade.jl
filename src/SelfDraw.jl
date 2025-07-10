@@ -6,12 +6,18 @@
 # typestable kernel
 
 
+recursiveObservable(mut            ) = Observable(mut)
+recursiveObservable(mut::NamedTuple) = map(recursiveObservable,mut)
+recursive_to_value( obs            ) = to_value(obs)
+recursive_to_value( obs::NamedTuple) = map(recursive_to_value,obs)
+ 
+
 Graphic{Tobs,Topt,Taxis} = @NamedTuple{obs::Tobs, opt::Topt, axis::Taxis}
 # Single call draw! for one element type
 function draw_element!(axis,eleobj::AbstractVector{Eletyp}, Λ,X,U,A,t,SP,dbg;kwargs...) where{Eletyp<:AbstractElement}
     mut,opt = allocate_drawing(axis,eleobj;kwargs...)
     mut     = update_drawing(  axis,eleobj,mut,opt, Λ,X,U,A,t,SP,dbg)
-    obs     = isnothing(mut) ? nothing : map(Observable,mut)
+    obs     = isnothing(mut) ? nothing : recursiveObservable(mut)
     display_drawing!(                      axis,Eletyp,obs,opt)
     return obs,opt
 end
@@ -122,7 +128,7 @@ function draw_!(graphic::Graphic,dis::EletypDisassembler,eleobj::AbstractVector{
         end
         A[:,i]  = state.A[index.A]
     end
-    mut     = map(to_value,graphic.obs)
+    mut     = recursive_to_value(graphic.obs)
     mut     = update_drawing(graphic.axis,eleobj,mut,graphic.opt, Λ,X,U,A,state.time,state.SP,(dbg...,iele=iele))
     foreach(graphic.obs,mut) do obsᵢ,mutᵢ
         obsᵢ[] = mutᵢ

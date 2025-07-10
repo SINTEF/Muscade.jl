@@ -59,21 +59,21 @@ yᵥ(ζ) =        ζ^2   - 1/4  # deflection due to differenttial rotation (bend
 
 # Data structure describing an EulerBeam3D element as meshed
 struct EulerBeam3D{Mat,Uforce} <: AbstractElement
-    cₘ       :: SVector{3,𝕣}    # Position of the middle of the element, as meshed
-    rₘ       :: Mat33{𝕣}        # Orientation of the element, as meshed, represented by a rotation matrix (from global to local)
-    ζgp      :: SVector{ngp,𝕣}  # Location of the Gauss points for the normalized element with length 1
+    cₘ       :: SVector{3,𝕣}     # Position of the middle of the element, as meshed
+    rₘ       :: Mat33{𝕣}         # Orientation of the element, as meshed, represented by a rotation matrix (from global to local)
+    ζgp      :: SVector{ngp,𝕣}   # Location of the Gauss points for the normalized element with length 1
     ζnod     :: SVector{nXnod,𝕣} # Location of the nodes for the normalized element with length 1
-    tgₘ      :: SVector{ndim,𝕣} # Vector connecting the nodes of the element in the global coordinate system
-    tgₑ      :: SVector{ndim,𝕣} # Vector connecting the nodes of the element in the local coordinate system
-    yₐ       :: SVector{ngp,𝕣}  # Value at gp of shape function for differential axial displacement or roll field
-    yᵤ       :: SVector{ngp,𝕣}  # Value at gp of shape function for deflection due to differential nodal transverse translation
-    yᵥ       :: SVector{ngp,𝕣}  # Value at gp of shape function for deflection due to differenttial rotation (bending, not torsion)
-    κₐ       :: SVector{ngp,𝕣}  # Value at gp of shape function for torsion  . κₐ = yₐ′ . Divided by L .    
-    κᵤ       :: SVector{ngp,𝕣}  # Value at gp of shape function for curvature. κᵤ = yᵤ′′. Divided by L².
-    κᵥ       :: SVector{ngp,𝕣}  # Value at gp of shape function for curvature. κᵥ = yᵥ′′. Divided by L .
-    L        :: 𝕣               # as meshed length of the element
-    dL       :: SVector{ngp,𝕣}  # length associated to each Gauss point
-    mat      :: Mat # used to store material properties (BeamCrossSection, for example)
+    tgₘ      :: SVector{ndim,𝕣}  # Vector connecting the nodes of the element in the global coordinate system
+    tgₑ      :: SVector{ndim,𝕣}  # Vector connecting the nodes of the element in the local coordinate system
+    yₐ       :: SVector{ngp,𝕣}   # Value at gp of shape function for differential axial displacement or roll field
+    yᵤ       :: SVector{ngp,𝕣}   # Value at gp of shape function for deflection due to differential nodal transverse translation
+    yᵥ       :: SVector{ngp,𝕣}   # Value at gp of shape function for deflection due to differenttial rotation (bending, not torsion)
+    κₐ       :: SVector{ngp,𝕣}   # Value at gp of shape function for torsion  . κₐ = yₐ′ . Divided by L .    
+    κᵤ       :: SVector{ngp,𝕣}   # Value at gp of shape function for curvature. κᵤ = yᵤ′′. Divided by L².
+    κᵥ       :: SVector{ngp,𝕣}   # Value at gp of shape function for curvature. κᵥ = yᵥ′′. Divided by L .
+    L        :: 𝕣                # as meshed length of the element
+    dL       :: SVector{ngp,𝕣}   # length associated to each Gauss point
+    mat      :: Mat              # used to store material properties (BeamCrossSection, for example)
 end;
 
 # For performance, `residual` will only accept differentiation to first order
@@ -88,7 +88,6 @@ Muscade.doflist(     ::Type{EulerBeam3D{Mat,true}}) where{Mat} =
         (inod = (1,1,1,1,1,1, 2,2,2,2,2,2, 3,3,3), 
          class= (ntuple(i->:X,nXdof)...,ntuple(i->:U,nUdof)...), 
          field= (:t1,:t2,:t3,:r1,:r2,:r3, :t1,:t2,:t3,:r1,:r2,:r3,  :t1,:t2,:t3) )
-
 # Constructor for the EulerBeam3D element. Arguments: node list, material, and direction of the first bending axis in the global coordinate system.  
 EulerBeam3D(nod;kwargs...) = EulerBeam3D{false}(nod;kwargs...) # by default, EulerBeam3D does not have Udof.
 function EulerBeam3D{Udof}(nod::Vector{Node};mat,orient2::SVector{ndim,𝕣}=SVector(0.,1.,0.)) where {Udof}
@@ -141,7 +140,8 @@ end;
         @named(R)
     end
     R                   = sum(gpᵢ.R for gpᵢ∈gp) 
-    ♢κ                  = motion⁻¹{P,ND}(vₗ₂_).*(2/o.L) 
+    ♢κ                  = motion⁻¹{P,ND}(SVector(vₗ₂_[1],vₗ₂_[3],-vₗ₂_[2])).*(2/o.L) 
+    ♢rₛₘ                 = motion⁻¹{P,ND}(rₛₘ_)
     return R,noFB  
 end;
 function kinematics(o::EulerBeam3D,X₀,fast=justinvoke)  
@@ -210,7 +210,6 @@ Other optional arguments (and their default values) are
 - `Uscale = 1.` How many meter is a Newton per meter?
 """
 function Muscade.allocate_drawing(axis,o::AbstractVector{EulerBeam3D{Tmat,Udof}};kwargs...) where{Tmat,Udof}
-    # define constant inputs to the drawing process
     args                 = default{:EulerBeam3D     }(kwargs,(;)     )  
     section              = default{:section         }(args,zeros(2,0))  
     nsec                 = size(section,2)                            
@@ -223,15 +222,12 @@ function Muscade.allocate_drawing(axis,o::AbstractVector{EulerBeam3D{Tmat,Udof}}
         )
 
     opt.style==:solid && nsec<2 && muscadeerror("An section description must be provided for 'solid' plot")
-    # we are going to allocate many arrays. The plotting process has options about what to draw and what to leave out.
-    # To save memory, we set nel_something to zero if the corresponding arrays are not needed.
     nel_shape         = opt.style==:shape ? opt.nel   : 0
     nel_shape_frame   = opt.draw_frame    ? nel_shape : 0
     nel_solid         = opt.style==:solid ? opt.nel   : 0 
     nel_solid_marking = opt.draw_marking  ? nel_solid : 0
     nel_udof          = opt.Udof          ? opt.nel   : 0
 
-    # This tuple contains all the "mutables", whose contents will change from step to step
     mut=(
             node         = 𝕣2(undef,3,3*opt.nel)                        ,
             shape_x      = 𝕣2(undef,3,(opt.nseg+2)*nel_shape)           ,   
@@ -339,5 +335,71 @@ function Muscade.display_drawing!(axis,::Type{EulerBeam3D{Tmat,Udof}},obs,opt) w
     opt.Udof           &&                     lines!(  axis, obs.ucrest                       ,color = :red           ,linewidth=.5                )    
 end
 
+######################################################
+
+# REPRISE create a single StrainGauge{EulerBeam3D}, create unit test with SpyAxe
+# This include testing for a request passed by the user to StrainGauge. How does the merging of requests work? If bugged, correct two elements in BasicElements, and docs
+#
+# Once this is done, remove position measurement and apply strain measurement to test EigXU...
 
 
+struct StrainGaugeOnEulerBeam3D{Ngauge,Teleobj,Tεₘ,Treq} <: AbstractElement
+    eleobj   :: Teleobj
+    εₘ       :: Tεₘ
+    req      :: Treq
+    P        :: SMatrix{3,Ngauge,𝕣}  # P[1] must be zero
+    D        :: SMatrix{3,Ngauge,𝕣}
+    E        :: SVector{  Ngauge,𝕣} 
+    K1       :: SVector{  Ngauge,𝕣}  
+    K2       :: SVector{  Ngauge,𝕣}  
+    K3       :: SVector{  Ngauge,𝕣}  
+    q        :: 𝕣  # std dev of the gages
+    L        :: 𝕣
+end
+function StrainGaugeOnEulerBeam3D(nod::Vector{Node};P,D,L,σ,εₘ,Constructor=EulerBeam3D,elementkwargs)  # Teleobj because we may wrap wrapped beams
+    req       = @request (ε,κ)
+    eleobj    = Constructor(nod;elementkwargs...)
+    all(P[1,:].==0.) || muscadeerror("In arguments of StrainGaugeOnEulerBeam3D, P[1,:] must all be zero")
+    E         =  D[1,:].^2
+    K1        =  D[1,:].*(D[3,:].*P[2,:].-D[2,:].*P[3,:])  
+    K2        = -D[1,:].^2 .*P[2,:]
+    K3        = -D[1,:].^2 .*P[3,:]
+    q         = .5*σ^-2
+    return StrainGaugeOnEulerBeam3D(eleobj,εₘ,(strain=req,),P,D,E,K1,K2,K3,q,L)
+end
+Muscade.doflist( ::Type{<:StrainGaugeOnEulerBeam3D{Ngauge,Teleobj}}) where{Ngauge,Teleobj} = Muscade.doflist(Teleobj)
+@espy function Muscade.lagrangian(o::StrainGaugeOnEulerBeam3D, Λ,X,U,A,t,SP,dbg)
+    req          = mergerequest(o.req) # @espy will generate req = merge(o.req,req) where req is the additional argument of lagrangian method generated by espy
+    L,FB,☼eleres = Muscade.getlagrangian(o.eleobj,Λ,X,U,A,t,SP,(dbg...,via=StrainGaugeOnEulerBeam3D),req.strain) 
+    ☼εₐₓ,☼κ      = ∂0(eleres.ε), ∂0(eleres.κ)   
+    ☼ε           = o.E*εₐₓ .+ o.K1*κ[1] .+o.K2*κ[2] .+ o.K3*κ[3] 
+    ☼Δε          = ε-o.εₘ(t)
+    ☼cost        = sum(o.q.*Δε.^2) 
+    return L+cost,FB
+end   
+function Muscade.allocate_drawing(axis,o::AbstractVector{Gauge};kwargs...) where{Gauge<:StrainGaugeOnEulerBeam3D{Ngauge}} where{Ngauge}  
+    optt,mutt    = Muscade.allocate_drawing(axis,[oᵢ.eleobj for oᵢ∈o];kwargs...)
+    nel          = length(o)
+    x            = 𝕣1(undef,3,3*Ngauge*nel)       # 3D, end1-end2-nan, ngauge, nel
+    rx           = reshape(x,3,3,Ngauge,nel)
+    rx[:,3,:,:] .= NaN
+    opt          = (target=optt, gaugecolor=default{:gaugecolor}(kwargs,:green))
+    mut          = (target=mutt, gauge=x)
+    return opt,mut
+end
+function Muscade.update_drawing(  axis,o::AbstractVector{Gauge},oldmut,opt, Λ,X,U,A,t,SP,dbg) where{Gauge<:StrainGaugeOnEulerBeam3D} 
+    X₀                   = ∂0(X)
+    rx                   = reshape(oldmut.x,3,3,Ngauge,nel)
+    for (iel,oᵢ) ∈ enumerate(o)
+        gp,ε,vₛₘ,rₛₘ,vₗ₂,c = kinematics(oᵢ.eleobj,view(X₀,:,iel))
+        rx[:,1,:,iel]    = rₛₘ ∘ (oᵢ.P .+ oᵢ.L*oᵢ.R) + c
+        rx[:,2,:,iel]    = rₛₘ ∘ (oᵢ.P .- oᵢ.L*oᵢ.R) + c
+    end
+    mutt = Muscade.update_drawing(  axis,[eᵢ.eleobj for eᵢ∈eleobj],oldmut.target,opt.target, Λ,X,U,A,t,SP,dbg) 
+    mut  = (target=mutt,gauge = oldmut.x )
+    return mut
+end
+function Muscade.display_drawing!(axis,::Type{<:StrainGaugeOnEulerBeam3D},obs,opt)                          
+    Muscade.display_drawing!(            axis,[eᵢ.eleobj for eᵢ∈eleobj],obs.target,opt.target)
+    lines!(axis,obs.x,color = opt.gauge_color )
+end

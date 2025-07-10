@@ -59,25 +59,27 @@ instantiate(::Type{Nothing}        )            = nothing
 instantiate(::Type{NamedTuple{k,F}}) where{k,F} = NamedTuple{k}(instantiate.(fieldtypes(F)))
 """
 
-    req = Muscade.merge(o.req)
+    req = mergerequest(o.req)
 
-Elements like [`ElementCost`](@ref) and [`ElementConstraint`](@ref) use requests to apply a cost or a constraint to
-requestables from another "target" element. These cost/constraint elements must be coded carefully so that `getresult` can be used to extracted
-both requestable internal results from the cost/constraint and from the target element.
+"Outer" elements like [`ElementCost`](@ref) and [`ElementConstraint`](@ref) use requests to apply a cost or a constraint to
+requestables from another "target" element. These outer elements must be coded carefully so that `getresult` can be used to extracted
+both requestable internal results from the outer and from the target element.
 
-`merge` (which is *not exported by Muscade*) is used to merge the requests for the request needed to enforce a cost or constraint, and the user's 
-request for element to be obtained from the analysis.  The call to `merge`, to be inserted in the code of `lagrange` for the cost/constraint element
-will be modified by `@espy`.  
+`mergerequest`  is used to merge the requests for the request needed to enforce a cost or constraint, and the user's 
+request for element to be obtained from the analysis.  The call to `mergerequest`, to be inserted in the code of `lagrange` 
+for the outer element will be modified by `@espy` to something like `req = mergerequest(o.req,req)`, to merge `o.req` of
+the outer element to any requests `req` transmitted by the user to extract results (or by an outer element to the outer element).    
 
 See the code of `ElementCost`'s constructor and `lagrange` method for an example.
 
-See also: [`ElementCost`](@ref),[`@request`](@ref),[`getresult`](@ref)
+See also: [`ElementCost`](@ref), [`@request`](@ref), [`getresult`](@ref)
 """
-@inline merge(x)            = x
-merge(x        , ::Nothing) = x
-merge(::Nothing, x        ) = x
-merge(::Nothing, ::Nothing) = nothing
-@generated function merge(NT1::NamedTuple, NT2::NamedTuple) 
+@inline mergerequest(x)            = x
+mergerequest(x        , ::Nothing) = x
+mergerequest(::Nothing, x        ) = x
+mergerequest(::Nothing, ::Nothing) = nothing
+@generated function mergerequest(NT1::NamedTuple, NT2::NamedTuple) 
+    @show NT1
     nt1     = instantiate(NT1)
     nt2     = instantiate(NT2)
     kout    = union(keys(nt1), keys(nt2))
@@ -85,7 +87,7 @@ merge(::Nothing, ::Nothing) = nothing
         key = kout[ikey]
         v1  = get(nt1, key, nothing)
         v2  = get(nt2, key, nothing)
-        v   = merge(v1, v2)
+        v   = mergerequest(v1, v2) # recursive
         :($key = $v) 
     end
     return code_tuple(t...)
@@ -125,10 +127,10 @@ function code_write_to_out(out,req,var,trace)
     printtrace(trace,"done")
     return code,newout
 end
-function code_merge_req(left,oreq,req,out,trace=-999999) # req = merge(o.req)
+function code_merge_req(left,oreq,req,out,trace=-999999) # req = mergerequest(o.req)
     printtrace(trace,"code_merge_req")
     code   = quote
-        $left  = merge($req,$oreq)
+        $left  = mergerequest($req,$oreq)
     end 
     printtrace(trace,"done")
     return code,out
@@ -191,8 +193,8 @@ end
 function code_assigment_rhs(left,right,out,req,trace=-999999) # work with the rhs of an assigment, return the whole assigment
     printtrace(trace,"code_assigment_rhs")
     trace += 1
-    if @capture(right,  merge(oreq_)   )            
-        printtrace(trace,"req = merge(o.req)")
+    if @capture(right,  mergerequest(oreq_)   )            
+        printtrace(trace,"req = mergerequest(o.req)")
         code,out_new = code_merge_req(left,oreq,req,out,trace+1)
         printtrace(trace,"done")
     elseif @capture(right,  foo_(args__)   ) &&  ☼tag(foo)           

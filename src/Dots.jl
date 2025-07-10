@@ -1,4 +1,4 @@
-using Base.Cartesian
+
  #\circ \otimes
 
 ∘₀(a,b) = dots(a,b,Val(0))

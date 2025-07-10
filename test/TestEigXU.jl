@@ -70,7 +70,7 @@ OX,OU                 = 2,0
 Δω                = 2^-6 
 p                 = 11
 nmod              = 5
-#eigincXU          = solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=true,verbosity=1,tol=1e-20,σₓᵤ)
+eigincXU          = solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=true,verbosity=1,tol=1e-20,σₓᵤ)
 
 α                 = 2π*(1:8)/8
 circle            = 0.05*[cos.(α) sin.(α)]'

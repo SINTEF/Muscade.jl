@@ -539,12 +539,13 @@ function getresidual(eleobj::Eleobj,X,U,A,t,SP,dbg,req...) where{Eleobj}
 end
 function getresidual(eleobj::Eleobj,hasres::Val{true},haslag,nso::Val{false}, X::NTuple{Ndx,SVector{Nx}}, 
         U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na} ,t::ℝ,SP,dbg,req...)     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
-    residual(  eleobj,  X,U,A,t,SP,dbg,req...)
+    R,FB,eleres... = residual(  eleobj,  X,U,A,t,SP,dbg,req...)
 end
 function getresidual(eleobj::Eleobj,hasres::Val{true},haslag,nso::Val{true}, X::NTuple{Ndx,SVector{Nx}}, 
         U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na} ,t::ℝ,SP,dbg,req...)     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
     X1,U1,A1,t1 = firstorderonly(X,U,A,t)
-    residual(  eleobj,  X1,U1,A1,t1,SP,dbg,req...)
+    R,FB,eleres... = residual(  eleobj,  X1,U1,A1,t1,SP,dbg,req...)
+    # convert R and eleres back to 2nd order?
 end
 function getresidual(eleobj::Eleobj,hasres::Val{false},haslag::Val{true},nso, X::NTuple{Ndx,SVector{Nx}}, 
         U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na} ,t::ℝ,SP,dbg,req...)     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
@@ -565,7 +566,6 @@ function getlagrangian(eleobj::Eleobj, Λ::SVector{Nx}, X::NTuple{Ndx,SVector{Nx
 end
 function getlagrangian(eleobj::Eleobj,hasres,haslag::Val{true},nso, Λ::SVector{Nx}, X::NTuple{Ndx,SVector{Nx}}, 
         U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na}, t::ℝ,SP,dbg,req...)     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
-    out = lagrangian(eleobj,Λ,X,U,A,t,SP,dbg,req...)
     L,FB,eleres... = lagrangian(eleobj,Λ,X,U,A,t,SP,dbg,req...)
 end
 function getlagrangian(eleobj::Eleobj,hasres::Val{true},haslag::Val{false},nso::Val{false}, Λ::SVector{Nx}, X::NTuple{Ndx,SVector{Nx}}, 
@@ -578,8 +578,8 @@ function getlagrangian(eleobj::Eleobj,hasres::Val{true},haslag::Val{false},nso::
         U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na}, t::ℝ,SP,dbg,req...)     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
     X1,U1,A1,t1 = firstorderonly(X,U,A,t) 
     R,FB,eleres... = residual(  eleobj,  X1,U1,A1,t1,SP,dbg,req...)
-    L           = Λ ∘₁ backtohigherorder(R,eltype(Λ)) # to avoid loosing symmetry of Hessian...
-    return L,FB,eleres... 
+    L           = Λ ∘₁ toorder{constants(X,U,A,t)-1}(R) # to avoid loosing symmetry of Hessian...
+    return L,FB,toorder{constants(X,U,A,t)-1}(eleres)... 
 end
 getlagrangian(eleobj::Eleobj,hasres::Val{false},haslag::Val{false},nso, Λ,X,U,A,t,SP,dbg,req...)     where{Eleobj} =
     muscadeerror((dbg...,t=t,SP=SP),@sprintf("Element %s must have method 'Muscade.lagrangian' or/and 'Muscade.residual' with correct interface",Eleobj))

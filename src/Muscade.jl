@@ -1,8 +1,14 @@
 module Muscade
-    using Printf,SparseArrays,StaticArrays,LinearAlgebra,SpecialFunctions,MacroTools
+    using Printf
+    using LinearAlgebra
+    using SparseArrays
+    using StaticArrays
+    using SpecialFunctions
     using KrylovKit: KrylovKit,eigsolve
+    using MacroTools
+    using MacroTools: postwalk,gensym_ids,rmlines,unblock 
+    using Base.Cartesian
     using GLMakie
-
 
     include("Dialect.jl")
     export ℝ,ℤ,𝕣,𝕫,𝔹,𝕓,ℂ
@@ -27,7 +33,7 @@ module Muscade
     export dots,∘₀,∘₁,∘₂,⊗
 
     include("Espy.jl") 
-    export @request
+    export @request, mergerequest
     export @espy,@espydbg
 
     include("Exceptions.jl")
