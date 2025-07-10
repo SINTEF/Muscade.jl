@@ -17,10 +17,6 @@ Nz              = 2Nx+Nu+Na
 iλ,ix,iu,ia     = Muscade.gradientpartition(Nx,Nx,Nu,Na) 
 ΔZ              = δ{1,Nz,𝕣}()                 
 ΔΛ,ΔX,ΔU,ΔA     = view(ΔZ,iλ),view(ΔZ,ix),view(ΔZ,iu),view(ΔZ,ia) 
-# Λ =  SVector(0.,0.,0.)#zeros(Nx)
-# X = (SVector(1.,1.,1.),)#(ones(Nx),)
-# U = (SVector{0,𝕣}(),)#(zeros(Nu),)
-# A =  SVector(0.,0.)# zeros(Na)
 Λ =  SVector{Nx}(0. for i=1:Nx)
 X = (SVector{Nx}(1. for i=1:Nx),)
 U = (SVector{Nu,𝕣}(0. for i=1:Nu),)
@@ -69,7 +65,6 @@ end
 @once gap gap(eleres,X,U,A,t) = eleres.Fh^2
 el = ElementConstraint(model.nod;req=@request(Fh),gap,ElementType=AnchorLine,λinod=1,λfield=:λ,mode=equal, 
                  elementkwargs=(Δxₘtop=[5.,0,0], xₘbot=[250.,0], L=290., buoyancy=-5e3))
-
 d               = Muscade.doflist(typeof(el))
 Nx,Nu,Na        = 3,0+1,2   
 Nz              = 2Nx+Nu+Na     

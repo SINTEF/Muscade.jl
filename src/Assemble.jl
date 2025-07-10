@@ -545,7 +545,7 @@ function getresidual(eleobj::Eleobj,hasres::Val{true},haslag,nso::Val{true}, X::
         U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na} ,t::ℝ,SP,dbg,req...)     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
     X1,U1,A1,t1 = firstorderonly(X,U,A,t)
     R,FB,eleres... = residual(  eleobj,  X1,U1,A1,t1,SP,dbg,req...)
-    # convert R and eleres back to 2nd order?
+    return toorder{constants(X,U,A,t)-1}(R),FB,toorder{constants(X,U,A,t)-1}(eleres)... 
 end
 function getresidual(eleobj::Eleobj,hasres::Val{false},haslag::Val{true},nso, X::NTuple{Ndx,SVector{Nx}}, 
         U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na} ,t::ℝ,SP,dbg,req...)     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 

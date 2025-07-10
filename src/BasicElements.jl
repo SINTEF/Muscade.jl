@@ -498,8 +498,8 @@ function ElementConstraint(nod::Vector{Node};λinod::𝕫, λfield::Symbol,
     req,gap::Function,gargs=(;),mode::Function,ElementType,elementkwargs)
     eleobj   = ElementType(nod;elementkwargs...)
     Nu       = getndof(typeof(eleobj),:U)
-    return ElementConstraint{typeof(eleobj),λinod,λfield,Nu,typeof((eleres=req,)),typeof(gap),typeof(gargs),typeof(mode)}
-                    (eleobj,(eleres=req,),gap,gargs,mode)
+    tmp = ElementConstraint{typeof(eleobj),λinod,λfield,Nu,typeof((eleres=req,)),typeof(gap),typeof(gargs),typeof(mode)}(eleobj,(eleres=req,),gap,gargs,mode)
+    return tmp
 end
 doflist( ::Type{<:ElementConstraint{Teleobj,λinod,λfield}}) where{Teleobj,λinod,λfield} =
     (inod =(doflist(Teleobj).inod... ,λinod),

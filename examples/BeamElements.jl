@@ -88,7 +88,7 @@ Muscade.doflist(     ::Type{EulerBeam3D{Mat,true}}) where{Mat} =
         (inod = (1,1,1,1,1,1, 2,2,2,2,2,2, 3,3,3), 
          class= (ntuple(i->:X,nXdof)...,ntuple(i->:U,nUdof)...), 
          field= (:t1,:t2,:t3,:r1,:r2,:r3, :t1,:t2,:t3,:r1,:r2,:r3,  :t1,:t2,:t3) )
-# Constructor for the EulerBeam3D element. Arguments: node list, material, and direction of the first bending axis in the global coordinate system.  
+# ElementType for the EulerBeam3D element. Arguments: node list, material, and direction of the first bending axis in the global coordinate system.  
 EulerBeam3D(nod;kwargs...) = EulerBeam3D{false}(nod;kwargs...) # by default, EulerBeam3D does not have Udof.
 function EulerBeam3D{Udof}(nod::Vector{Node};mat,orient2::SVector{ndim,𝕣}=SVector(0.,1.,0.)) where {Udof}
     c       = coord(nod)
@@ -353,9 +353,9 @@ struct StrainGaugeOnEulerBeam3D{Ngauge,Teleobj,Treq} <: AbstractElement
     K3       :: SVector{  Ngauge,𝕣}  
     L        :: 𝕣
 end
-function StrainGaugeOnEulerBeam3D(nod::Vector{Node};P,D,L,Constructor=EulerBeam3D,toEulerBeam3D)  # Teleobj because we may wrap wrapped beams
+function StrainGaugeOnEulerBeam3D(nod::Vector{Node};P,D,L,ElementType=EulerBeam3D,elementkwargs)  # Teleobj because we may wrap wrapped beams
     req       = @request (ε,κ)
-    eleobj    = Constructor(nod;toEulerBeam3D...)
+    eleobj    = ElementType(nod;elementkwargs...)
     all(P[1,:].==0.) || muscadeerror("In arguments of StrainGaugeOnEulerBeam3D, P[1,:] must all be zero")
     E         =  D[1,:].^2
     K1        =  D[1,:].*(D[3,:].*P[2,:].-D[2,:].*P[3,:])  

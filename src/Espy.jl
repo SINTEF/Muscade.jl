@@ -79,7 +79,6 @@ mergerequest(x        , ::Nothing) = x
 mergerequest(::Nothing, x        ) = x
 mergerequest(::Nothing, ::Nothing) = nothing
 @generated function mergerequest(NT1::NamedTuple, NT2::NamedTuple) 
-    @show NT1
     nt1     = instantiate(NT1)
     nt2     = instantiate(NT2)
     kout    = union(keys(nt1), keys(nt2))

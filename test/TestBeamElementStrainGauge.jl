@@ -1,4 +1,4 @@
-#module TestBeamElements
+module TestStrainGaugeOnEulerBeam3D
 
 using Test, Muscade, StaticArrays, LinearAlgebra
 include("../examples/BeamElements.jl")
@@ -11,7 +11,7 @@ mat              = BeamCrossSection(EA=10.,EI₂=3.,EI₃=3.,GJ=4.,μ=1.,ι₁=1
 P                = SMatrix{3,5}(0.,.5,0.,  0.,0,.5,   0.,-.5,0.,  0.,0,-.5,  0.,.5,0.   )
 D                = SMatrix{3,5}(1.,0.,0.,  1.,0.,0.,  1.,0.,0.,   1.,0.,0.,  1/√2,0,1/√2)
 L                = 0.1
-instrumentedbeam = StrainGaugeOnEulerBeam3D(elnod;P,D,L,toEulerBeam3D=(mat=mat,orient2=SVector(0.,1.,0.)))
+instrumentedbeam = StrainGaugeOnEulerBeam3D(elnod;P,D,L,elementkwargs=(mat=mat,orient2=SVector(0.,1.,0.)))
 @testset "constructor" begin
     @test instrumentedbeam.eleobj.cₘ    ≈ [2.0, 0.0, 0.0]
     @test instrumentedbeam.eleobj.rₘ    ≈ I
@@ -28,8 +28,8 @@ instrumentedbeam = StrainGaugeOnEulerBeam3D(elnod;P,D,L,toEulerBeam3D=(mat=mat,o
     @test typeof(instrumentedbeam)      ==  StrainGaugeOnEulerBeam3D{5, EulerBeam3D{BeamCrossSection, false}, @NamedTuple{strain::@NamedTuple{ε::Nothing, κ::Nothing}}}
 end
 
-Λ   = (SVector(0,0,0,0,0.1,0.0, 0,0,0,0,-0.1,-0.0),)
-X   = (SVector(0,0,0,0,0.1,0.0, 0,0,0,0,-0.1,-0.0),)
+Λ   =  SVector(0,0,0, 0,.1,0, 0,0,0, 0,-.1,0)
+X   = (SVector(0,0,0, 0,.1,0, 0,0,0, 0,-.1,0),)
 U   = (SVector{0,𝕣}(),)
 A   = SVector{0,𝕣}()
 
@@ -69,7 +69,7 @@ end
 
 X       = (SVector(0,0,0, 0,.1,0, 0,0,0, 0,-.1,0),)
 
-Λm      = map(Λᵢ->reshape(Λᵢ,(length(Λᵢ),1)),Λ)
+Λm      =         reshape(Λ ,(length(Λ ),1))
 Xm      = map(Xᵢ->reshape(Xᵢ,(length(Xᵢ),1)),X)
 Um      = map(Uᵢ->reshape(Uᵢ,(length(Uᵢ),1)),U)
 Am      = map(Aᵢ->reshape(Aᵢ,(length(Aᵢ),1)),A)
@@ -82,11 +82,45 @@ _       = Muscade.display_drawing!(axis,typeof(instrumentedbeam),mut,opt)
 
 @testset "draw" begin
     @test axis.call[1].fun == :lines!
-    @test axis.call[1].args[1][:,1:2] ≈ [ 2.1          1.9;
+    @test axis.call[1].args[1][:,1:2] ≈ [2.1          1.9;
                                          0.51         0.51;
                                          1.7632e-18  -1.7632e-18]
     @test axis.call[2].fun == :scatter! # call to EulerBeam3D took place
 end
 
+function straincost(eleres,X,U,A,t) 
+    σ  = 15e-6
+    ε  = eleres.ε
+    εₘ = SVector(cos(t),0.,-cos(t),0.,cos(t)/2)*0.001  
+    Δε = ε-εₘ
+    cost = (Δε⋅Δε)/(2σ^2)
+    return cost
+end
 
-costedbeam = StrainGaugeOnEulerBeam3D(elnod;P,D,L,toEulerBeam3D=(mat=mat,orient2=SVector(0.,1.,0.)))
+costedbeam =  ElementCost(elnod;
+                            req = @request(ε),
+                            cost=straincost,
+                            ElementType=StrainGaugeOnEulerBeam3D,
+                            elementkwargs = (P,D,L,
+                                              elementkwargs=(mat=mat,orient2=SVector(0.,1.,0.))))
+
+out = Muscade.diffed_lagrangian(costedbeam;Λ,X,U,A,t=0.)
+
+@testset "costedbeam" begin
+    @test costedbeam.eleobj == instrumentedbeam
+    @test  out.∇L[2][1] ≈ [  277777.7777783019,       0.0,       1.1102230246251565e-16,  201441.02435832855,       2.7777777927777793e7,      -1.2430497627256343e6, -277777.7777783019,       0.0,      -1.1102230246251565e-16,  -76336.75341947998,      -2.7777777927777793e7,       1.2569502372743965e6]
+    @test  out.HL[2,2][1,1] ≈ [  1.18056e9   0.0  0.0   3.64598e7    1.92747e-9   -3.29847e7    -1.18056e9   0.0  0.0  -3.29847e7     9.63735e-8   3.64598e7;
+                                 0.0         0.0  0.0   0.0          0.0           0.0           0.0         0.0  0.0   0.0           0.0          0.0;
+                                 0.0         0.0  0.0   0.0          0.0           0.0           0.0         0.0  0.0   0.0           0.0          0.0;
+                                 3.64598e7   0.0  0.0   1.94899e7    1.01196e-9   -2.42679e7    -3.64598e7   0.0  0.0  -1.69698e7     2.02392e-9   2.60924e7;
+                                 1.92747e-9  0.0  0.0   1.01196e-9   1.38889e8    -9.15508e-10  -1.92747e-9  0.0  0.0  -9.15508e-10  -1.38889e8    1.01196e-9;
+                                -3.29847e7   0.0  0.0  -2.42679e7   -9.15508e-10   1.54556e8     3.29847e7   0.0  0.0   8.71679e6    -1.83102e-9  -1.56207e8;
+                                -1.18056e9   0.0  0.0  -3.64598e7   -1.92747e-9    3.29847e7     1.18056e9   0.0  0.0   3.29847e7    -9.63735e-8  -3.64598e7;
+                                 0.0         0.0  0.0   0.0          0.0           0.0           0.0         0.0  0.0   0.0           0.0          0.0;
+                                 0.0         0.0  0.0   0.0          0.0           0.0           0.0         0.0  0.0   0.0           0.0          0.0;
+                                -3.29847e7   0.0  0.0  -1.69698e7   -9.15508e-10   8.71679e6     3.29847e7   0.0  0.0   1.60148e7    -1.83102e-9  -1.03674e7;
+                                 9.63735e-8  0.0  0.0   2.02392e-9  -1.38889e8    -1.83102e-9   -9.63735e-8  0.0  0.0  -1.83102e-9    1.38889e8    2.02392e-9;
+                                 3.64598e7   0.0  0.0   2.60924e7    1.01196e-9   -1.56207e8    -3.64598e7   0.0  0.0  -1.03674e7     2.02392e-9   1.58031e8] rtol = 1e-4
+end
+
+end

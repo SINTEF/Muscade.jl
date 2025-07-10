@@ -47,9 +47,6 @@ module Runtest
         @testset "TestElementCost" begin
             include("TestElementCost.jl")
         end
-        @testset "TestBeamElement" begin
-            include("TestBeamElement.jl")
-        end
         @testset "TestRotations" begin
             include("TestRotations.jl")
         end
@@ -73,6 +70,12 @@ module Runtest
         end
         @testset "TestElementTestTools" begin
             include("TestElementTestTools.jl")
+        end
+        @testset "TestBeamElement" begin
+            include("TestBeamElement.jl")
+        end
+        @testset "TestBeamElementStrainGauge" begin
+            include("TestBeamElementStrainGauge.jl")
         end
         @testset "TestDrawBeamElement" begin
             include("TestDrawBeamElement.jl")
