@@ -6,7 +6,7 @@ docsrc      = joinpath(docs,"src")
 examplesrc(ex) = normpath(joinpath(docs,"..","examples",ex))
 examples    = ["BeamElements","StaticBeamAnalysis","DynamicBeamAnalysis","DecayAnalysis","DryFriction"]
 
-requiredIncludeFiles = ["BeamElements.jl","Rotations.jl"]
+requiredIncludeFiles = ["BeamElement.jl","Rotations.jl"]
  for includeFile ∈ requiredIncludeFiles
         cp(joinpath(muscade,"examples",includeFile),joinpath(muscade,"docs","src",includeFile),force=true)             
  end

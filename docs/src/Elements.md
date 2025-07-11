@@ -448,7 +448,7 @@ which creates a new `NamedTuple` `opt` from `kwargs`.  For keys in `defaults` no
 
 `Muscade` provides facilities to draw only selected element types or selected elements, so the element's `Muscade.allocate_drawing` method does not need to implement a switch on *whether* to draw.
 
-See `Muscade/test/SomeElements.jl` for simple examples of implementation.  See also [`examples/BeamElements.jl`](StaticBeamAnalysis.md) for an advanced example of implementation where there are options to create completely different drawings of the same element.  
+See `Muscade/test/SomeElements.jl` for simple examples of implementation.  See also [`examples/BeamElement.jl`](StaticBeamAnalysis.md) for an advanced example of implementation where there are options to create completely different drawings of the same element.  
 
 ### Getting element results
 
@@ -466,17 +466,17 @@ Constant [`noFB`](@ref) (which have value `nothing`) can be used by elements tha
 
 For those prefering to think in terms of Cartesian tensor algebra, rather than matrix algebra, operators [`⊗`](@ref), [`∘₁`](@ref) and [`∘₂`](@ref) provide the exterior product, the single dot product and the double dot product respectively.
 
-Elements with a corotated reference system, can make use of [`examples/Rotations.jl`](StaticBeamAnalysis.md) that provides functionality to handle rotations in ℝ³.  See [`examples/BeamElements.jl`](StaticBeamAnalysis.md) for an example.
+Elements with a corotated reference system, can make use of [`examples/Rotations.jl`](StaticBeamAnalysis.md) that provides functionality to handle rotations in ℝ³.  See [`examples/BeamElement.jl`](StaticBeamAnalysis.md) for an example.
 
 ## Automatic differentiation within element code
 
-Some advanced elements (in particular, elements with co-rotated element systems) can be implemented elegantly by using automatic differentiation within `residual` or `lagrangian`.  These are advanced techniques, requiring a good understanding of [`automatic differentiation`](Adiff.md).  Example of usage can be found in [`examples/BeamElements.jl`](StaticBeamAnalysis.md).
+Some advanced elements (in particular, elements with co-rotated element systems) can be implemented elegantly by using automatic differentiation within `residual` or `lagrangian`.  These are advanced techniques, requiring a good understanding of [`automatic differentiation`](Adiff.md).  Example of usage can be found in [`examples/BeamElement.jl`](StaticBeamAnalysis.md).
 
 Helper functions [`motion`](@ref) and [`motion⁻¹`](@ref) allow to transform a `tuple` of `SVectors`, like the input `X` given to `residual` and `lagrangian`, into a an automatic differentiation structure, so that functions of `∂0(X)` only can be differentiated with respect to time. 
 
 It is sometimes possible to improve performance by identifying a part of `residual` or `lagrangian` which takes a single, `SVector` as an input: A vector shorter than the list of dofs differentiated by the solver allow to accelerate computations, by using [`fast`](@ref), or for more adbanced usage, [`revariate`](@ref) in combination with [`compose`](@ref). 
 
-In [`examples/BeamElements.jl`](StaticBeamAnalysis.md), in function `kinematics`, [`fast`](@ref) is applied to accelerate a process of differentiation to the 2nd order.  In `residual`, [`revariate`](@ref) and [`compose`](@ref) in order to differentiate `kinematics` and accelerate computations by exploiting the fact that `kinematic` is a function of `∂0(X)` only.
+In [`examples/BeamElement.jl`](StaticBeamAnalysis.md), in function `kinematics`, [`fast`](@ref) is applied to accelerate a process of differentiation to the 2nd order.  In `residual`, [`revariate`](@ref) and [`compose`](@ref) in order to differentiate `kinematics` and accelerate computations by exploiting the fact that `kinematic` is a function of `∂0(X)` only.
 
 ## Testing elements
 When developing a new element, it is advisable to test the constructor, and `residual` or `lagrangian` in a direct call (outside of any Muscade solver), and examine the returned outputs.

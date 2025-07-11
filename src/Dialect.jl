@@ -277,3 +277,13 @@ columnmatrix(v::Vector) = reshape(v,(length(v),1))
 Reshape a vector into a matrix of size `(1,length(v))`    
 """
 rowmatrix(   v::Vector) = reshape(v,(1,length(v)))
+
+"""
+    colnormalize(a)
+
+Euclidian-normalize the columns of an SMatrix
+"""    
+function colnormalize(a::SMatrix{ndim,nvec,R}) where{ndim,nvec,R<:ℝ}
+    n   = SVector{     nvec,R}(norm(a[:,ivec]) for ivec=1:nvec)
+    out = SMatrix{ndim,nvec,R}(a[idim,ivec]/n[ivec] for idim=1:ndim,ivec=1:nvec)
+end

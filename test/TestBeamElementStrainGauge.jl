@@ -1,7 +1,8 @@
 module TestStrainGaugeOnEulerBeam3D
 
 using Test, Muscade, StaticArrays, LinearAlgebra
-include("../examples/BeamElements.jl")
+include("../examples/BeamElement.jl")
+include("../examples/StrainGaugeOnBeamElement.jl")
 
 model            = Model(:TestModel)
 node1            = addnode!(model,𝕣[0,0,0])

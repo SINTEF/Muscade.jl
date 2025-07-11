@@ -139,9 +139,9 @@ into a `NTuple` containing a (zero) rotation vector and its intrinsic time deriv
 See also [`spin`](@ref), [`spin⁻¹`](@ref), [`Rodrigues`](@ref), [`Rodrigues⁻¹`](@ref).
 """
 function intrinsicrotationrates(rₑ::NTuple{ND,SMatrix{3,3}}) where{ND}
-    vᵢ₀ =              (SVector(0,0,0),                                                                           )
-    vᵢ₁ = ND<1 ? vᵢ₀ : (vᵢ₀...        , spin⁻¹(∂0(rₑ)' ∘₁ ∂1(rₑ))                                                 ) 
-    vᵢ  = ND<2 ? vᵢ₁ : (vᵢ₁...                                   ,   spin⁻¹(∂1(rₑ)' ∘₁ ∂1(rₑ) + ∂0(rₑ)' ∘₁ ∂2(rₑ)))  
+    vᵢ₀ =              (SVector{3,𝕣}(0,0,0),                                                                           )
+    vᵢ₁ = ND<2 ? vᵢ₀ : (vᵢ₀...             , spin⁻¹(∂0(rₑ)' ∘₁ ∂1(rₑ))                                                 ) 
+    vᵢ  = ND<3 ? vᵢ₁ : (vᵢ₁...                                        ,   spin⁻¹(∂1(rₑ)' ∘₁ ∂1(rₑ) + ∂0(rₑ)' ∘₁ ∂2(rₑ)))  
     return vᵢ
 end
 

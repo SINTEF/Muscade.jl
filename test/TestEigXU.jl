@@ -19,7 +19,7 @@ xn         = 1.
 un         = 1e3
 
 ## beam in space
-include("../examples/BeamElements.jl")
+include("../examples/BeamElement.jl")
 
 L    = 1;    # Beam length [m]
 q    = 0.0;  # Uniform lateral load [N/m]
