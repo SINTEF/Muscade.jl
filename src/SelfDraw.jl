@@ -5,15 +5,24 @@
 # Model drawing
 # typestable kernel
 
-
+# create, update and read observables that are the leafs of a NamedTuple-of-NamedTuples tree
 recursiveObservable(mut            ) = Observable(mut)
 recursiveObservable(mut::NamedTuple) = map(recursiveObservable,mut)
-recursive_to_value( obs            ) = to_value(obs)
-recursive_to_value( obs::NamedTuple) = map(recursive_to_value,obs)
- 
+readObservable(obs::Observable) = obs[]
+readObservable(obs::NamedTuple) = map(readObservable,obs)
+function writeObservable!(obs::Observable,mut) 
+    obs[] = mut
+end
+function writeObservable!(obs::NamedTuple,mut::NamedTuple) 
+    foreach(obs,mut) do obsᵢ,mutᵢ
+        writeObservable!(obsᵢ,mutᵢ)
+    end
+end
+
 
 Graphic{Tobs,Topt,Taxis} = @NamedTuple{obs::Tobs, opt::Topt, axis::Taxis}
 # Single call draw! for one element type
+Base.keys(::Nothing)= :nothing
 function draw_element!(axis,eleobj::AbstractVector{Eletyp}, Λ,X,U,A,t,SP,dbg;kwargs...) where{Eletyp<:AbstractElement}
     mut,opt = allocate_drawing(axis,eleobj;kwargs...)
     mut     = update_drawing(  axis,eleobj,mut,opt, Λ,X,U,A,t,SP,dbg)
@@ -128,11 +137,12 @@ function draw_!(graphic::Graphic,dis::EletypDisassembler,eleobj::AbstractVector{
         end
         A[:,i]  = state.A[index.A]
     end
-    mut     = recursive_to_value(graphic.obs)
+    mut     = readObservable(graphic.obs)
     mut     = update_drawing(graphic.axis,eleobj,mut,graphic.opt, Λ,X,U,A,state.time,state.SP,(dbg...,iele=iele))
-    foreach(graphic.obs,mut) do obsᵢ,mutᵢ
-        obsᵢ[] = mutᵢ
-    end
+    writeObservable!(graphic.obs,mut)
+    # foreach(graphic.obs,mut) do obsᵢ,mutᵢ
+    #     obsᵢ[] = mutᵢ
+    # end
     display_drawing!(graphic.axis,Eletyp,graphic.obs,graphic.opt)
 end
 function draw!(graphic::Vector{Graphic},state::State;kwargs...)   # whole model

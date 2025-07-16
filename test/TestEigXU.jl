@@ -9,17 +9,21 @@ using Test
 using Muscade
 using StaticArrays,SparseArrays
 
+
 q          = 6
 nel        = 2^q
 Δi         = 2^3-1 # 8-1=7 sensor stations
-isensor    = Δi:Δi:(nel-Δi) # leaving a gap in the set of sensors
+istrain    = Δi:Δi:(nel-Δi) # leaving a gap in the set of sensors
+iacc       = Δi:2Δi:(nel-Δi)
 iels       = 1:nel
+inaked     = setdiff(iels,istrain)  # complement
 xn         = 1.
 λn         = 1e3
 un         = 1e3
 
 ## beam in space
 include("../examples/BeamElement.jl")
+include("../examples/PositionElement.jl")
 
 L    = 1;    # Beam length [m]
 q    = 0.0;  # Uniform lateral load [N/m]
@@ -30,6 +34,10 @@ GJ   = 1e6;  # Torsional stiffness [Nm²]
 μ    = 1;
 ι₁   = 1;
 hasU = true
+σε   = 100e-6*100 # precision of strain measurements
+σx   = 1e-1
+σu   = 1e-0
+σa   = 1e5
 
 α           = iels/nel*2π
 XnodeCoord  = hcat(cos.(α),sin.(α),zeros(nel,1))
@@ -39,16 +47,46 @@ model       = Model(:TestModel)
 Xnod        = addnode!(model,XnodeCoord)
 Unod        = addnode!(model,UnodeCoord)
 mesh        = hcat(Xnod,Xnod[mod_onebased.(iels.+1,nel)],Unod)
-addelement!(model,EulerBeam3D{hasU},mesh;mat=mat,orient2=SVector(0.,0.,1.))
+nakedmesh   = mesh[inaked,:]
+strainmesh  = mesh[istrain,:]
+accmesh     = reshape(Xnod[iacc],(length(iacc),1))
+addelement!(model,EulerBeam3D{hasU},nakedmesh;mat=mat,orient2=SVector(0.,0.,1.))
+
+
+# StrainGaugeOnEulerBeam3D(::Teleobj, ::Treq, ::SMatrix{3, 1, Float64, 3},   ::SMatrix{3, 1, Float64, 3},   ::SVector{1, Float64},      ::SVector{1, Float64},      ::SVector{1, Float64},      ::SVector{1, Float64},      ::SVector{1, Float64})
+# StrainGaugeOnEulerBeam3D(::Teleobj, ::Treq, ::SMatrix{3, Ngauge, Float64}, ::SMatrix{3, Ngauge, Float64}, ::SVector{Ngauge, Float64}, ::SVector{Ngauge, Float64}, ::SVector{Ngauge, Float64}, ::SVector{Ngauge, Float64}, ::Float64) where {Ngauge, Teleobj, Treq}
+
+
+addelement!(model,ElementCost,strainmesh;
+                        req           = @request(ε),
+                        cost          = (eleres,X,U,A,t) -> sum((eleres.ε/σε).^2)/2,
+                        ElementType   = StrainGaugeOnEulerBeam3D,
+                        elementkwargs = (P             = SMatrix{3,4}(0.,0.,.05, 0.,0.05,0.,  0.,0.,-.05,  0.,-.05,0.),
+                                         D             = SMatrix{3,4}(1.,0.,0.,  1.,0.,0.,    1.,0.,0.,    1.,0.,0.  ),
+                                         L             = 0.02           ,
+                                         ElementType   = EulerBeam3D{true},
+                                         elementkwargs = (mat     = mat,
+                                                          orient2 = SVector(0.,0.,1.))))
+
+addelement!(model,ElementCost,accmesh;
+                        req           = @request(a),
+                        cost          = (eleres,X,U,A,t) -> sum((eleres.a/σa).^2)/2,
+                        ElementType   = Position3D,
+                        elementkwargs = (P             = SMatrix{3,3}(0.,0.,.1,  0.,0.,.1,  0.,0.,.1),
+                                         D             = SMatrix{3,3}(1.,0.,0.,  0.,1.,0.,    0.,0.,1.) ))
+
+
+
 
 # Ucost
-addelement!( model, SingleDofCost, Muscade.columnmatrix(Unod         )    ,class=:U, field=:t1,cost=QuadraticFunction(0.,.1  ))
-addelement!( model, SingleDofCost, Muscade.columnmatrix(Unod         )    ,class=:U, field=:t2,cost=QuadraticFunction(0.,.1  ))
-addelement!( model, SingleDofCost, Muscade.columnmatrix(Unod         )    ,class=:U, field=:t3,cost=QuadraticFunction(0.,.1  ))
+addelement!( model, SingleDofCost, Muscade.columnmatrix(Unod         )    ,class=:U, field=:t1,cost=QuadraticFunction(0.,0.5(σu^-2)))
+addelement!( model, SingleDofCost, Muscade.columnmatrix(Unod         )    ,class=:U, field=:t2,cost=QuadraticFunction(0.,0.5(σu^-2)))
+addelement!( model, SingleDofCost, Muscade.columnmatrix(Unod         )    ,class=:U, field=:t3,cost=QuadraticFunction(0.,0.5(σu^-2)))
+
 # disp meas
-addelement!( model, SingleDofCost, Muscade.columnmatrix(Xnod[isensor])    ,class=:X, field=:t1,cost=QuadraticFunction(0.,1.))
-addelement!( model, SingleDofCost, Muscade.columnmatrix(Xnod[isensor])    ,class=:X, field=:t2,cost=QuadraticFunction(0.,1.))
-addelement!( model, SingleDofCost, Muscade.columnmatrix(Xnod[isensor])    ,class=:X, field=:t3,cost=QuadraticFunction(0.,1.))
+addelement!( model, SingleDofCost, Muscade.columnmatrix(Xnod[istrain])    ,class=:X, field=:t1,cost=QuadraticFunction(0.,0.5(σx^-2)))
+addelement!( model, SingleDofCost, Muscade.columnmatrix(Xnod[istrain])    ,class=:X, field=:t2,cost=QuadraticFunction(0.,0.5(σx^-2)))
+addelement!( model, SingleDofCost, Muscade.columnmatrix(Xnod[istrain])    ,class=:X, field=:t3,cost=QuadraticFunction(0.,0.5(σx^-2)))
 
 initialstate      = initialize!(model)   
 initialstate.time     = 0.
@@ -70,13 +108,16 @@ OX,OU                 = 2,0
 Δω                = 2^-6 
 p                 = 11
 nmod              = 5
-eigincXU          = solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=true,verbosity=1,tol=1e-20,σₓᵤ)
+#eigincXU          = solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=true,verbosity=1,tol=1e-20,σₓᵤ)
 
-α                 = 2π*(1:8)/8
+nα                = 32
+α                 = 2π*(1:nα)/nα
 circle            = 0.05*[cos.(α) sin.(α)]'
-draw(initialstate,eigincXU;shadow = (;EulerBeam3D=(;style=:shape,line_color=:grey,Udof=false)),
-                           model  = (;EulerBeam3D=(;style=:solid,section=circle))           )
+draw(initialstate,eigincXU;shadow = (;EulerBeam3D             = (;style=:shape,line_color=:grey,Udof=false),
+                                     StrainGaugeOnEulerBeam3D = (;gauge_color=:transparent)         ),
+                           model  = (;EulerBeam3D             = (;style=:solid,section=circle),
+                                      Position3D              = (;L=SVector(.03,.03,.03)) ) )
 
 
-
+#state = increment{OX}(initialstate,eigincXU,100,[1],[1])
 ;

@@ -157,7 +157,7 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
     for (iω,ωᵢ)           = enumerate(ω)
         B.nzval          .= N[1]        + ωᵢ^2*N[2]        + ωᵢ^4*N[3]     
         A.nzval          .= L2[1].nzval + ωᵢ^2*L2[3].nzval + ωᵢ^4*L2[5].nzval     # complex if exponents 1 and 3 included
-        # try 
+        try 
             if iω==1 LU   = lu(A) 
             else     lu!(LU ,A)
             end 
@@ -174,9 +174,9 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
                 Δ                .*= 2.575829303549/Anorm          # corresponds to a probability of exceedance of 0.01                        
                 nor[iω][imod]      = √(ℜ(Δ ∘₁ (B ∘₁ Δ))/2) 
             end
-        # catch 
-        #     muscadewarning(@sprintf("Factorization of matrix A failed for ω=%f",ωᵢ));
-        # end
+        catch 
+            muscadewarning(@sprintf("Factorization of matrix A failed for ω=%f",ωᵢ));
+        end
     end    
     any(ncv.<nmod) && verbose && muscadewarning("Some eigensolutions did not converge",4)
     pstate[] = EigXUincrement(nmod,allΛXUdofs(model,dis),ω,ncv,λ,nor,ΔΛXU)
