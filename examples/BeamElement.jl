@@ -122,13 +122,14 @@ end;
 @espy function Muscade.residual(o::EulerBeam3D{Mat,Udof},   X,U,A,t,SP,dbg) where{Mat,Udof}
     P,ND                = constants(X),length(X)
     ## Compute all quantities at Gauss point, their time derivatives, including intrinsic roll rate and acceleration
-    gp_,ε_,vₛₘ_,rₛₘ_,vₗ₂_,_,_ = kinematics(o,motion{P}(X))
+    gp_,ε_,vₛₘ_,rₛₘ_,vₗ₂_,_,_ = kinematics(o,motion{P}(X),Muscade.justinvoke)
+#    gp_,ε_,vₛₘ_,rₛₘ_,vₗ₂_,_,_ = kinematics(o,motion{P}(X),(f,x)->f(x))
     gpval,☼ε , rₛₘ       = motion⁻¹{P,ND}(gp_,ε_,rₛₘ_  ) 
     vᵢ                  = intrinsicrotationrates(rₛₘ)
     ## compute all Jacobians of the above quantities with respect to X₀
     X₀                  = ∂0(X)
-    TX₀                 = revariate{1}(X₀)
-    Tgp,Tε,Tvₛₘ,_,_,_,_  = kinematics(o,TX₀,fast)
+    TX₀                 = revariate{1}(X₀)  # check type
+    Tgp,Tε,Tvₛₘ,_,_,_,_  = kinematics(o,TX₀,Muscade.fast)
     gp∂X₀,ε∂X₀,vₛₘ∂X₀    = composeJacobian{P}((Tgp,Tε,Tvₛₘ),X₀)
     ## Quadrature loop: compute resultants
     gp                  = ntuple(ngp) do igp
@@ -136,15 +137,15 @@ end;
         x∂X₀,κ∂X₀       = gp∂X₀[igp].x, gp∂X₀[igp].κ
         fᵢ,mᵢ,fₑ,mₑ     = ☼resultants(o.mat,ε,κ,x,rₛₘ,vᵢ)          # call the "resultant" function to compute loads (local coordinates) from strains/curvatures/etc. using material properties. Note that output is dual of input. 
         fₑ              = Udof ? fₑ-∂0(U) : fₑ                    # U is per unit length
-        R               = (fᵢ ∘₀ ε∂X₀ + mᵢ ∘₁ κ∂X₀ + fₑ ∘₁ x∂X₀ + mₑ ∘₁ vₛₘ∂X₀) * o.dL[igp]     # Contribution to the local nodal load of this Gauss point  [nXdof] = scalar*[nXdof] + [ndim]⋅[ndim,nXdof] + [ndim]⋅[ndim,nXdof]
-        @named(R)
+        R_               = (fᵢ ∘₀ ε∂X₀ + mᵢ ∘₁ κ∂X₀ + fₑ ∘₁ x∂X₀ + mₑ ∘₁ vₛₘ∂X₀) * o.dL[igp]     # Contribution to the local nodal load of this Gauss point  [nXdof] = scalar*[nXdof] + [ndim]⋅[ndim,nXdof] + [ndim]⋅[ndim,nXdof]
+        @named(R_)
     end
-    R                   = sum(gpᵢ.R for gpᵢ∈gp) 
+    R                   = sum(gpᵢ.R_ for gpᵢ∈gp) 
     ♢κ                  = motion⁻¹{P,ND}(SVector(vₗ₂_[1],vₗ₂_[3],-vₗ₂_[2])).*(2/o.L) 
     ♢rₛₘ                 = motion⁻¹{P,ND}(rₛₘ_)
     return R,noFB  
 end;
-function kinematics(o::EulerBeam3D,X₀,fast=justinvoke)  
+function kinematics(o::EulerBeam3D,X₀,fast)  
     cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp,L  = o.cₘ,o.rₘ,o.tgₘ,o.tgₑ,o.ζnod,o.ζgp,o.L   # As-meshed element coordinates and describing tangential vector
     vₛₘ,rₛₘ,uₗ₂,vₗ₂,cₛₘ  = corotated(o,X₀,fast)
     ε                = √((uₗ₂[1]+L/2)^2+uₗ₂[2]^2+uₗ₂[3]^2)*2/L - 1.      
@@ -159,16 +160,16 @@ function kinematics(o::EulerBeam3D,X₀,fast=justinvoke)
 end
 
 vec3(v,ind) = SVector{3}(v[i] for i∈ind);
-function corotated(o::EulerBeam3D,X₀,fast=justinvoke)  
+function corotated(o::EulerBeam3D,X₀,fast)  
     cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp,L  = o.cₘ,o.rₘ,o.tgₘ,o.tgₑ,o.ζnod,o.ζgp,o.L   # As-meshed element coordinates and describing tangential vector
-    uᵧ₁,vᵧ₁,uᵧ₂,vᵧ₂        = vec3(X₀,1:3), vec3(X₀,4:6), vec3(X₀,7:9), vec3(X₀,10:12)
-    Δvᵧ,rₛₘ,vₛₘ              = fast(SVector(vᵧ₁...,vᵧ₂...)) do v
-        vᵧ₁,vᵧ₂            = vec3(v,1:3), vec3(v,4:6)
+    uᵧ₁,uᵧ₂,vᵧ             = vec3(X₀,1:3), vec3(X₀,7:9), SVector(X₀[4],X₀[5],X₀[6],X₀[10],X₀[11],X₀[12])
+    Δvᵧ,rₛₘ,vₛₘ             = fast(vᵧ) do v
+        vᵧ₁,vᵧ₂            = vec3(vᵧ,1:3), vec3(vᵧ,4:6)
         rₛ₁                = fast(Rodrigues,vᵧ₁)
         rₛ₂                = fast(Rodrigues,vᵧ₂)
-        Δvᵧ               = 0.5*Rodrigues⁻¹(rₛ₂ ∘₁ rₛ₁')
-        rₛₘ                = fast(Rodrigues,Δvᵧ) ∘₁ rₛ₁ ∘₁ o.rₘ  
-        vₛₘ                = Rodrigues⁻¹(rₛₘ)              
+        local Δvᵧ         = 0.5*Rodrigues⁻¹(rₛ₂ ∘₁ rₛ₁')
+        local rₛₘ          = fast(Rodrigues,Δvᵧ) ∘₁ rₛ₁ ∘₁ o.rₘ  
+        local vₛₘ          = Rodrigues⁻¹(rₛₘ)              
         return Δvᵧ,rₛₘ,vₛₘ
     end   
     cₛ               = 0.5*(uᵧ₁+uᵧ₂)
@@ -260,7 +261,7 @@ function Muscade.update_drawing(axis,o::AbstractVector{EulerBeam3D{Tmat,Udof}},o
         for (iel,oᵢ) = enumerate(o)
             cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp,L  = oᵢ.cₘ,oᵢ.rₘ,oᵢ.tgₘ,oᵢ.tgₑ,oᵢ.ζnod,oᵢ.ζgp,oᵢ.L   
             X₀ₑ = view(X₀,:,iel)
-            vₛₘ,rₛₘ,uₗ₂,vₗ₂,cₛₘ = corotated(oᵢ,X₀ₑ) 
+            vₛₘ,rₛₘ,uₗ₂,vₗ₂,cₛₘ = corotated(oᵢ,X₀ₑ,justinvoke) 
             if opt.draw_frame
                 for ivec = 1:3
                     shape_frame[:,1,ivec,iel] = cₛₘ
@@ -291,7 +292,7 @@ function Muscade.update_drawing(axis,o::AbstractVector{EulerBeam3D{Tmat,Udof}},o
         for (iel,oᵢ) = enumerate(o)
             cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp,L  = oᵢ.cₘ,oᵢ.rₘ,oᵢ.tgₘ,oᵢ.tgₑ,oᵢ.ζnod,oᵢ.ζgp,oᵢ.L   
             X₀ₑ = view(X₀,:,iel)
-            vₛₘ,rₛₘ,uₗ₂,vₗ₂,cₛₘ = corotated(oᵢ,X₀ₑ) 
+            vₛₘ,rₛₘ,uₗ₂,vₗ₂,cₛₘ = corotated(oᵢ,X₀ₑ,justinvoke) 
             vᵧ₁,vᵧ₂          = vec3(X₀ₑ,4:6), vec3(X₀ₑ,10:12)
             rₛ₁              = Rodrigues(vᵧ₁)
             rₛ₂              = Rodrigues(vᵧ₂)
