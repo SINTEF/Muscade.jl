@@ -1,14 +1,16 @@
 module TestEigenmodes
 using Muscade,Test,SparseArrays,Random,LinearAlgebra
 
+bizarre(v1::AbstractVector, v2::AbstractVector) = abs(conj.(v1)∘₁v2) + abs(v1∘₁v2)
 """
     m = MAC(u,v)
 
-Compute the Modal Assurance Criterion for quantitative comparison between two eigenvectors/modeshapes.
+Compute the Modal Assurance Criterion for quantitative comparison between two eigenvectors/modeshapes, real or complex.
+
+The function actually implements [`MACX`](https://past.isma-isaac.be/downloads/isma2010/papers/isma2010_0103.pdf), 
+an extensions of the MAC criterion to complex modes.
 """   
-function MAC(v1::AbstractVector, v2::AbstractVector)
-    return  (v1∘₁v2)^2 ./ ((v1∘₁v1)*(v2∘₁v2))
-end
+MAC(v1::AbstractVector, v2::AbstractVector)     = bizarre(v1,v2)^2 / (bizarre(v1,v1)*bizarre(v2,v2))
 
 N      = 1000
 K      = spdiagm(N,N,-1=>range(-N,-N,N-1),0=>range(2N,2N,N), 1=>range(-N,-N,N-1))

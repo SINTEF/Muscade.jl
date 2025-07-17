@@ -1,13 +1,21 @@
 module Muscade
-    using  Printf,SparseArrays,StaticArrays,LinearAlgebra,SpecialFunctions,MacroTools
+    using Printf
+    using LinearAlgebra
+    using SparseArrays
+    using StaticArrays
+    using SpecialFunctions
     using KrylovKit: KrylovKit,eigsolve
+    using MacroTools
+    using MacroTools: postwalk,gensym_ids,rmlines,unblock 
+    using Base.Cartesian
+    using GLMakie
 
     include("Dialect.jl")
     export ℝ,ℤ,𝕣,𝕫,𝔹,𝕓,ℂ
     export ℝ1,ℤ1,𝕣1,𝕫1,𝔹1,𝕓1
     export ℝ2,ℤ2,𝕣2,𝕫2,𝔹2,𝕓2
     export ℝ11,ℤ11,𝕣11,𝕫11,𝔹11,𝕓11
-    export toggle,default,@once,imod
+    export toggle,default,@once,mod_onebased
 
     include("Adiff.jl")
     export  ∂ℝ #\partial \bbR
@@ -25,7 +33,7 @@ module Muscade
     export dots,∘₀,∘₁,∘₂,⊗
 
     include("Espy.jl") 
-    export @request
+    export @request, mergerequest
     export @espy,@espydbg
 
     include("Exceptions.jl")
@@ -68,7 +76,7 @@ module Muscade
     export EigX,increment
 
     include("EigXU.jl")
-    export EigXU
+    export EigXU,GUI
 
     include("FreqXU.jl")
     export FreqXU
@@ -80,7 +88,7 @@ module Muscade
     export setdof!,getdof,getresult,findlastassigned,eletyp
 
     include("SelfDraw.jl")
-    export draw,request2draw
+    export draw!,request2draw
 
     include("Unit.jl")
     export ←,→

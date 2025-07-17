@@ -47,9 +47,10 @@ function assemblebigvec!(L1,L1bigasm,asm,model,dis,out::AssemblyDirect{OX,OU,0},
     end
 end
 
-struct EigXUincrement
+struct EigXUincrement{Tω}
+    nmod  :: 𝕫
     dofgr :: DofGroup
-    ω     :: 𝕣1          # [iω] 
+    ω     ::Tω           # [iω] range
     ncv   :: 𝕫1          # [iω]
     λ     :: 𝕣11         # [iω][imod]
     nor   :: 𝕣11         # [iω][imod]
@@ -94,7 +95,7 @@ the ΛXU-eigenvalue problem at frequencies ωᵢ = Δω*i with i∈{0,...,2ᵖ-1
 - an object of type `EigXUincrement` for use with [`increment`](@ref) to create a snapshot of the
   oscillating system.
 
-See also: [`solve`](@ref), [`initialize!`](@ref), [`studysingular`](@ref), [`SweepX`](@ref), [`DirectXUA`](@ref)
+See also: [`increment`](@ref),[`EigXU`](@ref), [`solve`](@ref), [`initialize!`](@ref), [`studysingular`](@ref), [`SweepX`](@ref), [`DirectXUA`](@ref)
 """
 struct EigXU{OX,OU} <: AbstractSolver end 
 
@@ -145,47 +146,40 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
     verbose && @printf("    Solving XU-eigenproblem for all ω\n")
     L2₁                   = L2[1]
     ndof                  = 2nXdof+nUdof
-#    A                     = Sparse𝕔2(ndof,ndof,L2₁.colptr,L2₁.rowval,𝕔1(undef,length(L2₁.nzval)))
-    A                     = Sparse𝕣2(ndof,ndof,L2₁.colptr,L2₁.rowval,𝕣1(undef,length(L2₁.nzval)))
+    A                     = Sparse𝕣2(ndof,ndof,L2₁.colptr,L2₁.rowval,𝕣1(undef,length(L2₁.nzval))) # but could be complex
     ΔΛXU                  = Vector{𝕣11}(undef,nω) # ΔΛXU[iω][imod][idof]
-    λ                     = 𝕣11(undef,nω)         # λ⁻¹[ iω][imod]
-    nor                   = 𝕣11(undef,nω)         # B[   iω][imod] 
+    λ                     = 𝕣11(undef,nω)         # λ[   iω][imod]
+    nor                   = 𝕣11(undef,nω)         # nor[ iω][imod] 
     ncv                   = 𝕫1(undef,nω)          # ncv[ iω]
     wrk                   = zeros(ndof)           # wrk[ndof]
 
     ω                     = range(start=0.,step=Δω,length=nω) 
     for (iω,ωᵢ)           = enumerate(ω)
-        B.nzval          .= N[1]+ωᵢ^2*N[2]+ωᵢ^4*N[3]     
-        A.nzval          .= L2[1].nzval+ωᵢ^2*L2[3].nzval+ωᵢ^4*L2[5].nzval     
-        # A.nzval          .= 0.   # Hard enough with a real eigenproblem, we skip the complex part
-        # for j             = 0:4
-        #     𝑖ωᵢʲ          = (𝑖*ωᵢ)^j
-        #     A.nzval     .+= 𝑖ωᵢʲ *L2[j+1].nzval
-        # end
+        B.nzval          .= N[1]        + ωᵢ^2*N[2]        + ωᵢ^4*N[3]     
+        A.nzval          .= L2[1].nzval + ωᵢ^2*L2[3].nzval + ωᵢ^4*L2[5].nzval     # complex if exponents 1 and 3 included
         try 
             if iω==1 LU   = lu(A) 
             else     lu!(LU ,A)
             end 
+            λ⁻¹, ΔΛXU[iω], ncv[iω] = geneig{:symmetric}(A,B,nmod;normalize=false,kwargs...)
+            nor[iω]                = 𝕣1(undef,ncv[iω])
+            λ[iω]                  = 1 ./λ⁻¹
+            for imod               = 1:ncv[iω]
+                Δ                  = ΔΛXU[iω][imod]
+                wrk[ixu]          .= view(Δ,ixu)                   # this copy can be optimised by viewing the classes in Δ, operating on out.L2[α,β][αder,βder], and combining over derivatives.  Is it worth the effort?   
+                Anorm              = √(ℜ(wrk  ∘₁ (A ∘₁ wrk))/2)  # ΔΛXU is real, A is complex Hermitian, so square norm is real: (imag part is zero to machine precision)
+                if iω>1  &&  imod≤nmod  &&  sum(Δ[idof]*ΔΛXU[iω-1][imod][idof] for idof∈λxu_dofgr.jX)<0
+                        Anorm = -Anorm
+                end
+                Δ                .*= 2.575829303549/Anorm          # corresponds to a probability of exceedance of 0.01                        
+                nor[iω][imod]      = √(ℜ(Δ ∘₁ (B ∘₁ Δ))/2) 
+            end
         catch 
-            verbose && @printf("\n")
-            muscadeerror(@sprintf("A matrix factorization failed for ω=%f",ωᵢ));
-        end
-
-        λ⁻¹, ΔΛXU[iω], ncv[iω] = geneig{:symmetric}(A,B,nmod;normalize=false,kwargs...)
-        @show maximum(abs.(A*ΔΛXU[iω][1]-B*λ⁻¹[1]*ΔΛXU[iω][1]))/maximum(abs.(A*ΔΛXU[iω][1])) 
-
-        nor[iω]                = 𝕣1(undef,ncv[iω])
-        λ[iω]                  = 1 ./λ⁻¹
-        for imod               = 1:ncv[iω]
-            Δ                  = ΔΛXU[iω][imod]
-            wrk[ixu]          .= view(Δ,ixu)                   # this copy can be optimised by viewing the classes in Δ, operating on out.L2[α,β][αder,βder], and combining over derivatives.  Is it worth the effort?   
-            Anorm              = √(ℜ(1/2*wrk  ∘₁ (A ∘₁ wrk)))  # ΔΛXU is real, A is complex Hermitian, so square norm is real: (imag part is zero to machine precision)
-            Δ                ./= Anorm                        
-            nor[iω][imod]      = ℜ(Δ ∘₁ (B ∘₁ Δ))/(2log(2)) 
+            muscadewarning(@sprintf("Factorization of matrix A failed for ω=%f",ωᵢ));
         end
     end    
     any(ncv.<nmod) && verbose && muscadewarning("Some eigensolutions did not converge",4)
-    pstate[] = EigXUincrement(allΛXUdofs(model,dis),ω,ncv,λ,nor,ΔΛXU)
+    pstate[] = EigXUincrement(nmod,allΛXUdofs(model,dis),ω,ncv,λ,nor,ΔΛXU)
     verbose && @printf("\n")
     return
 end
@@ -210,14 +204,105 @@ vibrating structure
 
 See also: [`EigXU`](@ref)
 """
-function increment{OX}(initialstate,eiginc::EigXUincrement,iω::𝕫,imod::AbstractVector{𝕫},A::AbstractVector) where{OX} 
-    state            = State{1,OX+1,1}(copy(initialstate)) 
-    ω, ΔΛXU           = eiginc.ω[iω], eiginc.ΔΛXU[iω]
+function increment{OX}(initialstate,eiginc::EigXUincrement,iω::𝕫,imod::AbstractVector{𝕫},amplitude::AbstractVector) where{OX} 
+    state       = State{1,OX+1,1}(copy(initialstate)) 
+    ω, ΔΛXU     = eiginc.ω[iω], eiginc.ΔΛXU[iω]
     maximum(imod)≤length(eiginc.λ) || muscadeerror(@sprintf("eiginc only has %n modes for iω=%i.",length(ω),iω))
     for (i,imodᵢ)∈enumerate(imod)  
         for iOX = 0:OX
-            increment!(state,iOX+1,ℜ.(ω^iOX*A[i]*ΔΛXU[imodᵢ]),eiginc.dofgr)
+            increment!(state,iOX+1,ℜ.(ω^iOX*amplitude[i]*ΔΛXU[imodᵢ]),eiginc.dofgr)
         end
     end
     return state
+end
+
+# scales Λ,X and U differently (so is no longer a solution state) and only updates 0th derivatives. For graphical outputs
+function visualincrement(initialstate,eiginc::EigXUincrement,iω::𝕫,imod::𝕫;Λscale::𝕣=1.,Xscale::𝕣=1.,Uscale::𝕣=1.) 
+    imod≤length(eiginc.λ) || muscadeerror(@sprintf("eiginc only has %n modes for iω=%i.",length(ω),iω))
+    model,dis             = initialstate.model, initialstate.dis
+    gr, ΔΛXU              = eiginc.dofgr, eiginc.ΔΛXU[iω][imod]
+    state                 = State{1,1,1}(copy(initialstate)) 
+    for i ∈ eachindex(gr.iΛ); state.Λ[1][gr.iΛ[i]] += ΔΛXU[gr.jΛ[i]] * gr.scaleΛ[i] *Λscale end
+    for i ∈ eachindex(gr.iX); state.X[1][gr.iX[i]] += ΔΛXU[gr.jX[i]] * gr.scaleX[i] *Xscale end
+    for i ∈ eachindex(gr.iU); state.U[1][gr.iU[i]] += ΔΛXU[gr.jU[i]] * gr.scaleU[i] *Uscale end
+    return state
+end
+"""
+
+    GUI(eiginc,initialstate;[draw_shadow=true],[shadow=...],[model=...])
+
+Taking the output `eiginc` obtained from an `EigXU`, and the state `initstate` provided to `EigXU`, provide
+a GUI to explore the results.
+
+Optional keyword arguements are
+- `draw_shadow` whether to superimpose a drawing of `initstate`
+- `shadow` a `NamedTuple` with any arguments to be passed to `draw!` `initstate`
+- `model` a `NamedTuple` with any arguments to be passed to `draw!` the `EigXU` modes.
+
+See also [`EigXU`](@ref)
+"""
+function GUI(initialstate,eiginc::EigXUincrement,;kwargs...)
+    args = default(kwargs, (draw_shadow=true, shadow=(;),model=(;)))
+
+    ## Organize the window
+
+    fig             = Figure(size = (1500,900))
+    GLMakie.activate!( title = "Muscade.jl" )
+    display(fig) # open interactive window (gets closed down by "save")
+    panelFreqs      = fig[1,1]        
+    panelNorm       = panelFreqs[1,1] 
+    axisNorm        = Axis(panelNorm,xlabel="ω [rad/s]",ylabel="magnitude of error",yscale=log10)
+    panelSlide      = panelFreqs[2,1] 
+    panelModel      = fig[1,2:3]        
+    Box(panelModel, cornerradius = 20,z=1., color = :transparent)
+    axisModel       = Axis3(panelModel,title="EigXU mode shape",aspect=:data,viewmode=:free,perspectiveness=.5,clip=false)
+
+    ## sliders
+
+    ω0 = eiginc.ω[div(length(eiginc.ω),3)]
+    sg = SliderGrid(panelSlide,
+                    (label="ω"      , range = eiginc.ω        , startvalue = ω0,snap=true,update_while_dragging=true,format = "{:.1f} rad/s"),
+                    (label="mode"   , range = 1:eiginc.nmod   , startvalue = 1 ,snap=true,update_while_dragging=true                        ),
+                    (label="X scale", range = -5:0.01:5       , startvalue = 0 ,snap=true,update_while_dragging=true,format = "10^{:.1f}"   ),
+                    (label="U scale", range = -5:0.01:5       , startvalue = 0 ,snap=true,update_while_dragging=true,format = "10^{:.1f}"   ))
+    obs = (ω      = sg.sliders[1].value,
+           imode  = sg.sliders[2].value,
+           Xscale = sg.sliders[3].value,
+           Uscale = sg.sliders[4].value)
+    iωs  = map(obs.ω) do ω
+        round(Int64,ω/step(eiginc.ω))+1
+    end       
+    nors = map(obs.imode,iωs) do imode,iω 
+        eiginc.nor[iω][imode]
+    end
+
+    ## Model
+
+    args.draw_shadow && draw!(axisModel,initialstate;args.shadow...); # draw initial state once to keep on screen
+    
+    graphic = draw!(axisModel,initialstate;args.model...);                             # and twice to start the pump
+    _ = map(iωs,obs.imode,obs.Xscale,obs.Uscale) do iω,imod,Xscale,Uscale                                    # Then observe the sliders
+        state = Muscade.visualincrement(initialstate,eiginc,iω,imod;Xscale=exp10(Xscale),Uscale=exp10(Uscale))
+        draw!(graphic,state;args.model...);
+    end
+
+    ## norm spectre
+
+    nω  = length(eiginc.ω)
+    nor = 𝕣1(undef,nω)
+    #λ   = 𝕣1(undef,nω)
+    for imod = 1:maximum(eiginc.ncv)
+        for iω= 1:nω
+            if imod≤eiginc.ncv[iω]
+                nor[iω] = eiginc.nor[iω][imod]
+                #λ[  iω] = eiginc.λ[  iω][imod]
+            else
+                nor[iω] = NaN
+                #λ[  iω] = NaN
+            end
+        end
+        scatter!(axisNorm,eiginc.ω,nor,markersize=1,color=:black)
+    end
+    scatter!(axisNorm,obs.ω,nors,color=:red,markersize=10)
+
 end

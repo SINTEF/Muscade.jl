@@ -5,7 +5,7 @@
 # Comparison to solutions by Longva (2015) and Crisfield (1990)
 
 using Muscade, StaticArrays, GLMakie
-include("BeamElements.jl");
+include("BeamElement.jl");
 
 
 R = 100.0;  # Radius of the bend [m]

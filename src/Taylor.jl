@@ -185,12 +185,28 @@ firstorderonly(a::∂ℝ)            = precedence(a)≤1 ? a : firstorderonly(a.
 firstorderonly(a)                = a
 
 # ∂ℝ(a,aₓ) → ∂ℝ( ∂ℝ(a,aₓ), ∂ℝ(aₓ,0) ) 
-backtohigherorder(a::SVector{Na,T},::Type{T}) where{T,Na} = a
-backtohigherorder(a::SVector{Na,∂ℝ{1,N,𝕣}},::Type{∂ℝ{2,N,∂ℝ{1,N,𝕣}}}) where{N,Na} = 
-     SV{Na}(∂ℝ{2,N,∂ℝ{1,N,𝕣}}( 
-                              a[ia],  
+# backtohigherorder(a::SVector{Na,T},::Type{T}) where{T,Na} = a
+# backtohigherorder(a::SVector{Na,∂ℝ{1,N,𝕣}},::Type{∂ℝ{2,N,∂ℝ{1,N,𝕣}}}) where{N,Na} = 
+#      SV{Na}(∂ℝ{2,N,∂ℝ{1,N,𝕣}}( 
+#                               a[ia],  
+#                               SV{N}(∂ℝ{1,N,𝕣}(
+#                                               a[ia].dx[i],
+#                                               SV{N,𝕣}(zero(𝕣) for j=1:N)
+#                                               ) for i=1:N)
+#                              ) for ia=1:Na)
+
+order2(a::∂ℝ{1,N,𝕣}) where{N}= ∂ℝ{2,N,∂ℝ{1,N,𝕣}}(
+                              a,  
                               SV{N}(∂ℝ{1,N,𝕣}(
-                                              a[ia].dx[i],
+                                              a.dx[i],
                                               SV{N,𝕣}(zero(𝕣) for j=1:N)
                                               ) for i=1:N)
-                             ) for ia=1:Na)
+                             )      
+order2(a::ℝ) = a
+order2(a) = map(order2,a)
+struct toorder{P} end
+toorder{0}(a) = a
+toorder{1}(a) = a
+toorder{2}(a) = order2(a)
+toorder{2}()  = ()
+ 

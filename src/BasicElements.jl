@@ -109,14 +109,16 @@ function ElementCost(nod::Vector{Node};req,cost,costargs=(),ElementType,elementk
 end
 doflist( ::Type{<:ElementCost{Teleobj}}) where{Teleobj} = doflist(Teleobj)
 @espy function lagrangian(o::ElementCost, Λ,X,U,A,t,SP,dbg)
-    req          = merge(o.req)
+    req          = mergerequest(o.req)
     L,FB,☼eleres = getlagrangian(o.eleobj,Λ,X,U,A,t,SP,(dbg...,via=ElementCost),req.eleres)
     ☼cost        = o.cost(eleres,X,U,A,t,o.costargs...) 
     return L+cost,FB
 end   
+allocate_drawing(axis,eleobj::AbstractVector{Teleobj};kwargs...)                    where{Teleobj<:ElementCost} = allocate_drawing(axis,[eᵢ.eleobj for eᵢ∈eleobj];kwargs...)
+update_drawing(  axis,eleobj::AbstractVector{Teleobj},oldmut,opt, Λ,X,U,A,t,SP,dbg) where{Teleobj<:ElementCost} = update_drawing(  axis,[eᵢ.eleobj for eᵢ∈eleobj],oldmut,opt, Λ,X,U,A,t,SP,dbg)  
+display_drawing!(axis,::Type{<:ElementCost{Teleobj}},obs,opt)                       where{Teleobj}              = display_drawing!(axis,Teleobj,obs,opt)
 
-draw(axe,eleobj::Vector{Teleobj}, Λ,X,U,A, t,SP,dbg;kwargs...) where{Teleobj<:ElementCost} = 
-      draw(axe,[eᵢ.eleobj for eᵢ∈eleobj], Λ,X,U,A, t,SP,dbg;kwargs...)
+
 """
     SingleDofCost{Derivative,Class,Field,Tcost} <: AbstractElement
 
@@ -496,14 +498,15 @@ function ElementConstraint(nod::Vector{Node};λinod::𝕫, λfield::Symbol,
     req,gap::Function,gargs=(;),mode::Function,ElementType,elementkwargs)
     eleobj   = ElementType(nod;elementkwargs...)
     Nu       = getndof(typeof(eleobj),:U)
-    return ElementConstraint{typeof(eleobj),λinod,λfield,Nu,typeof((eleres=req,)),typeof(gap),typeof(gargs),typeof(mode)}(eleobj,(eleres=req,),gap,gargs,mode)
+    tmp = ElementConstraint{typeof(eleobj),λinod,λfield,Nu,typeof((eleres=req,)),typeof(gap),typeof(gargs),typeof(mode)}(eleobj,(eleres=req,),gap,gargs,mode)
+    return tmp
 end
 doflist( ::Type{<:ElementConstraint{Teleobj,λinod,λfield}}) where{Teleobj,λinod,λfield} =
     (inod =(doflist(Teleobj).inod... ,λinod),
      class=(doflist(Teleobj).class...,:U),
      field=(doflist(Teleobj).field...,λfield))
 @espy function lagrangian(o::ElementConstraint{Teleobj,λinod,λfield,Nu}, Λ,X,U,A,t,SP,dbg) where{Teleobj,λinod,λfield,Nu} 
-    req        = merge(o.req)
+    req        = mergerequest(o.req)
     γ          = default{:γ}(SP,0.)
     m          = o.mode(t)
     u          = getsomedofs(U,SVector{Nu}(1:Nu)) 
@@ -516,8 +519,9 @@ doflist( ::Type{<:ElementConstraint{Teleobj,λinod,λfield}}) where{Teleobj,λin
     end
     return L,(λ=λ,g=gap,mode=m)
 end
-draw(axe,eleobj::AbstractVector{Teleobj}, Λ,X,U,A, t,SP,dbg;kwargs...) where{Teleobj<:ElementConstraint} = 
-      draw(axe,[eᵢ.eleobj for eᵢ∈eleobj], Λ,X,U,A, t,SP,dbg;kwargs...)
+allocate_drawing(axis,eleobj::AbstractVector{Teleobj};kwargs...)                          where{Teleobj<:ElementConstraint} = allocate_drawing(axis,[eᵢ.eleobj for eᵢ∈eleobj];kwargs...)
+update_drawing(  axis,eleobj::AbstractVector{Teleobj},oldmut,opt, Λ,X,U,A,t,SP,dbg)       where{Teleobj<:ElementConstraint} = update_drawing(  axis,[eᵢ.eleobj for eᵢ∈eleobj],oldmut,opt, Λ,X,U,A,t,SP,dbg)  
+display_drawing!(axis,::Type{<:ElementConstraint{Teleobj}},obs,opt)                       where{Teleobj}                    = display_drawing!(axis,Teleobj,obs,opt)
 
 #-------------------------------------------------
 

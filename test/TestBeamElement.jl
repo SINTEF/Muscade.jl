@@ -1,7 +1,7 @@
-#module TestBeamElements
+#module TestBeamElement
 
 using Test, Muscade, StaticArrays, LinearAlgebra
-include("../examples/BeamElements.jl")
+include("../examples/BeamElement.jl")
 
 a = SA[1,0,0]
 b = SA[0,1,1]

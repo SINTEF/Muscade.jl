@@ -71,6 +71,8 @@ precedence(a::SA)     = precedence(eltype(a))
 npartial(  a::SA)     = npartial(eltype(a))
 precedence(a::ℝ)      = precedence(typeof(a))
 npartial(  a::ℝ)      = npartial(typeof(a))
+precedence( a,args...) = max(precedence(a),precedence(args...))
+
 """
     P = constants(a,b,c)
 

@@ -1,9 +1,9 @@
 # # 3D rotations
 using LinearAlgebra, StaticArrays
 """
-    BeamElements.sinc1(x)
+    BeamElement.sinc1(x)
 
-`BeamElements.sinc1(x) = sin(x)/x` - but  `BeamElements.sinc1(0.) = 1.`.  The function can be differentiated
+`BeamElement.sinc1(x) = sin(x)/x` - but  `BeamElement.sinc1(0.) = 1.`.  The function can be differentiated
 to the fourth order.
 
 This differs from Julia's `sinc(x) = sin(π*x)/(π*x)`.
@@ -51,9 +51,9 @@ Muscade.@DiffRule1(sinc1‴,              sinc1⁗( a.x)                * a.dx )
 Muscade.@DiffRule1(sinc1⁗,              sinc1⁗′(a.x)                * a.dx )
 
 """
-    BeamElements.scac(x)
+    BeamElement.scac(x)
 
-`BeamElements.scac(x) = BeamElements.sinc1(acos(x)),`  The function can be differentiated
+`BeamElement.scac(x) = BeamElement.sinc1(acos(x)),`  The function can be differentiated
 to the fourth order over ]-1,1] .
 
 See also [`sinc1`](@ref)
@@ -71,7 +71,7 @@ const Mat33{R}   = SMatrix{3,3,R,9}
 const Vec3{R}    = SVector{3,R}
 
 """
-    M = BeamElements.spin(v::SVector{3})
+    M = BeamElement.spin(v::SVector{3})
 
 Transform a rotation vector `v` into the cross product matrix `M`, such that
 `M ∘₁ a = v × a`.
@@ -80,7 +80,7 @@ See also [`spin⁻¹`](@ref), [`Rodrigues`](@ref), [`Rodrigues⁻¹`](@ref).
 """
 spin(  v::Vec3 ) = SMatrix{3,3}(0,v[3],-v[2],-v[3],0,v[1],v[2],-v[1],0)
 """
-    v = BeamElements.spin⁻¹(M::SMatrix{3,3})
+    v = BeamElement.spin⁻¹(M::SMatrix{3,3})
 
 Transform a cross product matrix `M` into the rotation vector `v`, such that
 `v × a = M ∘₁ a`.
@@ -89,13 +89,13 @@ See also [`spin`](@ref), [`Rodrigues`](@ref), [`Rodrigues⁻¹`](@ref).
 """
 spin⁻¹(m::Mat33) = SVector{3}(m[3,2]-m[2,3],m[1,3]-m[3,1],m[2,1]-m[1,2])/2
 """
-    t = BeamElements.trace(v::SMatrix{3,3})
+    t = BeamElement.trace(v::SMatrix{3,3})
 
 Computes the trace of a matrix.
 """
 trace( m::Mat33) = m[1,1]+m[2,2]+m[3,3] 
 """
-    M = BeamElements.Rodrigues⁻¹(v::SVector{3})
+    M = BeamElement.Rodrigues⁻¹(v::SVector{3})
 
 Transform a rotation matrix `M` into the rotation vector `v`, such that
 `|v| < π`. Undefined for rotations of angle `π`
@@ -104,7 +104,7 @@ See also [`spin`](@ref), [`spin⁻¹`](@ref), [`Rodrigues`](@ref), [`adjust`](@r
 """
 Rodrigues⁻¹(m)   = spin⁻¹(m)/scac((trace(m)-1)/2)   # NB: is necessarily singular for π turn
 """
-    M = BeamElements.Rodrigues(v::SVector{3})
+    M = BeamElement.Rodrigues(v::SVector{3})
 
 Transform a rotation vector `v` into the rotation matrix `M`.
 
@@ -116,7 +116,7 @@ function Rodrigues(v::Vec3)
     return LinearAlgebra.I + sinc1(θ)*S + sinc1(θ/2)^2/2*S*S  
 end
 """
-    M = BeamElements.adjust(u::SVector{3},v::SVector{3})
+    M = BeamElement.adjust(u::SVector{3},v::SVector{3})
 
 Compute the matrix of the rotation with smallest angle that transforms `u` into a vector colinear with v.  
 Fails if |u|=0, |v|=0 or if the angle of the rotation is π.
@@ -131,7 +131,7 @@ function adjust(u::Vec3{R},v::Vec3{R}) where{R}
     return w/sinc1(θ)
 end
 """
-    M = BeamElements.intrinsicrotationrates(rₑ::NTuple{ND,SMatrix{3,3}}) where{ND}
+    M = BeamElement.intrinsicrotationrates(rₑ::NTuple{ND,SMatrix{3,3}}) where{ND}
 
 Transform a `NTuple` containing a rotation matrix and its extrinsic time derivatives,
 into a `NTuple` containing a (zero) rotation vector and its intrinsic time derivatives.
@@ -139,9 +139,9 @@ into a `NTuple` containing a (zero) rotation vector and its intrinsic time deriv
 See also [`spin`](@ref), [`spin⁻¹`](@ref), [`Rodrigues`](@ref), [`Rodrigues⁻¹`](@ref).
 """
 function intrinsicrotationrates(rₑ::NTuple{ND,SMatrix{3,3}}) where{ND}
-    vᵢ₀ =              (SVector(0,0,0),                                                                           )
-    vᵢ₁ = ND<1 ? vᵢ₀ : (vᵢ₀...        , spin⁻¹(∂0(rₑ)' ∘₁ ∂1(rₑ))                                                 ) 
-    vᵢ  = ND<2 ? vᵢ₁ : (vᵢ₁...                                   ,   spin⁻¹(∂1(rₑ)' ∘₁ ∂1(rₑ) + ∂0(rₑ)' ∘₁ ∂2(rₑ)))  
+    vᵢ₀ =              (SVector{3,𝕣}(0,0,0),                                                                           )
+    vᵢ₁ = ND<2 ? vᵢ₀ : (vᵢ₀...             , spin⁻¹(∂0(rₑ)' ∘₁ ∂1(rₑ))                                                 ) 
+    vᵢ  = ND<3 ? vᵢ₁ : (vᵢ₁...                                        ,   spin⁻¹(∂1(rₑ)' ∘₁ ∂1(rₑ) + ∂0(rₑ)' ∘₁ ∂2(rₑ)))  
     return vᵢ
 end
 

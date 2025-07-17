@@ -66,9 +66,46 @@ The implementation of a element requires
 - **[`Muscade.doflist`](@ref)** specifies the degrees of freedom (dofs) of the element.
 - **[`Muscade.residual`](@ref)** (either this of [`Muscade.lagrangian`](@ref)) takes element dofs as input and returns the element's additive contribution to the residual of a non-linear system of equations,
 - **[`Muscade.lagrangian`](@ref)** (either this of [`Muscade.residual`](@ref)) takes element dofs as input and returns the element's additive contribution to a target function,
-- **[`Muscade.draw`](@ref)** (optional) which draws all the elements of the same element type.
+- **[`Muscade.allocate_drawing`](@ref)**, **[`Muscade.update_drawing`](@ref)** and **[`Muscade.display_drawing!`](@ref)** (optional) to draw all the elements of the same element type.
 
 Each element must implement *either* [`Muscade.lagrangian`](@ref) *or* [`Muscade.residual`](@ref), depending on what is more natural: a beam element will implement [`Muscade.residual`](@ref) (element reaction forces as a function of nodal displacements), while an element representing a strain sensor will implement [`Muscade.lagrangian`](@ref) (log-of the probability density of the strain, given an uncertain measurement).
+
+Here is a template of the code that may or must be supplied:
+
+```julia
+struct MyElement <: AbstractElement
+    ...
+end
+Muscade.doflist(     ::Type{MyElement})  = 
+        (inod = (...), 
+         class= (...), 
+         field= (...) )
+
+function MyElement(nod::Vector{Node};...) 
+    ...
+    return eleobj
+end
+Muscade.nosecondorder(::Type{<:MyElement}) = Val(true)
+@espy function Muscade.residual(o::MyElement,   X,U,A,t,SP,dbg) 
+    ...
+    return R,noFB  
+end
+@espy function Muscade.lagrangian(o::MyElement,  Λ,X,U,A,t,SP,dbg) 
+    ...
+    return L,noFB
+end
+function Muscade.allocate_drawing(axis,o::AbstractVector{MyElement};kwargs...) 
+    ...
+    return mut,opt
+end
+function Muscade.update_drawing(axis,o::AbstractVector{MyElement},mut,opt, Λ,X,U,A,t,SP,dbg) 
+    ...
+    return mut
+end
+function Muscade.display_drawing!(axis,::Type{MyElement},obs,opt) 
+    ...
+end
+```
 
 ## [DataType](@id struct)
 
@@ -324,18 +361,56 @@ For a given element formulation, the performance of `Muscade.residual` and `Musc
 
 See the page on [automatic differentiation](Adiff.md).
 
-## Method for `Muscade.draw`
 
-### Vectorization
 
-Elements *can* implement a [`Muscade.draw`](@ref) method. If no method is implemented, the element will be invisible if the user requests a drawing of the element.
+## Method for graphics: `Muscade.allocate_drawing`, `Muscade.update_drawing` and `Muscade.display_drawing!`
 
-None of `Muscade` built-in elements implement methods for `draw`: because `Muscade` has no inherent interpretation of the various `X` dofs, there is no graphical representation associated to them.  On the other hand, it might make sense for an app developer (giving an interpretation to various dofs) to create such methods.
+### Template
+The element can provide methods of the form
 
-Because `Muscade` provides no implementation of `draw` (with the exception of some demo elements), `Muscade` does not prescribe the use of any specific graphic package.  See [`Makie.jl`](https://docs.makie.org/) and [`WriteVTK.jl`](https://juliavtk.github.io/WriteVTK.jl/stable/) for candidates.
+```julia
+function Muscade.allocate_drawing(axis,o::AbstractVector{MyElement};kwargs...) 
+    ...
+    return mut,opt
+end
+function Muscade.update_drawing(axis,o::AbstractVector{MyElement},mut,opt, Λ,X,U,A,t,SP,dbg) 
+    ...
+    return mut
+end
+function Muscade.display_drawing!(axis,::Type{MyElement},obs,opt) 
+    ...
+end
+```
 
-While the API may remind that of [`Muscade.lagrangian`](@ref), there is one significant difference: 
-because it is more efficient to create few graphical object (in `Makie`: few calls to `lines!`, `scatter!`) etc., the element's method for `draw` will be called once to draw several elements of the same type. In `Makie` multiple lines can be drawn in one call to `lines!` by using `NaN`s to "lift the pen".
+### Optional
+Methods for all of [`Muscade.allocate_drawing`](@ref), [`Muscade.update_drawing`](@ref) and [`Muscade.display_drawing!`](@ref) method. Alternatively, they must implement neither of these three methods: in this case, the element will be invisible if the user requests a drawing of the element.
+
+None of `Muscade`'s built-in elements implements methods for `draw`: because `Muscade` has no inherent interpretation of the various `X` dofs in these generic elements, there is no graphical representation associated to them.  
+
+### Graphic engine
+
+The element interface with `Muscade.allocate_drawing`, `Muscade.update_drawing` and `Muscade.display_drawing!` is taylored to [`GLMakie.jl`](https://docs.makie.org/), allowing to create and update graphical representation of the element. `Muscade` provides [`draw!`](@ref) to draw (or update a drawing of) the state of a model.
+
+It should be quite feasible to support the creation of files for, e.g., Paraview, or the use of other graphic engines. Element developers can implement methods of `Muscade.allocate_drawing`, `Muscade.update_drawing` and `Muscade.display_drawing!` for the graphic system of their choice, for example using [`WriteVTK.jl`](https://juliavtk.github.io/WriteVTK.jl/stable/) for Paraview. 
+It is *hoped*, but not tested, that [`draw!`](@ref) will be suitable for [`WriteVTK.jl`](https://juliavtk.github.io/WriteVTK.jl/stable/) without modification.
+
+### Graphics performance
+
+Graphics packages typicaly create graphical objects (points, lines, patches etc.), and the construction of such objects is quite costly.  `Muscade.jl` limits the number of graphics objects using two techniques: update and vectorisation.
+
+#### Updating
+
+`GLMakie.jl`, and other graphic systems allow to create a collection of graphic objects to represent a "model", and then to update the numerical values stored in the object.  For this reason, an element's graphics methods are divided in three phases:
+
+1) [`Muscade.allocate_drawing`](@ref): The allocation of memory to be passed to the graphical object constructors.
+2) [`Muscade.update_drawing`](@ref): The updating of the above memory with relevant values for a `State` of the `Model`.
+3) [`Muscade.display_drawing!`](@ref): The creation of the graphics objects, by passing the above memory.
+
+The initial call to `draw!` on a `Model` will call the above three methods in sequence for each element type.  In additional call (typicaly to create new frames of an animation), only the memory update is carried out.  When using `GLMakie.jl`, `Muscade` wraps the above memory in an `Observable`, and this way when the memory is updated, so is the figure. 
+
+#### Vectorization
+
+The element's method for  [`Muscade.allocate_drawing`](@ref), [`Muscade.update_drawing`](@ref) and [`Muscade.display_drawing!`](@ref) act on all elements of the same type, in one call. This allows to exploit that e.g. in `Makie.jl` multiple lines can be drawn in one call to `lines!` by using `NaN`s to "lift the pen".
 
 ### Keyword arguments
 
@@ -343,24 +418,37 @@ When requesting a drawing of all or part of the model, the user can provide spec
 The user can for example require
 
 ```julia
-draw(model;linewidth=2)
+draw!(model;linewidth=2)
 ```
 
-The element's `draw` method *must* accept an arbitrary list of keyword arguments.  Keywords arguments not used by the method are automaticaly ignored.  In order not to fail if a *used* keyword argument is not provided by the user, the following syntax can be used in the element's `draw` method.   
+The element's [`Muscade.allocate_drawing`](@ref) method *must* accept an arbitrary list of keyword arguments.  Keywords arguments not used by the method are automaticaly ignored.  What instructions can be provided, how they are structured and what effect they will have on the graphics depends on the elements. 
+
+In order not to fail if a *used* keyword argument is not provided by the user, the following mechanisms can be used:  The first is
 
 ```julia
-function Muscade.draw(...)
-    ...
-    linewith = default{:linewidth}(kwargs,2.)
+function Muscade.allocate_drawing(axis,o::AbstractVector{MyElement};kwargs...) 
+    # instead of width = kwargs.linewidth
+    with = default{:linewidth}(kwargs,2.)
     ...
 end
 ```
 
-which can be read: if `kwargs.linewidth` exists, the set `linewidth` to its value, otherwise, set it to `2.`.
+which can be read: if `kwargs.linewidth` exists, the set `width` to its value, otherwise, set it to `2.`.  The second mechanism is
 
-The user has facilities to draw only selected element types or selected elements, so the element's `draw` method does not need to implement a switch on *whether* to draw.
+```julia
+function Muscade.allocate_drawing(axis,o::AbstractVector{MyElement};kwargs...) 
+    defaults = (linewidth=2.,someotherkey=defaultvalue)
+    opt = (default(kwargs,defaults))
+    ...
+end
+```
 
-See [`examples/BeamElements.jl`](StaticBeamAnalysis.md) for an example of implementation.  See also 
+
+which creates a new `NamedTuple` `opt` from `kwargs`.  For keys in `defaults` not found in `kwargs`, use the value from `defaults`.
+
+`Muscade` provides facilities to draw only selected element types or selected elements, so the element's `Muscade.allocate_drawing` method does not need to implement a switch on *whether* to draw.
+
+See `Muscade/test/SomeElements.jl` for simple examples of implementation.  See also [`examples/BeamElement.jl`](StaticBeamAnalysis.md) for an advanced example of implementation where there are options to create completely different drawings of the same element.  
 
 ### Getting element results
 
@@ -378,23 +466,23 @@ Constant [`noFB`](@ref) (which have value `nothing`) can be used by elements tha
 
 For those prefering to think in terms of Cartesian tensor algebra, rather than matrix algebra, operators [`⊗`](@ref), [`∘₁`](@ref) and [`∘₂`](@ref) provide the exterior product, the single dot product and the double dot product respectively.
 
-Elements with a corotated reference system, can make use of [`examples/Rotations.jl`](StaticBeamAnalysis.md) that provides functionality to handle rotations in ℝ³.  See [`examples/BeamElements.jl`](StaticBeamAnalysis.md) for an example.
+Elements with a corotated reference system, can make use of [`examples/Rotations.jl`](StaticBeamAnalysis.md) that provides functionality to handle rotations in ℝ³.  See [`examples/BeamElement.jl`](StaticBeamAnalysis.md) for an example.
 
 ## Automatic differentiation within element code
 
-Some advanced elements (in particular, elements with co-rotated element systems) can be implemented elegantly by using automatic differentiation within `residual` or `lagrangian`.  These are advanced techniques, requiring a good understanding of [`automatic differentiation`](Adiff.md).  Example of usage can be found in [`examples/BeamElements.jl`](StaticBeamAnalysis.md).
+Some advanced elements (in particular, elements with co-rotated element systems) can be implemented elegantly by using automatic differentiation within `residual` or `lagrangian`.  These are advanced techniques, requiring a good understanding of [`automatic differentiation`](Adiff.md).  Example of usage can be found in [`examples/BeamElement.jl`](StaticBeamAnalysis.md).
 
 Helper functions [`motion`](@ref) and [`motion⁻¹`](@ref) allow to transform a `tuple` of `SVectors`, like the input `X` given to `residual` and `lagrangian`, into a an automatic differentiation structure, so that functions of `∂0(X)` only can be differentiated with respect to time. 
 
 It is sometimes possible to improve performance by identifying a part of `residual` or `lagrangian` which takes a single, `SVector` as an input: A vector shorter than the list of dofs differentiated by the solver allow to accelerate computations, by using [`fast`](@ref), or for more adbanced usage, [`revariate`](@ref) in combination with [`compose`](@ref). 
 
-In [`examples/BeamElements.jl`](StaticBeamAnalysis.md), in function `kinematics`, [`fast`](@ref) is applied to accelerate a process of differentiation to the 2nd order.  In `residual`, [`revariate`](@ref) and [`compose`](@ref) in order to differentiate `kinematics` and accelerate computations by exploiting the fact that `kinematic` is a function of `∂0(X)` only.
+In [`examples/BeamElement.jl`](StaticBeamAnalysis.md), in function `kinematics`, [`fast`](@ref) is applied to accelerate a process of differentiation to the 2nd order.  In `residual`, [`revariate`](@ref) and [`compose`](@ref) in order to differentiate `kinematics` and accelerate computations by exploiting the fact that `kinematic` is a function of `∂0(X)` only.
 
 ## Testing elements
 When developing a new element, it is advisable to test the constructor, and `residual` or `lagrangian` in a direct call (outside of any Muscade solver), and examine the returned outputs.
 
 Generaly, automatic differentiation is unproblematic, but when advanced tools are used (e.g. [`revariate`](@ref) and [`compose`](@ref)), then the derivatives should be inspected.  See [`diffed_residual`](@ref) and [`diffed_lagrangian`](@ref) to compute the derivatives of `R` and `L` returned by `residual` and `lagrangian` respectively. 
 
-See also [`Muscade.SpyAxe`](@ref) for testing of graphic generating functions such as [`Muscade.draw`](@ref).
+See also [`Muscade.SpyAxis`](@ref) for testing of graphic generating functions such as [`Muscade.display_drawing!`](@ref).
 
 
