@@ -74,7 +74,7 @@ module Runtest
         @testset "TestBeamElement" begin
             include("TestBeamElement.jl")
         end
-        @testset "TestBeamElementStrainGauge" begin
+        @testset "TestBeamElementtrainGauge" begin
             include("TestBeamElementStrainGauge.jl")
         end
         @testset "TestDrawBeamElement" begin

@@ -63,7 +63,6 @@ addelement!(model,ElementCost,strainmesh;
                         ElementType   = StrainGaugeOnEulerBeam3D,
                         elementkwargs = (P             = SMatrix{3,4}(0.,0.,.05, 0.,0.05,0.,  0.,0.,-.05,  0.,-.05,0.),
                                          D             = SMatrix{3,4}(1.,0.,0.,  1.,0.,0.,    1.,0.,0.,    1.,0.,0.  ),
-                                         L             = 0.02           ,
                                          ElementType   = EulerBeam3D{true},
                                          elementkwargs = (mat     = mat,
                                                           orient2 = SVector(0.,0.,1.))))
@@ -113,10 +112,11 @@ nmod              = 5
 nα                = 32
 α                 = 2π*(1:nα)/nα
 circle            = 0.05*[cos.(α) sin.(α)]'
-draw(initialstate,eigincXU;shadow = (;EulerBeam3D             = (;style=:shape,line_color=:grey,Udof=false),
-                                     StrainGaugeOnEulerBeam3D = (;gauge_color=:transparent)         ),
-                           model  = (;EulerBeam3D             = (;style=:solid,section=circle),
-                                      Position3D              = (;L=SVector(.03,.03,.03)) ) )
+GUI(initialstate,eigincXU;shadow = (;EulerBeam3D              = (;style=:shape,line_color=:grey,Udof=false),
+                                    StrainGaugeOnEulerBeam3D  = (;gauge_color=:transparent)         ),
+                          model  = (;EulerBeam3D              = (;style=:solid,section=circle),
+                                     StrainGaugeOnEulerBeam3D = (;L=0.03),
+                                     Position3D               = (;L=.03)) ) 
 
 
 #state = increment{OX}(initialstate,eigincXU,100,[1],[1])

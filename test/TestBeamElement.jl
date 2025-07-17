@@ -1,4 +1,4 @@
-#module TestBeamElements
+#module TestBeamElement
 
 using Test, Muscade, StaticArrays, LinearAlgebra
 include("../examples/BeamElement.jl")

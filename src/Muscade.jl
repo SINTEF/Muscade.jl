@@ -76,7 +76,7 @@ module Muscade
     export EigX,increment
 
     include("EigXU.jl")
-    export EigXU,draw
+    export EigXU,GUI
 
     include("FreqXU.jl")
     export FreqXU

@@ -204,13 +204,13 @@ vibrating structure
 
 See also: [`EigXU`](@ref)
 """
-function increment{OX}(initialstate,eiginc::EigXUincrement,iω::𝕫,imod::AbstractVector{𝕫},A::AbstractVector) where{OX} 
+function increment{OX}(initialstate,eiginc::EigXUincrement,iω::𝕫,imod::AbstractVector{𝕫},amplitude::AbstractVector) where{OX} 
     state       = State{1,OX+1,1}(copy(initialstate)) 
     ω, ΔΛXU     = eiginc.ω[iω], eiginc.ΔΛXU[iω]
     maximum(imod)≤length(eiginc.λ) || muscadeerror(@sprintf("eiginc only has %n modes for iω=%i.",length(ω),iω))
     for (i,imodᵢ)∈enumerate(imod)  
         for iOX = 0:OX
-            increment!(state,iOX+1,ℜ.(ω^iOX*A[i]*ΔΛXU[imodᵢ]),eiginc.dofgr)
+            increment!(state,iOX+1,ℜ.(ω^iOX*amplitude[i]*ΔΛXU[imodᵢ]),eiginc.dofgr)
         end
     end
     return state
@@ -229,7 +229,7 @@ function visualincrement(initialstate,eiginc::EigXUincrement,iω::𝕫,imod::�
 end
 """
 
-    draw(eiginc,initialstate;[draw_shadow=true],[shadow=...],[model=...])
+    GUI(eiginc,initialstate;[draw_shadow=true],[shadow=...],[model=...])
 
 Taking the output `eiginc` obtained from an `EigXU`, and the state `initstate` provided to `EigXU`, provide
 a GUI to explore the results.
@@ -241,7 +241,7 @@ Optional keyword arguements are
 
 See also [`EigXU`](@ref)
 """
-function draw(initialstate,eiginc::EigXUincrement,;kwargs...)
+function GUI(initialstate,eiginc::EigXUincrement,;kwargs...)
     args = default(kwargs, (draw_shadow=true, shadow=(;),model=(;)))
 
     ## Organize the window
