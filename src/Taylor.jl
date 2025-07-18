@@ -140,6 +140,7 @@ See also: [`revariate`](@ref), [`fast`](@ref)
 """
 compose(Ty,x) = McLaurin(Ty,x-VALUE(x))
 
+struct fast{T} end
 """
     y,... = fast(f,x)
 
@@ -153,6 +154,13 @@ Wrapper function of [`revariate`](@ref) and [`McLaurin`](@ref)
 fast(      f,x) = compose(f(revariate(x)),x)    
 justinvoke(f,x) = f(x)    
 
+fast{true }(f,x) = fast(      f,x)
+fast{false}(f,x) = justinvoke(f,x)
+
+struct apply{Mode} end
+apply{:compose}(f,x) = compose(f(revariate(x)),x)
+apply{:direct}( f,x) = f(x)
+
 """
     composevalue{P,ND}(Ty,X_)
 
@@ -162,8 +170,11 @@ of length `ND` and `P=constants(X)`, compute `y`, a tuple of length `ND` of `Abs
 See also [`revariate`](@ref), [`motion`](@ref), [`motion⁻¹`](@ref), [`composeJacobian`](@ref)  
 """
 struct composevalue{P,ND} end
-composevalue{P,ND}(Ty,X_) where{P,ND} = motion⁻¹{P,ND}(compose(value{P}(Ty),X_))
-composevalue{P,ND}(Ty::Union{Tuple,NamedTuple},X₀) where{P,ND} = map(Tyᵢ->value{P,ND}(Tyᵢ,X₀),Ty)
+composevalue{P,ND}(Ty            ,X_) where{P,ND} = motion⁻¹{P,ND}(compose(value{P}(Ty),X_))
+#composevalue{P,ND}(Ty::Union{Tuple,NamedTuple},X₀) where{P,ND} = map(Tyᵢ->value{P,ND}(Tyᵢ,X₀),Ty) # map is slow, because it takes a function as argument.
+composevalue{P,ND}(Ty::NamedTuple,X_) where{P,ND} = NamedTuple{keys(Ty)}(composevalue{P,ND}(values(Ty),X_))
+composevalue{P,ND}(Ty::Tuple     ,X_) where{P,ND} = (composevalue{P,ND}(first(Ty),X_),composevalue{P,ND}(Base.tail(Ty),X_)...)
+composevalue{P,ND}(Ty::Tuple{}   ,X_) where{P,ND} = ()
 """
     composeJacobian{P}(Ty,X_)
 
@@ -174,8 +185,12 @@ and `y∂X₀`, the Jacobian of `∂0(y)` with respect to `∂0(X)`.
 See also [`revariate`](@ref), [`motion`](@ref), [`motion⁻¹`](@ref), [`composevalue`](@ref)   
 """
 struct composeJacobian{P} end
-composeJacobian{P}(Ty,X₀) where{P} = compose(∂{P,npartial(Ty)}(Ty),X₀) # y∂X₀
-composeJacobian{P}(Ty::Union{Tuple,NamedTuple},X₀) where{P} = map(Tyᵢ->composeJacobian{P}(Tyᵢ,X₀),Ty)
+composeJacobian{P}(Ty            ,X₀) where{P} = compose(∂{P,npartial(Ty)}(Ty),X₀) # y∂X₀
+composeJacobian{P}(Ty::NamedTuple,X₀) where{P} = NamedTuple{keys(Ty)}(composeJacobian{P}(values(Ty),X₀))
+composeJacobian{P}(Ty::Tuple     ,X₀) where{P} = (composeJacobian{P}(first(Ty),X₀),composeJacobian{P}(Base.tail(Ty),X₀)...)
+composeJacobian{P}(Ty::Tuple{}   ,X₀) where{P} = ()
+
+
 
 # ∂ℝ( ∂ℝ(a,aₓ), ∂ℝ(aₓ,aₓₓ) ) → ∂ℝ(a,aₓ)   
 firstorderonly(a...;)            = firstorderonly.(a)

@@ -26,7 +26,7 @@ const X         = (xv,)
 const U         = (SVector{0,𝕣}(),)
 const A         = SVector{0,𝕣}()
 
-mission = :profile
+mission = :time
 if mission == :report
     R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg)
     r,K = value_∂{1,12}(R)

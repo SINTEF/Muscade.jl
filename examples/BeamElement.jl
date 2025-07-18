@@ -122,14 +122,14 @@ end;
 @espy function Muscade.residual(o::EulerBeam3D{Mat,Udof},   X,U,A,t,SP,dbg) where{Mat,Udof}
     P,ND                = constants(X),length(X)
     ## Compute all quantities at Gauss point, their time derivatives, including intrinsic roll rate and acceleration
-    gp_,ε_,vₛₘ_,rₛₘ_,vₗ₂_,_,_ = kinematics(o,motion{P}(X),Muscade.justinvoke)
+    gp_,ε_,vₛₘ_,rₛₘ_,vₗ₂_,_,_ = kinematics{false}(o,motion{P}(X))
 #    gp_,ε_,vₛₘ_,rₛₘ_,vₗ₂_,_,_ = kinematics(o,motion{P}(X),(f,x)->f(x))
     gpval,☼ε , rₛₘ       = motion⁻¹{P,ND}(gp_,ε_,rₛₘ_  ) 
     vᵢ                  = intrinsicrotationrates(rₛₘ)
     ## compute all Jacobians of the above quantities with respect to X₀
     X₀                  = ∂0(X)
     TX₀                 = revariate{1}(X₀)  # check type
-    Tgp,Tε,Tvₛₘ,_,_,_,_  = kinematics(o,TX₀,Muscade.fast)
+    Tgp,Tε,Tvₛₘ,_,_,_,_  = kinematics{true}(o,TX₀) # the crux
     gp∂X₀,ε∂X₀,vₛₘ∂X₀    = composeJacobian{P}((Tgp,Tε,Tvₛₘ),X₀)
     ## Quadrature loop: compute resultants
     gp                  = ntuple(ngp) do igp
@@ -145,9 +145,10 @@ end;
     ♢rₛₘ                 = motion⁻¹{P,ND}(rₛₘ_)
     return R,noFB  
 end;
-function kinematics(o::EulerBeam3D,X₀,fast)  
+struct kinematics{speed} end
+function kinematics{speed}(o::EulerBeam3D,X₀)  where{speed}
     cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp,L  = o.cₘ,o.rₘ,o.tgₘ,o.tgₑ,o.ζnod,o.ζgp,o.L   # As-meshed element coordinates and describing tangential vector
-    vₛₘ,rₛₘ,uₗ₂,vₗ₂,cₛₘ  = corotated(o,X₀,fast)
+    vₛₘ,rₛₘ,uₗ₂,vₗ₂,cₛₘ  = corotated{speed}(o,X₀)
     ε                = √((uₗ₂[1]+L/2)^2+uₗ₂[2]^2+uₗ₂[3]^2)*2/L - 1.      
     gp               = ntuple(ngp) do igp  # gp[igp].κ, gp[igp].x
         yₐ,yᵤ,yᵥ,κₐ,κᵤ,κᵥ = o.yₐ[igp],o.yᵤ[igp],o.yᵥ[igp],o.κₐ[igp],o.κᵤ[igp],o.κᵥ[igp]
@@ -160,17 +161,18 @@ function kinematics(o::EulerBeam3D,X₀,fast)
 end
 
 vec3(v,ind) = SVector{3}(v[i] for i∈ind);
-function corotated(o::EulerBeam3D,X₀,fast)  
+struct corotated{speed} end 
+function corotated{speed}(o::EulerBeam3D,X₀)  where{speed}
     cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp,L  = o.cₘ,o.rₘ,o.tgₘ,o.tgₑ,o.ζnod,o.ζgp,o.L   # As-meshed element coordinates and describing tangential vector
     uᵧ₁,uᵧ₂,vᵧ             = vec3(X₀,1:3), vec3(X₀,7:9), SVector(X₀[4],X₀[5],X₀[6],X₀[10],X₀[11],X₀[12])
-    Δvᵧ,rₛₘ,vₛₘ             = fast(vᵧ) do v
+    Δvᵧ,rₛₘ,vₛₘ             = fast{speed}(vᵧ) do v
         vᵧ₁,vᵧ₂            = vec3(vᵧ,1:3), vec3(vᵧ,4:6)
-        rₛ₁                = fast(Rodrigues,vᵧ₁)
-        rₛ₂                = fast(Rodrigues,vᵧ₂)
-        local Δvᵧ         = 0.5*Rodrigues⁻¹(rₛ₂ ∘₁ rₛ₁')
-        local rₛₘ          = fast(Rodrigues,Δvᵧ) ∘₁ rₛ₁ ∘₁ o.rₘ  
-        local vₛₘ          = Rodrigues⁻¹(rₛₘ)              
-        return Δvᵧ,rₛₘ,vₛₘ
+        rₛ₁                = fast{speed}(Rodrigues,vᵧ₁)
+        rₛ₂                = fast{speed}(Rodrigues,vᵧ₂)
+        Δvᵧ_         = 0.5*Rodrigues⁻¹(rₛ₂ ∘₁ rₛ₁')
+        rₛₘ_          = fast{speed}(Rodrigues,Δvᵧ_) ∘₁ rₛ₁ ∘₁ o.rₘ  
+        vₛₘ_          = Rodrigues⁻¹(rₛₘ_)              
+        return Δvᵧ_,rₛₘ_,vₛₘ_
     end   
     cₛ               = 0.5*(uᵧ₁+uᵧ₂)
     uₗ₂              = rₛₘ' ∘₁ (uᵧ₂+tgₘ*ζnod[2]-cₛ)-tgₑ*ζnod[2]    #Local displacement of node 2
