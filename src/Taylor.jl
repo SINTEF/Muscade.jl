@@ -140,7 +140,6 @@ See also: [`revariate`](@ref), [`fast`](@ref)
 """
 compose(Ty,x) = McLaurin(Ty,x-VALUE(x))
 
-struct fast{T} end
 """
     y,... = fast(f,x)
 
@@ -151,11 +150,8 @@ Be extremely careful with closures, making sure that `f` does not capture variab
 
 Wrapper function of [`revariate`](@ref) and [`McLaurin`](@ref)      
 """
-fast(      f,x) = compose(f(revariate(x)),x)    
-justinvoke(f,x) = f(x)    
-
-fast{true }(f,x) = fast(      f,x)
-fast{false}(f,x) = justinvoke(f,x)
+fast(      f,x) = apply{:compose}(f,x)    
+justinvoke(f,x) = apply{:direct}( f,x)    
 
 struct apply{Mode} end
 apply{:compose}(f,x) = compose(f(revariate(x)),x)
