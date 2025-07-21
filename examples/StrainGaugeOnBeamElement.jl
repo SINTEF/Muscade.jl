@@ -90,7 +90,7 @@ function Muscade.update_drawing(  axis,o::AbstractVector{Gauge},oldmut,opt, Λ,X
     nel                  = length(o)
     rx                   = reshape(oldmut.gauge,3,3,Ngauge,nel)
     for (iel,oᵢ) ∈ enumerate(o)
-        gp,ε,vₛₘ,rₛₘ,vₗ₂,uₗ₂,cₛₘ = kinematics(oᵢ.eleobj,view(X₀,:,iel))
+        gp,ε,vₛₘ,rₛₘ,vₗ₂,uₗ₂,cₛₘ = kinematics{:direct}(oᵢ.eleobj,view(X₀,:,iel))
         rx[:,1,:,iel]    = rₛₘ ∘₁ (oᵢ.P*opt.expand .+ opt.L*oᵢ.D) .+ cₛₘ
         rx[:,2,:,iel]    = rₛₘ ∘₁ (oᵢ.P*opt.expand .- opt.L*oᵢ.D) .+ cₛₘ
     end

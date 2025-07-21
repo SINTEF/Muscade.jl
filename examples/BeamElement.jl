@@ -166,7 +166,7 @@ function corotated{Mode}(o::EulerBeam3D,X₀)  where{Mode}
     cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp,L  = o.cₘ,o.rₘ,o.tgₘ,o.tgₑ,o.ζnod,o.ζgp,o.L   # As-meshed element coordinates and describing tangential vector
     uᵧ₁,uᵧ₂,vᵧ             = vec3(X₀,1:3), vec3(X₀,7:9), SVector(X₀[4],X₀[5],X₀[6],X₀[10],X₀[11],X₀[12])
     Δvᵧ,rₛₘ,vₛₘ             = apply{Mode}(vᵧ) do v
-        vᵧ₁,vᵧ₂            = vec3(vᵧ,1:3), vec3(vᵧ,4:6)
+        vᵧ₁,vᵧ₂            = vec3(v,1:3), vec3(v,4:6)
         rₛ₁                = apply{Mode}(Rodrigues,vᵧ₁)
         rₛ₂                = apply{Mode}(Rodrigues,vᵧ₂)
         Δvᵧ_         = 0.5*Rodrigues⁻¹(rₛ₂ ∘₁ rₛ₁')
@@ -263,7 +263,7 @@ function Muscade.update_drawing(axis,o::AbstractVector{EulerBeam3D{Tmat,Udof}},o
         for (iel,oᵢ) = enumerate(o)
             cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp,L  = oᵢ.cₘ,oᵢ.rₘ,oᵢ.tgₘ,oᵢ.tgₑ,oᵢ.ζnod,oᵢ.ζgp,oᵢ.L   
             X₀ₑ = view(X₀,:,iel)
-            vₛₘ,rₛₘ,uₗ₂,vₗ₂,cₛₘ = corotated(oᵢ,X₀ₑ,justinvoke) 
+            vₛₘ,rₛₘ,uₗ₂,vₗ₂,cₛₘ = corotated{:direct}(oᵢ,X₀ₑ) 
             if opt.draw_frame
                 for ivec = 1:3
                     shape_frame[:,1,ivec,iel] = cₛₘ
@@ -294,7 +294,7 @@ function Muscade.update_drawing(axis,o::AbstractVector{EulerBeam3D{Tmat,Udof}},o
         for (iel,oᵢ) = enumerate(o)
             cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp,L  = oᵢ.cₘ,oᵢ.rₘ,oᵢ.tgₘ,oᵢ.tgₑ,oᵢ.ζnod,oᵢ.ζgp,oᵢ.L   
             X₀ₑ = view(X₀,:,iel)
-            vₛₘ,rₛₘ,uₗ₂,vₗ₂,cₛₘ = corotated(oᵢ,X₀ₑ,justinvoke) 
+            vₛₘ,rₛₘ,uₗ₂,vₗ₂,cₛₘ = corotated{:direct}(oᵢ,X₀ₑ) 
             vᵧ₁,vᵧ₂          = vec3(X₀ₑ,4:6), vec3(X₀ₑ,10:12)
             rₛ₁              = Rodrigues(vᵧ₁)
             rₛ₂              = Rodrigues(vᵧ₂)
