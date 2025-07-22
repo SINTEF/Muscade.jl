@@ -107,9 +107,22 @@ See also: [`compose`](@ref), [`Taylor`](@ref), [`revariate`](@ref), [`fast`](@re
 McLaurin(y::Tuple,Δx)                          = tuple(McLaurin(first(y),Δx),McLaurin(Base.tail(y),Δx)...) 
 McLaurin( ::Tuple{},Δx)                        = tuple() 
 McLaurin(y::SArray{S},Δx) where{S}             = SArray{S}(McLaurin(yᵢ,Δx) for yᵢ∈y) 
-McLaurin(y::∂ℝ,Δx)                             = McLaurin(y.x,Δx) + McLaurin_right(y,Δx)
+#McLaurin(y::∂ℝ,Δx)                             = McLaurin(y.x,Δx) + McLaurin_right(y,Δx)
+McLaurin(y::∂ℝ,Δx)                             = McLaurin(y.x,Δx) .+ McLaurin_right(y,Δx)
 McLaurin(y::𝕣 ,Δx)                             =          y
-McLaurin_right(y::∂ℝ{P},Δx::SVector{N}) where{P,N} = sum(McLaurin_right(y.dx[i],Δx)*Δx[i] for i∈1:N)*(1/P)
+#McLaurin_right(y::∂ℝ{P},Δx::SVector{N}) where{P,N} = sum(McLaurin_right(y.dx[i],Δx)*Δx[i] for i∈1:N)*(1/P)  # slow
+function McLaurin_right(y::∂ℝ{P,N,R},Δx::SVector{N}) where{P,N,R} 
+    if N==0
+        return zero(y) # hum!!!!
+    else
+        s = McLaurin_right(y.dx[1],Δx)*Δx[1]
+        for i ∈ 2:N
+            s += McLaurin_right(y.dx[i],Δx)*Δx[i]
+        end
+        s /= P
+    end
+    return s
+end
 McLaurin_right(y::𝕣    ,Δx            )        =          y
 
 """
@@ -138,7 +151,8 @@ if the length of `x` is smaller than the length of its partials.
 
 See also: [`revariate`](@ref), [`fast`](@ref)    
 """
-compose(Ty,x) = McLaurin(Ty,x-VALUE(x))
+#compose(Ty,x) = McLaurin(Ty,x-VALUE(x))
+compose(Ty,x) = McLaurin(Ty,x.-VALUE(x))
 
 """
     y,... = fast(f,x)
@@ -152,6 +166,7 @@ Wrapper function of [`revariate`](@ref) and [`McLaurin`](@ref)
 """
 fast(      f,x) = apply{:compose}(f,x)    
 justinvoke(f,x) = apply{:direct}( f,x)    
+
 
 struct apply{Mode} end
 apply{:compose}(f,x) = compose(f(revariate(x)),x)
@@ -167,7 +182,6 @@ See also [`revariate`](@ref), [`motion`](@ref), [`motion⁻¹`](@ref), [`compose
 """
 struct composevalue{P,ND} end
 composevalue{P,ND}(Ty            ,X_) where{P,ND} = motion⁻¹{P,ND}(compose(value{P}(Ty),X_))
-#composevalue{P,ND}(Ty::Union{Tuple,NamedTuple},X₀) where{P,ND} = map(Tyᵢ->value{P,ND}(Tyᵢ,X₀),Ty) # map is slow, because it takes a function as argument.
 composevalue{P,ND}(Ty::NamedTuple,X_) where{P,ND} = NamedTuple{keys(Ty)}(composevalue{P,ND}(values(Ty),X_))
 composevalue{P,ND}(Ty::Tuple     ,X_) where{P,ND} = (composevalue{P,ND}(first(Ty),X_),composevalue{P,ND}(Base.tail(Ty),X_)...)
 composevalue{P,ND}(Ty::Tuple{}   ,X_) where{P,ND} = ()

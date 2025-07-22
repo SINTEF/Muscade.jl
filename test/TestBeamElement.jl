@@ -109,7 +109,7 @@ end
 displacement =  SVector(0.,0.,0.,0.,0.,0.,  0.,0.,0.,0.,0.,0.); 
 velocity     =  SVector(0.,0.,0.,0.,0.,0.,  0.,0.,0.,0.,0.,0.); 
 acceleration =  SVector(0.,0.,0.,0.,0.,0.,  0.,0.,0.,0.,0.,0.); 
-X = (displacement,velocity,acceleration)
+X            = (displacement,velocity,acceleration)
 
 out = diffed_residual(beam; X,U,A,t,SP)
 iλ,ix,iu,ia = 1,2,3,4

@@ -123,7 +123,6 @@ end;
     P,ND                = constants(X),length(X)
     ## Compute all quantities at Gauss point, their time derivatives, including intrinsic roll rate and acceleration
     gp_,ε_,vₛₘ_,rₛₘ_,vₗ₂_,_,_ = kinematics{:direct}(o,motion{P}(X))
-#    gp_,ε_,vₛₘ_,rₛₘ_,vₗ₂_,_,_ = kinematics(o,motion{P}(X),(f,x)->f(x))
     gpval,☼ε , rₛₘ       = motion⁻¹{P,ND}(gp_,ε_,rₛₘ_  ) 
     vᵢ                  = intrinsicrotationrates(rₛₘ)
     ## compute all Jacobians of the above quantities with respect to X₀
@@ -173,7 +172,7 @@ function corotated{Mode}(o::EulerBeam3D,X₀)  where{Mode}
         rₛₘ_          = apply{Mode}(Rodrigues,Δvᵧ_) ∘₁ rₛ₁ ∘₁ o.rₘ  
         vₛₘ_          = Rodrigues⁻¹(rₛₘ_)              
         return Δvᵧ_,rₛₘ_,vₛₘ_
-    end   
+    end  
     cₛ               = 0.5*(uᵧ₁+uᵧ₂)
     uₗ₂              = rₛₘ' ∘₁ (uᵧ₂+tgₘ*ζnod[2]-cₛ)-tgₑ*ζnod[2]    #Local displacement of node 2
     vₗ₂              = rₛₘ' ∘₁ Δvᵧ

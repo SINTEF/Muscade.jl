@@ -103,6 +103,24 @@ Transform a rotation matrix `M` into the rotation vector `v`, such that
 See also [`spin`](@ref), [`spin⁻¹`](@ref), [`Rodrigues`](@ref), [`adjust`](@ref).
 """
 Rodrigues⁻¹(m)   = spin⁻¹(m)/scac((trace(m)-1)/2)   # NB: is necessarily singular for π turn
+function norm3(v::SVector{3})  # executes faster, COMPILES MUCH FASTER , and adiffs poorly at origin
+    n = sqrt(v[1]*v[1]+v[2]*v[2]+v[3]*v[3])
+    if n<1e-14
+        n = zero(eltype(v))
+    end
+    return n
+end
+
+function spin²(S) 
+    ab  = S[2,3]*S[3,1] 
+    ca  = S[1,2]*S[2,3] 
+    bc  = S[3,1]*S[1,2]
+    ma² = S[3,2]*S[2,3]
+    mb² = S[3,1]*S[1,3]
+    mc² = S[2,1]*S[1,2]
+    return SMatrix{3,3}(mc²+mb²,ab,ca, ab,ma²+mc²,bc, ca,bc,ma²+mb²)
+end     
+
 """
     M = BeamElement.Rodrigues(v::SVector{3})
 
@@ -112,9 +130,27 @@ See also [`spin`](@ref), [`spin⁻¹`](@ref), [`Rodrigues⁻¹`](@ref), [`adjust
 """
 function Rodrigues(v::Vec3) 
     S = spin(v)
-    θ = norm(v)
-    return LinearAlgebra.I + sinc1(θ)*S + sinc1(θ/2)^2/2*S*S  
+    θ = norm3(v)
+    return LinearAlgebra.I + sinc1(θ).*S + (sinc1(θ/2)^2/2).*spin²(S)   
 end
+# function Rodrigues(v::Vec3) # no substantial gain from this implementation
+#     a,b,c = v[1],v[2],v[3]
+#     ab    = a*b
+#     ca    = c*a 
+#     bc    = b*c
+#     a²    = a*a
+#     b²    = b*b
+#     c²    = c*c
+#     θ     = sqrt(a²+b²+c²)
+#     if θ<1e-14
+#         θ = zero(eltype(v))
+#     end
+#     A     = sinc1(θ)
+#     B     = sinc1(θ/2)^2/2
+#     return SMatrix{3,3}(1-B*(b²+c²), -A*c+B*ab,   A*b+B*ca,    # SMatrix constructor: the code is the transposed of the matrix!
+#                          A*c+B*ab,  1-B*(a²+c²), -A*a+B*bc,     
+#                         -A*b+B*ca,    A*a*B*bc, 1-B*(a²+b²))
+# end
 """
     M = BeamElement.adjust(u::SVector{3},v::SVector{3})
 
@@ -126,7 +162,7 @@ See also [`spin`](@ref), [`spin⁻¹`](@ref), [`Rodrigues`](@ref), [`Rodrigues�
 function adjust(u::Vec3{R},v::Vec3{R}) where{R}
     u,v = normalize.((u,v))
     c,w = dot(u,v), cross(u,v) 
-    s   = norm(w)
+    s   = norm3(w)
     θ   = atan(s,c)
     return w/sinc1(θ)
 end

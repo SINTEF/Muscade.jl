@@ -110,12 +110,11 @@ The output is a `NamedTuple` with fields `X`, `U`, `A`, `t`, `SP` echoing the in
 See also: [`diffed_lagrangian`](@ref), [`print_element_array`](@ref)
 """     
 function diffed_residual(ele::Eletyp; X,U,A, t::𝕣=0.,SP=nothing) where{Eletyp<:AbstractElement}
-    Nx,Nu,Na         = Muscade.getndof(Eletyp,(:X,:U,:A))
     OX,OU,IA         = length(X)-1,length(U)-1,1
-
-    @assert length(∂0(X)) == Nx
-    @assert length(∂0(U)) == Nu
-    @assert length(   A ) == Na
+    Nx               = length(∂0(X)) 
+    Nu               = length(∂0(U)) 
+    Na               = length(   A ) 
+    @assert (Nx,Nu,Na) == getndof(Eletyp,(:X,:U,:A))
 
     xua       = ( 2,    3,  4)
     ndof      = (0, Nx,   Nu, Na)
