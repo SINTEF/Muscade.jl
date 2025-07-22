@@ -49,13 +49,13 @@ The output is a `NamedTuple` with fields `Λ`, `X`, `U`, `A`, `t`, `SP` echoing 
 See also: [`diffed_residual`](@ref), [`print_element_array`](@ref)
 """     
 function diffed_lagrangian(ele::Eletyp; Λ,X,U,A, t::𝕣=0.,SP=nothing) where{Eletyp<:AbstractElement}
-    Nx,Nu,Na         = getndof(Eletyp,(:X,:U,:A))
     OX,OU,IA         = length(X)-1,length(U)-1,1
+    Nλ               = length(   Λ ) 
+    Nx               = length(∂0(X)) 
+    Nu               = length(∂0(U)) 
+    Na               = length(   A ) 
 
-    @assert length(   Λ ) == Nx
-    @assert length(∂0(X)) == Nx
-    @assert length(∂0(U)) == Nu
-    @assert length(   A ) == Na
+    @assert (Nλ,Nx,Nu,Na) == getndof(Eletyp,(:X,:X,:U,:A))
 
     λxua      = ( 1,    2,    3,  4)
     ndof      = (Nx,   Nx,   Nu, Na)

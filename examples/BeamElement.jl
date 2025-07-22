@@ -136,7 +136,7 @@ end;
         x∂X₀,κ∂X₀       = gp∂X₀[igp].x, gp∂X₀[igp].κ
         fᵢ,mᵢ,fₑ,mₑ     = ☼resultants(o.mat,ε,κ,x,rₛₘ,vᵢ)          # call the "resultant" function to compute loads (local coordinates) from strains/curvatures/etc. using material properties. Note that output is dual of input. 
         fₑ              = Udof ? fₑ-∂0(U) : fₑ                    # U is per unit length
-        R_               = (fᵢ ∘₀ ε∂X₀ + mᵢ ∘₁ κ∂X₀ + fₑ ∘₁ x∂X₀ + mₑ ∘₁ vₛₘ∂X₀) * o.dL[igp]     # Contribution to the local nodal load of this Gauss point  [nXdof] = scalar*[nXdof] + [ndim]⋅[ndim,nXdof] + [ndim]⋅[ndim,nXdof]
+        R_              = (fᵢ ∘₀ ε∂X₀ + mᵢ ∘₁ κ∂X₀ + fₑ ∘₁ x∂X₀ + mₑ ∘₁ vₛₘ∂X₀) * o.dL[igp]     # Contribution to the local nodal load of this Gauss point  [nXdof] = scalar*[nXdof] + [ndim]⋅[ndim,nXdof] + [ndim]⋅[ndim,nXdof]
         @named(R_)
     end
     R                   = sum(gpᵢ.R_ for gpᵢ∈gp) 
@@ -163,19 +163,19 @@ vec3(v,ind) = SVector{3}(v[i] for i∈ind);
 struct corotated{Mode} end 
 function corotated{Mode}(o::EulerBeam3D,X₀)  where{Mode}
     cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp,L  = o.cₘ,o.rₘ,o.tgₘ,o.tgₑ,o.ζnod,o.ζgp,o.L   # As-meshed element coordinates and describing tangential vector
-    uᵧ₁,uᵧ₂,vᵧ             = vec3(X₀,1:3), vec3(X₀,7:9), SVector(X₀[4],X₀[5],X₀[6],X₀[10],X₀[11],X₀[12])
-    Δvᵧ,rₛₘ,vₛₘ             = apply{Mode}(vᵧ) do v
-        vᵧ₁,vᵧ₂            = vec3(v,1:3), vec3(v,4:6)
-        rₛ₁                = apply{Mode}(Rodrigues,vᵧ₁)
-        rₛ₂                = apply{Mode}(Rodrigues,vᵧ₂)
-        Δvᵧ_         = 0.5*Rodrigues⁻¹(rₛ₂ ∘₁ rₛ₁')
-        rₛₘ_          = apply{Mode}(Rodrigues,Δvᵧ_) ∘₁ rₛ₁ ∘₁ o.rₘ  
-        vₛₘ_          = Rodrigues⁻¹(rₛₘ_)              
+    uᵧ₁,uᵧ₂,vᵧ                = vec3(X₀,1:3), vec3(X₀,7:9), SVector(X₀[4],X₀[5],X₀[6],X₀[10],X₀[11],X₀[12])
+    Δvᵧ,rₛₘ,vₛₘ                = apply{Mode}(vᵧ) do v
+        vᵧ₁,vᵧ₂               = vec3(v,1:3), vec3(v,4:6)
+        rₛ₁                   = apply{Mode}(Rodrigues,vᵧ₁)
+        rₛ₂                   = apply{Mode}(Rodrigues,vᵧ₂)
+        Δvᵧ_                 = 0.5*Rodrigues⁻¹(rₛ₂ ∘₁ rₛ₁')
+        rₛₘ_                  = apply{Mode}(Rodrigues,Δvᵧ_) ∘₁ rₛ₁ ∘₁ o.rₘ  
+        vₛₘ_                  = Rodrigues⁻¹(rₛₘ_)              
         return Δvᵧ_,rₛₘ_,vₛₘ_
     end  
-    cₛ               = 0.5*(uᵧ₁+uᵧ₂)
-    uₗ₂              = rₛₘ' ∘₁ (uᵧ₂+tgₘ*ζnod[2]-cₛ)-tgₑ*ζnod[2]    #Local displacement of node 2
-    vₗ₂              = rₛₘ' ∘₁ Δvᵧ
+    cₛ                        = 0.5*(uᵧ₁+uᵧ₂)
+    uₗ₂                       = rₛₘ' ∘₁ (uᵧ₂+tgₘ*ζnod[2]-cₛ)-tgₑ*ζnod[2]    #Local displacement of node 2
+    vₗ₂                       = rₛₘ' ∘₁ Δvᵧ
     return vₛₘ,rₛₘ,uₗ₂,vₗ₂,cₛ+cₘ
 end;
 

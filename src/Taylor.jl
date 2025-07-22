@@ -200,35 +200,24 @@ composeJacobian{P}(Ty::NamedTuple,X₀) where{P} = NamedTuple{keys(Ty)}(composeJ
 composeJacobian{P}(Ty::Tuple     ,X₀) where{P} = (composeJacobian{P}(first(Ty),X₀),composeJacobian{P}(Base.tail(Ty),X₀)...)
 composeJacobian{P}(Ty::Tuple{}   ,X₀) where{P} = ()
 
-
-
 # ∂ℝ( ∂ℝ(a,aₓ), ∂ℝ(aₓ,aₓₓ) ) → ∂ℝ(a,aₓ)   
-firstorderonly(a...;)            = firstorderonly.(a)
-firstorderonly(a::Tuple)         = firstorderonly.(a)
-firstorderonly(a::AbstractArray) = firstorderonly.(a)
-firstorderonly(a::∂ℝ)            = precedence(a)≤1 ? a : firstorderonly(a.x) 
-firstorderonly(a)                = a
-
-# ∂ℝ(a,aₓ) → ∂ℝ( ∂ℝ(a,aₓ), ∂ℝ(aₓ,0) ) 
-# backtohigherorder(a::SVector{Na,T},::Type{T}) where{T,Na} = a
-# backtohigherorder(a::SVector{Na,∂ℝ{1,N,𝕣}},::Type{∂ℝ{2,N,∂ℝ{1,N,𝕣}}}) where{N,Na} = 
-#      SV{Na}(∂ℝ{2,N,∂ℝ{1,N,𝕣}}( 
-#                               a[ia],  
-#                               SV{N}(∂ℝ{1,N,𝕣}(
-#                                               a[ia].dx[i],
-#                                               SV{N,𝕣}(zero(𝕣) for j=1:N)
-#                                               ) for i=1:N)
-#                              ) for ia=1:Na)
-
-order2(a::∂ℝ{1,N,𝕣}) where{N}= ∂ℝ{2,N,∂ℝ{1,N,𝕣}}(
-                              a,  
-                              SV{N}(∂ℝ{1,N,𝕣}(
-                                              a.dx[i],
-                                              SV{N,𝕣}(zero(𝕣) for j=1:N)
-                                              ) for i=1:N)
-                             )      
-order2(a::ℝ) = a
-order2(a) = map(order2,a)
+firstorderonly(a...;)             = firstorderonly(a)
+firstorderonly(a::Tuple)          = (firstorderonly(first(a)),firstorderonly(Base.tail(a))...)
+firstorderonly(a::Tuple{})        = ()
+firstorderonly(a::AbstractArray)  = firstorderonly.(a)
+firstorderonly(a::∂ℝ)             = precedence(a)≤1 ? a : firstorderonly(a.x) 
+firstorderonly(a)                 = a
+order2(a::NamedTuple   )          = NamedTuple{keys(a)}(order2(values(a)))
+order2(a::Tuple        )          = (order2(first(a)),order2(Base.tail(a))...)
+order2(a::Tuple{}      )          = ()
+order2(a::AbstractArray)          = order2.(a)
+order2(a::ℝ            )          = a
+order2(a::∂ℝ{1,N,𝕣}    ) where{N} = ∂ℝ{2,N,∂ℝ{1,N,𝕣}}(a,  
+                                                      SV{N}(∂ℝ{1,N,𝕣}(
+                                                                       a.dx[i],
+                                                                       SV{N,𝕣}(zero(𝕣) for j=1:N)
+                                                                       ) for i=1:N)
+                                                      )      
 struct toorder{P} end
 toorder{0}(a) = a
 toorder{1}(a) = a
