@@ -4,7 +4,7 @@ using Profile,ProfileView
 using BenchmarkTools
 using Muscade
 using StaticArrays
-
+#using InferredType
 include("../examples/BeamElement.jl")
 include("../examples/StrainGaugeOnBeamElement.jl")
 
@@ -60,7 +60,7 @@ elseif mission == :time
 elseif mission == :profile
     out = Muscade.diffed_lagrangian(costedbeam;Λ,X,U,A,t=0.)
     Profile.clear()
-    Profile.@profile for i=1:5000
+    Profile.@profile for i=1:100000
         local out = Muscade.diffed_lagrangian(costedbeam;Λ,X,U,A,t=0.)
     end
     ProfileView.view(fontsize=30);

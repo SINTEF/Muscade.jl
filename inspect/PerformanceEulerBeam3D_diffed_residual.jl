@@ -27,7 +27,7 @@ const X = (displacement,)#,velocity,acceleration)
 const U         = (SVector{0,𝕣}(),)
 const A         = SVector{0,𝕣}()
 
-mission = :profile
+mission = :report
 if mission == :report
     out = diffed_residual(beam; X,U,A,t,SP)
 elseif mission == :time
@@ -36,7 +36,7 @@ elseif mission == :time
 elseif mission == :profile
     diffed_residual(beam; X,U,A,t,SP)
     Profile.clear()
-    Profile.@profile for i=1:10000
+    Profile.@profile for i=1:250000
         local out = diffed_residual(beam; X,U,A,t,SP)
     end
     ProfileView.view(fontsize=30);

@@ -3,7 +3,7 @@ include("Rotations.jl")
 # # Euler beam element
 
 using StaticArrays, LinearAlgebra, Muscade
-
+# using Test
 # Data structure containing the cross section material properties
 struct BeamCrossSection
     EA  :: 𝕣  # axial stiffness 
@@ -117,13 +117,12 @@ function EulerBeam3D{Udof}(nod::Vector{Node};mat,orient2::SVector{ndim,𝕣}=SVe
     shapes  = (yₐ.(ζgp), yᵤ.(ζgp), yᵥ.(ζgp)*L, κₐ.(ζgp)/L, κᵤ.(ζgp)/L^2, κᵥ.(ζgp)/L)
     return EulerBeam3D{typeof(mat),Udof}(cₘ,rₘ,ζgp,ζnod,tgₘ,tgₑ,shapes...,L,dL,mat)
 end;
-
-# Define now the residual function for the EulerBeam3D element.
+#Define now the residual function for the EulerBeam3D element.
 @espy function Muscade.residual(o::EulerBeam3D{Mat,Udof},   X,U,A,t,SP,dbg) where{Mat,Udof}
     P,ND                = constants(X),length(X)
     ## Compute all quantities at Gauss point, their time derivatives, including intrinsic roll rate and acceleration
     gp_,ε_,vₛₘ_,rₛₘ_,vₗ₂_,_,_ = kinematics{:direct}(o,motion{P}(X))
-    gpval,☼ε , rₛₘ       = motion⁻¹{P,ND}(gp_,ε_,rₛₘ_  ) 
+    gpval,☼ε,☼rₛₘ        = motion⁻¹{P,ND}(gp_,ε_,rₛₘ_) 
     vᵢ                  = intrinsicrotationrates(rₛₘ)
     ## compute all Jacobians of the above quantities with respect to X₀
     X₀                  = ∂0(X)
@@ -132,18 +131,18 @@ end;
     gp∂X₀,ε∂X₀,vₛₘ∂X₀    = composeJacobian{P}((Tgp,Tε,Tvₛₘ),X₀)
     ## Quadrature loop: compute resultants
     gp                  = ntuple(ngp) do igp
-        ☼x,☼κ           = gpval[igp].x, gpval[igp].κ   
+        ☼x,κgp          = gpval[igp].x, gpval[igp].κ   
         x∂X₀,κ∂X₀       = gp∂X₀[igp].x, gp∂X₀[igp].κ
-        fᵢ,mᵢ,fₑ,mₑ     = ☼resultants(o.mat,ε,κ,x,rₛₘ,vᵢ)          # call the "resultant" function to compute loads (local coordinates) from strains/curvatures/etc. using material properties. Note that output is dual of input. 
+        fᵢ,mᵢ,fₑ,mₑ     = ☼resultants(o.mat,ε,κgp,x,rₛₘ,vᵢ)          # call the "resultant" function to compute loads (local coordinates) from strains/curvatures/etc. using material properties. Note that output is dual of input. 
         fₑ              = Udof ? fₑ-∂0(U) : fₑ                    # U is per unit length
         R_              = (fᵢ ∘₀ ε∂X₀ + mᵢ ∘₁ κ∂X₀ + fₑ ∘₁ x∂X₀ + mₑ ∘₁ vₛₘ∂X₀) * o.dL[igp]     # Contribution to the local nodal load of this Gauss point  [nXdof] = scalar*[nXdof] + [ndim]⋅[ndim,nXdof] + [ndim]⋅[ndim,nXdof]
         @named(R_)
     end
     R                   = sum(gpᵢ.R_ for gpᵢ∈gp) 
     ♢κ                  = motion⁻¹{P,ND}(SVector(vₗ₂_[1],vₗ₂_[3],-vₗ₂_[2])).*(2/o.L) 
-    ♢rₛₘ                 = motion⁻¹{P,ND}(rₛₘ_)
     return R,noFB  
 end;
+
 struct kinematics{Mode} end
 function kinematics{Mode}(o::EulerBeam3D,X₀)  where{Mode}
     cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp,L  = o.cₘ,o.rₘ,o.tgₘ,o.tgₑ,o.ζnod,o.ζgp,o.L   # As-meshed element coordinates and describing tangential vector

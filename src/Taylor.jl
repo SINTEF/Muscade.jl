@@ -21,7 +21,7 @@ Some principles of safe automatic differentiation must be adhered to:
 
 See [`motion⁻¹`](@ref)
 """
-motion{ P    }(a::NTuple{ND,SV{N,R}}) where{ND,P,N,R        } = SV{N}(motion_{P-1,P+ND-2}(ntuple(j->a[j][i],ND)) for i=1:N)
+motion{ P    }(a::NTuple{ND,SV{N,R}}) where{ND,P,N,R        } = SV{N}(motion_{P-1,P+ND-2}(ntuple(j->a[j][i],Val(ND))) for i=1:N)
 motion_{P,Q  }(a::NTuple{D,      R }) where{D ,P  ,R<:Real,Q} = ∂ℝ{Q,1}(motion_{P,Q-1}(a),SV(motion_{P,Q-1}(a[2:D]))) 
 motion_{P,P  }(a::NTuple{D,      R }) where{D ,P  ,R<:Real  } = a[1]
 
@@ -40,7 +40,7 @@ In the above `Y` is a tuple of length `ND`.  One can use `∂0`,`∂1` and `∂2
 
 See also [`motion`](@ref)
 """
-motion⁻¹{P,1,0}(a::ℝ) where{P} =                             a
+motion⁻¹{P,1,0}(a::ℝ) where{P} =                      a
 motion⁻¹{P,2,0}(a::ℝ) where{P} =          value{P   }(a)
 motion⁻¹{P,3,0}(a::ℝ) where{P} = value{P}(value{P+1 }(a))
 # velocities
@@ -52,12 +52,14 @@ motion⁻¹{P,1,2}(a::ℝ) where{P} = 0.
 motion⁻¹{P,2,2}(a::ℝ) where{P} = 0.
 motion⁻¹{P,3,2}(a::ℝ) where{P} = ∂{   P,1}(∂{   P+1,1}(a)[1])[1]
 motion⁻¹{P,ND,OD}(a::SArray{S,R}) where{S,P,ND,OD,R<:ℝ}   = SArray{S}(motion⁻¹{P,ND,OD}(aᵢ) for aᵢ∈a)
-
+ 
 motion⁻¹{P,1    }(a::Union{ℝ,SArray}) where{P   } = (motion⁻¹{P,1,0}(a),)
 motion⁻¹{P,2    }(a::Union{ℝ,SArray}) where{P   } = (motion⁻¹{P,2,0}(a),motion⁻¹{P,2,1}(a))
 motion⁻¹{P,3    }(a::Union{ℝ,SArray}) where{P   } = (motion⁻¹{P,3,0}(a),motion⁻¹{P,3,1}(a),motion⁻¹{P,3,2}(a))
-motion⁻¹{P,ND   }(a::Union{Tuple,NamedTuple}) where{P,ND} = map(motion⁻¹{P,ND},a)
-motion⁻¹{P,ND   }(a...)               where{P,ND} = motion⁻¹{P,ND}(a)
+motion⁻¹{P,ND   }(a::Tuple          ) where{P,ND} = (motion⁻¹{P,ND}(first(a)),motion⁻¹{P,ND}(Base.tail(a))...)   
+motion⁻¹{P,ND   }(a::Tuple{}        ) where{P,ND} = ()   
+motion⁻¹{P,ND   }(a::NamedTuple     ) where{P,ND} = NamedTuple{keys(a)}(motion⁻¹{P,ND}(values(a)))  
+motion⁻¹{P,ND   }(a...              ) where{P,ND} = motion⁻¹{P,ND}(a) 
 
 #############
 
