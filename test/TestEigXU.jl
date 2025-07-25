@@ -5,9 +5,7 @@
 # - do we indeed have convergence of geneig?  Introduce an option to get geneig toself check.
 
 
-using Test
-using Muscade
-using StaticArrays,SparseArrays
+invs = @snoop_invalidations using Muscade, Test, StaticArrays,SparseArrays;
 
 
 q          = 6
@@ -23,6 +21,7 @@ un         = 1e3
 
 ## beam in space
 include("../examples/BeamElement.jl")
+include("../examples/StrainGaugeOnBeamElement.jl")
 include("../examples/PositionElement.jl")
 
 L    = 1;    # Beam length [m]
@@ -107,17 +106,31 @@ OX,OU                 = 2,0
 Δω                = 2^-6 
 p                 = 11
 nmod              = 5
-#eigincXU          = solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=true,verbosity=1,tol=1e-20,σₓᵤ)
-
-nα                = 32
-α                 = 2π*(1:nα)/nα
-circle            = 0.05*[cos.(α) sin.(α)]'
-GUI(initialstate,eigincXU;shadow = (;EulerBeam3D              = (;style=:shape,line_color=:grey,Udof=false),
-                                    StrainGaugeOnEulerBeam3D  = (;gauge_color=:transparent)         ),
-                          model  = (;EulerBeam3D              = (;style=:solid,section=circle),
-                                     StrainGaugeOnEulerBeam3D = (;L=0.03),
-                                     Position3D               = (;L=.03)) ) 
 
 
-#state = increment{OX}(initialstate,eigincXU,100,[1],[1])
+
+using SnoopCompileCore, SnoopCompile, AbstractTrees, ProfileView
+inference = @snoop_inference solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=true,verbosity=1,tol=1e-20,σₓᵤ)
+# io=open("inference.txt","w")
+# print_tree(io,inference,maxdepth=1)
+# close(io)
+# ProfileView.view(flamegraph(inference))
+inf_exc      = flatten(inference,tmin = 0.0, sortby=exclusive)[end:-1:max(1,end-100)]      # by instance
+# inf_exc      = flatten(inference,tmin = 0.0, sortby=exclusive)[end:-1:1]      # by instance
+#inf_inc      = flatten(inference,tmin = 1.0, sortby=inclusive)[end:-1:max(1,end-49)]      # by instance
+# acced = accumulate_by_source(flat; tmin = 1., by=inclusive) # by method (buggy - repeats methods)
+
+
+
+# eigincXU          = solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=true,verbosity=1,tol=1e-20,σₓᵤ)
+# nα                = 32
+# α                 = 2π*(1:nα)/nα
+# circle            = 0.05*[cos.(α) sin.(α)]'
+# GUI(initialstate,eigincXU;shadow = (;EulerBeam3D              = (;style=:shape,line_color=:grey,Udof=false),
+#                                     StrainGaugeOnEulerBeam3D  = (;gauge_color=:transparent)         ),
+#                           model  = (;EulerBeam3D              = (;style=:solid,section=circle),
+#                                      StrainGaugeOnEulerBeam3D = (;L=0.03),
+#                                      Position3D               = (;L=.03)) ) 
+
+
 ;

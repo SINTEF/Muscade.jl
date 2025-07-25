@@ -49,9 +49,11 @@ costedbeam =  ElementCost(elnod;
 
 out = Muscade.diffed_lagrangian(costedbeam;Λ,X,U,A,t=0.)
 
-
-
-mission = :profile
+# 2025-07-22
+# Julia 1.10: ttfx=2:05s @time=522μs secondrun=20s  
+# Julia 1.11: ttfx=1:52s @time=548μs secondrun=20s  
+# Julia 1.12: ttfx=1;33s @time=610μs secondrun=20s second@time=200μs
+mission = :time
 if mission == :report
     out = Muscade.diffed_lagrangian(costedbeam;Λ,X,U,A,t=0.)
 elseif mission == :time

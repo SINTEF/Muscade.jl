@@ -109,10 +109,8 @@ See also: [`compose`](@ref), [`Taylor`](@ref), [`revariate`](@ref), [`fast`](@re
 McLaurin(y::Tuple,Δx)                          = tuple(McLaurin(first(y),Δx),McLaurin(Base.tail(y),Δx)...) 
 McLaurin( ::Tuple{},Δx)                        = tuple() 
 McLaurin(y::SArray{S},Δx) where{S}             = SArray{S}(McLaurin(yᵢ,Δx) for yᵢ∈y) 
-#McLaurin(y::∂ℝ,Δx)                             = McLaurin(y.x,Δx) + McLaurin_right(y,Δx)
 McLaurin(y::∂ℝ,Δx)                             = McLaurin(y.x,Δx) .+ McLaurin_right(y,Δx)
 McLaurin(y::𝕣 ,Δx)                             =          y
-#McLaurin_right(y::∂ℝ{P},Δx::SVector{N}) where{P,N} = sum(McLaurin_right(y.dx[i],Δx)*Δx[i] for i∈1:N)*(1/P)  # slow
 function McLaurin_right(y::∂ℝ{P,N,R},Δx::SVector{N}) where{P,N,R} 
     if N==0
         return zero(y) # hum!!!!
@@ -153,7 +151,6 @@ if the length of `x` is smaller than the length of its partials.
 
 See also: [`revariate`](@ref), [`fast`](@ref)    
 """
-#compose(Ty,x) = McLaurin(Ty,x-VALUE(x))
 compose(Ty,x) = McLaurin(Ty,x.-VALUE(x))
 
 """
