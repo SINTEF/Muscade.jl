@@ -5,7 +5,8 @@
 # - do we indeed have convergence of geneig?  Introduce an option to get geneig toself check.
 
 
-invs = @snoop_invalidations using Muscade, Test, StaticArrays,SparseArrays;
+#invs = @snoop_invalidations 
+using Muscade, Test, StaticArrays,SparseArrays;
 
 
 q          = 6
@@ -110,7 +111,8 @@ nmod              = 5
 
 
 using SnoopCompileCore, SnoopCompile, AbstractTrees, ProfileView
-inference = @snoop_inference solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=true,verbosity=1,tol=1e-20,σₓᵤ)
+@trace_compile solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=true,verbosity=1,tol=1e-20,σₓᵤ)
+#inference = @snoop_inference solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=true,verbosity=1,tol=1e-20,σₓᵤ)
 # io=open("inference.txt","w")
 # print_tree(io,inference,maxdepth=1)
 # close(io)

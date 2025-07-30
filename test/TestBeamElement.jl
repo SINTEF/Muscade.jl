@@ -1,4 +1,4 @@
-#module TestBeamElement
+module TestBeamElement
 
 using Test, Muscade, StaticArrays, LinearAlgebra
 include("../examples/BeamElement.jl")
@@ -277,4 +277,4 @@ end
 # #     # code_warntype for the call represented by that bar.
 # # end
 # ;
-#end
+end
