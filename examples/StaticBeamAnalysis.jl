@@ -95,12 +95,12 @@ out = getresult(state[idxLoad],req,eleid)
 εgp4_ = [ out[idxEl].ε[1] for idxEl ∈ 1:nel];
 
 # Curvatures
-req = @request gp(κ)
+req = @request gp(κgp)
 out = getresult(state[idxLoad],req,eleid)
-κgp1_ = [ out[idxEl].gp[1].κ[1] for idxEl ∈ 1:nel]
-κgp2_ = [ out[idxEl].gp[2].κ[1] for idxEl ∈ 1:nel]
-κgp3_ = [ out[idxEl].gp[3].κ[1] for idxEl ∈ 1:nel]
-κgp4_ = [ out[idxEl].gp[4].κ[1] for idxEl ∈ 1:nel];
+κgp1_ = [ out[idxEl].gp[1].κgp[1] for idxEl ∈ 1:nel]
+κgp2_ = [ out[idxEl].gp[2].κgp[1] for idxEl ∈ 1:nel]
+κgp3_ = [ out[idxEl].gp[3].κgp[1] for idxEl ∈ 1:nel]
+κgp4_ = [ out[idxEl].gp[4].κgp[1] for idxEl ∈ 1:nel];
 
 # Plot strains, etc. at Gauss points
 fig      = Figure(size = (1000,1000))
