@@ -1,3 +1,48 @@
+"""
+    inftyp,rettyp = @typeof(foo(args...[;kwargs...]))
+
+    Determine the inferred type and the returned type of the output[s] returned by the relevant method-instance of foo.
+    
+"""
+macro typeof(ex)
+    _inferred_type(ex, __module__)
+end
+function _inferred_type(ex, mod)
+    if Meta.isexpr(ex, :ref)
+        ex = Expr(:call, :getindex, ex.args...)
+    end
+    Meta.isexpr(ex, :call)|| error("@inferred requires a call expression")
+    farg = ex.args[1]
+    if isa(farg, Symbol) && farg !== :.. && first(string(farg)) == '.'
+        farg = Symbol(string(farg)[2:end])
+        ex = Expr(:call, GlobalRef(Test, :_materialize_broadcasted),
+            farg, ex.args[2:end]...)
+    end
+    result = let ex = ex
+        quote
+            $(if any(@nospecialize(a)->(Meta.isexpr(a, :kw) || Meta.isexpr(a, :parameters)), ex.args)
+                # Has keywords
+                args   = gensym()
+                kwargs = gensym()
+                quote
+                    $(esc(args)), $(esc(kwargs)), result = $(esc(Expr(:call, _args_and_call, ex.args[2:end]..., ex.args[1])))
+                    inftype = $(gen_call_with_extracted_types(mod, Base.infer_return_type, :($(ex.args[1])($(args)...; $(kwargs)...)); is_source_reflection = false))
+                end
+            else
+                # No keywords
+                quote
+                    args    = ($([esc(ex.args[i]) for i = 2:length(ex.args)]...),)
+                    result  = $(esc(ex.args[1]))(args...)
+                    inftype = Base.infer_return_type($(esc(ex.args[1])), Base.typesof(args...))
+                end
+            end)
+            rettype = result isa Type ? Type{result} : typeof(result)
+            (inftype,rettype)
+        end
+    end
+    return result
+end
+
 
 """
     print_element_array(eleobj,class,V)
@@ -55,8 +100,12 @@ function diffed_lagrangian(ele::Eletyp; Λ,X,U,A, t::𝕣=0.,SP=nothing) where{E
     Nu               = length(∂0(U)) 
     Na               = length(   A ) 
 
-    @assert (Nλ,Nx,Nu,Na) == getndof(Eletyp,(:X,:X,:U,:A))
-
+    if (Nλ,Nx,Nu,Na) ≠ getndof(Eletyp,(:X,:X,:U,:A))
+        display(Eletyp)
+        @printf("diffed_lagrangian received %i Λ, %i X, %i U and %i A dofs\n",Nλ,Nx,Nu,Na)
+        @printf("element requires           %i Λ, %i X, %i U and %i A dofs\n",getndof(Eletyp,:X),getndof(Eletyp,:X),getndof(Eletyp,:U),getndof(Eletyp,:A))
+        @assert false
+    end
     λxua      = ( 1,    2,    3,  4)
     ndof      = (Nx,   Nx,   Nu, Na)
     nder      = ( 1, OX+1, OU+1, IA)
@@ -68,6 +117,8 @@ function diffed_lagrangian(ele::Eletyp; Λ,X,U,A, t::𝕣=0.,SP=nothing) where{E
     A∂        =              SVector{Na,T}(∂²ℝ{1,Np}(A[      idof],Nx+Nx*(OX+1)  +Nu*(OU+1)  +idof)   for idof=1:Na)
 
     L,FB      = lagrangian(ele, Λ∂,X∂,U∂,A∂,t,SP,(;calledby=:test_element))
+    inftyp,rettyp = Muscade.@typeof(lagrangian(ele, Λ∂,X∂,U∂,A∂,t,SP,(;calledby=:test_element)))
+    
 
     ∇Lz,HLz   = value_∂{1,Np}(∂{2,Np}(L))
 
@@ -91,7 +142,7 @@ function diffed_lagrangian(ele::Eletyp; Λ,X,U,A, t::𝕣=0.,SP=nothing) where{E
             end
         end
     end
-    return (Λ=Λ,X=X,U=U,A=A,t=t,SP=SP,∇L=∇L,HL=HL,FB=FB)
+    return (Λ=Λ,X=X,U=U,A=A,t=t,SP=SP,∇L=∇L,HL=HL,FB=FB,inftyp=inftyp,rettyp=rettyp)
 end
 
 
@@ -114,9 +165,14 @@ function diffed_residual(ele::Eletyp; X,U,A, t::𝕣=0.,SP=nothing) where{Eletyp
     Nx               = length(∂0(X)) 
     Nu               = length(∂0(U)) 
     Na               = length(   A ) 
-    @assert (Nx,Nu,Na) == getndof(Eletyp,(:X,:U,:A))
+    if (Nx,Nu,Na) ≠ getndof(Eletyp,(:X,:U,:A))
+        display(Eletyp)
+        @printf("diffed_residual received %i X, %i U and %i A dofs\n",Nx,Nu,Na)
+        @printf("element requires         %i X, %i U and %i A dofs\n",getndof(Eletyp,:X),getndof(Eletyp,:U),getndof(Eletyp,:A))
+        @assert false
+    end
 
-    xua       = ( 2,    3,  4)
+    xua       = (    2,    3,  4)
     ndof      = (0, Nx,   Nu, Na)
     nder      = (0 ,OX+1, OU+1, IA)
     Np        = Nx*(OX+1) + Nu*(OU+1) + Na*IA # number of partials 
@@ -125,7 +181,7 @@ function diffed_residual(ele::Eletyp; X,U,A, t::𝕣=0.,SP=nothing) where{Eletyp
     A∂        =              SVector{Na,∂ℝ{1,Np,𝕣}}(∂ℝ{1,Np}(A[      idof],Nx*(OX+1)  +Nu*(OU+1)  +idof)   for idof=1:Na)
 
     r_,FB     = residual(ele, X∂,U∂,A∂,t,SP,(;calledby=:test_element))
-
+    inftyp,rettyp = @typeof(residual(ele, X∂,U∂,A∂,t,SP,(;calledby=:test_element)))
     R,∇r      = value_∂{1,Np}(r_)
 
     ∇R        = Vector{Vector{Any}}(undef,4  )
@@ -138,6 +194,6 @@ function diffed_residual(ele::Eletyp; X,U,A, t::𝕣=0.,SP=nothing) where{Eletyp
             ∇R[α][i] = ∇r[:,iα]
         end
     end
-    return (X=X,U=U,A=A,t=t,SP=SP,R=R,∇R=∇R,FB=FB)
+    return (X=X,U=U,A=A,t=t,SP=SP,R=R,∇R=∇R,FB=FB,inftyp=inftyp,rettyp=rettyp)
 end
 

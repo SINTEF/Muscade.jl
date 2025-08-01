@@ -16,10 +16,10 @@ struct ∂ℝ{P,N,R} <:ℝ where{R<:ℝ}  # P for precedence, N number of partia
 end
 
 # Constructors 
-∂ℝ{P,N  }(x::R ,dx::SV{N,R}) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(x   ,SV{N,R}(dx))
-∂ℝ{P,N  }(x::R             ) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(x   ,SV{N,R}(zero(R)                 for j=1:N))
-∂ℝ{P,N  }(x::R,i::ℤ        ) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(x   ,SV{N,R}(i==j ? one(R) : zero(R) for j=1:N))
-∂ℝ{P,N  }(x::R,i::ℤ,s      ) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(x   ,SV{N,R}(i==j ? R(s)   : zero(R) for j=1:N))
+∂ℝ{P,N  }(x::R ,dx::SV{N,R}) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(  x ,SV{N,R}(dx                               ))
+∂ℝ{P,N  }(x::R             ) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(  x ,SV{N,R}(zero(R)                 for j=1:N))
+∂ℝ{P,N  }(x::R,i::ℤ        ) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(  x ,SV{N,R}(i==j ? one(R) : zero(R) for j=1:N))
+∂ℝ{P,N  }(x::R,i::ℤ,s      ) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(  x ,SV{N,R}(i==j ? R(s)   : zero(R) for j=1:N))
 ∂ℝ{P,N,R}(x::𝕣             ) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(R(x),SV{N,R}(zero(R)                 for j=1:N))
 function ∂ℝ{P,N}(x::Rx,dx::SV{N,Rdx}) where{P,N,Rx<:ℝ,Rdx<:ℝ}
     R = promote_type(Rx,Rdx)
@@ -176,7 +176,6 @@ See also: [`constants`](@ref), [`variate`](@ref), [`δ`](@ref), [`value`](@ref),
 ∂{P  }(a::     ∂ℝ{P,1,R} ) where{  P,  R   } = a.dx[1]
 ∂{P  }(a::SV{N,∂ℝ{P,1,R}}) where{  P,N,R   } = SV{  N,R}(a[i].dx[1] for i=1:N     ) # ∂(a,x)[i]    = ∂a[i]/∂x
 
-# SArray was designed before Julia allowed Tuples (here: M) as type parameters.  Hence they used Tuple{M} instead
 ∂{P,N}(a::SM{      M1,M2       ,∂ℝ{P,N,R}}) where{M1,M2      ,P,N,R} = SA{Tuple{M1,M2,N       },R}(a[i].dx[j] for i∈eachindex(a),j∈1:N) # ∂(a,x)[i,...,j] = ∂a[i,...]/∂x[j]
 ∂{P,N}(a::SM{      M1,M2       ,       R }) where{M1,M2      ,P,N,R} = SA{Tuple{M1,M2,N       },R}(zero(R)    for i∈eachindex(a),j∈1:N)
 ∂{P,N}(a::SA{Tuple{M1,M2,M3   },∂ℝ{P,N,R}}) where{M1,M2,M3   ,P,N,R} = SA{Tuple{M1,M2,M3    ,N},R}(a[i].dx[j] for i∈eachindex(a),j∈1:N) # ∂(a,x)[i,...,j] = ∂a[i,...]/∂x[j]

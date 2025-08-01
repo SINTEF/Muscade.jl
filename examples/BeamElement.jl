@@ -125,8 +125,11 @@ end;
     gpval,☼ε,☼rₛₘ        = motion⁻¹{P,ND}(gp_,ε_,rₛₘ_) 
     vᵢ                  = intrinsicrotationrates(rₛₘ)
     ## compute all Jacobians of the above quantities with respect to X₀
-    X₀                  = ∂0(X)
-    TX₀                 = revariate{1}(X₀)  # check type
+    X₀                  = ∂0(X) # returns concrete type
+    #@show @typeof(∂0(X)) 
+
+    TX₀                 = revariate{1}(X₀)  # returns ::Any
+    #@show @typeof(revariate{1}(X₀)) 
     Tgp,Tε,Tvₛₘ,_,_,_,_  = kinematics{:compose}(o,TX₀) # the crux
     gp∂X₀,ε∂X₀,vₛₘ∂X₀    = composeJacobian{P}((Tgp,Tε,Tvₛₘ),X₀)
     ## Quadrature loop: compute resultants
@@ -172,6 +175,18 @@ function corotated{Mode}(o::EulerBeam3D,X₀)  where{Mode}
         vₛₘ_                  = Rodrigues⁻¹(rₛₘ_)              
         return Δvᵧ_,rₛₘ_,vₛₘ_
     end  
+    # function f(v) 
+    #     let o = o
+    #         vᵧ₁,vᵧ₂ = vec3(v,1:3), vec3(v,4:6)
+    #         rₛ₁     = apply{Mode}(Rodrigues,vᵧ₁)
+    #         rₛ₂     = apply{Mode}(Rodrigues,vᵧ₂)
+    #         Δvᵧ_   =  0.5*Rodrigues⁻¹(rₛ₂ ∘₁ rₛ₁')
+    #         rₛₘ_    = apply{Mode}(Rodrigues,Δvᵧ_) ∘₁ rₛ₁ ∘₁ o.rₘ  
+    #         vₛₘ_    = Rodrigues⁻¹(rₛₘ_)              
+    #         return Δvᵧ_,rₛₘ_,vₛₘ_
+    #     end
+    # end
+    # Δvᵧ,rₛₘ,vₛₘ                = apply{Mode}(f,vᵧ) 
     cₛ                        = 0.5*(uᵧ₁+uᵧ₂)
     uₗ₂                       = rₛₘ' ∘₁ (uᵧ₂+tgₘ*ζnod[2]-cₛ)-tgₑ*ζnod[2]    #Local displacement of node 2
     vₗ₂                       = rₛₘ' ∘₁ Δvᵧ

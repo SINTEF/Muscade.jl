@@ -21,7 +21,10 @@ Some principles of safe automatic differentiation must be adhered to:
 
 See [`motion⁻¹`](@ref)
 """
-motion{ P    }(a::NTuple{ND,SV{N,R}}) where{ND,P,N,R        } = SV{N}(motion_{P-1,P+ND-2}(ntuple(j->a[j][i],Val(ND))) for i=1:N)
+motion{ P    }(a::NTuple{ND,SV{N,R}}) where{ND,P,N,R        } = SV{N}(motion_{P-1,P+ND-2}(let a=a 
+                                                                                            ntuple(j->a[j][i],Val(ND))
+                                                                                         end) for i=1:N)
+#motion{ P    }(a::NTuple{ND,SV{N,R}}) where{ND,P,N,R        } = SV{N}(motion_{P-1,P+ND-2}(ntuple(j->a[j][i],Val(ND))) for i=1:N)
 motion_{P,Q  }(a::NTuple{D,      R }) where{D ,P  ,R<:Real,Q} = ∂ℝ{Q,1}(motion_{P,Q-1}(a),SV(motion_{P,Q-1}(a[2:D]))) 
 motion_{P,P  }(a::NTuple{D,      R }) where{D ,P  ,R<:Real  } = a[1]
 
@@ -63,8 +66,9 @@ motion⁻¹{P,ND   }(a...              ) where{P,ND} = motion⁻¹{P,ND}(a)
 
 #############
 
-struct revariate{ O,N}   end
-struct revariate_{P,N}   end
+struct revariate{ O    }   end
+struct revariate_{P,N  }   end
+struct Trevariate{P,N,R}   end
 revariate(a) = revariate{0}(a)
 """ 
     TX = revariate{O}(X)
@@ -87,10 +91,13 @@ See also: [`compose`](@ref)
 function revariate{O}(a::SV{N,R}) where{O,N,R} 
     P  = precedence(R)+O
     va = VALUE(a)
-    P==0 ? va : SV{N}(∂ℝ{P,N  }(revariate_{P-1,N}(va[i],i),i) for i=1:N)
+    Ro = Trevariate{P,N,𝕣}() # always specify eltype when constructing array by comprehension
+    P==0 ? va : SV{N,Ro}(revariate_{P,N}(va[i],i)  for i=1:N)
 end
 revariate_{P,N}(a,i) where{P,N} = ∂ℝ{P,N  }(revariate_{P-1,N}(a,i),i)
 revariate_{0,N}(a,i) where{  N} =                             a
+Trevariate{P,N,Ra}() where{P,N,Ra} = ∂ℝ{P,N,Trevariate{P-1,N,Ra}()}
+Trevariate{0,N,Ra}() where{  N,Ra} = Ra
 
 """
     McLaurin(Ty,x)
