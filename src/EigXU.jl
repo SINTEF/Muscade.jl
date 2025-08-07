@@ -114,9 +114,11 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
     IA                    = 0
 
     # State storage
-    S                     = State{1,3,3,Nothing}
+#    S                     = State{1,3,3,Nothing}
+    S                     = State{1,OX+1,OU+1,Nothing}
     pstate[] = state      = Vector{S}(undef,nω)                                                                           
-    state₀                = State{1,3,3}(copy(initialstate))   
+#    state₀                = State{1,3,3}(copy(initialstate))   
+    state₀                = State{1,OX+1,OU+1}(copy(initialstate))   
 
     verbose && @printf("    Preparing assembler\n")
     out,asm,dofgr         = prepare(AssemblyDirect{OX,OU,IA},model,dis)   # model assembler for all arrays   

@@ -81,16 +81,17 @@ function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::Eleobj,fast
                                 U::NTuple{NDU,SVector{Nu}},
                                 A::           SVector{Na} ,t,SP,dbg) where{OX,OU,IA,NDX,NDU,Nx,Nu,Na,Eleobj} 
     @assert NDX==OX+1 @sprintf("got OX=%i and NDX=%i. Expected OX+1==NDX",OX,NDX)
-    @assert NDX==OX+1 @sprintf("got OU=%i and NDU=%i. Expected OU+1==NDU",OU,NDU)
+    @assert NDU==OU+1 @sprintf("got OU=%i and NDU=%i. Expected OU+1==NDU",OU,NDU)
     ndof   = (Nx, Nx, Nu, Na)
     nder   = (1,OX+1,OU+1,IA)
-    Npfast =      Nx*(OX+1) + Nu*(OU+1) + Na*IA # number of partials
-    Np     = Nx + Nx*(OX+1) + Nu*(OU+1) + Na*IA # number of partials
+    Npfast =      Nx*(OX+1) + Nu*(OU+1) + Na*IA # number of partials  
+    Np     = Nx + Nx*(OX+1) + Nu*(OU+1) + Na*IA # number of partials  
 
-    X∂ = ntuple(ider->SVector{Nx}(∂ℝ{1,Npfast}(X[ider][idof],   Nx*(ider-1)            +idof, scale.X[idof])   for idof=1:Nx),OX+1)
-    U∂ = ntuple(ider->SVector{Nu}(∂ℝ{1,Npfast}(U[ider][idof],   Nx*(OX+1)  +Nu*(ider-1)+idof, scale.U[idof])   for idof=1:Nu),OU+1)
+    T  = ∂ℝ{1,Npfast,𝕣} 
+    X∂ = NTuple{OX+1,SVector{Nx,T}}(SVector{Nx,T}(∂ℝ{1,Npfast}(X[ider][idof],   Nx*(ider-1)            +idof, scale.X[idof])   for idof=1:Nx) for ider = 1:OX+1)
+    U∂ = NTuple{OU+1,SVector{Nu,T}}(SVector{Nu,T}(∂ℝ{1,Npfast}(U[ider][idof],   Nx*(OX+1)  +Nu*(ider-1)+idof, scale.U[idof])   for idof=1:Nu) for ider = 1:OX+1)
     if IA == 1
-        A∂   =        SVector{Na}(∂ℝ{1,Npfast}(A[      idof],   Nx*(OX+1)  +Nu*(OU+1)  +idof, scale.A[idof])   for idof=1:Na)
+        A∂   =        SVector{Na,T}(∂ℝ{1,Npfast}(A[      idof],   Nx*(OX+1)  +Nu*(OU+1)  +idof, scale.A[idof])   for idof=1:Na)
         R,FB = residual(eleobj, X∂,U∂,A∂,t,SP,dbg)
     else
         R,FB = residual(eleobj, X∂,U∂,A ,t,SP,dbg)
@@ -119,17 +120,18 @@ function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::Eleobj,fast
     A::           SVector{Na} ,t,SP,dbg) where{OX,OU,IA,NDX,NDU,Nx,Nu,Na,Eleobj} 
 
     @assert NDX==OX+1 @sprintf("got OX=%i and NDX=%i. Expected OX+1==NDX",OX,NDX)
-    @assert NDX==OX+1 @sprintf("got OU=%i and NDU=%i. Expected OU+1==NDU",OU,NDU)
+    @assert NDU==OU+1 @sprintf("got OU=%i and NDU=%i. Expected OU+1==NDU",OU,NDU)
     ndof   = (Nx, Nx, Nu, Na)
     nder   = (1,OX+1,OU+1,IA)
     Npfast =      Nx*(OX+1) + Nu*(OU+1) + Na*IA # number of partials
     Np     = Nx + Nx*(OX+1) + Nu*(OU+1) + Na*IA # number of partials
 
-    Λ∂ =              SVector{Nx}(∂²ℝ{1,Np}(Λ[1   ][idof],                           idof, scale.Λ[idof])   for idof=1:Nx)
-    X∂ = ntuple(ider->SVector{Nx}(∂²ℝ{1,Np}(X[ider][idof],Nx+Nx*(ider-1)            +idof, scale.X[idof])   for idof=1:Nx),OX+1)
-    U∂ = ntuple(ider->SVector{Nu}(∂²ℝ{1,Np}(U[ider][idof],Nx+Nx*(OX+1)  +Nu*(ider-1)+idof, scale.U[idof])   for idof=1:Nu),OU+1)
+    T  = ∂ℝ{2,Np,∂ℝ{1,Np,𝕣}}
+    Λ∂ =              SVector{Nx,T}(∂²ℝ{1,Np}(Λ[1   ][idof],                           idof, scale.Λ[idof])   for idof=1:Nx)
+    X∂ = ntuple(ider->SVector{Nx,T}(∂²ℝ{1,Np}(X[ider][idof],Nx            +Nx*(ider-1)+idof, scale.X[idof])   for idof=1:Nx),Val(NDX))
+    U∂ = ntuple(ider->SVector{Nu,T}(∂²ℝ{1,Np}(U[ider][idof],Nx+Nx*(OX+1)  +Nu*(ider-1)+idof, scale.U[idof])   for idof=1:Nu),Val(NDU))
     if IA == 1
-        A∂   =        SVector{Na}(∂²ℝ{1,Np}(A[      idof],Nx+Nx*(OX+1)  +Nu*(OU+1)  +idof, scale.A[idof])   for idof=1:Na)
+        A∂   =        SVector{Na,T}(∂²ℝ{1,Np}(A[      idof],Nx+Nx*(OX+1)  +Nu*(OU+1)  +idof, scale.A[idof])   for idof=1:Na)
         L,FB = getlagrangian(eleobj, Λ∂,X∂,U∂,A∂,t,SP,dbg)
     else
         L,FB = getlagrangian(eleobj, Λ∂,X∂,U∂,A ,t,SP,dbg)

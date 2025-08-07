@@ -6,7 +6,7 @@
 
 
 #invs = @snoop_invalidations 
-using Muscade, Test, StaticArrays,SparseArrays;
+# using Muscade, Test, StaticArrays,SparseArrays;
 
 
 q          = 6
@@ -34,10 +34,10 @@ GJ   = 1e6;  # Torsional stiffness [Nm²]
 μ    = 1;
 ι₁   = 1;
 hasU = true
-σε   = 100e-6*100 # precision of strain measurements
+const σε   = 100e-6*100 # precision of strain measurements
 σx   = 1e-1
 σu   = 1e-0
-σa   = 1e5
+const σa   = 1e5
 
 α           = iels/nel*2π
 XnodeCoord  = hcat(cos.(α),sin.(α),zeros(nel,1))
@@ -89,7 +89,7 @@ addelement!( model, SingleDofCost, Muscade.columnmatrix(Xnod[istrain])    ,class
 
 initialstate      = initialize!(model)   
 initialstate.time     = 0.
-OX,OU                 = 2,0
+OX,OU                 = 2,2
 
 ## N
 σₓᵤ     = (X=(t1 =xn,t2 =xn,t3 =xn,r1 =xn,r2 =xn,r3 =xn,
@@ -105,26 +105,27 @@ OX,OU                 = 2,0
 
 ## EigXU analysis
 Δω                = 2^-6 
-p                 = 11
+p                 = 5#11
 nmod              = 5
 
 
 
-using SnoopCompileCore, SnoopCompile, AbstractTrees, ProfileView
-@trace_compile solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=true,verbosity=1,tol=1e-20,σₓᵤ)
-#inference = @snoop_inference solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=true,verbosity=1,tol=1e-20,σₓᵤ)
-# io=open("inference.txt","w")
-# print_tree(io,inference,maxdepth=1)
-# close(io)
-# ProfileView.view(flamegraph(inference))
-inf_exc      = flatten(inference,tmin = 0.0, sortby=exclusive)[end:-1:max(1,end-100)]      # by instance
-# inf_exc      = flatten(inference,tmin = 0.0, sortby=exclusive)[end:-1:1]      # by instance
-#inf_inc      = flatten(inference,tmin = 1.0, sortby=inclusive)[end:-1:max(1,end-49)]      # by instance
-# acced = accumulate_by_source(flat; tmin = 1., by=inclusive) # by method (buggy - repeats methods)
+# using SnoopCompileCore, SnoopCompile, AbstractTrees, ProfileView
+# @trace_compile solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=true,verbosity=1,tol=1e-20,σₓᵤ)
+# #inference = @snoop_inference solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=true,verbosity=1,tol=1e-20,σₓᵤ)
+# # io=open("inference.txt","w")
+# # print_tree(io,inference,maxdepth=1)
+# # close(io)
+# # ProfileView.view(flamegraph(inference))
+# inf_exc      = flatten(inference,tmin = 0.0, sortby=exclusive)[end:-1:max(1,end-100)]      # by instance
+# # inf_exc      = flatten(inference,tmin = 0.0, sortby=exclusive)[end:-1:1]      # by instance
+# #inf_inc      = flatten(inference,tmin = 1.0, sortby=inclusive)[end:-1:max(1,end-49)]      # by instance
+# # acced = accumulate_by_source(flat; tmin = 1., by=inclusive) # by method (buggy - repeats methods)
 
 
 
 # eigincXU          = solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=true,verbosity=1,tol=1e-20,σₓᵤ)
+
 # nα                = 32
 # α                 = 2π*(1:nα)/nα
 # circle            = 0.05*[cos.(α) sin.(α)]'
@@ -135,4 +136,27 @@ inf_exc      = flatten(inference,tmin = 0.0, sortby=exclusive)[end:-1:max(1,end-
 #                                      Position3D               = (;L=.03)) ) 
 
 
+using SnoopCompileCore, SnoopCompile, AbstractTrees, ProfileView
+using Profile
+using BenchmarkTools
+
+mission = :profile
+if mission == :report
+    out = solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=true,verbosity=1,tol=1e-20,σₓᵤ)
+elseif mission == :time
+    out = solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=true,verbosity=1,tol=1e-20,σₓᵤ)
+    @btime out =solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=false,verbosity=1,tol=1e-20,σₓᵤ)
+elseif mission == :profile
+    out = solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=true,verbosity=1,tol=1e-20,σₓᵤ)
+    Profile.clear()
+    Profile.@profile for i=1:30
+        local out = solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=false,verbosity=1,tol=1e-20,σₓᵤ)
+    end
+    ProfileView.view(fontsize=30);
+    # After clicking on a bar in the flame diagram, you can type warntype_last() and see the result of 
+    # code_warntype for the call represented by that bar.
+end
 ;
+
+
+

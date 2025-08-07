@@ -112,19 +112,19 @@ function getndof(::Type{E},class) where{E} # TODO intended to be computed at com
     end
     return i
 end  
-getndof(E::DataType,class::Tuple)   = (getndof(E,first(class)),getndof(E,Base.tail(class))...)
-getndof(E::DataType,class::Tuple{}) = ()
-getndof(model::Model,class::Symbol) = length(model.dof[class])
-getndof(model::Model,class::Tuple)   = (getndof(model,first(class)),getndof(model,Base.tail(class))...)
-getndof(model::Model,class::Tuple{}) = ()
+getndof(::Type{E},class::Tuple  ) where{E} = (getndof(E,first(class)),getndof(E,Base.tail(class))...)
+getndof(::Type{E},class::Tuple{}) where{E} = ()
+getndof(model::Model,class::Symbol)        = length(model.dof[class])
+getndof(model::Model,class::Tuple)         = (getndof(model,first(class)),getndof(model,Base.tail(class))...)
+getndof(model::Model,class::Tuple{})       = ()
+getndof(model::Model)                      = sum(length(d) for d∈model.dof)
 
-getndof(model::Model)               = sum(length(d) for d∈model.dof)
-getnele(model::Model,ieletyp)       = length(model.ele[ieletyp])
-getnele(model::Model)               = sum(length(e) for e∈model.ele)
-newdofID(model::Model,class)        = DofID(class  ,getndof(model,class)+1)
-neweleID(model::Model,ieletyp)      = EleID(ieletyp,getndof(model,class)+1)
-getnnod(E::DataType)                = maximum(doflist(E).inod) 
-getdoflist(E::DataType)             = doflist(E).inod, doflist(E).class, doflist(E).field
+getnele(model::Model,ieletyp)              = length(model.ele[ieletyp])
+getnele(model::Model)                      = sum(length(e) for e∈model.ele)
+newdofID(model::Model,class)               = DofID(class  ,getndof(model,class)+1)
+neweleID(model::Model,ieletyp)             = EleID(ieletyp,getndof(model,class)+1)
+getnnod(E::DataType)                       = maximum(doflist(E).inod) 
+getdoflist(E::DataType)                    = doflist(E).inod, doflist(E).class, doflist(E).field
 function getdoftyp(model::Model,class::Symbol,field::Symbol)
     idoftyp = findfirst(doftyp.class==class && doftyp.field==field for doftyp∈model.doftyp)
     isnothing(idoftyp) && muscadeerror(@sprintf("The model has no dof of class %s and field %s.",class,field))    

@@ -117,7 +117,7 @@ function diffed_lagrangian(ele::Eletyp; Λ,X,U,A, t::𝕣=0.,SP=nothing) where{E
     A∂        =              SVector{Na,T}(∂²ℝ{1,Np}(A[      idof],Nx+Nx*(OX+1)  +Nu*(OU+1)  +idof)   for idof=1:Na)
 
     L,FB      = lagrangian(ele, Λ∂,X∂,U∂,A∂,t,SP,(;calledby=:test_element))
-    inftyp,rettyp = Muscade.@typeof(lagrangian(ele, Λ∂,X∂,U∂,A∂,t,SP,(;calledby=:test_element)))
+    #inftyp,rettyp = Muscade.@typeof(lagrangian(ele, Λ∂,X∂,U∂,A∂,t,SP,(;calledby=:test_element)))
     
 
     ∇Lz,HLz   = value_∂{1,Np}(∂{2,Np}(L))
@@ -142,7 +142,7 @@ function diffed_lagrangian(ele::Eletyp; Λ,X,U,A, t::𝕣=0.,SP=nothing) where{E
             end
         end
     end
-    return (Λ=Λ,X=X,U=U,A=A,t=t,SP=SP,∇L=∇L,HL=HL,FB=FB,inftyp=inftyp,rettyp=rettyp)
+    return (Λ=Λ,X=X,U=U,A=A,t=t,SP=SP,∇L=∇L,HL=HL,FB=FB)#,inftyp=inftyp,rettyp=rettyp)
 end
 
 
@@ -181,7 +181,7 @@ function diffed_residual(ele::Eletyp; X,U,A, t::𝕣=0.,SP=nothing) where{Eletyp
     A∂        =              SVector{Na,∂ℝ{1,Np,𝕣}}(∂ℝ{1,Np}(A[      idof],Nx*(OX+1)  +Nu*(OU+1)  +idof)   for idof=1:Na)
 
     r_,FB     = residual(ele, X∂,U∂,A∂,t,SP,(;calledby=:test_element))
-    inftyp,rettyp = @typeof(residual(ele, X∂,U∂,A∂,t,SP,(;calledby=:test_element)))
+    #inftyp,rettyp = @typeof(residual(ele, X∂,U∂,A∂,t,SP,(;calledby=:test_element)))
     R,∇r      = value_∂{1,Np}(r_)
 
     ∇R        = Vector{Vector{Any}}(undef,4  )
@@ -194,6 +194,6 @@ function diffed_residual(ele::Eletyp; X,U,A, t::𝕣=0.,SP=nothing) where{Eletyp
             ∇R[α][i] = ∇r[:,iα]
         end
     end
-    return (X=X,U=U,A=A,t=t,SP=SP,R=R,∇R=∇R,FB=FB,inftyp=inftyp,rettyp=rettyp)
+    return (X=X,U=U,A=A,t=t,SP=SP,R=R,∇R=∇R,FB=FB)#,inftyp=inftyp,rettyp=rettyp)
 end
 

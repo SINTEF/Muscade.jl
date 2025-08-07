@@ -1,10 +1,10 @@
 include("Rotations.jl")
 using StaticArrays, LinearAlgebra, Muscade
 
-struct Position3D{Nsensor} <: AbstractElement
+struct Position3D{Nsensor,Nel} <: AbstractElement
     xₘ          :: SVector{3,𝕣}     # As-meshed position
-    P           :: SMatrix{3,Nsensor,𝕣}
-    D           :: SMatrix{3,Nsensor,𝕣}
+    P           :: SMatrix{3,Nsensor,𝕣,Nel}
+    D           :: SMatrix{3,Nsensor,𝕣,Nel}
 end
 """
     Position3D
@@ -76,7 +76,7 @@ end
 
 using GLMakie
 
-function Muscade.allocate_drawing(axis,o::AbstractVector{Position3D{Nsensor}};kwargs...) where{Nsensor}
+function Muscade.allocate_drawing(axis,o::AbstractVector{Position3D{Nsensor,Nel}};kwargs...) where{Nsensor,Nel}
     args   = default{:Position3D}(kwargs,(;))
     opt    = default(args,(L                   = 0.,
                            point_size          = 6,
@@ -93,7 +93,7 @@ function Muscade.allocate_drawing(axis,o::AbstractVector{Position3D{Nsensor}};kw
     return mut,opt
 end
 
-function Muscade.update_drawing(axis,o::AbstractVector{Position3D{Nsensor}},mut,opt, Λ,X,U,A,t,SP,dbg) where{Nsensor}
+function Muscade.update_drawing(axis,o::AbstractVector{Position3D{Nsensor,Nel}},mut,opt, Λ,X,U,A,t,SP,dbg) where{Nsensor,Nel}
     X₀    = ∂0(X)
     U₀    = ∂0(U)
     nXdof,nUdof,nAdof = 6,0,0

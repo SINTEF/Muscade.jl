@@ -91,13 +91,13 @@ See also: [`compose`](@ref)
 function revariate{O}(a::SV{N,R}) where{O,N,R} 
     P  = precedence(R)+O
     va = VALUE(a)
-    Ro = Trevariate{P,N,𝕣}() # always specify eltype when constructing array by comprehension
+    Ro = Trevariate{P,N,𝕣}() # always specify eltype when constructing array by comprehension!
     P==0 ? va : SV{N,Ro}(revariate_{P,N}(va[i],i)  for i=1:N)
 end
-revariate_{P,N}(a,i) where{P,N} = ∂ℝ{P,N  }(revariate_{P-1,N}(a,i),i)
-revariate_{0,N}(a,i) where{  N} =                             a
-Trevariate{P,N,Ra}() where{P,N,Ra} = ∂ℝ{P,N,Trevariate{P-1,N,Ra}()}
-Trevariate{0,N,Ra}() where{  N,Ra} = Ra
+revariate_{P,N   }(a,i) where{P,N   } = ∂ℝ{P,N  }(revariate_{P-1,N}(a,i),i)
+revariate_{0,N   }(a,i) where{  N   } =                             a
+Trevariate{0,N,Ra}(   ) where{  N,Ra<:ℝ} = Ra
+Trevariate{P,N,Ra}(   ) where{P,N,Ra<:ℝ} = ∂ℝ{P,N,Trevariate{P-1,N,Ra}()} # this causes (slight) type instability - because if Ra isnot ℝ, then return type is different.
 
 """
     McLaurin(Ty,x)
@@ -115,7 +115,9 @@ See also: [`compose`](@ref), [`Taylor`](@ref), [`revariate`](@ref), [`fast`](@re
 """
 McLaurin(y::Tuple,Δx)                          = tuple(McLaurin(first(y),Δx),McLaurin(Base.tail(y),Δx)...) 
 McLaurin( ::Tuple{},Δx)                        = tuple() 
-McLaurin(y::SArray{S},Δx) where{S}             = SArray{S}(McLaurin(yᵢ,Δx) for yᵢ∈y) 
+McLaurin(y::SArray{S},Δx) where{S}             = SArray{S}(McLaurin(yᵢ,Δx) for yᵢ∈y) # TODO specify eltype
+# McLaurin(y::SArray{Sy,Ty,Dy,Ly},Δx::SVector{Sx,Tx}) where{Sy,Ty,Dy,Ly,Sx,Tx} =
+#             SArray{Sy,Tx,Dy,Ly}(McLaurin(yᵢ,Δx) for yᵢ∈y)   # incorrect?
 McLaurin(y::∂ℝ,Δx)                             = McLaurin(y.x,Δx) .+ McLaurin_right(y,Δx)
 McLaurin(y::𝕣 ,Δx)                             =          y
 function McLaurin_right(y::∂ℝ{P,N,R},Δx::SVector{N}) where{P,N,R} 
