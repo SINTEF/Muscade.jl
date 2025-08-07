@@ -1,8 +1,7 @@
 module Runtest
-    using Test,Muscade,Dates
+    using Test,Muscade
 
-    start = Dates.now()
-#    @testset "Muscade.jl package" begin
+    @testset "Muscade.jl package" begin
         @testset "TestEspy" begin
             include("TestEspy.jl")
         end
@@ -85,7 +84,5 @@ module Runtest
             include("TestPositionElement.jl")
         end
         # doctest(Muscade) # we do not use doctest, we run Literate.jl on mydemo.jl files that are included in a unit test file
-#    end
-    T=Dates.now() - start
-    display(T)    
+    end
 end
