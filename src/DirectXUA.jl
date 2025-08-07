@@ -88,8 +88,12 @@ function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::Eleobj,fast
     Np     = Nx + Nx*(OX+1) + Nu*(OU+1) + Na*IA # number of partials  
 
     T  = ∂ℝ{1,Npfast,𝕣} 
-    X∂ = NTuple{OX+1,SVector{Nx,T}}(SVector{Nx,T}(∂ℝ{1,Npfast}(X[ider][idof],   Nx*(ider-1)            +idof, scale.X[idof])   for idof=1:Nx) for ider = 1:OX+1)
-    U∂ = NTuple{OU+1,SVector{Nu,T}}(SVector{Nu,T}(∂ℝ{1,Npfast}(U[ider][idof],   Nx*(OX+1)  +Nu*(ider-1)+idof, scale.U[idof])   for idof=1:Nu) for ider = 1:OX+1)
+    # X∂ = NTuple{OX+1,SVector{Nx,T}}(SVector{Nx,T}(∂ℝ{1,Npfast}(X[ider][idof],   Nx*(ider-1)            +idof, scale.X[idof])   for idof=1:Nx) for ider = 1:OX+1)
+    # U∂ = NTuple{OU+1,SVector{Nu,T}}(SVector{Nu,T}(∂ℝ{1,Npfast}(U[ider][idof],   Nx*(OX+1)  +Nu*(ider-1)+idof, scale.U[idof])   for idof=1:Nu) for ider = 1:OU+1)
+    X∂ = tuple(ider->SVector{Nx,T}(∂ℝ{1,Npfast}(X[ider][idof],   Nx*(ider-1)            +idof, scale.X[idof])   for idof=1:Nx), Val(OX+1))
+    U∂ = tuple(ider->SVector{Nu,T}(∂ℝ{1,Npfast}(U[ider][idof],   Nx*(OX+1)  +Nu*(ider-1)+idof, scale.U[idof])   for idof=1:Nu), Val(OU+1))
+
+
     if IA == 1
         A∂   =        SVector{Na,T}(∂ℝ{1,Npfast}(A[      idof],   Nx*(OX+1)  +Nu*(OU+1)  +idof, scale.A[idof])   for idof=1:Na)
         R,FB = residual(eleobj, X∂,U∂,A∂,t,SP,dbg)

@@ -44,8 +44,8 @@ function addin!(out::AssemblySweepX{ORDER},asm,iele,scale,eleobj::E,Λ,X::NTuple
     a₁,a₂,a₃,b₁,b₂,b₃ = out.c.a₁,out.c.a₂,out.c.a₃,out.c.b₁,out.c.b₂,out.c.b₃
     if ~out.line
         if ORDER==2 && out.firstiter
-            i          = SVector{Nx}(1:Nx)
-            δXr        = δ{1,Nx+1,𝕣}(SVector{Nx+1}(scale.X...,1.))      
+            i          = SVector{Nx,𝕫}(1:Nx)
+            δXr        = δ{1,Nx+1,𝕣}(SVector{Nx+1,𝕣}(scale.X...,1.))      
             δX         = δXr[i]        
             δr         = δXr[Nx+1]     # Newmark-β special: we need C⋅a and M⋅b
             x,x′,x″    = ∂0(X),∂1(X),∂2(X)
