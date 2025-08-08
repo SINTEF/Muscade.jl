@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Static analysis of a beam · Muscade.jl</title><meta name="title" content="Static analysis of a beam · Muscade.jl"/><meta property="og:title" content="Static analysis of a beam · Muscade.jl"/><meta property="twitter:title" content="Static analysis of a beam · Muscade.jl"/><meta name="description" content="Documentation for Muscade.jl."/><meta property="og:description" content="Documentation for Muscade.jl."/><meta property="twitter:description" content="Documentation for Muscade.jl."/><script data-outdated-warner src="assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="assets/documenter.js"></script><script src="search_index.js"></script><script src="siteinfo.js"></script><script src="../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="index.html"><img src="assets/logo.png" alt="Muscade.jl logo"/></a><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="index.html">Introduction</a></li><li><a class="tocitem" href="Theory.html">Theory</a></li><li><span class="tocitem">User manual</span><ul><li><a class="tocitem" href="Modelling.html">Creating a model</a></li><li><a class="tocitem" href="Solvers.html">Solvers</a></li><li><a class="tocitem" href="Elements.html">Implementing new elements</a></li></ul></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="BeamElement.html">Euler beam element</a></li><li class="is-active"><a class="tocitem" href="StaticBeamAnalysis.html">Static analysis of a beam</a></li><li><a class="tocitem" href="DynamicBeamAnalysis.html">Modal analysis of a beam</a></li><li><a class="tocitem" href="DecayAnalysis.html">Estimating model parameters</a></li><li><a class="tocitem" href="DryFriction.html">DryFriction</a></li></ul></li><li><a class="tocitem" href="reference.html">Reference</a></li><li><span class="tocitem">Appendix</span><ul><li><a class="tocitem" href="TypeStable.html">Type-stability</a></li><li><a class="tocitem" href="Memory.html">Memory management</a></li><li><a class="tocitem" href="Adiff.html">Automatic differentiation</a></li><li><a class="tocitem" href="litterature.html">Literature</a></li></ul></li><li><a class="tocitem" href="LICENSE.html">MIT License</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href="StaticBeamAnalysis.html">Static analysis of a beam</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href="StaticBeamAnalysis.html">Static analysis of a beam</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/SINTEF/Muscade.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/SINTEF/Muscade.jl/blob/main/examples/StaticBeamAnalysis.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Static-analysis-of-a-beam"><a class="docs-heading-anchor" href="#Static-analysis-of-a-beam">Static analysis of a beam</a><a id="Static-analysis-of-a-beam-1"></a><a class="docs-heading-anchor-permalink" href="#Static-analysis-of-a-beam" title="Permalink"></a></h1><p>Cantilever bend, with out-of-plane load leading to a three-dimensional response mobilizing axial force, bending moment and torque. Comparison to solutions by Longva (2015) and Crisfield (1990)</p><pre><code class="language-julia hljs">using Muscade, StaticArrays, GLMakie
+include(&quot;BeamElement.jl&quot;);
+
+
+R = 100.0;  # Radius of the bend [m]
+EI₂ = 833.33e3;  # Bending stiffness [Nm²]
+EI₃ = 833.33e3;  # Bending stiffness [Nm²]
+EA = 1e9;  # Axial stiffness [N]
+GJ = 705e3;  # Torsional stiffness [Nm²]</code></pre><p>Create the model</p><pre><code class="language-julia hljs">nel         = 8
+nnodes      = nel+1
+nodeCoord   = hcat( 0 .+ R*cos.(3π/2 .+ ((1:nnodes).-1)/(nnodes-1)*π/4),
+                    0 .+ zeros(Float64,nnodes,1),
+                    R .+ R*sin.(3π/2 .+ ((1:nnodes).-1)/(nnodes-1)*π/4))
+mat         = BeamCrossSection(EA=EA,EI₂=EI₂,EI₃=EI₃,GJ=GJ,μ=1.,ι₁=1.)
+model       = Model(:TestModel)
+nodid       = addnode!(model,nodeCoord)
+mesh        = hcat(nodid[1:nnodes-1],nodid[2:nnodes])
+eleid       = addelement!(model,EulerBeam3D,mesh;mat=mat,orient2=SVector(0.,1.,0.))
+[addelement!(model,Hold,[nodid[1]]  ;field) for field∈[:t1,:t2,:t3,:r1,:r2,:r3]]; # Clamp at one end</code></pre><p>Define the loading procedure. First 300 N then 450  and 600 N</p><pre><code class="language-julia hljs">function load(t)
+    t&lt;=1. ? load=t*300. :
+    t&gt;1. &amp;&amp; t&lt;=2. ? load=300. +(t-1)*150. :
+    load=450. +(t-2)*150.
+end
+addelement!(model,DofLoad,[nodid[nnodes]];field=:t2,value=t-&gt;load(t));                                        # Force along axis2 at other</code></pre><p>Run the static analysis</p><pre><code class="language-julia hljs">initialstate    = initialize!(model);
+loadSteps = [0.,1.,2.,3.];
+nLoadSteps = length(loadSteps)
+state           = solve(SweepX{0};initialstate,time=loadSteps,verbose=true,maxΔx=1e-9);</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
+
+
+<span class="sgr36"><span class="sgr1">Muscade:</span> SweepX{0} solver</span>
+
+    step   1 converged in   1 iterations. |Δx|=5.0e-15 |Lλ|=7.7e-07
+    step   2 converged in  11 iterations. |Δx|=2.3e-12 |Lλ|=7.1e-07
+    step   3 converged in   8 iterations. |Δx|=2.4e-11 |Lλ|=1.6e-06
+    step   4 converged in   8 iterations. |Δx|=1.4e-11 |Lλ|=1.4e-06
+
+    nel=15, ndof=60, nstep=4, niter=28, niter/nstep= 7.00
+    SweepX{0} time:  5165 [ms]
+<span class="sgr36"><span class="sgr1">Muscade done.</span></span></code></pre><p>Fetch and show beam profile for all load cases</p><pre><code class="language-julia hljs">x_ = [getdof(state[idxLoad];field=:t1,nodID=nodid[1:nnodes]) for idxLoad ∈ 1:nLoadSteps]
+y_ = [getdof(state[idxLoad];field=:t2,nodID=nodid[1:nnodes]) for idxLoad ∈ 1:nLoadSteps]
+z_ = [getdof(state[idxLoad];field=:t3,nodID=nodid[1:nnodes]) for idxLoad ∈ 1:nLoadSteps]
+
+fig      = Figure(size = (1000,1000))
+ax = Axis3(fig[1,1],xlabel=&quot;x [m]&quot;, ylabel=&quot;y [m]&quot;, zlabel=&quot;z [m]&quot;,aspect=:equal)
+for idxLoad ∈ 1:nLoadSteps
+    lines!(ax,nodeCoord[:,1]+x_[idxLoad][:], nodeCoord[:,2]+y_[idxLoad][:] , nodeCoord[:,3]+z_[idxLoad][:]                  , label=&quot;F=&quot;*string(load(loadSteps[idxLoad]))*&quot; N&quot;);
+end
+xlims!(ax, 0,70); ylims!(ax, 0,60); zlims!(ax, 0,40); axislegend()
+currentDir = @__DIR__
+if occursin(&quot;build&quot;, currentDir)
+    save(normpath(joinpath(currentDir,&quot;..&quot;,&quot;src&quot;,&quot;assets&quot;,&quot;StaticBeamAnalysis1.png&quot;)),fig)
+elseif occursin(&quot;examples&quot;, currentDir)
+    save(normpath(joinpath(currentDir,&quot;StaticBeamAnalysis1.png&quot;)),fig)
+end</code></pre><p><img src="assets/StaticBeamAnalysis1.png" alt="Result"/></p><p>Fetch and display results at the Gauss points for the last load case</p><pre><code class="language-julia hljs">idxLoad = 4;</code></pre><p>Location of the 4 Gauss points</p><pre><code class="language-julia hljs">xgp1 = (1. /nel)*( (0.5-1/2*sqrt(3/7+2/7*sqrt(6/5))) :1:nel)
+xgp2 = (1. /nel)*( (0.5-1/2*sqrt(3/7-2/7*sqrt(6/5))) :1:nel)
+xgp3 = (1. /nel)*( (0.5+1/2*sqrt(3/7-2/7*sqrt(6/5))) :1:nel)
+xgp4 = (1. /nel)*( (0.5+1/2*sqrt(3/7+2/7*sqrt(6/5))) :1:nel)
+xgps = [xgp1;xgp2;xgp3;xgp4];</code></pre><p>Axial force</p><pre><code class="language-julia hljs">req = @request gp(resultants(fᵢ))
+out = getresult(state[idxLoad],req,eleid)
+Fgp1_ = [ out[idxEl].gp[1][:resultants][:fᵢ] for idxEl ∈ 1:nel]
+Fgp2_ = [ out[idxEl].gp[2][:resultants][:fᵢ] for idxEl ∈ 1:nel]
+Fgp3_ = [ out[idxEl].gp[3][:resultants][:fᵢ] for idxEl ∈ 1:nel]
+Fgp4_ = [ out[idxEl].gp[4][:resultants][:fᵢ] for idxEl ∈ 1:nel];</code></pre><p>Bending moments</p><pre><code class="language-julia hljs">req = @request gp(resultants(mᵢ))
+out = getresult(state[idxLoad],req,eleid)
+Mgp1_ = [ out[idxEl].gp[1][:resultants][:mᵢ] for idxEl ∈ 1:nel]
+Mgp2_ = [ out[idxEl].gp[2][:resultants][:mᵢ] for idxEl ∈ 1:nel]
+Mgp3_ = [ out[idxEl].gp[3][:resultants][:mᵢ] for idxEl ∈ 1:nel]
+Mgp4_ = [ out[idxEl].gp[4][:resultants][:mᵢ] for idxEl ∈ 1:nel];</code></pre><p>Strains</p><pre><code class="language-julia hljs">req = @request ε
+out = getresult(state[idxLoad],req,eleid)
+εgp1_ = [ out[idxEl].ε[1] for idxEl ∈ 1:nel]
+εgp2_ = [ out[idxEl].ε[1] for idxEl ∈ 1:nel];
+εgp3_ = [ out[idxEl].ε[1] for idxEl ∈ 1:nel];
+εgp4_ = [ out[idxEl].ε[1] for idxEl ∈ 1:nel];</code></pre><p>Curvatures</p><pre><code class="language-julia hljs">req = @request gp(κgp)
+out = getresult(state[idxLoad],req,eleid)
+κgp1_ = [ out[idxEl].gp[1].κgp[1] for idxEl ∈ 1:nel]
+κgp2_ = [ out[idxEl].gp[2].κgp[1] for idxEl ∈ 1:nel]
+κgp3_ = [ out[idxEl].gp[3].κgp[1] for idxEl ∈ 1:nel]
+κgp4_ = [ out[idxEl].gp[4].κgp[1] for idxEl ∈ 1:nel];</code></pre><p>Plot strains, etc. at Gauss points</p><pre><code class="language-julia hljs">fig      = Figure(size = (1000,1000))
+ax=Axis(fig[1,1], ylabel=&quot;Forces F [N]&quot;,       yminorgridvisible = true,xminorgridvisible = true,xticks = (0:1. /nel:1))
+scatter!(ax,xgps,  [[Fgp1_[iel][1] for iel=1:nel] ; [Fgp2_[iel][1] for iel=1:nel] ; [Fgp3_[iel][1] for iel=1:nel] ; [Fgp4_[iel][1] for iel=1:nel]],          label=&quot;F₁&quot;);
+ax.title = &quot;Internal loads, elongation and curvature at last load step&quot;
+axislegend();
+ax=Axis(fig[2,1], ylabel=&quot;Strain [-]&quot;,       yminorgridvisible = true,xminorgridvisible = true,xticks = (0:1. /nel:1))
+scatter!(ax,xgps,  [[εgp1_[iel][1] for iel=1:nel] ; [εgp2_[iel][1] for iel=1:nel] ; [εgp3_[iel][1] for iel=1:nel] ; [εgp4_[iel][1] for iel=1:nel]],          label=&quot;ε&quot;);
+ax=Axis(fig[3,1], ylabel=&quot;Moments M [Nm]&quot;,       yminorgridvisible = true,xminorgridvisible = true,xticks = (0:1. /nel:1))
+scatter!(ax,xgps,  [[Mgp1_[iel][1] for iel=1:nel] ; [Mgp2_[iel][1] for iel=1:nel] ; [Mgp3_[iel][1] for iel=1:nel] ; [Mgp4_[iel][1] for iel=1:nel]],          label=&quot;M₁&quot;);
+scatter!(ax,xgps,  [[Mgp1_[iel][2] for iel=1:nel] ; [Mgp2_[iel][2] for iel=1:nel] ; [Mgp3_[iel][2] for iel=1:nel] ; [Mgp4_[iel][2] for iel=1:nel]],          label=&quot;M₂&quot;);
+scatter!(ax,xgps,  [[Mgp1_[iel][3] for iel=1:nel] ; [Mgp2_[iel][3] for iel=1:nel] ; [Mgp3_[iel][3] for iel=1:nel] ; [Mgp4_[iel][3] for iel=1:nel]],          label=&quot;M₃&quot;);
+axislegend()
+ax=Axis(fig[4,1], ylabel=&quot;Curvature κ [m⁻¹]&quot;,       yminorgridvisible = true,xminorgridvisible = true,xticks = (0:1. /nel:1),xlabel=&quot;Position along beam / beam length [-]&quot;)
+scatter!(ax,xgps,  [[κgp1_[iel][1] for iel=1:nel] ; [κgp2_[iel][1] for iel=1:nel] ; [κgp3_[iel][1] for iel=1:nel] ; [κgp4_[iel][1] for iel=1:nel]],          label=&quot;κ₁&quot;);
+scatter!(ax,xgps,  [[κgp1_[iel][2] for iel=1:nel] ; [κgp2_[iel][2] for iel=1:nel] ; [κgp3_[iel][2] for iel=1:nel] ; [κgp4_[iel][2] for iel=1:nel]],          label=&quot;κ₂&quot;);
+scatter!(ax,xgps,  [[κgp1_[iel][3] for iel=1:nel] ; [κgp2_[iel][3] for iel=1:nel] ; [κgp3_[iel][3] for iel=1:nel] ; [κgp4_[iel][3] for iel=1:nel]],          label=&quot;κ₃&quot;);
+axislegend()
+if occursin(&quot;build&quot;, currentDir)
+    save(normpath(joinpath(currentDir,&quot;..&quot;,&quot;src&quot;,&quot;assets&quot;,&quot;StaticBeamAnalysis2.png&quot;)),fig)
+elseif occursin(&quot;examples&quot;, currentDir)
+    save(normpath(joinpath(currentDir,&quot;StaticBeamAnalysis2.png&quot;)),fig)
+end</code></pre><p><img src="assets/StaticBeamAnalysis2.png" alt="Result"/></p><p>Show comparison with solutions by Longva (2015) and Crisfield (1990)</p><pre><code class="language-julia hljs"># Load                300 N                       450 N                       600 N
+#                     x,y,z                       x,y,z                       x,y,z
+# Disp Longva         58.56, 40.47, 22.18         51.99, 48.72, 18.45         46.91, 53.64, 15.65
+# Disp Crisfield      58.53, 40.53, 22.16         51.93, 48.79, 18.43         46.84, 53.71, 15.61
+height = [  nodeCoord[end,1]+x_[2][end], 58.56, 58.53, nodeCoord[end,1]+x_[3][end], 51.99, 51.93, nodeCoord[end,1]+x_[4][end], 46.91, 46.84,
+            nodeCoord[end,2]+y_[2][end], 40.47, 40.53, nodeCoord[end,2]+y_[3][end], 48.72, 48.79, nodeCoord[end,2]+y_[4][end], 53.64, 53.71,
+            nodeCoord[end,3]+z_[2][end], 22.18, 22.16, nodeCoord[end,3]+z_[3][end], 18.45, 18.43, nodeCoord[end,3]+z_[4][end], 15.65, 15.61]
+colors = [:red, :blue, :green]
+tbl = (cat = [1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6, 7, 7, 7, 8, 8, 8, 9, 9, 9],height,
+       grp = [1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3])
+fig = Figure(size = (2000, 400))
+ax = Axis(fig[1,1], xticks = (1:9, [&quot;x @ 300 N&quot;, &quot;x @ 450 N&quot;, &quot;x @ 600 N&quot;, &quot;y @ 300 N&quot;, &quot;y @ 450 N&quot;, &quot;y @ 600 N&quot;, &quot;z @ 300 N&quot;, &quot;z @ 450 N&quot;, &quot;z @ 600 N&quot;]),
+                    ylabel = &quot;End node coordinate [m]&quot;)
+barplot!(ax, tbl.cat, tbl.height,
+        dodge = tbl.grp,
+        color = colors[tbl.grp],
+        bar_labels = :y
+        )
+ylims!(ax, 0,70);
+labels = [&quot;Muscade&quot;, &quot;Longva (2015)&quot;, &quot;Crisfield (1990)&quot;]
+elements = [PolyElement(polycolor = colors[i]) for i in 1:length(labels)]
+title = &quot;Method&quot;
+Legend(fig[1,2], elements, labels, title)
+if occursin(&quot;build&quot;, currentDir)
+    save(normpath(joinpath(currentDir,&quot;..&quot;,&quot;src&quot;,&quot;assets&quot;,&quot;StaticBeamAnalysis3.png&quot;)),fig)
+elseif occursin(&quot;examples&quot;, currentDir)
+    save(normpath(joinpath(currentDir,&quot;StaticBeamAnalysis3.png&quot;)),fig)
+end</code></pre><p><img src="assets/StaticBeamAnalysis3.png" alt="Result"/></p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="BeamElement.html">« Euler beam element</a><a class="docs-footer-nextpage" href="DynamicBeamAnalysis.html">Modal analysis of a beam »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.14.1 on <span class="colophon-date" title="Friday 8 August 2025 08:11">Friday 8 August 2025</span>. Using Julia version 1.11.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
