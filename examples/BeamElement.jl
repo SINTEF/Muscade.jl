@@ -3,7 +3,7 @@ include("Rotations.jl")
 # # Euler beam element
 
 using StaticArrays, LinearAlgebra, Muscade
-# using Test
+
 # Data structure containing the cross section material properties
 struct BeamCrossSection
     EA  :: 𝕣  # axial stiffness 
@@ -90,6 +90,7 @@ Muscade.doflist(     ::Type{EulerBeam3D{Mat,true}}) where{Mat} =
          #class= (ntuple(i->:X,nXdof)...,ntuple(i->:U,nUdof)...),  # not typestable
          class= (:X,:X,:X,:X,:X,:X,:X,:X,:X,:X,:X,:X,:U,:U,:U),  
          field= (:t1,:t2,:t3,:r1,:r2,:r3, :t1,:t2,:t3,:r1,:r2,:r3,  :t1,:t2,:t3) )
+
 # ElementType for the EulerBeam3D element. Arguments: node list, material, and direction of the first bending axis in the global coordinate system.  
 EulerBeam3D(nod;kwargs...) = EulerBeam3D{false}(nod;kwargs...) # by default, EulerBeam3D does not have Udof.
 function EulerBeam3D{Udof}(nod::Vector{Node};mat,orient2::SVector{ndim,𝕣}=SVector(0.,1.,0.)) where {Udof}
@@ -119,7 +120,8 @@ function EulerBeam3D{Udof}(nod::Vector{Node};mat,orient2::SVector{ndim,𝕣}=SVe
     shapes  = (yₐ.(ζgp), yᵤ.(ζgp), yᵥ.(ζgp)*L, κₐ.(ζgp)/L, κᵤ.(ζgp)/L^2, κᵥ.(ζgp)/L)
     return EulerBeam3D{typeof(mat),Udof}(cₘ,rₘ,ζgp,ζnod,tgₘ,tgₑ,shapes...,L,dL,mat)
 end;
-#Define now the residual function for the EulerBeam3D element.
+
+# Define now the residual function for the EulerBeam3D element.
 @espy function Muscade.residual(o::EulerBeam3D{Mat,Udof},   X,U,A,t,SP,dbg) where{Mat,Udof}
     P,ND                = constants(X),length(X)
     ## Compute all quantities at Gauss point, their time derivatives, including intrinsic roll rate and acceleration
@@ -180,7 +182,7 @@ function corotated{Mode}(o::EulerBeam3D,X₀)  where{Mode}
     return vₛₘ,rₛₘ,uₗ₂,vₗ₂,cₛ+cₘ
 end;
 
-#Assumes that BeamElement.jl has been included previously, and that "using GLMakie" has been invoked
+# The following functions explain how the beam element should be drawn
 using GLMakie
 """
 
