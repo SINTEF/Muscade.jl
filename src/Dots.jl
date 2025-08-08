@@ -1,4 +1,4 @@
-using Base.Cartesian
+
  #\circ \otimes
 
 ∘₀(a,b) = dots(a,b,Val(0))
@@ -36,7 +36,7 @@ See also: [`∘₁`](@ref),[`∘₂`](@ref)
     Nloop  = Nc + ndot
     Tc     = promote_type(Ta,Tb)
 
-    if Nc > 0  # NB: output is an Array, not StaticArray
+    if Nc > 0  # TODO: output is an Array, not StaticArray
         return quote
             sc = Base.@ntuple $Nc i -> begin
                 i <= $Nar ? size(a)[i] : size(b)[i - $Nar + $ndot]

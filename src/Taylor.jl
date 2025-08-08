@@ -13,7 +13,7 @@ or strain rates.
 Some principles of safe automatic differentiation must be adhered to:
 - the function that uses `motion` must also 'unpack' : no variable that is touched by 
   the output of `motion` must be returned by the function without having been unpacked
-  by `motion⁻¹`. Touched variables can for example be marked with an underscore
+  by `motion⁻¹`. Touched variables can for example be marked with an underscore.
 - The precendence `P` must be calculated using `constants` with all variables that are input to 
   the function and may be differentiated.
 - If other levels of automatic differentiation are introduced within the function, unpack in reverse
@@ -21,7 +21,10 @@ Some principles of safe automatic differentiation must be adhered to:
 
 See [`motion⁻¹`](@ref)
 """
-motion{ P    }(a::NTuple{ND,SV{N,R}}) where{ND,P,N,R        } = SV{N}(motion_{P-1,P+ND-2}(ntuple(j->a[j][i],ND)) for i=1:N)
+motion{ P    }(a::NTuple{ND,SV{N,R}}) where{ND,P,N,R        } = SV{N}(motion_{P-1,P+ND-2}(let a=a 
+                                                                                            ntuple(j->a[j][i],Val(ND))
+                                                                                         end) for i=1:N)
+#motion{ P    }(a::NTuple{ND,SV{N,R}}) where{ND,P,N,R        } = SV{N}(motion_{P-1,P+ND-2}(ntuple(j->a[j][i],Val(ND))) for i=1:N)
 motion_{P,Q  }(a::NTuple{D,      R }) where{D ,P  ,R<:Real,Q} = ∂ℝ{Q,1}(motion_{P,Q-1}(a),SV(motion_{P,Q-1}(a[2:D]))) 
 motion_{P,P  }(a::NTuple{D,      R }) where{D ,P  ,R<:Real  } = a[1]
 
@@ -40,7 +43,7 @@ In the above `Y` is a tuple of length `ND`.  One can use `∂0`,`∂1` and `∂2
 
 See also [`motion`](@ref)
 """
-motion⁻¹{P,1,0}(a::ℝ) where{P} =                             a
+motion⁻¹{P,1,0}(a::ℝ) where{P} =                      a
 motion⁻¹{P,2,0}(a::ℝ) where{P} =          value{P   }(a)
 motion⁻¹{P,3,0}(a::ℝ) where{P} = value{P}(value{P+1 }(a))
 # velocities
@@ -52,17 +55,20 @@ motion⁻¹{P,1,2}(a::ℝ) where{P} = 0.
 motion⁻¹{P,2,2}(a::ℝ) where{P} = 0.
 motion⁻¹{P,3,2}(a::ℝ) where{P} = ∂{   P,1}(∂{   P+1,1}(a)[1])[1]
 motion⁻¹{P,ND,OD}(a::SArray{S,R}) where{S,P,ND,OD,R<:ℝ}   = SArray{S}(motion⁻¹{P,ND,OD}(aᵢ) for aᵢ∈a)
-
+ 
 motion⁻¹{P,1    }(a::Union{ℝ,SArray}) where{P   } = (motion⁻¹{P,1,0}(a),)
 motion⁻¹{P,2    }(a::Union{ℝ,SArray}) where{P   } = (motion⁻¹{P,2,0}(a),motion⁻¹{P,2,1}(a))
 motion⁻¹{P,3    }(a::Union{ℝ,SArray}) where{P   } = (motion⁻¹{P,3,0}(a),motion⁻¹{P,3,1}(a),motion⁻¹{P,3,2}(a))
-motion⁻¹{P,ND   }(a::Union{Tuple,NamedTuple}) where{P,ND} = map(motion⁻¹{P,ND},a)
-motion⁻¹{P,ND   }(a...)               where{P,ND} = motion⁻¹{P,ND}(a)
+motion⁻¹{P,ND   }(a::Tuple          ) where{P,ND} = (motion⁻¹{P,ND}(first(a)),motion⁻¹{P,ND}(Base.tail(a))...)   
+motion⁻¹{P,ND   }(a::Tuple{}        ) where{P,ND} = ()   
+motion⁻¹{P,ND   }(a::NamedTuple     ) where{P,ND} = NamedTuple{keys(a)}(motion⁻¹{P,ND}(values(a)))  
+motion⁻¹{P,ND   }(a...              ) where{P,ND} = motion⁻¹{P,ND}(a) 
 
 #############
 
-struct revariate{ O,N}   end
-struct revariate_{P,N}   end
+struct revariate{ O    }   end
+struct revariate_{P,N  }   end
+struct Trevariate{P,N,R}   end
 revariate(a) = revariate{0}(a)
 """ 
     TX = revariate{O}(X)
@@ -85,10 +91,13 @@ See also: [`compose`](@ref)
 function revariate{O}(a::SV{N,R}) where{O,N,R} 
     P  = precedence(R)+O
     va = VALUE(a)
-    P==0 ? va : SV{N}(∂ℝ{P,N  }(revariate_{P-1,N}(va[i],i),i) for i=1:N)
+    Ro = Trevariate{P,N,𝕣}() # always specify eltype when constructing array by comprehension!
+    P==0 ? va : SV{N,Ro}(revariate_{P,N}(va[i],i)  for i=1:N)
 end
-revariate_{P,N}(a,i) where{P,N} = ∂ℝ{P,N  }(revariate_{P-1,N}(a,i),i)
-revariate_{0,N}(a,i) where{  N} =                             a
+revariate_{P,N   }(a,i) where{P,N   } = ∂ℝ{P,N  }(revariate_{P-1,N}(a,i),i)
+revariate_{0,N   }(a,i) where{  N   } =                             a
+Trevariate{0,N,Ra}(   ) where{  N,Ra<:ℝ} = Ra
+Trevariate{P,N,Ra}(   ) where{P,N,Ra<:ℝ} = ∂ℝ{P,N,Trevariate{P-1,N,Ra}()} # this causes (slight) type instability - because if Ra isnot ℝ, then return type is different.
 
 """
     McLaurin(Ty,x)
@@ -106,10 +115,22 @@ See also: [`compose`](@ref), [`Taylor`](@ref), [`revariate`](@ref), [`fast`](@re
 """
 McLaurin(y::Tuple,Δx)                          = tuple(McLaurin(first(y),Δx),McLaurin(Base.tail(y),Δx)...) 
 McLaurin( ::Tuple{},Δx)                        = tuple() 
-McLaurin(y::SArray{S},Δx) where{S}             = SArray{S}(McLaurin(yᵢ,Δx) for yᵢ∈y) 
-McLaurin(y::∂ℝ,Δx)                             = McLaurin(y.x,Δx) + McLaurin_right(y,Δx)
+McLaurin(y::SArray{Sy,Ty,Dy,Ly},Δx::SVector{Sx,Tx}) where{Sy,Ty,Dy,Ly,Sx,Tx} = SArray{Sy,Tx,Dy,Ly}(McLaurin(yᵢ,Δx) for yᵢ∈y)
+McLaurin(y::SArray{Sy,𝕣 ,Dy,Ly},Δx::SVector{Sx,Tx}) where{Sy,   Dy,Ly,Sx,Tx} =                              y
+McLaurin(y::∂ℝ,Δx)                             = McLaurin(y.x,Δx) .+ McLaurin_right(y,Δx)
 McLaurin(y::𝕣 ,Δx)                             =          y
-McLaurin_right(y::∂ℝ{P},Δx::SVector{N}) where{P,N} = sum(McLaurin_right(y.dx[i],Δx)*Δx[i] for i∈1:N)*(1/P)
+function McLaurin_right(y::∂ℝ{P,N,R},Δx::SVector{N}) where{P,N,R} 
+    if N==0
+        return zero(y) # hum!!!!
+    else
+        s = McLaurin_right(y.dx[1],Δx)*Δx[1]
+        for i ∈ 2:N
+            s += McLaurin_right(y.dx[i],Δx)*Δx[i]
+        end
+        s /= P
+    end
+    return s
+end
 McLaurin_right(y::𝕣    ,Δx            )        =          y
 
 """
@@ -138,7 +159,7 @@ if the length of `x` is smaller than the length of its partials.
 
 See also: [`revariate`](@ref), [`fast`](@ref)    
 """
-compose(Ty,x) = McLaurin(Ty,x-VALUE(x))
+compose(Ty,x) = McLaurin(Ty,x.-VALUE(x))
 
 """
     y,... = fast(f,x)
@@ -150,8 +171,13 @@ Be extremely careful with closures, making sure that `f` does not capture variab
 
 Wrapper function of [`revariate`](@ref) and [`McLaurin`](@ref)      
 """
-fast(      f,x) = compose(f(revariate(x)),x)    
-justinvoke(f,x) = f(x)    
+fast(      f,x) = apply{:compose}(f,x)    
+justinvoke(f,x) = apply{:direct}( f,x)    
+
+
+struct apply{Mode} end
+apply{:compose}(f,x) = compose(f(revariate(x)),x)
+apply{:direct}( f,x) = f(x)
 
 """
     composevalue{P,ND}(Ty,X_)
@@ -162,8 +188,10 @@ of length `ND` and `P=constants(X)`, compute `y`, a tuple of length `ND` of `Abs
 See also [`revariate`](@ref), [`motion`](@ref), [`motion⁻¹`](@ref), [`composeJacobian`](@ref)  
 """
 struct composevalue{P,ND} end
-composevalue{P,ND}(Ty,X_) where{P,ND} = motion⁻¹{P,ND}(compose(value{P}(Ty),X_))
-composevalue{P,ND}(Ty::Union{Tuple,NamedTuple},X₀) where{P,ND} = map(Tyᵢ->value{P,ND}(Tyᵢ,X₀),Ty)
+composevalue{P,ND}(Ty            ,X_) where{P,ND} = motion⁻¹{P,ND}(compose(value{P}(Ty),X_))
+composevalue{P,ND}(Ty::NamedTuple,X_) where{P,ND} = NamedTuple{keys(Ty)}(composevalue{P,ND}(values(Ty),X_))
+composevalue{P,ND}(Ty::Tuple     ,X_) where{P,ND} = (composevalue{P,ND}(first(Ty),X_),composevalue{P,ND}(Base.tail(Ty),X_)...)
+composevalue{P,ND}(Ty::Tuple{}   ,X_) where{P,ND} = ()
 """
     composeJacobian{P}(Ty,X_)
 
@@ -174,23 +202,32 @@ and `y∂X₀`, the Jacobian of `∂0(y)` with respect to `∂0(X)`.
 See also [`revariate`](@ref), [`motion`](@ref), [`motion⁻¹`](@ref), [`composevalue`](@ref)   
 """
 struct composeJacobian{P} end
-composeJacobian{P}(Ty,X₀) where{P} = compose(∂{P,npartial(Ty)}(Ty),X₀) # y∂X₀
-composeJacobian{P}(Ty::Union{Tuple,NamedTuple},X₀) where{P} = map(Tyᵢ->composeJacobian{P}(Tyᵢ,X₀),Ty)
+composeJacobian{P}(Ty            ,X₀) where{P} = compose(∂{P,npartial(Ty)}(Ty),X₀) # y∂X₀
+composeJacobian{P}(Ty::NamedTuple,X₀) where{P} = NamedTuple{keys(Ty)}(composeJacobian{P}(values(Ty),X₀))
+composeJacobian{P}(Ty::Tuple     ,X₀) where{P} = (composeJacobian{P}(first(Ty),X₀),composeJacobian{P}(Base.tail(Ty),X₀)...)
+composeJacobian{P}(Ty::Tuple{}   ,X₀) where{P} = ()
 
 # ∂ℝ( ∂ℝ(a,aₓ), ∂ℝ(aₓ,aₓₓ) ) → ∂ℝ(a,aₓ)   
-firstorderonly(a...;)            = firstorderonly.(a)
-firstorderonly(a::Tuple)         = firstorderonly.(a)
-firstorderonly(a::AbstractArray) = firstorderonly.(a)
-firstorderonly(a::∂ℝ)            = precedence(a)≤1 ? a : firstorderonly(a.x) 
-firstorderonly(a)                = a
-
-# ∂ℝ(a,aₓ) → ∂ℝ( ∂ℝ(a,aₓ), ∂ℝ(aₓ,0) ) 
-backtohigherorder(a::SVector{Na,T},::Type{T}) where{T,Na} = a
-backtohigherorder(a::SVector{Na,∂ℝ{1,N,𝕣}},::Type{∂ℝ{2,N,∂ℝ{1,N,𝕣}}}) where{N,Na} = 
-     SV{Na}(∂ℝ{2,N,∂ℝ{1,N,𝕣}}( 
-                              a[ia],  
-                              SV{N}(∂ℝ{1,N,𝕣}(
-                                              a[ia].dx[i],
-                                              SV{N,𝕣}(zero(𝕣) for j=1:N)
-                                              ) for i=1:N)
-                             ) for ia=1:Na)
+firstorderonly(a...;)             = firstorderonly(a)
+firstorderonly(a::Tuple)          = (firstorderonly(first(a)),firstorderonly(Base.tail(a))...)
+firstorderonly(a::Tuple{})        = ()
+firstorderonly(a::AbstractArray)  = firstorderonly.(a)
+firstorderonly(a::∂ℝ)             = precedence(a)≤1 ? a : firstorderonly(a.x) 
+firstorderonly(a)                 = a
+order2(a::NamedTuple   )          = NamedTuple{keys(a)}(order2(values(a)))
+order2(a::Tuple        )          = (order2(first(a)),order2(Base.tail(a))...)
+order2(a::Tuple{}      )          = ()
+order2(a::AbstractArray)          = order2.(a)
+order2(a::ℝ            )          = a
+order2(a::∂ℝ{1,N,𝕣}    ) where{N} = ∂ℝ{2,N,∂ℝ{1,N,𝕣}}(a,  
+                                                      SV{N}(∂ℝ{1,N,𝕣}(
+                                                                       a.dx[i],
+                                                                       SV{N,𝕣}(zero(𝕣) for j=1:N)
+                                                                       ) for i=1:N)
+                                                      )      
+struct toorder{P} end
+toorder{0}(a) = a
+toorder{1}(a) = a
+toorder{2}(a) = order2(a)
+toorder{2}()  = ()
+ 

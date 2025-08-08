@@ -23,7 +23,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@latest
         with:
-          version: '1.10'
+          version: '1.11'
       - name: Install binary dependencies
         run: >
           sudo apt-get update && 

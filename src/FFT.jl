@@ -118,33 +118,34 @@ end
 """
     X = 𝔉(x,δt)  # typeset with \\mfrakF\\Bbbr
 
-    Fourrier transform of a real time series x stored at time steps `δt` and length `2N = 2*2^p`
-    into a complex spectre X stored at frequency intervals `δω=getδω(2N,δt)=2π/(2N*δt)`.  
-    The length of the spectre is `N`: only positive frequencies are stored (the Fourrier 
-    transform of real functions are Hermitian).
+Fourrier transform of a real time series x stored at time steps `δt` and length `2N = 2*2^p`
+into a complex spectre X stored at frequency intervals `δω=getδω(2N,δt)=2π/(2N*δt)`.  
+The length of the spectre is `N`: only positive frequencies are stored (the Fourrier 
+transform of real functions are Hermitian).
 
-    This provides a discretization of the unitary Fourrier transform, 
+This provides a discretization of the unitary Fourrier transform, 
     
     G(ω) = 𝔉(g)(ω) = 1/√(2π) ∫exp(-𝑖ωt) g(t) dt
 
-    𝔉 is unitary, in the sense that
-    `sum(abs2.(x))*δt ≈ 2*(sum(abs2.(X)) - abs2.(X[1])/2)*δω` 
-    (since the discrete spectre is provided for ω≥0, it contains only half the energy)
+𝔉 is unitary, in the sense that
 
-    # Arguments
-    - `x` a vector of real numbers representing a time series.  Its length must be a power of two.
-    - `δt` the time step of the time series
+    sum(abs2.(x))*δt ≈ 2*(sum(abs2.(X)) - abs2.(X[1])/2)*δω 
+    
+(since the discrete spectre is provided for ω≥0, it contains only half the energy)
 
-    # Example
+# Arguments
+- `x` a vector of real numbers representing a time series.  Its length must be a power of two.
+- `δt` the time step of the time series
 
-    ```
-    X   = 𝔉(x,δt) 
-    δω  = getδω(length(x),δt)
-    x′  = 𝔉⁻¹(X,δω) # ≈ x
-    ```
+# Example
 
-    See also: [`𝔉⁻¹`](@ref), [`getδω`](@ref), [`getδt`](@ref),
+```
+X   = 𝔉(x,δt) 
+δω  = getδω(length(x),δt)
+x′  = 𝔉⁻¹(X,δω) # ≈ x
+```
 
+See also: [`𝔉⁻¹`](@ref), [`getδω`](@ref), [`getδt`](@ref),
 """
 function 𝔉(a::AbstractVector{R},δt::ℝ) where{R<:Real} #\mfrakF
     nr      = length(a)
@@ -173,21 +174,21 @@ end
 """
     x = 𝔉⁻¹(X,δω)  # typeset with \\mfrakF\\^-\\^1
 
-    See [`𝔉`](@ref)    
+See [`𝔉`](@ref)    
 
-    # Arguments
-    - `X` a vector of complex numbers representing one side of a spectra. Its length must be a power of two.
-    - `δω`, the angular frequency step of spectra
+# Arguments
+- `X` a vector of complex numbers representing one side of a spectra. Its length must be a power of two.
+- `δω`, the angular frequency step of spectra
 
-    # Example
+# Example
 
-    ```
-    X   = 𝔉(x,δt) 
-    δω  = getδω(length(x),δt)
-    x′  = 𝔉⁻¹(X,δω) # ≈ x
-    ```
+```
+X   = 𝔉(x,δt) 
+δω  = getδω(length(x),δt)
+x′  = 𝔉⁻¹(X,δω) # ≈ x
+```
 
-    See also: [`𝔉⁻¹`](@ref), [`getδω`](@ref), [`getδt`](@ref),
+See also: [`𝔉⁻¹`](@ref), [`getδω`](@ref), [`getδt`](@ref),
 
 """
 function 𝔉⁻¹(A::AbstractVector{Complex{R}},δω::ℝ) where{R<:Real} #\mfrakF

@@ -47,9 +47,6 @@ module Runtest
         @testset "TestElementCost" begin
             include("TestElementCost.jl")
         end
-        @testset "TestBeamElement" begin
-            include("TestBeamElement.jl")
-        end
         @testset "TestRotations" begin
             include("TestRotations.jl")
         end
@@ -74,9 +71,18 @@ module Runtest
         @testset "TestElementTestTools" begin
             include("TestElementTestTools.jl")
         end
-#        @testset "TestDrawBeamElement" begin
-#            include("TestDrawBeamElement.jl")
-#        end
+        @testset "TestBeamElement" begin
+            include("TestBeamElement.jl")
+        end
+        @testset "TestBeamElementStrainGauge" begin
+            include("TestBeamElementStrainGauge.jl")
+        end
+        @testset "TestDrawBeamElement" begin
+            include("TestDrawBeamElement.jl")
+        end
+        @testset "TestPositionElement" begin
+            include("TestPositionElement.jl")
+        end
         # doctest(Muscade) # we do not use doctest, we run Literate.jl on mydemo.jl files that are included in a unit test file
     end
 end

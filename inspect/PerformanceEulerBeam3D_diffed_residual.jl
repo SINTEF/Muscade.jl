@@ -20,26 +20,24 @@ const beam      = EulerBeam3D(elnod;mat,orient2=SVector(0.,1.,0.))
 const t         = 0.
 const SP        = (;)
 const dbg       = (status=:testing,)
-const x         = SVector(1.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.)
-const xv        = variate{1,12}(x)
-const X         = (xv,)
+const displacement =  SVector(0.,0.,0.,0.,0.,0.,  0.,0.,0.,0.,0.,0.); 
+const velocity     =  SVector(0.,0.,0.,0.,0.,0.,  0.,0.,0.,0.,0.,0.); 
+const acceleration =  SVector(0.,0.,0.,0.,0.,0.,  0.,0.,0.,0.,0.,0.); 
+const X = (displacement,)#,velocity,acceleration)
 const U         = (SVector{0,𝕣}(),)
 const A         = SVector{0,𝕣}()
 
-mission = :time
+mission = :report
 if mission == :report
-    R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg)
-    r,K = value_∂{1,12}(R)
-    display(r')
-    display(K)
+    out = diffed_residual(beam; X,U,A,t,SP)
 elseif mission == :time
-    R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg)
-    @btime Muscade.residual(beam,   X,U,A,t,SP,dbg)
+    out =  diffed_residual(beam; X,U,A,t,SP)
+    @btime diffed_residual(beam; X,U,A,t,SP)
 elseif mission == :profile
-    R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg)
+    diffed_residual(beam; X,U,A,t,SP)
     Profile.clear()
-    Profile.@profile for i=1:10000
-        local R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg)
+    Profile.@profile for i=1:250000
+        local out = diffed_residual(beam; X,U,A,t,SP)
     end
     ProfileView.view(fontsize=30);
     # After clicking on a bar in the flame diagram, you can type warntype_last() and see the result of 

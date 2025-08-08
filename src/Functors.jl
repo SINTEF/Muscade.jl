@@ -32,13 +32,12 @@ end
 """
     f  = QuadraticFunction(μ,σ)
 
-where `μ` and `σ` are `𝕣` (`Float64`)
+`μ` and `σ` are `𝕣` (`Float64`)
 
     y  = f(x) # == 1/2*((x-μ)/σ)^2
-
     f  = QuadraticFunction(μ,σ)
 
-where `μ` is a `Function` of time
+Alternatively, `μ` can be a `Function` of time, in which case
 
     y  = f(x,t) # == 1/2*((x-μ(t))/σ)^2
 

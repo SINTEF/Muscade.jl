@@ -1,7 +1,7 @@
-#module TestBeamElements
+module TestBeamElement
 
 using Test, Muscade, StaticArrays, LinearAlgebra
-include("../examples/BeamElements.jl")
+include("../examples/BeamElement.jl")
 
 a = SA[1,0,0]
 b = SA[0,1,1]
@@ -109,7 +109,7 @@ end
 displacement =  SVector(0.,0.,0.,0.,0.,0.,  0.,0.,0.,0.,0.,0.); 
 velocity     =  SVector(0.,0.,0.,0.,0.,0.,  0.,0.,0.,0.,0.,0.); 
 acceleration =  SVector(0.,0.,0.,0.,0.,0.,  0.,0.,0.,0.,0.,0.); 
-X = (displacement,velocity,acceleration)
+X            = (displacement,velocity,acceleration)
 
 out = diffed_residual(beam; X,U,A,t,SP)
 iλ,ix,iu,ia = 1,2,3,4
@@ -277,4 +277,4 @@ end
 # #     # code_warntype for the call represented by that bar.
 # # end
 # ;
-#end
+end

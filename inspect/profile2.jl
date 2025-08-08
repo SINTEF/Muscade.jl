@@ -107,7 +107,7 @@ if false # sandwich plot
         for i=1:niter-1
             lines!(axe,x,z[:,1,i];linewidth=1,color=:grey)
         end
-        draw(axe,state[niter];linewidth=2,color=:black)
+        draw!(axe,state[niter];linewidth=2,color=:black)
         lines!(axe,x,zfloor,color=:red, linewidth=2)
         lines!(axe,x,zceil,color=:red, linewidth=2)
     end

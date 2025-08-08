@@ -210,7 +210,7 @@ end
 
 copies(n,a::T) where{T} = NTuple{n,T}(deepcopy(a) for i∈1:n)
 
-using MacroTools: postwalk,gensym_ids,rmlines,unblock 
+
 """
     @once tag f(x)= x^2 
     
@@ -242,7 +242,7 @@ struct default{S} end
 default{S}(t::T,d=nothing) where{S,T<:Base.Pairs} = default{S}((;t...),d)
 default{S}(t::T,d=nothing) where{S,T<:NamedTuple} = hasfield(T,S) ? getfield(t,S) : d
 default{S}(t::T,d=nothing) where{S,T            } =                                 d
-
+default(in,def) = Base.merge(def,in)
 
 """
 An "identity vector"
@@ -258,9 +258,32 @@ const idvec = IdVec()
 @inline Base.getindex(::IdVec,i) = i
 
 """
-    imod(i,n) = mod(i-1,n)+1
+    mod_onebased(i,n) = mod(i-1,n)+1
 
 For `i::ℤ`, returns a value in `{1,...n}`.  This differs
 from `mod` which return a value in `[0,n[`   
 """
-imod(i::ℤ,n) = mod(i-1,n)+1
+mod_onebased(i::ℤ,n) = mod(i-1,n)+1
+
+"""
+    columnmatrix(v)
+
+Reshape a vector into a matrix of size `(length(v),1)`    
+"""
+columnmatrix(v::Vector) = reshape(v,(length(v),1))
+"""
+    rowmatrix(v)
+
+Reshape a vector into a matrix of size `(1,length(v))`    
+"""
+rowmatrix(   v::Vector) = reshape(v,(1,length(v)))
+
+"""
+    colnormalize(a)
+
+Euclidian-normalize the columns of an SMatrix
+"""    
+function colnormalize(a::SMatrix{ndim,nvec,R}) where{ndim,nvec,R<:ℝ}
+    n   = SVector{     nvec,R}(norm(a[:,ivec]) for ivec=1:nvec)
+    out = SMatrix{ndim,nvec,R}(a[idim,ivec]/n[ivec] for idim=1:ndim,ivec=1:nvec)
+end

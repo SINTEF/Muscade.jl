@@ -49,7 +49,7 @@ exbar = @macroexpand @espy function bar(x,y,z)
 end
 
 exmerge = @macroexpand @espy function lagrangian(o::ElementConstraint{Teleobj,λinod,λfield,Nu}, Λ,X,U,A,t,SP,dbg) where{Teleobj,λinod,λfield,Nu} 
-    req        = merge(o.req)
+    req        = mergerequest(o.req)
     γ          = default{:γ}(SP,0.)
     u          = getsomedofs(U,SVector{Nu}(1:Nu)) 
     ☼λ         = ∂0(U)[Nu+1]
@@ -224,7 +224,7 @@ end
 
 exmerge_ = quote
     function lagrangian(o::ElementConstraint{Teleobj, λinod, λfield, Nu}, Λ, X, U, A, t, SP, dbg) where {Teleobj, λinod, λfield, Nu}
-        req = merge(o.req)
+        req = mergerequest(o.req)
         γ = default{:γ}(SP, 0.0)
         u = getsomedofs(U, SVector{Nu}(1:Nu))
         λ = (∂0(U))[Nu + 1]
@@ -240,7 +240,7 @@ exmerge_ = quote
     end
     function lagrangian(o::ElementConstraint{Teleobj, λinod, λfield, Nu}, Λ, X, U, A, t,  SP, dbg, req_001; ) where {Teleobj, λinod, λfield, Nu}
         out_001 = (;)
-        req = merge(req_001, o.req)
+        req = mergerequest(req_001, o.req)
         γ = default{:γ}(SP, 0.0)
         u = getsomedofs(U, SVector{Nu}(1:Nu))
         λ = (∂0(U))[Nu + 1]
@@ -291,7 +291,7 @@ end
 
 r1 = @request a(x(α),y),b,e
 r2 = @request a(x(α),z),c(x,y),d(f),e
-r = merge(r1,r2)
+r = mergerequest(r1,r2)
 @testset "MergeRequest" begin
     @test r == (a=(x=(α=nothing,),y=nothing,z=nothing),b=nothing,e=nothing,c=(x=nothing,y=nothing),d=(f=nothing,))
 end

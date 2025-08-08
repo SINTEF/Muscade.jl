@@ -1,13 +1,21 @@
 module Muscade
-    using  Printf,SparseArrays,StaticArrays,LinearAlgebra,SpecialFunctions,MacroTools
+    using Printf
+    using LinearAlgebra
+    using SparseArrays
+    using StaticArrays
+    using SpecialFunctions
     using KrylovKit: KrylovKit,eigsolve
+    using MacroTools
+    using MacroTools: postwalk,gensym_ids,rmlines,unblock 
+    using Base.Cartesian
+    using GLMakie
 
     include("Dialect.jl")
     export ℝ,ℤ,𝕣,𝕫,𝔹,𝕓,ℂ
     export ℝ1,ℤ1,𝕣1,𝕫1,𝔹1,𝕓1
     export ℝ2,ℤ2,𝕣2,𝕫2,𝔹2,𝕓2
     export ℝ11,ℤ11,𝕣11,𝕫11,𝔹11,𝕓11
-    export toggle,default,@once,imod
+    export toggle,default,@once,mod_onebased
 
     include("Adiff.jl")
     export  ∂ℝ #\partial \bbR
@@ -16,7 +24,7 @@ module Muscade
     export  constants,precedence,npartial,norm
 
     include("Taylor.jl")
-    export  motion,motion⁻¹,revariate,compose,fast,justinvoke,composevalue,composeJacobian 
+    export  motion,motion⁻¹,revariate,compose,fast,apply,justinvoke,composevalue,composeJacobian 
 
     include("Functors.jl")
     export QuadraticFunction,FunctionFromVector 
@@ -25,7 +33,7 @@ module Muscade
     export dots,∘₀,∘₁,∘₂,⊗
 
     include("Espy.jl") 
-    export @request
+    export @request, mergerequest
     export @espy,@espydbg
 
     include("Exceptions.jl")
@@ -40,6 +48,9 @@ module Muscade
     include("ElementAPI.jl")
     export coord,∂0,∂1,∂2,getsomedofs
     export noFB
+
+    include("ElementTestTools.jl")
+    export diffed_residual,diffed_lagrangian,print_element_array, @typeof
 
     include("BasicElements.jl")
     export off,equal,positive
@@ -68,7 +79,7 @@ module Muscade
     export EigX,increment
 
     include("EigXU.jl")
-    export EigXU
+    export EigXU,GUI
 
     include("FreqXU.jl")
     export FreqXU
@@ -80,13 +91,10 @@ module Muscade
     export setdof!,getdof,getresult,findlastassigned,eletyp
 
     include("SelfDraw.jl")
-    export draw,request2draw
+    export draw!,request2draw
 
     include("Unit.jl")
     export ←,→
-
-    include("ElementTestTools.jl")
-    export diffed_residual,diffed_lagrangian,print_element_array
 
     include("FFT.jl")
     #export getδf,getδt(n3,δf3′),𝔉𝕣(g.(t3),δt3),𝔉𝕣⁻¹(X3′′,δf3)

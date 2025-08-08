@@ -101,18 +101,30 @@ specified dof-classes for the variable `model` or the type
 
 See also: [`describe`](@ref)
 """
-getndof(E::DataType)              = length(doflist(E).inod)
-getndof(E::DataType,class)        = length(getidof(E,class))  
-getndof(E::DataType,class::Tuple) = ntuple(i->getndof(E,class[i]),length(class))
-getndof(model::Model,class::Symbol) = length(model.dof[class])
-getndof(model::Model,class::Tuple) = ntuple(i->getndof(model,class[i]),length(class))
-getndof(model::Model)             = sum(length(d) for d∈model.dof)
-getnele(model::Model,ieletyp)     = length(model.ele[ieletyp])
-getnele(model::Model)             = sum(length(e) for e∈model.ele)
-newdofID(model::Model,class)      = DofID(class  ,getndof(model,class)+1)
-neweleID(model::Model,ieletyp)    = EleID(ieletyp,getndof(model,class)+1)
-getnnod(E::DataType)              = maximum(doflist(E).inod) 
-getdoflist(E::DataType)           = doflist(E).inod, doflist(E).class, doflist(E).field
+getndof(E::DataType)                = length(doflist(E).inod)
+#getndof(E::DataType,class)          = length(getidof(E,class))  
+function getndof(::Type{E},class) where{E} # TODO intended to be computed at compile time, is not. Because E is not known at compile time.
+    i = 0
+    for c ∈ doflist(E).class
+        if c==class
+            i+=1
+        end
+    end
+    return i
+end  
+getndof(::Type{E},class::Tuple  ) where{E} = (getndof(E,first(class)),getndof(E,Base.tail(class))...)
+getndof(::Type{E},class::Tuple{}) where{E} = ()
+getndof(model::Model,class::Symbol)        = length(model.dof[class])
+getndof(model::Model,class::Tuple)         = (getndof(model,first(class)),getndof(model,Base.tail(class))...)
+getndof(model::Model,class::Tuple{})       = ()
+getndof(model::Model)                      = sum(length(d) for d∈model.dof)
+
+getnele(model::Model,ieletyp)              = length(model.ele[ieletyp])
+getnele(model::Model)                      = sum(length(e) for e∈model.ele)
+newdofID(model::Model,class)               = DofID(class  ,getndof(model,class)+1)
+neweleID(model::Model,ieletyp)             = EleID(ieletyp,getndof(model,class)+1)
+getnnod(E::DataType)                       = maximum(doflist(E).inod) 
+getdoflist(E::DataType)                    = doflist(E).inod, doflist(E).class, doflist(E).field
 function getdoftyp(model::Model,class::Symbol,field::Symbol)
     idoftyp = findfirst(doftyp.class==class && doftyp.field==field for doftyp∈model.doftyp)
     isnothing(idoftyp) && muscadeerror(@sprintf("The model has no dof of class %s and field %s.",class,field))    
