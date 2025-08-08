@@ -13,7 +13,7 @@ or strain rates.
 Some principles of safe automatic differentiation must be adhered to:
 - the function that uses `motion` must also 'unpack' : no variable that is touched by 
   the output of `motion` must be returned by the function without having been unpacked
-  by `motion⁻¹`. Touched variables can for example be marked with an underscore
+  by `motion⁻¹`. Touched variables can for example be marked with an underscore.
 - The precendence `P` must be calculated using `constants` with all variables that are input to 
   the function and may be differentiated.
 - If other levels of automatic differentiation are introduced within the function, unpack in reverse
@@ -115,9 +115,8 @@ See also: [`compose`](@ref), [`Taylor`](@ref), [`revariate`](@ref), [`fast`](@re
 """
 McLaurin(y::Tuple,Δx)                          = tuple(McLaurin(first(y),Δx),McLaurin(Base.tail(y),Δx)...) 
 McLaurin( ::Tuple{},Δx)                        = tuple() 
-McLaurin(y::SArray{S},Δx) where{S}             = SArray{S}(McLaurin(yᵢ,Δx) for yᵢ∈y) # TODO specify eltype
-# McLaurin(y::SArray{Sy,Ty,Dy,Ly},Δx::SVector{Sx,Tx}) where{Sy,Ty,Dy,Ly,Sx,Tx} =
-#             SArray{Sy,Tx,Dy,Ly}(McLaurin(yᵢ,Δx) for yᵢ∈y)   # incorrect?
+McLaurin(y::SArray{Sy,Ty,Dy,Ly},Δx::SVector{Sx,Tx}) where{Sy,Ty,Dy,Ly,Sx,Tx} = SArray{Sy,Tx,Dy,Ly}(McLaurin(yᵢ,Δx) for yᵢ∈y)
+McLaurin(y::SArray{Sy,𝕣 ,Dy,Ly},Δx::SVector{Sx,Tx}) where{Sy,Ty,Dy,Ly,Sx,Tx} =                              y
 McLaurin(y::∂ℝ,Δx)                             = McLaurin(y.x,Δx) .+ McLaurin_right(y,Δx)
 McLaurin(y::𝕣 ,Δx)                             =          y
 function McLaurin_right(y::∂ℝ{P,N,R},Δx::SVector{N}) where{P,N,R} 

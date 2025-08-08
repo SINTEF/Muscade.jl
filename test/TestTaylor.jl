@@ -74,10 +74,6 @@ a = SVector(3.,4.)
     @test Muscade.revariate{3}(a)[1] === ∂ℝ{3, 2, ∂ℝ{2, 2, ∂ℝ{1, 2, Float64}}}(∂ℝ{2, 2, ∂ℝ{1, 2, Float64}}(∂ℝ{1, 2, Float64}(3.0, [1.0, 0.0]), ∂ℝ{1, 2, Float64}[∂ℝ{1, 2, Float64}(1.0, [0.0, 0.0]), ∂ℝ{1, 2, Float64}(0.0, [0.0, 0.0])]), ∂ℝ{2, 2, ∂ℝ{1, 2, Float64}}[∂ℝ{2, 2, ∂ℝ{1, 2, Float64}}(∂ℝ{1, 2, Float64}(1.0, [0.0, 0.0]), ∂ℝ{1, 2, Float64}[∂ℝ{1, 2, Float64}(0.0, [0.0, 0.0]), ∂ℝ{1, 2, Float64}(0.0, [0.0, 0.0])]), ∂ℝ{2, 2, ∂ℝ{1, 2, Float64}}(∂ℝ{1, 2, Float64}(0.0, [0.0, 0.0]), ∂ℝ{1, 2, Float64}[∂ℝ{1, 2, Float64}(0.0, [0.0, 0.0]), ∂ℝ{1, 2, Float64}(0.0, [0.0, 0.0])])])
 end
 
-
-# TODO test "compose"
-
-
 f(X) = SVector(cos(X[1])*X[3],sin(X[2])*X[3])
 g(X) = 4.5*X[1]^2/2 + X[1] + 2.
 h(X) = SVector(3.,4.)
@@ -87,7 +83,7 @@ X₀   = SVector(0.,0.,1.)
 vX₀  = variate{1,3}(X₀)
 
 @testset "fast" begin
-    @test fast(w,X₀) === w(X₀)
+    @test fast(w, X₀) === w( X₀)
     @test fast(w,vX₀) === w(vX₀)
 end
 

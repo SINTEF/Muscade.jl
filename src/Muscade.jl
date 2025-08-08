@@ -50,7 +50,7 @@ module Muscade
     export noFB
 
     include("ElementTestTools.jl")
-    export diffed_residual,diffed_lagrangian,print_element_array,@typeof
+    export diffed_residual,diffed_lagrangian,print_element_array, @typeof
 
     include("BasicElements.jl")
     export off,equal,positive
