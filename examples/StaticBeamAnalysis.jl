@@ -46,12 +46,13 @@ x_ = [getdof(state[idxLoad];field=:t1,nodID=nodid[1:nnodes]) for idxLoad ∈ 1:n
 y_ = [getdof(state[idxLoad];field=:t2,nodID=nodid[1:nnodes]) for idxLoad ∈ 1:nLoadSteps] 
 z_ = [getdof(state[idxLoad];field=:t3,nodID=nodid[1:nnodes]) for idxLoad ∈ 1:nLoadSteps] 
 
-fig      = Figure(size = (1000,1000))
-ax = Axis3(fig[1,1],xlabel="x [m]", ylabel="y [m]", zlabel="z [m]",aspect=:equal)
+fig     = Figure(size = (1000,1000))
+ax      = Axis3(fig[1,1],xlabel="x [m]", ylabel="y [m]", zlabel="z [m]",aspect=:equal)
+clr = [:black,:blue,:green,:red]
 for idxLoad ∈ 1:nLoadSteps
-    lines!(ax,nodeCoord[:,1]+x_[idxLoad][:], nodeCoord[:,2]+y_[idxLoad][:] , nodeCoord[:,3]+z_[idxLoad][:]                  , label="F="*string(load(loadSteps[idxLoad]))*" N");
+    draw!(ax,state[idxLoad];EulerBeam3D=(;nseg=10,line_color=clr[idxLoad]))
 end
-xlims!(ax, 0,70); ylims!(ax, 0,60); zlims!(ax, 0,40); axislegend()
+xlims!(ax, 0,70); ylims!(ax, 0,60); zlims!(ax, 0,40); 
 currentDir = @__DIR__
 if occursin("build", currentDir)
     save(normpath(joinpath(currentDir,"..","src","assets","StaticBeamAnalysis1.png")),fig)

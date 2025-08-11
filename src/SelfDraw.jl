@@ -144,6 +144,7 @@ function draw_!(graphic::Graphic,dis::EletypDisassembler,eleobj::AbstractVector{
     #     obsᵢ[] = mutᵢ
     # end
     display_drawing!(graphic.axis,Eletyp,graphic.obs,graphic.opt)
+    return graphic
 end
 function draw!(graphic::Vector{Graphic},state::State;kwargs...)   # whole model
     for ieletyp ∈ eachindex(state.model.eleobj)
@@ -152,6 +153,7 @@ function draw!(graphic::Vector{Graphic},state::State;kwargs...)   # whole model
         iele            = eachindex(eleobj)
         draw_!(graphic[ieletyp],dis,eleobj,iele,state,(ieletyp=ieletyp,);kwargs...) # call kernel
     end
+    return graphic
 end   
 function draw!(graphic::Graphic,state::State,eleID::Vector{EleID};kwargs...)     # Some elements, all of same concrete type
     ieletyp             = eleID[begin].ieletyp
@@ -160,6 +162,7 @@ function draw!(graphic::Graphic,state::State,eleID::Vector{EleID};kwargs...)    
     iele                = [e.iele for e∈eleID]
     eleobj              = view(state.model.eleobj[ieletyp],iele)
     draw_!(graphic,dis,eleobj,iele,state,(ieletyp=ieletyp,);kwargs...) # call kernel
+    return graphic
 end
 function draw!(graphic::Graphic,state::State,::Type{E};kwargs...) where{E<:AbstractElement}  # All elements of given concrete type
     ieletyp             = findfirst(E.==eletyp(state.model))
@@ -168,6 +171,7 @@ function draw!(graphic::Graphic,state::State,::Type{E};kwargs...) where{E<:Abstr
     dis                 = state.dis.dis[ieletyp]
     iele                = eachindex(eleobj)
     draw_!(graphic,dis,eleobj,iele,state,(ieletyp=ieletyp,);kwargs...) # call kernel
+    return graphic
 end    
 
 """
