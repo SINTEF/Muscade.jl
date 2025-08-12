@@ -201,6 +201,79 @@ function sparser!(S::AbstractVector{SP},tol=1e-9) where{SP<:SparseMatrixCSC}
     return keep
 end
 
+function spy(M::SparseMatrixCSC;size=500,title=nothing,markersize=3,tol=1e-9)
+    (i,j,v)  = findnz(M)
+    nz = findall(abs.(v).>tol)
+    if title==nothing
+        title = @sprintf("nnz=%i (structural),nnz=%i (actual)",nnz(M),length(nz))
+    end
+    fig      = Figure(;size=(size,size))
+    display(fig) # open interactive window (gets closed down by "save")
+    axe      = Axis(fig[1,1];title,xticksvisible=true,yticksvisible=true,yreversed=true)
+    scatter!(axe,i,j;color=:red,markersize)
+    scatter!(axe,i[nz],j[nz];color=:green,markersize=2*markersize)
+    #hidespines!(axe)
+    return fig
+end
+
+function spypattern(pattern::AbstractMatrix{SparseMatrixCSC{Tv,Ti}};pixels=500,markersize=3) where{Tv,Ti}
+    nbr,nbc                = size(pattern)  
+    # determine the number rows in each row of blocks, store in pgr
+    pgr                     = Vector{Int64}(undef,nbr+1)         # pgr[ibr]→igr pointers to the start of each block in global solution vector, where global*solution=rhs
+    pgr[1]                  = 1
+    for ibr                 = 1:nbr
+        nlr                 = 0
+        for ibc             = 1:nbc
+            b = pattern[ibr,ibc]
+            if ~isnothing(b)
+                nlr         = size(b,1)
+                break
+            end
+            ibc<nbc || muscadeerror("pattern has an empty row")
+        end
+        nlr > 0 || muscadeerror("every block-row must contain at least one assigned Sparse")
+        pgr[ibr+1]          = pgr[ibr]+nlr
+    end 
+    ngr                     = pgr[end]-1
+
+    # determine the number columns in each column of blocks, store in pgc
+    pgc                     = Vector{Int64}(undef,nbc+1)         # pgc[ibc]→igc pointers to the start of each block in global rhs vector
+    pgc[1]                  = 1
+    for ibc                 = 1:nbc
+        nlc                 = 0
+        for ibr             = 1:nbr
+            b = pattern[ibr,ibc]
+            if ~isnothing(b)
+                nlc         = size(b,2)
+                break
+            end
+            ibr<nbr || muscadeerror("pattern has an empty column")
+        end
+        nlc > 0 || muscadeerror("every block-column must contain at least one assigned Sparse")
+        pgc[ibc+1]          = pgc[ibc]+nlc
+    end 
+    ngc                     = pgc[end]-1
+
+    (I,J,B) = findnz(pattern) 
+
+    fig      = Figure(;size=(pixels,pixels))
+    display(fig) # open interactive window (gets closed down by "save")
+    axe      = Axis(fig[1,1];xticksvisible=true,yticksvisible=true,yreversed=true)
+
+    ngv = 1
+    for ib ∈ eachindex(I)
+        clr = iseven(I[ib]-J[ib]) ? :red : :cyan
+        (i,j,v) = findnz(B[ib])
+        ngv += length(i)
+        li = pgc[I[ib]]-1/3
+        hi = pgc[I[ib]+1]-2/3
+        lj = pgr[J[ib]]-1/3
+        hj = pgr[J[ib]+1]-2/3
+        lines!(axe,[li,li,hi,hi,li],[lj,hj,hj,lj,lj];color=:lightgrey,linewidth=1)
+        scatter!(axe,i.+(pgc[I[ib]]-1),j.+(pgr[J[ib]]-1);color=:black,markersize)
+    end
+    return fig
+end
 
 
 

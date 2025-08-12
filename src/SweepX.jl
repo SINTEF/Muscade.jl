@@ -123,7 +123,7 @@ states           = solve(SweepX{2};initialstate=initialstate,time=0:10)
 - `time`              maximum number of Newton-Raphson iterations 
 - `β=1/4`,`γ=1/2`     parameters to the Newmark-β algorithm. Dummy if `ORDER<2`
 - `maxiter=50`        maximum number of equilibrium iterations at each step.
-- `maxΔx=1e-5`        convergence criteria: norm of `X`. D
+- `maxΔx=1e-5`        convergence criteria: norm of `X`. 
 - `maxLλ=∞`           convergence criteria: norm of the residual. 
 - `saveiter=false`    set to true so that output `states` contains the state
                       at the iteration of the last step analysed.  Useful to study

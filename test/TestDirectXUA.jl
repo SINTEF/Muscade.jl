@@ -64,21 +64,20 @@ for i=1:nstep
 end
 
 Muscade.assemble!(out,asm,dis,model,state[1],(;))
-pattern    = Muscade.makepattern(OX,OU,IA,nstep,out)
+pattern    = Muscade.makepattern(IA,[nstep],out)
 # using Spy,GLMakie
 # fig = spypattern(pattern)
 # save("C:\\Users\\philippem\\.julia\\dev\\Muscade\\spypattern.jpg",fig)
 
-Lvv,Lv,Lvvasm,Lvasm,Lvdis  = Muscade.preparebig(OX,OU,IA,nstep,out)
+Lvv,Lv,Lvvasm,Lvasm,Lvdis  = Muscade.preparebig(IA,nstep,out)
 
-Muscade.assemblebig!(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out,state,nstep,Δt,(γ=0.,iter=1),(caller=:TestDirectXUA,))
+Muscade.assemblebig!(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out,[state],[nstep],Δt,(γ=0.,iter=1),(caller=:TestDirectXUA,))
 
+using GLMakie
+fig = Muscade.spy(Lvv,title="bigsparse Lvv sparsity",size=500)
+save("C:\\Users\\philippem\\.julia\\dev\\Muscade\\spy.jpg",fig)
 
-# using Spy,GLMakie
-# fig = Spy.spy(Lvv,title="bigsparse Lvv sparsity",size=500)
-# save("C:\\Users\\philippem\\.julia\\dev\\Muscade\\spy.jpg",fig)
-
-stateXUA         = solve(DirectXUA{OX,OU,IA};initialstate=state0,time=0:1.:5,maxiter=10,verbose=false)
+stateXUA         = solve(DirectXUA{OX,OU,IA};initialstate=[state0],time=[0:1.:5],maxiter=10,verbose=false)
 
 @testset "prepare_out" begin
     @test out.L1[1] ≈ [[0.0, 0.0]]

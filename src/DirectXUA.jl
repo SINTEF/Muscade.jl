@@ -160,54 +160,57 @@ function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::Eleobj,fast
 end
 
 ## Assembly of bigsparse
-function makepattern(OX,OU,IA,nstep,out) 
+function makepattern(IA,nstep,out) 
     # Looking at all steps, class, order of fdiff and Δstep, for rows and columns: which blocks are actualy nz?
     # return a sparse matrix of sparse matrices
-    nder     = (1,OX+1,OU+1)
-    maxblock = 1 + nstep*90  
+    maxblock = 1 + sum(nstep)*90  
     αblk     = 𝕫1(undef,maxblock)
     βblk     = 𝕫1(undef,maxblock)
     nz       = Vector{Sparse𝕣2}(undef,maxblock)
     nblock   = 0
-    for step = 1:nstep
-        for     α∈λxu 
-            for β∈λxu
-                Lαβ = out.L2[α,β]
-                for     αder = 1:size(Lαβ,1)
-                    for βder = 1:size(Lαβ,2)
-                        for     iα ∈ finitediff(αder-1,nstep,step)
-                            for iβ ∈ finitediff(βder-1,nstep,step)
-                                nblock += 1   
-                                αblk[nblock]=3*(step+iα.Δs-1)+α
-                                βblk[nblock]=3*(step+iβ.Δs-1)+β
-                                nz[  nblock]=Lαβ[1,1]  
+    for iexp = 1:length(nstep)
+        for istep = 1:nstep[iexp]
+            for     α∈λxu 
+                for β∈λxu
+                    Lαβ = out.L2[α,β]
+                    for     αder = 1:size(Lαβ,1)
+                        for βder = 1:size(Lαβ,2)
+                            for     iα ∈ finitediff(αder-1,nstep[iexp],istep)
+                                for iβ ∈ finitediff(βder-1,nstep[iexp],istep)
+                                    nblock += 1   
+                                    αblk[nblock]=3*(istep+iα.Δs-1)+α
+                                    βblk[nblock]=3*(istep+iβ.Δs-1)+β
+                                    nz[  nblock]=Lαβ[1,1]  
+                                end
                             end
-                        end
-                    end 
+                        end 
+                    end
                 end
             end
         end
     end   
 
     if IA==1
-        Ablk = 3*nstep+1
+        Ablk = 3*sum(nstep)+1
         nblock +=1
         αblk[nblock] = Ablk                      
         βblk[nblock] = Ablk                    
         nz[  nblock] = out.L2[ind.A,ind.A][1,1]
-        for step = 1:nstep
-            for     α∈λxu 
-                # loop over derivatives and finitediff is optimized out, as time derivatives will only 
-                # be added into superbloc already reached by non-derivatives. No, it's not a bug...
-                if size(out.L2[ind.A,α],1)>0
-                    nblock += 1
-                    αblk[nblock] = Ablk                
-                    βblk[nblock] = 3*(step-1)+α          
-                    nz[  nblock] = out.L2[ind.A,α][1,1]
-                    nblock += 1
-                    αblk[nblock] = 3*(step-1)+α            
-                    βblk[nblock] = Ablk                  
-                    nz[  nblock] = out.L2[α,ind.A][1,1]  
+        for iexp     = 1:length(nstep)
+            for istep = 1:nstep[iexp]
+                for α∈λxu 
+                    # loop over derivatives and finitediff is optimized out, as time derivatives will only 
+                    # be added into superbloc already reached by non-derivatives. No, it's not a bug...
+                    if size(out.L2[ind.A,α],1)>0
+                        nblock += 1
+                        αblk[nblock] = Ablk                
+                        βblk[nblock] = 3*(istep-1)+α          
+                        nz[  nblock] = out.L2[ind.A,α][1,1]
+                        nblock += 1
+                        αblk[nblock] = 3*(istep-1)+α            
+                        βblk[nblock] = Ablk                  
+                        nz[  nblock] = out.L2[α,ind.A][1,1]  
+                    end
                 end
             end
         end
@@ -216,9 +219,9 @@ function makepattern(OX,OU,IA,nstep,out)
 
     return sparse(αblk[u],βblk[u],nz[u])
 end
-function preparebig(OX,OU,IA,nstep,out) 
+function preparebig(IA,nstep,out) 
     # create an assembler and allocate for the big linear system
-    pattern                  = makepattern(OX,OU,IA,nstep,out)
+    pattern                  = makepattern(IA,nstep,out)
     Lvv,Lvvasm,Lvasm,Lvdis   = prepare(pattern)
     Lv                       = 𝕣1(undef,size(Lvv,1))
     return Lvv,Lv,Lvvasm,Lvasm,Lvdis
@@ -226,79 +229,86 @@ end
 function assemblebig!(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out::AssemblyDirect{OX,OU,IA},state,nstep,Δt,SP,dbg) where{OX,OU,IA}
     zero!(Lvv)
     zero!(Lv )
-    for step = 1:nstep
-        state[step].SP   = SP
-        
-        assemble!(out,asm,dis,model,state[step],(dbg...,asm=:assemblebig!,step=step))
-
-        for β∈λxu
-            Lβ = out.L1[β]
-            for βder = 1:size(Lβ,1)
-                s = Δt^(1-βder)
-                for iβ ∈ finitediff(βder-1,nstep,step)  # TODO transpose or not? Potential BUG to be revealed when cost on time derivative of X or U
-                    βblk = 3*(step+iβ.Δs-1)+β
-                    addin!(Lvasm,Lv ,Lβ[βder],βblk,iβ.w*s) 
-                end
-            end
-        end
-        for     α∈λxu 
+    if IA==1
+        Ablk = 3*sum(nstep)+1  
+        addin!(Lvasm ,Lv ,out.L1[ind.A      ][1  ],Ablk     )  # change: this is done once, not once per step!!!
+        addin!(Lvvasm,Lvv,out.L2[ind.A,ind.A][1,1],Ablk,Ablk)
+    end
+    for iexp = 1:length(nstep)
+        for istep = 1:nstep[iexp]
+            state[iexp][istep].SP   = SP
+            assemble!(out,asm,dis,model,state[iexp][istep],(dbg...,asm=:assemblebig!,step=istep))
             for β∈λxu
-                Lαβ = out.L2[α,β]
-                for     αder = 1:size(Lαβ,1)
-                    for βder = 1:size(Lαβ,2)
-                        s = Δt^(2-αder-βder)
-                        for     iα ∈ finitediff(αder-1,nstep,step) # No transposition here, that's thoroughly checked against decay.
-                            for iβ ∈ finitediff(βder-1,nstep,step) # No transposition here, that's thoroughly checked against decay.
-                                αblk = 3*(step+iα.Δs-1)+α
-                                βblk = 3*(step+iβ.Δs-1)+β
-                                addin!(Lvvasm,Lvv,Lαβ[αder,βder],αblk,βblk,iα.w*iβ.w*s) 
-                            end
-                        end
-                    end 
-                end
-            end
-        end
-        if IA==1
-            Ablk = 3*nstep+1   
-            addin!(Lvasm ,Lv ,out.L1[ind.A      ][1  ],Ablk     )
-            addin!(Lvvasm,Lvv,out.L2[ind.A,ind.A][1,1],Ablk,Ablk)
-            for α∈λxu
-                Lαa = out.L2[α    ,ind.A]
-                Laα = out.L2[ind.A,α    ]
-                for αder = 1:size(Lαa,1)  # size(Lαa,1)==size(Laα,2) because these are 2nd derivatives of L
-                    s = Δt^(1-αder)
-                    for iα ∈finitediff(αder-1,nstep,step) # TODO transpose or not? BUG to be revealed when cost on time derivative sof X or U
-                        αblk = 3*(step+iα.Δs-1)+α
-                        addin!(Lvvasm,Lvv,Lαa[αder,1   ],αblk,Ablk,iα.w*s) 
-                        addin!(Lvvasm,Lvv,Laα[1   ,αder],Ablk,αblk,iα.w*s) 
+                Lβ = out.L1[β]
+                for βder = 1:size(Lβ,1)
+                    s = Δt[iexp]^(1-βder)
+                    for iβ ∈ finitediff(βder-1,nstep[iexp],istep)  # TODO transpose or not? Potential BUG to be revealed when cost on time derivative of X or U
+                        βblk = 3*(istep+iβ.Δs-1)+β
+                        addin!(Lvasm,Lv ,Lβ[βder],βblk,iβ.w*s) 
                     end
                 end
             end
-        end
-    end   
+            for     α∈λxu 
+                for β∈λxu
+                    Lαβ = out.L2[α,β]
+                    for     αder = 1:size(Lαβ,1)
+                        for βder = 1:size(Lαβ,2)
+                            s = Δt[iexp]^(2-αder-βder)
+                            for     iα ∈ finitediff(αder-1,nstep[iexp],istep) # No transposition here, that's thoroughly checked against decay.
+                                for iβ ∈ finitediff(βder-1,nstep[iexp],istep) # No transposition here, that's thoroughly checked against decay.
+                                    αblk = 3*(istep+iα.Δs-1)+α
+                                    βblk = 3*(istep+iβ.Δs-1)+β
+                                    addin!(Lvvasm,Lvv,Lαβ[αder,βder],αblk,βblk,iα.w*iβ.w*s) 
+                                end
+                            end
+                        end 
+                    end
+                end
+            end
+            if IA==1
+                # Ablk = 3*sum(nstep)+1  
+                # addin!(Lvasm ,Lv ,out.L1[ind.A      ][1  ],Ablk     )  # change: this is done once, not once per step!!!
+                # addin!(Lvvasm,Lvv,out.L2[ind.A,ind.A][1,1],Ablk,Ablk)
+                for α∈λxu
+                    Lαa = out.L2[α    ,ind.A]
+                    Laα = out.L2[ind.A,α    ]
+                    for αder = 1:size(Lαa,1)  # size(Lαa,1)==size(Laα,2) because these are 2nd derivatives of L
+                        s = Δt[iexp]^(1-αder)
+                        for iα ∈finitediff(αder-1,nstep[iexp],istep) # TODO transpose or not? BUG to be revealed when cost on time derivative sof X or U
+                            αblk = 3*(istep+iα.Δs-1)+α
+                            addin!(Lvvasm,Lvv,Lαa[αder,1   ],αblk,Ablk,iα.w*s) 
+                            addin!(Lvvasm,Lvv,Laα[1   ,αder],Ablk,αblk,iα.w*s) 
+                        end
+                    end
+                end
+            end
+        end  
+    end 
 end
 function decrementbig!(state,Δ²,Lvasm,dofgr,Δv,nder,Δt,nstep) 
-    Δ²                  .= 0.
-    for (step,stateᵢ)    ∈ enumerate(state)
-        for β            ∈ λxu
-            for βder     = 1:nder[β]
-                s        = Δt^(1-βder)
-                for iβ   ∈ finitediff(βder-1,nstep,step)
-                    βblk = 3*(step+iβ.Δs-1)+β   
-                    Δβ   = disblock(Lvasm,Δv,βblk)
-                    decrement!(stateᵢ,βder,Δβ.*iβ.w*s,dofgr[β])
-                    if βder==1 
-                        Δ²[β] = max(Δ²[β],sum(Δβ.^2)) 
+    Δ²                      .= 0.
+    for iexp                 = 1:length(nstep)
+        for istep            = 1:length(nstep[iexp]) 
+            for β            ∈ λxu
+                for βder     = 1:nder[β]
+                    s        = Δt[iexp]^(1-βder)
+                    for iβ   ∈ finitediff(βder-1,nstep[iexp],istep)
+                        βblk = 3*(istep+iβ.Δs-1)+β   
+                        Δβ   = disblock(Lvasm,Δv,βblk)
+                        decrement!(state[iexp][istep],βder,Δβ.*iβ.w*s,dofgr[β])
+                        if βder==1 
+                            Δ²[β] = max(Δ²[β],sum(Δβ.^2)) 
+                        end
                     end
                 end
             end
-        end
-    end    
-    if nder[4]==1
-        Δa               = disblock(Lvasm,Δv,3*nstep+1)
-        Δ²[ind.A]        = sum(Δa.^2)
-        decrement!(state[1],1,Δa,dofgr[ind.A]) # all states share same A, so decrement only once
+        end    
     end
+    if nder[4]==1 # adofs
+        Δa               = disblock(Lvasm,Δv,3*sum(nstep)+1)
+        Δ²[ind.A]        = sum(Δa.^2)
+        decrement!(state[1][1],1,Δa,dofgr[ind.A]) # all states share same A, so decrement only once
+    end    
 end
 
 """
@@ -353,33 +363,35 @@ See also: [`solve`](@ref), [`initialize!`](@ref), [`SweepX`](@ref), [`FreqXU`](@
 """
 struct DirectXUA{OX,OU,IA} <: AbstractSolver end 
 function solve(::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
-    time::AbstractRange{𝕣},
-    initialstate::State,
+    time::AbstractVector{AR},
+    initialstate::AbstractVector{STATE},
     maxiter::ℤ=50,
     maxΔλ::ℝ=1e-5,maxΔx::ℝ=1e-5,maxΔu::ℝ=1e-5,maxΔa::ℝ=1e-5,
     saveiter::𝔹=false,
-    kwargs...) where{OX,OU,IA}
+    kwargs...) where{OX,OU,IA,AR<:AbstractRange{𝕣},STATE<:State}
 
     #  Mostly constants
     local LU
-    nstep                 = length(time)
-    Δt                    = (last(time)-first(time))/(nstep-1)
+    nexp,nstep,Δt         = length(time),length.(time),step.(time)
     γ                     = 0.
     nder                  = (1,OX+1,OU+1,IA)
-    model,dis             = initialstate.model, initialstate.dis
+    model,dis             = initialstate[1].model, initialstate[1].dis
     if IA==1  Δ², maxΔ²   = 𝕣1(undef,4), [maxΔλ^2,maxΔx^2,maxΔu^2,maxΔa^2] 
     else      Δ², maxΔ²   = 𝕣1(undef,3), [maxΔλ^2,maxΔx^2,maxΔu^2        ] 
     end
 
     # State storage
     S                     = State{1,OX+1,OU+1,@NamedTuple{γ::Float64,iter::Int64}}
-    state                 = Vector{S}(undef,nstep)
-    s                     = State{1,OX+1,OU+1}(copy(initialstate,time=time[1],SP=(γ=0.,iter=1)))   
-    for (step,timeᵢ)      = enumerate(time)
-        state[step]       = step==1 ? s : State(timeᵢ,deepcopy(s.Λ),deepcopy(s.X),deepcopy(s.U),s.A,s.SP,s.model,s.dis)
+    state                 = [Vector{S}(undef,nstep[iexp]) for iexp=1:nexp] # state[iexp][istep]
+    for iexp              = 1:nexp
+        s                 = State{1,OX+1,OU+1}(copy(initialstate[iexp],time=time[iexp][1],SP=(γ=0.,iter=1)))   
+        for (istep,timeᵢ) = enumerate(time[iexp])
+            state[iexp][istep] = istep==1 ? s : State(timeᵢ,deepcopy(s.Λ),deepcopy(s.X),deepcopy(s.U),s.A,s.SP,s.model,s.dis)
+        end
     end
+
     if saveiter
-        stateiter         = Vector{Vector{S}}(undef,maxiter) 
+        stateiter         = Vector{Vector{Vector{S}}}(undef,maxiter) # stateiter[iiter][iexp][istep] 
         pstate[]          = stateiter
     else
         pstate[]          = state                                                                            
@@ -387,9 +399,9 @@ function solve(::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
 
     # Prepare assembler
     verbose && @printf("\n    Preparing assembler\n")
-    out,asm,dofgr         = prepare(AssemblyDirect{OX,OU,IA},model,dis;kwargs...)      # mem and assembler for system at any given step
-    assemble!(out,asm,dis,model,state[1],(dbg...,solver=:DirectXUA,phase=:sparsity))     # create a sample "out" for preparebig
-    Lvv,Lv,Lvvasm,Lvasm,Lvdis = preparebig(OX,OU,IA,nstep,out)                             # mem and assembler for big system
+    out,asm,dofgr         = prepare(AssemblyDirect{OX,OU,IA},model,dis;kwargs...)          # mem and assembler for system at any given step
+    assemble!(out,asm,dis,model,state[1][1],(dbg...,solver=:DirectXUA,phase=:sparsity))    # create a sample "out" for preparebig
+    Lvv,Lv,Lvvasm,Lvasm,Lvdis = preparebig(IA,nstep,out)                                   # mem and assembler for big system
 
     for iter              = 1:maxiter
         verbose && @printf("\n    Iteration %3d\n",iter)
