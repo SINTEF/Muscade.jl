@@ -231,8 +231,10 @@ function assemblebig!(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out::AssemblyDirect{OX,O
     zero!(Lv )
     if IA==1
         Ablk = 3*sum(nstep)+1  
+        for i = 1:sum(nstep)  # NONSENSE!!!
         addin!(Lvasm ,Lv ,out.L1[ind.A      ][1  ],Ablk     )  # change: this is done once, not once per step!!!
         addin!(Lvvasm,Lvv,out.L2[ind.A,ind.A][1,1],Ablk,Ablk)
+        end
     end
     for iexp = 1:length(nstep)
         for istep = 1:nstep[iexp]
@@ -288,7 +290,7 @@ end
 function decrementbig!(state,Δ²,Lvasm,dofgr,Δv,nder,Δt,nstep) 
     Δ²                      .= 0.
     for iexp                 = 1:length(nstep)
-        for istep            = 1:length(nstep[iexp]) 
+        for istep            = 1:nstep[iexp]    
             for β            ∈ λxu
                 for βder     = 1:nder[β]
                     s        = Δt[iexp]^(1-βder)
@@ -302,14 +304,16 @@ function decrementbig!(state,Δ²,Lvasm,dofgr,Δv,nder,Δt,nstep)
                     end
                 end
             end
-        end    
-    end
-    if nder[4]==1 # adofs
+        end
+    end    
+    if nder[4]==1
         Δa               = disblock(Lvasm,Δv,3*sum(nstep)+1)
         Δ²[ind.A]        = sum(Δa.^2)
         decrement!(state[1][1],1,Δa,dofgr[ind.A]) # all states share same A, so decrement only once
-    end    
+    end
 end
+
+
 
 """
 	DirectXUA{OX,OU,IA}
@@ -338,8 +342,8 @@ The solver does not yet support interior point methods.
 - `dbg=(;)`           a named tuple to trace the call tree (for debugging).
 - `verbose=true`      set to false to suppress printed output (for testing).
 - `silenterror=false` set to true to suppress print out of error (for testing) .
-- `initialstate`      a `State`.
-- `time`              an `AbstractRange` of times at which to compute the steps.  Example: 0:0.1:5.                       
+- `initialstate`      an `AbstractVector` of `State`.
+- `time`              an `AbstractVector` (of same length as `initialstate`) of `AbstractRange` of times at which to compute the steps.  Example: 0:0.1:5.                       
 - `maxiter=50`        maximum number of Newton-Raphson iterations. 
 - `maxΔλ=1e-5`        convergence criteria: a norm of the scaled `Λ` increment.
 - `maxΔx=1e-5`        convergence criteria: a norm of the scaled `X` increment. 
@@ -373,6 +377,7 @@ function solve(::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
     #  Mostly constants
     local LU
     nexp,nstep,Δt         = length(time),length.(time),step.(time)
+    length(initialstate)== nexp || muscadeerror("initialstate and time must be of the same length") 
     γ                     = 0.
     nder                  = (1,OX+1,OU+1,IA)
     model,dis             = initialstate[1].model, initialstate[1].dis
@@ -386,7 +391,7 @@ function solve(::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
     for iexp              = 1:nexp
         s                 = State{1,OX+1,OU+1}(copy(initialstate[iexp],time=time[iexp][1],SP=(γ=0.,iter=1)))   
         for (istep,timeᵢ) = enumerate(time[iexp])
-            state[iexp][istep] = istep==1 ? s : State(timeᵢ,deepcopy(s.Λ),deepcopy(s.X),deepcopy(s.U),s.A,s.SP,s.model,s.dis)
+            state[iexp][istep] = istep==1 ? s : State(timeᵢ,deepcopy(s.Λ),deepcopy(s.X),deepcopy(s.U),s.A,s.SP,s.model,s.dis) # all state[iexp][istep].A are === 
         end
     end
 
