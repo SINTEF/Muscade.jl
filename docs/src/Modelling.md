@@ -92,6 +92,9 @@ With a few exceptions for testing and demonstration, `Muscade` does not provide 
 
 [`QuickFix`](@ref) allows to rapidly create a simple element, with limitations in functionality. 
 
+When using `xxxCost` elements to introduce measured time series, consider using [`DataInterpolations.jl`](https://github.com/SciML/DataInterpolations.jl).
+
+
 ## Running the analysis
 
 [`solve`](@ref) is then called with the name of the solver to be used (here [`SweepX{0}`](@ref)), and any named parameters required by the solver. The return value `state` can have different structures, depending on the solver.  For [`SweepX{0}`](@ref), `state` is a vector (over the time steps) of `State`s.

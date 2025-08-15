@@ -168,6 +168,7 @@ function makepattern(IA,nstep,out)
     βblk     = 𝕫1(undef,maxblock)
     nz       = Vector{Sparse𝕣2}(undef,maxblock)
     nblock   = 0
+    cumblk      = 0
     for iexp = 1:length(nstep)
         for istep = 1:nstep[iexp]
             for     α∈λxu 
@@ -178,8 +179,8 @@ function makepattern(IA,nstep,out)
                             for     iα ∈ finitediff(αder-1,nstep[iexp],istep)
                                 for iβ ∈ finitediff(βder-1,nstep[iexp],istep)
                                     nblock += 1   
-                                    αblk[nblock]=3*(istep+iα.Δs-1)+α
-                                    βblk[nblock]=3*(istep+iβ.Δs-1)+β
+                                    αblk[nblock]=cumblk+3*(istep+iα.Δs-1)+α
+                                    βblk[nblock]=cumblk+3*(istep+iβ.Δs-1)+β
                                     nz[  nblock]=Lαβ[1,1]  
                                 end
                             end
@@ -188,6 +189,7 @@ function makepattern(IA,nstep,out)
                 end
             end
         end
+        cumblk += 3*nstep[iexp]
     end   
 
     if IA==1
@@ -196,6 +198,7 @@ function makepattern(IA,nstep,out)
         αblk[nblock] = Ablk                      
         βblk[nblock] = Ablk                    
         nz[  nblock] = out.L2[ind.A,ind.A][1,1]
+        cumblk = 0
         for iexp     = 1:length(nstep)
             for istep = 1:nstep[iexp]
                 for α∈λxu 
@@ -204,15 +207,16 @@ function makepattern(IA,nstep,out)
                     if size(out.L2[ind.A,α],1)>0
                         nblock += 1
                         αblk[nblock] = Ablk                
-                        βblk[nblock] = 3*(istep-1)+α          
+                        βblk[nblock] = cumblk+3*(istep-1)+α          
                         nz[  nblock] = out.L2[ind.A,α][1,1]
                         nblock += 1
-                        αblk[nblock] = 3*(istep-1)+α            
+                        αblk[nblock] = cumblk+3*(istep-1)+α            
                         βblk[nblock] = Ablk                  
                         nz[  nblock] = out.L2[α,ind.A][1,1]  
                     end
                 end
             end
+            cumblk += 3*nstep[iexp]
         end
     end
     u    = unique(i->(αblk[i],βblk[i]),1:nblock)
@@ -222,6 +226,7 @@ end
 function preparebig(IA,nstep,out) 
     # create an assembler and allocate for the big linear system
     pattern                  = makepattern(IA,nstep,out)
+    # Muscade.spypattern(pattern)
     Lvv,Lvvasm,Lvasm,Lvdis   = prepare(pattern)
     Lv                       = 𝕣1(undef,size(Lvv,1))
     return Lvv,Lv,Lvvasm,Lvasm,Lvdis
@@ -229,13 +234,11 @@ end
 function assemblebig!(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out::AssemblyDirect{OX,OU,IA},state,nstep,Δt,SP,dbg) where{OX,OU,IA}
     zero!(Lvv)
     zero!(Lv )
+    cumblk = 0
     if IA==1
-        Ablk = 3*sum(nstep)+1  
-        for i = 1:sum(nstep)  # NONSENSE!!!
-        addin!(Lvasm ,Lv ,out.L1[ind.A      ][1  ],Ablk     )  # change: this is done once, not once per step!!!
-        addin!(Lvvasm,Lvv,out.L2[ind.A,ind.A][1,1],Ablk,Ablk)
-        end
-    end
+        nt   = sum(nstep) 
+        Ablk = 3nt+1  
+    end    
     for iexp = 1:length(nstep)
         for istep = 1:nstep[iexp]
             state[iexp][istep].SP   = SP
@@ -243,9 +246,9 @@ function assemblebig!(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out::AssemblyDirect{OX,O
             for β∈λxu
                 Lβ = out.L1[β]
                 for βder = 1:size(Lβ,1)
-                    s = Δt[iexp]^(1-βder)
+                    s    = Δt[iexp]^(1-βder)
                     for iβ ∈ finitediff(βder-1,nstep[iexp],istep)  # TODO transpose or not? Potential BUG to be revealed when cost on time derivative of X or U
-                        βblk = 3*(istep+iβ.Δs-1)+β
+                        βblk = cumblk+3*(istep+iβ.Δs-1)+β
                         addin!(Lvasm,Lv ,Lβ[βder],βblk,iβ.w*s) 
                     end
                 end
@@ -255,11 +258,11 @@ function assemblebig!(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out::AssemblyDirect{OX,O
                     Lαβ = out.L2[α,β]
                     for     αder = 1:size(Lαβ,1)
                         for βder = 1:size(Lαβ,2)
-                            s = Δt[iexp]^(2-αder-βder)
+                            s    = Δt[iexp]^(2-αder-βder)
                             for     iα ∈ finitediff(αder-1,nstep[iexp],istep) # No transposition here, that's thoroughly checked against decay.
                                 for iβ ∈ finitediff(βder-1,nstep[iexp],istep) # No transposition here, that's thoroughly checked against decay.
-                                    αblk = 3*(istep+iα.Δs-1)+α
-                                    βblk = 3*(istep+iβ.Δs-1)+β
+                                    αblk = cumblk+3*(istep+iα.Δs-1)+α
+                                    βblk = cumblk+3*(istep+iβ.Δs-1)+β
                                     addin!(Lvvasm,Lvv,Lαβ[αder,βder],αblk,βblk,iα.w*iβ.w*s) 
                                 end
                             end
@@ -268,34 +271,36 @@ function assemblebig!(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out::AssemblyDirect{OX,O
                 end
             end
             if IA==1
-                # Ablk = 3*sum(nstep)+1  
-                # addin!(Lvasm ,Lv ,out.L1[ind.A      ][1  ],Ablk     )  # change: this is done once, not once per step!!!
-                # addin!(Lvvasm,Lvv,out.L2[ind.A,ind.A][1,1],Ablk,Ablk)
                 for α∈λxu
                     Lαa = out.L2[α    ,ind.A]
                     Laα = out.L2[ind.A,α    ]
                     for αder = 1:size(Lαa,1)  # size(Lαa,1)==size(Laα,2) because these are 2nd derivatives of L
-                        s = Δt[iexp]^(1-αder)
+                        s    = Δt[iexp]^(1-αder)
                         for iα ∈finitediff(αder-1,nstep[iexp],istep) # TODO transpose or not? BUG to be revealed when cost on time derivative sof X or U
-                            αblk = 3*(istep+iα.Δs-1)+α
+                            αblk = cumblk+3*(istep+iα.Δs-1)+α
                             addin!(Lvvasm,Lvv,Lαa[αder,1   ],αblk,Ablk,iα.w*s) 
                             addin!(Lvvasm,Lvv,Laα[1   ,αder],Ablk,αblk,iα.w*s) 
                         end
                     end
                 end
+                out.L2[ind.A,ind.A][1,1].nzval ./= nt # M./scalar updates sparsity, we don't want that.
+                addin!(Lvasm ,Lv ,out.L1[ind.A      ][1  ]./nt,Ablk     )  
+                addin!(Lvvasm,Lvv,out.L2[ind.A,ind.A][1,1]    ,Ablk,Ablk)
             end
-        end  
+        end 
+        cumblk += 3*nstep[iexp] 
     end 
 end
 function decrementbig!(state,Δ²,Lvasm,dofgr,Δv,nder,Δt,nstep) 
     Δ²                      .= 0.
+    cumblk                   = 0
     for iexp                 = 1:length(nstep)
         for istep            = 1:nstep[iexp]    
             for β            ∈ λxu
                 for βder     = 1:nder[β]
                     s        = Δt[iexp]^(1-βder)
                     for iβ   ∈ finitediff(βder-1,nstep[iexp],istep)
-                        βblk = 3*(istep+iβ.Δs-1)+β   
+                        βblk = cumblk+3*(istep+iβ.Δs-1)+β   
                         Δβ   = disblock(Lvasm,Δv,βblk)
                         decrement!(state[iexp][istep],βder,Δβ.*iβ.w*s,dofgr[β])
                         if βder==1 
@@ -305,8 +310,9 @@ function decrementbig!(state,Δ²,Lvasm,dofgr,Δv,nder,Δt,nstep)
                 end
             end
         end
+        cumblk += 3*nstep[iexp]
     end    
-    if nder[4]==1
+    if nder[4]==1 # IA==1
         Δa               = disblock(Lvasm,Δv,3*sum(nstep)+1)
         Δ²[ind.A]        = sum(Δa.^2)
         decrement!(state[1][1],1,Δa,dofgr[ind.A]) # all states share same A, so decrement only once
@@ -414,7 +420,6 @@ function solve(::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
         verbose && @printf("        Assembling")
         SP = (γ=γ,iter=iter)
         assemblebig!(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out,state,nstep,Δt,SP,(dbg...,solver=:DirectXUA,iter=iter))
-
         verbose && @printf(", solving")
         try 
             if iter==1 LU = lu(Lvv) 
@@ -426,11 +431,11 @@ function solve(::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
         end
         Δv               = LU\Lv # use ldiv! to save allocation
 
+
         verbose && @printf(", decrementing.\n")
         decrementbig!(state,Δ²,Lvdis,dofgr,Δv,nder,Δt,nstep)
-        
         if saveiter
-            stateiter[iter]     = copy.(state) 
+            stateiter[iter]     = deepcopy.(state) # deep, to avoid common A across iterations
         end
         verbose          && @printf(  "        maxₜ(|ΔΛ|)=%7.1e ≤ %7.1e  \n",√(Δ²[ind.Λ]),√(maxΔ²[ind.Λ]))
         verbose          && @printf(  "        maxₜ(|ΔX|)=%7.1e ≤ %7.1e  \n",√(Δ²[ind.X]),√(maxΔ²[ind.X]))
@@ -438,7 +443,7 @@ function solve(::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
         verbose && IA==1 && @printf(  "             |ΔA| =%7.1e ≤ %7.1e  \n",√(Δ²[ind.A]),√(maxΔ²[ind.A]))
         if all(Δ².≤maxΔ²)  
             verbose      && @printf("\n    Converged in %3d iterations.\n",iter)
-            verbose      && @printf(  "    nel=%d, nvar=%d, nstep=%d\n",getnele(model),length(Lv),nstep)
+            verbose      && @printf(  "    nel=%d, nvar=%d, nstep=%d\n",getnele(model),length(Lv),sum(nstep))
             break#out of iter
         end
         iter<maxiter || muscadeerror(@sprintf("no convergence after %3d iterations. \n",iter))
