@@ -82,7 +82,7 @@ With a few exceptions for testing and demonstration, `Muscade` does not provide 
 
 [`Acost`](@ref) adds a once-off cost, as a function of ``A``-dofs. 
 
-[`SingleAdofCost`](@ref) provides a simplified syntax for A once-off cost on a single ``A``-dof.
+[`SingleAcost`](@ref) provides a simplified syntax for A once-off cost on a single ``A``-dof.
 
 [`SingleUdof`](@ref) allows to define an unknown external nodal load and apply a cost to it.
 

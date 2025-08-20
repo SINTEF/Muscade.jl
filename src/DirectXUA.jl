@@ -321,7 +321,7 @@ An analysis is carried out by a call with the following syntax:
 
 ```
 initialstate    = initialize!(model)
-stateXUA        = solve(DirectXUA{OX,OU,IA};initialstate,time=0:1.:5)
+stateXUA        = solve(DirectXUA{OX,OU,IA};initialstate=[initialstate],time=[0:1.:5])
 ```
 
 The solver does not yet support interior point methods. 
@@ -339,15 +339,16 @@ The solver does not yet support interior point methods.
 - `dbg=(;)`           a named tuple to trace the call tree (for debugging).
 - `verbose=true`      set to false to suppress printed output (for testing).
 - `silenterror=false` set to true to suppress print out of error (for testing) .
-- `initialstate`      an `AbstractVector` of `State`.
-- `time`              an `AbstractVector` (of same length as `initialstate`) of `AbstractRange` of times at which to compute the steps.  Example: 0:0.1:5.                       
+- `initialstate`      an `AbstractVector` of `State`: one initial state for each experiment
+- `time`              an `AbstractVector` (of same length as `initialstate`) of `AbstractRange` 
+                      of times at which to compute the steps.  Example: 0:0.1:5.                       
 - `maxiter=50`        maximum number of Newton-Raphson iterations. 
 - `maxΔλ=1e-5`        convergence criteria: a norm of the scaled `Λ` increment.
 - `maxΔx=1e-5`        convergence criteria: a norm of the scaled `X` increment. 
 - `maxΔu=1e-5`        convergence criteria: a norm of the scaled `U` increment. 
 - `maxΔa=1e-5`        convergence criteria: a norm of the scaled `A` increment.
-- `saveiter=false`    set to true so that the output `state` is a vector (over the iterations) of 
-                      vectors (over the steps) of `State`s of the model (for debugging 
+- `saveiter=false`    set to true so that the output `state` contains the states 
+                      at each Newton-Raphson iteration (for debugging 
                       non-convergence). 
 Setting the following flags to `true` will improve the sparsity of the system. But setting
 a flag to `true` when the condition isn't met causes the Hessian to be wrong, which is detrimental for convergence.                      
@@ -358,7 +359,7 @@ a flag to `true` when the condition isn't met causes the Hessian to be wrong, wh
 
 # Output
 
-A vector of length equal to that of `time` containing the state of the optimized model at each of these steps.                       
+- `state`, where `state[iexp][itime]` contains the state of the optimized model at each of these steps, or if `saveiter=true` then `state[iiter][iexp][itime]` is a state.
 
 See also: [`solve`](@ref), [`initialize!`](@ref), [`SweepX`](@ref), [`FreqXU`](@ref)
 """

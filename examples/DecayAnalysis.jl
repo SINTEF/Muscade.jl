@@ -118,23 +118,23 @@ e7             = addelement!(modelXUA,SingleDofCost,[n1];class=:X,field=:yaw,   
 
 #Solve inverse problem
 initialstateXUA    = initialize!(modelXUA;time=0.)
-stateXUA         = solve(DirectXUA{2,0,1};initialstate=initialstateXUA,time=T,
+stateXUA         = solve(DirectXUA{2,0,1};initialstate=[initialstateXUA],time=[T],
                         maxiter=100,saveiter=true,
                         maxΔx=1e-5,maxΔλ=Inf,maxΔu=1e-5,maxΔa=1e-5);
 
 # Fetch and display estimated model parameters
-lastIter = findlastassigned(stateXUA); niter = lastIter; 
-Mest      = Mguess .* fold(exp10.(SVector{6}(stateXUA[niter][1].A[1:6 ]))) 
-Cest      = Cguess .* fold(exp10.(SVector{6}(stateXUA[niter][1].A[7:12])));  
+lastIter = findlastassigned(stateXUA); niter = lastIter; iexp=1;
+Mest      = Mguess .* fold(exp10.(SVector{6}(stateXUA[niter][iexp][1].A[1:6 ]))) 
+Cest      = Cguess .* fold(exp10.(SVector{6}(stateXUA[niter][iexp][1].A[7:12])));  
 # Fetch response and loads 
-surgeRec   = [s.X[1][1] for s∈stateXUA[niter]]
-swayRec    = [s.X[1][2] for s∈stateXUA[niter]]
-yawRec     = [s.X[1][3] for s∈stateXUA[niter]]
-surgeExtF   = [s.U[1][1] for s∈stateXUA[niter]]
-swayExtF    = [s.U[1][2] for s∈stateXUA[niter]]
-yawExtF     = [s.U[1][3] for s∈stateXUA[niter]]
+surgeRec    = [s.X[1][1] for s∈stateXUA[niter][iexp]]
+swayRec     = [s.X[1][2] for s∈stateXUA[niter][iexp]]
+yawRec      = [s.X[1][3] for s∈stateXUA[niter][iexp]]
+surgeExtF   = [s.U[1][1] for s∈stateXUA[niter][iexp]]
+swayExtF    = [s.U[1][2] for s∈stateXUA[niter][iexp]]
+yawExtF     = [s.U[1][3] for s∈stateXUA[niter][iexp]]
 req = @request r₂,r₁,r₀  
-loads = getresult(stateXUA[niter],req,[e1])
+loads = getresult(stateXUA[niter][iexp],req,[e1])
 inertiaLoads = [loads[i][:r₂] for i∈1:length(T)]
 dampingLoads = [loads[i][:r₁] for i∈1:length(T)]
 stiffnessLoads = [loads[i][:r₀] for i∈1:length(T)];

@@ -15,7 +15,7 @@ For once-off costs on A-dofs, see [`Acost`](@ref).
 - `cost::Function`               `cost(X,U,A,t,costargs...)→ℝ`
                                  `X` and `U` are tuples (derivates of dofs...), and `∂0(X)`,`∂1(X)`,`∂2(X)` 
                                  must be used by `cost` to access the value and derivatives of `X` (resp. `U`) 
-- `[costargs::NTuple=() or NamedTuple] of additional arguments passed to `cost``
+- `costargs::NTuple=()` or `NamedTuple` of additional arguments passed to `cost``
 
 # Requestable internal variables
 - `cost`, the value of the cost.
@@ -53,13 +53,13 @@ end
     Acost{Na,ainod,afield,Tcost,Tcostargs} <: AbstractElement
 
 An element to apply a once-off cost on a combination of A-dofs. 
-For costs oer unit of time on A-dofs or other dofs, see [`DofCost`](@ref).
+For costs per unit of time on A-dofs (not recommended), see [`DofCost`](@ref).
 
 # Named arguments to the constructor
 - `inod::NTuple{Na,𝕫}=()`       For each A-dof to enter `cost`, its element-node number.
 - `field::NTuple{Na,Symbol}=()` For each A-dof to enter `cost`, its field.
 - `cost::Function`              `cost(A,costargs...)→ℝ`
-- `[costargs::NTuple=() or NamedTuple] of additional arguments passed to `cost``
+- `costargs::NTuple=()` or `NamedTuple` of additional arguments passed to `cost``
 
 # Requestable internal variables
 - `cost`, the value of the cost.
@@ -70,7 +70,7 @@ ele1 = addelement!(model,Acost,[nod1],inod=(1,),field=(:EI,),
        cost=(A;A0)->(A[1]-A0)^2,costargs=(;A0=0.27)
 ```
 
-See also: [`DofCost`](@ref), [`SingleDofCost`](@ref), [`ElementCost`](@ref), [`addelement!`](@ref)  
+See also:  [`SingleAcost`](@ref), [`DofCost`](@ref), [`SingleDofCost`](@ref), [`ElementCost`](@ref), [`addelement!`](@ref)  
 """
 struct Acost{Na,inod,field,Tcost,Tcostargs} <: AbstractElement
     cost     :: Tcost     
@@ -100,7 +100,7 @@ as input to the `ElementCost` constructor.
                         `X` and `U` are tuples (derivates of dofs...), and `∂0(X)`,`∂1(X)`,`∂2(X)` 
                         must be used by `cost` to access the value and derivatives of `X` (resp. `U`).
                         `X`, `U` and `A` are the degrees of freedom of the element `ElementType`.
-- `[costargs::NTuple=() or NamedTuple]` Additional arguments passed to `cost`.
+- `costargs::NTuple=()` or `NamedTuple` of additional arguments passed to `cost`.
 - `ElementType`         The named of the constructor for the relevant element.
 - `elementkwargs`       A named tuple containing the named arguments of the `ElementType` constructor.     
 
@@ -151,13 +151,13 @@ display_drawing!(axis,::Type{<:ElementCost{Teleobj}},obs,opt)                   
 """
     SingleAcost <: AbstractElement
 
-An element with a single node, for adding a once-off cost to a A-dof.  
+An element with a single node, for adding a once-off cost to a single A-dof.  
 
 # Named arguments to the constructor
 - `field::Symbol`.
 - `cost::Function`, where 
     - `cost(a::ℝ,[,costargs...]) → ℝ` 
-- `[costargs::NTuple=() or NamedTuple] of additional arguments passed to `cost``
+- `costargs::NTuple=()` or `NamedTuple` of additional arguments passed to `cost`
 
 # Requestable internal variables
 - `cost`, the value of the cost.
