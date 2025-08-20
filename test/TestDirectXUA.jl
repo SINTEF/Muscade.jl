@@ -33,12 +33,12 @@ e3              = addelement!(model,Spring{1},[n1,n2,n3], EA=1.1)
 @once fu fu(u,t)   = u^2
 @once l1 l1(tx1,t) = (tx1-0.1*sin(t))^2
 @once l2 l2(tx1,t) = (tx1-0.1*cos(t))^2
-e4              = addelement!(model,SingleDofCost,[n3];class=:A,field=:ΞL₀,     cost=fa)
-e5              = addelement!(model,SingleDofCost,[n3];class=:A,field=:ΞEI,     cost=fa)
-e6              = addelement!(model,SingleDofCost,[n1];class=:A,field=:ΞC ,     cost=fa)
-e7              = addelement!(model,SingleDofCost,[n1];class=:A,field=:ΞM ,     cost=fa)
-e8              = addelement!(model,SingleDofCost,[n2];class=:A,field=:ΞC ,     cost=fa)
-e9              = addelement!(model,SingleDofCost,[n2];class=:A,field=:ΞM ,     cost=fa)
+e4              = addelement!(model,SingleAcost  ,[n3];field=:ΞL₀,     cost=fa)
+e5              = addelement!(model,SingleAcost  ,[n3];field=:ΞEI,     cost=fa)
+e6              = addelement!(model,SingleAcost  ,[n1];field=:ΞC ,     cost=fa)
+e7              = addelement!(model,SingleAcost  ,[n1];field=:ΞM ,     cost=fa)
+e8              = addelement!(model,SingleAcost  ,[n2];field=:ΞC ,     cost=fa)
+e9              = addelement!(model,SingleAcost  ,[n2];field=:ΞM ,     cost=fa)
 e10             = addelement!(model,SingleUdof   ,[n1];Xfield=:tx1,Ufield=:utx1,cost=fu)
 e11             = addelement!(model,SingleUdof   ,[n2];Xfield=:tx1,Ufield=:utx1,cost=fu)
 e12             = addelement!(model,SingleDofCost,[n1];class=:X,field=:tx1,     cost=l1)
@@ -63,7 +63,18 @@ for i=1:nstep
     state[i].time = Δt*i
 end
 
-Muscade.assemble!(out,asm,dis,model,state[1],(;))
+Muscade.assembleA!(out,asm,dis,model,state[1],(;))
+@testset "prepareA_out" begin
+    @test all(all(v.==0) for  v∈out.L1[1])
+    @test all(all(v.==0) for  v∈out.L1[2])
+    @test all(all(v.==0) for  v∈out.L1[3])
+    @test all(all(v.==0) for  v∈out.L1[4])
+    @test all(all(m.==0) for  m∈out.L2[1])
+    @test all(all(m.==0) for  m∈out.L2[2])
+    @test all(all(m.==0) for  m∈out.L2[3])
+    @test out.L2[4,4][1,1] ≈ sparse([1, 2, 1, 2, 3, 4, 3, 4, 5, 6, 5, 6], [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6], [2.0e-14, 0.0, 0.0, 2.0e-14, 2.0e-14, 0.0, 0.0, 2.0e-14, 2.0e-14, 0.0, 0.0, 2.0e-14], 6, 6)
+end
+#Muscade.assemble!(out,asm,dis,model,state[1],(;))
 pattern    = Muscade.makepattern(IA,[nstep],out)
 # using Spy,GLMakie
 # fig = spypattern(pattern)
@@ -93,7 +104,7 @@ stateXUA         = solve(DirectXUA{OX,OU,IA};initialstate=[state0,state0],time=[
     @test out.L2[2,1][3,1] ≈ sparse([1, 2, 1, 2], [1, 1, 2, 2], [1.0, 0.0, 0.0, 1.0], 2, 2)
     @test out.L2[3,3][1,1] ≈ sparse([1, 2, 3, 4], [1, 2, 3, 4], [0.0, 0.0, 2.0, 2.0], 4, 4)
     @test out.L2[3,4][1,1] ≈ sparse([1, 1, 2, 2], [1, 2, 3, 4], [0.0, 0.0, 0.0, 0.0], 4, 6)
-    @test out.L2[4,4][1,1] ≈ sparse([1, 2, 1, 2, 3, 4, 3, 4, 5, 6, 5, 6], [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6], [2.0e-14, 0.0, 0.0, 2.0e-14, 2.0e-14, 0.0, 0.0, 2.0e-14, 2.0e-14, 0.0, 0.0, 2.0e-14]./6, 6, 6)
+    @test out.L2[4,4][1,1] ≈ sparse([1, 2, 1, 2, 3, 4, 3, 4, 5, 6, 5, 6], [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6], [2.0e-14, 0.0, 0.0, 2.0e-14, 2.0e-14, 0.0, 0.0, 2.0e-14, 2.0e-14, 0.0, 0.0, 2.0e-14], 6, 6)
 end
 @testset "prepare_asm" begin
     @test asm[1,1]  ≈ [1 2]      # asm[iarray,ieletyp][ieledof,iele] -> idof|inz
@@ -125,7 +136,8 @@ end
 end
 
 @testset "solve" begin
-    @test stateXUA[1][1].A' ≈ [2.31008e-8  4.80747e-7  0.0  1.53423e-7  1.07841e-6  -1.3266e-6] rtol = 1e-5
+    @test stateXUA[1][1].A' ≈ [2.95543e-12  2.12722e-9  0.0  -3.1108e-23  -1.61331e-6  -6.08871e-9] rtol = 1e-5
 end
+
 end 
 

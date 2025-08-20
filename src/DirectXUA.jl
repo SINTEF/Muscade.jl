@@ -12,7 +12,7 @@ const xu     = 2:3
 const ind    = (Λ=1,X=2,U=3,A=4)
 const nclass = length(ind) 
 
-## Assembly of sparse
+## Assembly of sparse for a single time step
 arrnum(α  )  =          α
 arrnum(α,β)  = nclass + β + nclass*(α-1) 
 mutable struct AssemblyDirect{OX,OU,IA}  <:Assembly
@@ -24,7 +24,7 @@ function prepare(::Type{AssemblyDirect{OX,OU,IA}},model,dis;Xwhite=false,XUindep
     dofgr    = (allΛdofs(model,dis),allXdofs(model,dis),allUdofs(model,dis),allAdofs(model,dis))
     ndof     = getndof.(dofgr)
     neletyp  = getneletyp(model)
-    asm      = Matrix{𝕫2}(undef,nclass+nclass^2,neletyp)
+    asm      = Matrix{𝕫2}(undef,nclass+nclass^2,neletyp) 
     nder     = (1,OX+1,OU+1,IA)
     L1       = Vector{Vector{Vector{𝕣}}}(undef,4)
     for α∈λxua
@@ -71,10 +71,19 @@ function zero!(out::AssemblyDirect)
     end
 end
 
-function addin!(out::AssemblyDirect,asm,iele,scale,eleobj::Eleobj,Λ,X,U,A,t,SP,dbg) where{Eleobj} 
-    addin!(out::AssemblyDirect,asm,iele,scale,eleobj,nosecondorder(Eleobj),Λ,X,U,A,t,SP,dbg)
-end
 
+function addin!(out::AssemblyDirect,asm,iele,scale,eleobj::Acost,A::SVector{Na},dbg) where{Na} # addin Atarget element
+    A∂  = SVector{Na,∂ℝ{2,Na,∂ℝ{1,Na,𝕣}}}(∂²ℝ{1,Na}(A[idof],idof, scale.A[idof])   for idof=1:Na)
+    ø   = nothing
+    C,_ = lagrangian(eleobj,ø,ø,ø,A∂,ø,ø ,dbg)
+    ∇ₐC = ∂{2,Na}(C)
+    add_value!(out.L1[ind.A][1],asm[arrnum(ind.A)],iele,∇ₐC)
+    if out.matrices
+        add_∂!{1}(out.L2[ind.A,ind.A][1,1],asm[arrnum(ind.A,ind.A)],iele,∇ₐC)
+    end
+end
+addin!(out::AssemblyDirect,asm,iele,scale,eleobj::Eleobj,Λ,X,U,A,t,SP,dbg) where{Eleobj} =
+    addin!(out::AssemblyDirect,asm,iele,scale,eleobj,nosecondorder(Eleobj),Λ,X,U,A,t,SP,dbg)
 function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::Eleobj,fastresidual::Val{true}, 
                                 Λ::NTuple{1  ,SVector{Nx}},
                                 X::NTuple{NDX,SVector{Nx}},
@@ -143,7 +152,8 @@ function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::Eleobj,fast
         pα      += ndof[α]
         Lα = out.L1[α]
         if i≤size(Lα,1)  # ...but only add into existing vectors of L1, for speed
-            add_value!(out.L1[α][i] ,asm[arrnum(α)],iele,∇L,ia=iα)
+#            add_value!(out.L1[α][i] ,asm[arrnum(α)],iele,∇L,ia=iα)
+            add_value!(Lα[i] ,asm[arrnum(α)],iele,∇L,ia=iα)
         end
         if out.matrices
             pβ       = 0
@@ -152,14 +162,15 @@ function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::Eleobj,fast
                 pβ  += ndof[β]
                 Lαβ = out.L2[α,β]
                 if i≤size(Lαβ,1) && j≤size(Lαβ,2) # ...but only add into existing matrices of L2, for better sparsity
-                    add_∂!{1}(out.L2[α,β][i,j],asm[arrnum(α,β)],iele,∇L,ia=iα,ida=iβ)
+#                    add_∂!{1}(out.L2[α,β][i,j],asm[arrnum(α,β)],iele,∇L,ia=iα,ida=iβ)
+                    add_∂!{1}(Lαβ[i,j],asm[arrnum(α,β)],iele,∇L,ia=iα,ida=iβ)
                 end
             end
         end
     end
 end
 
-## Assembly of bigsparse
+## Assembly of bigsparse for all time steps at once
 function makepattern(IA,nstep,out) 
     # Looking at all steps, class, order of fdiff and Δstep, for rows and columns: which blocks are actualy nz?
     # return a sparse matrix of sparse matrices
@@ -236,56 +247,36 @@ function assemblebig!(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out::AssemblyDirect{OX,O
     zero!(Lv )
     cumblk = 0
     if IA==1
-        nt   = sum(nstep) 
-        Ablk = 3nt+1  
+        Ablk = 3sum(nstep)+1  
+        assembleA!(out,asm,dis,model,state[1][1],(dbg...,asm=:assemblebig!)) 
+        addin!(Lvasm ,Lv ,out.L1[ind.A      ][1  ],Ablk     )  
+        addin!(Lvvasm,Lvv,out.L2[ind.A,ind.A][1,1],Ablk,Ablk)
     end    
+    class = IA==1 ? λxua : λxu
     for iexp = 1:length(nstep)
         for istep = 1:nstep[iexp]
             state[iexp][istep].SP   = SP
             assemble!(out,asm,dis,model,state[iexp][istep],(dbg...,asm=:assemblebig!,step=istep))
-            for β∈λxu
+            for β∈class
                 Lβ = out.L1[β]
                 for βder = 1:size(Lβ,1)
                     s    = Δt[iexp]^(1-βder)
                     for iβ ∈ finitediff(βder-1,nstep[iexp],istep)  # TODO transpose or not? Potential BUG to be revealed when cost on time derivative of X or U
-                        βblk = cumblk+3*(istep+iβ.Δs-1)+β
+                        βblk = β==ind.A ? Ablk : cumblk+3*(istep+iβ.Δs-1)+β
                         addin!(Lvasm,Lv ,Lβ[βder],βblk,iβ.w*s) 
                     end
                 end
             end
-            for     α∈λxu 
-                for β∈λxu
-                    Lαβ = out.L2[α,β]
-                    for     αder = 1:size(Lαβ,1)
-                        for βder = 1:size(Lαβ,2)
-                            s    = Δt[iexp]^(2-αder-βder)
-                            for     iα ∈ finitediff(αder-1,nstep[iexp],istep) # No transposition here, that's thoroughly checked against decay.
-                                for iβ ∈ finitediff(βder-1,nstep[iexp],istep) # No transposition here, that's thoroughly checked against decay.
-                                    αblk = cumblk+3*(istep+iα.Δs-1)+α
-                                    βblk = cumblk+3*(istep+iβ.Δs-1)+β
-                                    addin!(Lvvasm,Lvv,Lαβ[αder,βder],αblk,βblk,iα.w*iβ.w*s) 
-                                end
-                            end
-                        end 
+            for α∈class, β∈class
+                Lαβ = out.L2[α,β]
+                for αder=1:size(Lαβ,1), βder=1:size(Lαβ,2)
+                    s    = Δt[iexp]^(2-αder-βder)
+                    for iα∈finitediff(αder-1,nstep[iexp],istep), iβ∈finitediff(βder-1,nstep[iexp],istep) # No transposition here, that's thoroughly checked against decay.
+                        αblk = α==ind.A ? Ablk : cumblk+3*(istep+iα.Δs-1)+α
+                        βblk = β==ind.A ? Ablk : cumblk+3*(istep+iβ.Δs-1)+β
+                        addin!(Lvvasm,Lvv,Lαβ[αder,βder],αblk,βblk,iα.w*iβ.w*s) 
                     end
                 end
-            end
-            if IA==1
-                for α∈λxu
-                    Lαa = out.L2[α    ,ind.A]
-                    Laα = out.L2[ind.A,α    ]
-                    for αder = 1:size(Lαa,1)  # size(Lαa,1)==size(Laα,2) because these are 2nd derivatives of L
-                        s    = Δt[iexp]^(1-αder)
-                        for iα ∈finitediff(αder-1,nstep[iexp],istep) # TODO transpose or not? BUG to be revealed when cost on time derivative sof X or U
-                            αblk = cumblk+3*(istep+iα.Δs-1)+α
-                            addin!(Lvvasm,Lvv,Lαa[αder,1   ],αblk,Ablk,iα.w*s) 
-                            addin!(Lvvasm,Lvv,Laα[1   ,αder],Ablk,αblk,iα.w*s) 
-                        end
-                    end
-                end
-                out.L2[ind.A,ind.A][1,1].nzval ./= nt # M./scalar updates sparsity, we don't want that.
-                addin!(Lvasm ,Lv ,out.L1[ind.A      ][1  ]./nt,Ablk     )  
-                addin!(Lvvasm,Lvv,out.L2[ind.A,ind.A][1,1]    ,Ablk,Ablk)
             end
         end 
         cumblk += 3*nstep[iexp] 

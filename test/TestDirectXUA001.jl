@@ -22,24 +22,24 @@ e7              = addelement!(model,Hold   ,[n3], field=:tx2)
 @once acost acost(a)     = 0.5*(a/.1)^2
 e8              = addelement!(model,SingleDofCost ,class=:X, field=:tx1,[n1]      ,cost=positionMeas)
 e9              = addelement!(model,SingleDofCost ,class=:X, field=:tx2,[n1]      ,cost=positionMeas)
-e10             = addelement!(model,SingleDofCost ,class=:A, field=:ΞL₀,[n4]      ,cost=acost)
-e11             = addelement!(model,SingleDofCost ,class=:A, field=:ΞEI,[n4]      ,cost=acost)
+e10             = addelement!(model,SingleAcost   ,          field=:ΞL₀,[n4]      ,cost=acost)
+e11             = addelement!(model,SingleAcost   ,          field=:ΞEI,[n4]      ,cost=acost)
 initialstate    = initialize!(model)
 stateX          = solve(SweepX{0};  initialstate,time=[0.],verbose=false)
-stateXUA        = solve(DirectXUA{0,0,1};initialstate=[stateX[1]],time = [0:.1:1],maxΔλ=.5,maxΔa=1e-4,maxΔx=1e-4,verbose=false,maxiter=50)
+stateXUA        = solve(DirectXUA{0,0,1};initialstate=[stateX[1]],time = [0:.1:1],verbose=false,maxiter=50)
 iexp = 1
 @testset "solution" begin
-    @test stateXUA[iexp][2].X[1]' ≈ [0.0153749  0.0153749  0.0  0.0  0.0  0.0  -0.0100154  1.54223e-5  1.54223e-5  -0.0100154] rtol=1e-4
-    @test stateXUA[iexp][2].A'    ≈ [ -0.000189233  -0.0411784] rtol=1e-4
+    @test stateXUA[iexp][2].X[1]' ≈ [0.0154897  0.0154897  0.0  0.0  0.0  0.0  -0.0100155  1.55379e-5  1.55379e-5  -0.0100155] rtol=1e-4
+    @test stateXUA[iexp][2].A'    ≈ [  -0.000195471  -0.0400374] rtol=1e-4
     @test stateXUA[iexp][2].A ≡ stateXUA[1][1].A
 end
-stateXUAcv           = solve(DirectXUA{0,0,1};initialstate=[stateX[1]],time = [0:.1:1],saveiter=true,maxΔλ=.5,maxΔa=1e-4,maxΔx=1e-4,verbose=false)
+stateXUAcv           = solve(DirectXUA{0,0,1};initialstate=[stateX[1]],time = [0:.1:1],saveiter=true,verbose=false)
 jiter = findlastassigned(stateXUAcv)
 @testset "saveiter" begin
     @test stateXUAcv[jiter][iexp][2].X[1] ≈ stateXUA[iexp][2].X[1]
-    @test stateXUAcv[jiter][iexp][2].A    ≈ [ -0.0001892328954715017, -0.04117844040354315]
+    @test stateXUAcv[jiter][iexp][2].A    == stateXUA[iexp][2].A
     @test stateXUAcv[1][iexp][2].A === stateXUAcv[1][iexp][1].A
-    @test stateXUAcv[jiter][iexp][2].X[1]' ≈  [0.0153749  0.0153749  0.0  0.0  0.0  0.0  -0.0100154  1.54223e-5  1.54223e-5  -0.0100154] rtol=1e-4
+    @test stateXUAcv[jiter][iexp][2].X[1] == stateXUA[iexp][2].X[1]
     @test !(stateXUAcv[jiter][iexp][1].A == stateXUAcv[1][iexp][1].A)
 end
 end 

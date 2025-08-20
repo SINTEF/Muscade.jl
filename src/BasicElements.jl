@@ -2,7 +2,8 @@
     DofCost{Class,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,
         afield,Tcost,Tcostargs} <: AbstractElement
 
-An element to apply costs on combinations of dofs.  
+An element to apply costs on combinations of dofs. The cost is "per unit of time".
+For once-off costs on A-dofs, see [`Acost`](@ref).
 
 # Named arguments to the constructor
 - `xinod::NTuple{Nx,𝕫}=()`       For each X-dof to enter `cost`, its element-node number.
@@ -11,49 +12,77 @@ An element to apply costs on combinations of dofs.
 - `ufield::NTuple{Nu,Symbol}=()` For each U-dof to enter `cost`, its field.
 - `ainod::NTuple{Na,𝕫}=()`       For each A-dof to enter `cost`, its element-node number.
 - `afield::NTuple{Na,Symbol}=()` For each A-dof to enter `cost`, its field.
-- `class:Symbol`                 `:A` for cost on A-dofs only, `:I` ("instant") otherwise.
-- `cost::Function`               if `class==:I`, `cost(X,U,A,t,costargs...)→ℝ`
-                                 if `class==:A`, `cost(A,costargs...)→ℝ` 
+- `cost::Function`               `cost(X,U,A,t,costargs...)→ℝ`
                                  `X` and `U` are tuples (derivates of dofs...), and `∂0(X)`,`∂1(X)`,`∂2(X)` 
                                  must be used by `cost` to access the value and derivatives of `X` (resp. `U`) 
 - `[costargs::NTuple=() or NamedTuple] of additional arguments passed to `cost``
-
 
 # Requestable internal variables
 - `cost`, the value of the cost.
 
 # Example
 ```
-ele1 = addelement!(model,DofCost,[nod1],xinod=(1,),field=(:tx1,),
-       class=:I,cost=(X,U,A,t;X0)->(X[1]-X0)^2,costargs=(;X0=0.27)
+ele1 = addelement!(model,DofCost,[nod1],xinod=(1,),xfield=(:tx1,),
+       cost=(X,U,A,t;X0)->(X[1]-X0)^2,costargs=(;X0=0.27)
 ```
 
-See also: [`SingleDofCost`](@ref), [`ElementCost`](@ref), [`addelement!`](@ref)  
+See also: [`Acost`](@ref), [`SingleDofCost`](@ref), [`ElementCost`](@ref), [`addelement!`](@ref)  
 """
-struct DofCost{Class,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,Tcost,Tcostargs} <: AbstractElement
+struct DofCost{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,Tcost,Tcostargs} <: AbstractElement
     cost     :: Tcost     
     costargs :: Tcostargs
 end
 function DofCost(nod::Vector{Node};xinod::NTuple{Nx,𝕫}=(),xfield::NTuple{Nx,Symbol}=(),
                                 uinod::NTuple{Nu,𝕫}=(),ufield::NTuple{Nu,Symbol}=(),
                                 ainod::NTuple{Na,𝕫}=(),afield::NTuple{Na,Symbol}=(),
-                                class::Symbol=:I,cost::Function ,costargs=()) where{Nx,Nu,Na} # :I for "instantaneous" or "integrand" cost.
-    (class==:A && (Nx>0||Nu>0)) && muscadeerror("Cost with Class==:A must have zero X-dofs and zero U-dofs") 
-    return DofCost{class,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,typeof(cost),typeof(costargs)}(cost,costargs)
+                                cost::Function ,costargs=()) where{Nx,Nu,Na} 
+    return DofCost{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,typeof(cost),typeof(costargs)}(cost,costargs)
 end
-doflist(::Type{<:DofCost{Class,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield}}) where
-                     {Class,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield} = 
+doflist(::Type{<:DofCost{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield}}) where
+                        {Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield} = 
    (inod =(xinod...           ,uinod...           ,ainod...           ), 
     class=(ntuple(i->:X,Nx)...,ntuple(i->:U,Nu)...,ntuple(i->:A,Na)...), 
     field=(xfield...          ,ufield...          ,afield...          ) )
-@espy function lagrangian(o::DofCost{:I,Nx,Nu,Na},Λ,X,U,A,t,SP,dbg) where{Nx,Nu,Na} 
+@espy function lagrangian(o::DofCost{Nx,Nu,Na},Λ,X,U,A,t,SP,dbg) where{Nx,Nu,Na} 
     ☼cost = o.cost(X,U,A,t,o.costargs...)
     return cost,noFB
 end
-@espy function lagrangian(o::DofCost{:A,Nx,Nu,Na},Λ,X,U,A,t,SP,dbg) where{Nx,Nu,Na} 
+
+
+"""
+    Acost{Na,ainod,afield,Tcost,Tcostargs} <: AbstractElement
+
+An element to apply a once-off cost on a combination of A-dofs. 
+For costs oer unit of time on A-dofs or other dofs, see [`DofCost`](@ref).
+
+# Named arguments to the constructor
+- `inod::NTuple{Na,𝕫}=()`       For each A-dof to enter `cost`, its element-node number.
+- `field::NTuple{Na,Symbol}=()` For each A-dof to enter `cost`, its field.
+- `cost::Function`              `cost(A,costargs...)→ℝ`
+- `[costargs::NTuple=() or NamedTuple] of additional arguments passed to `cost``
+
+# Requestable internal variables
+- `cost`, the value of the cost.
+
+# Example
+```
+ele1 = addelement!(model,Acost,[nod1],inod=(1,),field=(:EI,),
+       cost=(A;A0)->(A[1]-A0)^2,costargs=(;A0=0.27)
+```
+
+See also: [`DofCost`](@ref), [`SingleDofCost`](@ref), [`ElementCost`](@ref), [`addelement!`](@ref)  
+"""
+struct Acost{Na,inod,field,Tcost,Tcostargs} <: AbstractElement
+    cost     :: Tcost     
+    costargs :: Tcostargs
+end
+Acost(nod::Vector{Node};inod::NTuple{Na,𝕫}=(),field::NTuple{Na,Symbol}=(),cost::Function ,costargs=()) where{Na} = Acost{Na,inod,field,typeof(cost),typeof(costargs)}(cost,costargs)
+doflist(::Type{<:Acost{Na,inod,field}}) where{Na,inod,field} = (inod =inod,class=ntuple(i->:A,Na),field=field)
+@espy function lagrangian(o::Acost,Λ,X,U,A,t,SP,dbg)  
     ☼cost = o.cost(    A  ,o.costargs...)
     return cost,noFB
 end
+
 
 """
     ElementCost{Teleobj,Treq,Tcost,Tcostargs} <: AbstractElement
@@ -119,6 +148,34 @@ allocate_drawing(axis,eleobj::AbstractVector{Teleobj};kwargs...)                
 update_drawing(  axis,eleobj::AbstractVector{Teleobj},oldmut,opt, Λ,X,U,A,t,SP,dbg) where{Teleobj<:ElementCost} = update_drawing(  axis,[eᵢ.eleobj for eᵢ∈eleobj],oldmut,opt, Λ,X,U,A,t,SP,dbg)  
 display_drawing!(axis,::Type{<:ElementCost{Teleobj}},obs,opt)                       where{Teleobj}              = display_drawing!(axis,Teleobj,obs,opt)
 
+"""
+    SingleAcost <: AbstractElement
+
+An element with a single node, for adding a once-off cost to a A-dof.  
+
+# Named arguments to the constructor
+- `field::Symbol`.
+- `cost::Function`, where 
+    - `cost(a::ℝ,[,costargs...]) → ℝ` 
+- `[costargs::NTuple=() or NamedTuple] of additional arguments passed to `cost``
+
+# Requestable internal variables
+- `cost`, the value of the cost.
+
+# Example
+```
+using Muscade
+model = Model(:TestModel)
+node  = addnode!(model,𝕣[0,0])
+e     = addelement!(model,SingleAcost,[node];field=:EI,
+                    costargs=(3.,),cost=(a,three)->(a/three)^2)
+```    
+
+See also: [`DofCost`](@ref), [`SingleDofCost`](@ref),  [`Acost`](@ref), [`ElementCost`](@ref)
+"""
+struct SingleAcost <: AbstractElement end
+SingleAcost(nod::Vector{Node};field::Symbol,cost::Function,costargs=()) = 
+    Acost(nod;inod=(1,),field=(field,),cost=(A,args...)->cost(A[1],args...),costargs)
 
 """
     SingleDofCost{Derivative,Class,Field,Tcost} <: AbstractElement
@@ -126,7 +183,7 @@ display_drawing!(axis,::Type{<:ElementCost{Teleobj}},obs,opt)                   
 An element with a single node, for adding a cost to a given dof.  
 
 # Named arguments to the constructor
-- `class::Symbol`, either `:X`, `:U` or `:A`.
+- `class::Symbol`, either `:X` or `:U`.
 - `field::Symbol`.
 - `cost::Function`, where 
     - `cost(x::ℝ,t::ℝ[,costargs...]) → ℝ` if `class` is `:X` or `:U`, and 
@@ -151,12 +208,13 @@ See also: [`DofCost`](@ref), [`ElementCost`](@ref)
 struct SingleDofCost <: AbstractElement end
 function SingleDofCost(nod::Vector{Node};class::Symbol,field::Symbol,cost::Function,derivative=0::𝕫,costargs=()) 
     ∂=∂n(derivative)
-    if     class==:X; DofCost(nod;xinod=(1,),xfield=(field,),class=:I,cost=(X,U,A,t,args...)->cost(∂(X)[1],t,args...),costargs)
-    elseif class==:U; DofCost(nod;uinod=(1,),ufield=(field,),class=:I,cost=(X,U,A,t,args...)->cost(∂(U)[1],t,args...),costargs)
-    elseif class==:A; DofCost(nod;ainod=(1,),afield=(field,),class=:A,cost=(    A,  args...)->cost(A[1]     ,args...),costargs)
-    else              muscadeerror("'class' must be :X,:U or :A")
+    if     class==:X; DofCost(nod;xinod=(1,),xfield=(field,),cost=(X,U,A,t,args...)->cost(∂(X)[1],t,args...),costargs)
+    elseif class==:U; DofCost(nod;uinod=(1,),ufield=(field,),cost=(X,U,A,t,args...)->cost(∂(U)[1],t,args...),costargs)
+    else              muscadeerror("'class' must be :X or :U")
     end
 end    
+
+
 
 """
     SingleUdof{XField,Ufield,Tcost} <: AbstractElement
@@ -565,48 +623,4 @@ doflist(::Type{<:QuickFix{Nx,inod,field}}) where{Nx,inod,field} = (inod =inod,cl
     return R,noFB
 end
 
-#-------------------------------------------------
 
-"""
-    Monitor <: AbstractElement
-
-Debbuging tool: An element for for monitoring inputs to and outputs from
-another element, during an analysis.     
-
-Instead of adding the element to be monitored directly into the model,
-add this element with the element to be monitored as argument.
-
-Inputs and outputs are @show'n. 
-
-# Named arguments to the constructor
-
-- `ElementType`         The the type of element to be monitored-
-- `trigger`             A function that takes `dbg` as an input and returns a boolean 
-                        (`true`) to printout.
-- `elementkwargs`       a `NamedTuple` containing the named arguments of the `ElementType` constructor.
-
-"""
-struct Monitor{Teleobj,Ttrigger} <: AbstractElement
-    eleobj   :: Teleobj
-    trigger  :: Ttrigger
-end
-function Monitor(nod::Vector{Node};ElementType,trigger::Function,elementkwargs)
-    eleobj = ElementType(nod;elementkwargs...)
-    return Monitor(eleobj,trigger)
-end
-doflist( ::Type{<:Monitor{Teleobj}}) where{Teleobj} = doflist(Teleobj)
-@espy function lagrangian(o::Monitor{Teleobj}, Λ,X,U,A,t,SP,dbg)  where{Teleobj}
-    L,FB = getlagrangian(o.eleobj,Λ,X,U,A,t,SP,(dbg...,via=Monitor))
-    if o.trigger(dbg)
-        @show dbg
-        @show SP
-        @show VALUE(Λ)
-        @show VALUE(X[1])
-        @show VALUE(U[1])
-        @show VALUE(A)
-        @show Teleobj
-        @show doflist(Teleobj)
-        @show L
-    end
-    return L,FB
-end

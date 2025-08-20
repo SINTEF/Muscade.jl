@@ -23,8 +23,8 @@ e7              = addelement!(model1,Hold   ,[n3], field=:tx2)
 @once acost acost(a)     = 0.5*(a/.1)^2
 e8              = addelement!(model1,SingleDofCost ,class=:X, field=:tx1,[n1]      ,cost=positionMeas)
 e9              = addelement!(model1,SingleDofCost ,class=:X, field=:tx2,[n1]      ,cost=positionMeas)
-e10             = addelement!(model1,SingleDofCost ,class=:A, field=:ΞL₀,[n4]      ,cost=acost)
-e11             = addelement!(model1,SingleDofCost ,class=:A, field=:ΞEI,[n4]      ,cost=acost)
+e10             = addelement!(model1,SingleAcost   ,          field=:ΞL₀,[n4]      ,cost=acost)
+e11             = addelement!(model1,SingleAcost   ,          field=:ΞEI,[n4]      ,cost=acost)
 
 model2          = deepcopy(model1)
 
