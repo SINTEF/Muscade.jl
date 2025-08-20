@@ -95,7 +95,7 @@ the ΛXU-eigenvalue problem at frequencies ωᵢ = Δω*i with i∈{0,...,2ᵖ-1
 - an object of type `EigXUincrement` for use with [`increment`](@ref) to create a snapshot of the
   oscillating system.
 
-See also: [`increment`](@ref),[`EigXU`](@ref), [`solve`](@ref), [`initialize!`](@ref), [`studysingular`](@ref), [`SweepX`](@ref), [`DirectXUA`](@ref)
+See also: [`increment`](@ref),[`EigXU`](@ref), [`solve`](@ref), [`initialize!`](@ref), [`study_singular`](@ref), [`SweepX`](@ref), [`DirectXUA`](@ref)
 """
 struct EigXU{OX,OU} <: AbstractSolver end 
 

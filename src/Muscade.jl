@@ -49,9 +49,6 @@ module Muscade
     export coord,∂0,∂1,∂2,getsomedofs
     export noFB
 
-    include("ElementTestTools.jl")
-    export diffed_residual,diffed_lagrangian,print_element_array, @typeof
-
     include("BasicElements.jl")
     export off,equal,positive
     export DofCost,SingleDofCost,SingleUdof,ElementCost,Acost,SingleAcost

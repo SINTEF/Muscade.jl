@@ -50,7 +50,7 @@ it at times `t=range(start=t₀,step=Δt,length=2^p)`. The return
 
 A vector of length `2^p` containing the state of the model at each of these steps.                       
 
-See also: [`solve`](@ref), [`initialize!`](@ref), [`studysingular`](@ref), [`SweepX`](@ref), [`DirectXUA`](@ref)
+See also: [`solve`](@ref), [`initialize!`](@ref), [`study_singular`](@ref), [`SweepX`](@ref), [`DirectXUA`](@ref)
 """
 struct FreqXU{OX,OU} <: AbstractSolver end 
 function solve(::Type{FreqXU{OX,OU}},pstate,verbose::𝕓,dbg;

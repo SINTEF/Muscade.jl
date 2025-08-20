@@ -185,7 +185,7 @@ Muscade.doflist(     ::Type{Spring{D}}) where{D}=(
     class = ((:X for i=1:2D)...,:A,:A),
     field = ((Symbol(:tx,i) for i=1: D)...,(Symbol(:tx,i) for i=1: D)...,:ΞL₀,:ΞEI)) # \Xi
 
-Muscade.nosecondorder(::Type{<:Spring}) = Val(false)
+Muscade.no_second_order(::Type{<:Spring}) = Val(false)
 
 
 ### SdofOscillator

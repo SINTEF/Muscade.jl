@@ -49,7 +49,7 @@ Note that two `function`s, `load` and `res` are defined in the script, and then 
 
 The model - either finitialized or under construction, can be examined using [`describe`](@ref) and [`getndof`](@ref).  
 
-Optionaly, one can also use [`setscale!`](@ref) (with the help of [`studyscale`](@ref)) to scale the variables and thus improve the conditioning of the problem. 
+Optionaly, one can also use [`setscale!`](@ref) (with the help of [`Muscade.study_scale`](@ref)) to scale the variables and thus improve the conditioning of the problem. 
 
 Information on commands provided by Julia and packages (including ``Muscade``) can be obtained from the help mode in the REPL.  Make sure the command is available by `using Muscade`, then activate the help mode by pressing `?`. 
 
@@ -105,7 +105,7 @@ When using `xxxCost` elements to introduce measured time series, consider using 
 
 [`describe`](@ref) can also be used to inspect `State`s.
 
-Analyses may fail due to singular matrix.  The source of the singularity can be challenging to diagnose. [`studysingular`](@ref) can help determine the null-space of an incremental matrix, for small problems.
+Analyses may fail due to singular matrix.  The source of the singularity can be challenging to diagnose. [`Muscade.study_singular`](@ref) can help determine the null-space of an incremental matrix, for small problems.
 
 ## Extracting results
 

@@ -85,7 +85,7 @@ function MyElement(nod::Vector{Node};...)
     ...
     return eleobj
 end
-Muscade.nosecondorder(::Type{<:MyElement}) = Val(true)
+Muscade.no_second_order(::Type{<:MyElement}) = Val(true)
 @espy function Muscade.residual(o::MyElement,   X,U,A,t,SP,dbg) 
     ...
     return R,noFB  
@@ -224,7 +224,7 @@ end
 
 See [`Muscade.residual`](@ref) for the list of arguments and outputs.
 
-Some solvers may prefer to evaluate 2nd order derivatives of `residual`.  However, for elements with anything but a small number of degrees of freedom, this quickly leads to intractably high compilation and/or execution times.  If this is the case, then the element should implement [`Muscade.nosecondorder`](@ref) to limit differentiation to the first order only. 
+Some solvers may prefer to evaluate 2nd order derivatives of `residual`.  However, for elements with anything but a small number of degrees of freedom, this quickly leads to intractably high compilation and/or execution times.  If this is the case, then the element should implement [`Muscade.no_second_order`](@ref) to limit differentiation to the first order only. 
 
 ### Automatic differentiation
 

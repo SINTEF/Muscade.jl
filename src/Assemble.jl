@@ -547,7 +547,7 @@ hasresidual(  ::Eleobj) where{Eleobj} = Val(hasmethod(residual  ,(Eleobj,       
 haslagrangian(::Eleobj) where{Eleobj} = Val(hasmethod(lagrangian,(Eleobj,NTuple,NTuple,NTuple,𝕣1,𝕣,NamedTuple,NamedTuple)))
 
 function getresidual(eleobj::Eleobj,X,U,A,t,SP,dbg,req...) where{Eleobj} 
-    R,FB,eleres... = getresidual(eleobj,hasresidual(eleobj),haslagrangian(eleobj),nosecondorder(Eleobj),X,U,A,t,SP,dbg,req...) 
+    R,FB,eleres... = getresidual(eleobj,hasresidual(eleobj),haslagrangian(eleobj),no_second_order(Eleobj),X,U,A,t,SP,dbg,req...) 
     hasnan(R,FB) && muscadeerror((dbg...,t=t,SP=SP ),@sprintf("residual(%s,...) returned NaN in R, FB or derivatives",Eleobj))  
     return R,FB,eleres...
 end
@@ -574,7 +574,7 @@ getresidual(eleobj::Eleobj,hasres::Val{false},haslag::Val{false},nso, X,U,A,t,SP
 
 function getlagrangian(eleobj::Eleobj, Λ::SVector{Nx}, X::NTuple{Ndx,SVector{Nx}}, 
         U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na}, t::ℝ,SP,dbg,req...)     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
-    L,FB,eleres... = getlagrangian(eleobj,hasresidual(eleobj),haslagrangian(eleobj),nosecondorder(Eleobj),Λ,X,U,A,t,SP,dbg,req...)    
+    L,FB,eleres... = getlagrangian(eleobj,hasresidual(eleobj),haslagrangian(eleobj),no_second_order(Eleobj),Λ,X,U,A,t,SP,dbg,req...)    
     hasnan(L,FB) && muscadeerror((dbg...,t=t,SP=SP),@sprintf("lagrangian(%s,...) returned NaN in L, FB or derivatives",Eleobj)) 
     return L,FB,eleres...  
 end

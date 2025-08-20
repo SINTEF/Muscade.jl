@@ -111,7 +111,7 @@ velocity     =  SVector(0.,0.,0.,0.,0.,0.,  0.,0.,0.,0.,0.,0.);
 acceleration =  SVector(0.,0.,0.,0.,0.,0.,  0.,0.,0.,0.,0.,0.); 
 X            = (displacement,velocity,acceleration)
 
-out = diffed_residual(beam; X,U,A,t,SP)
+out = Muscade.diffed_residual(beam; X,U,A,t,SP)
 iλ,ix,iu,ia = 1,2,3,4
 R = out.R
 K = out.∇R[ix][1]
@@ -266,11 +266,11 @@ end
 # # using Profile,ProfileView,BenchmarkTools
 # # mission = :profile
 # # if  mission == :time
-# #     @btime out = diffed_residual(beam; X,U,A,t,SP)
+# #     @btime out = Muscade.diffed_residual(beam; X,U,A,t,SP)
 # # elseif mission == :profile
 # #     Profile.clear()
 # #     Profile.@profile for i=1:10000
-# #         out = diffed_residual(beam; X,U,A,t,SP)
+# #         out = Muscade.diffed_residual(beam; X,U,A,t,SP)
 # #     end
 # #     ProfileView.view(fontsize=30);
 # #     # After clicking on a bar in the flame diagram, you can type warntype_last() and see the result of 

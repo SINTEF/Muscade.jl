@@ -47,8 +47,8 @@ end
     @test  stateXUA1[iexp][step].A    ≈ stateXUA2[iexp][step].A
 end
 
-scale=studyscale(stateX1[end],SP=(γ=0,),verbose=false) # scaling suggestions from looking at a state
-@testset "StudyScale" begin
+scale=Muscade.study_scale(stateX1[end],SP=(γ=0,),verbose=false) # scaling suggestions from looking at a state
+@testset "study_scale" begin
     @test scale.Λ.tx1 ≈ 1700.0
     @test scale.Λ.tx2 ≈ 1700.0
     @test scale.X.λtx2 ≈ 0.00058

@@ -83,7 +83,7 @@ function addin!(out::AssemblyDirect,asm,iele,scale,eleobj::Acost,A::SVector{Na},
     end
 end
 addin!(out::AssemblyDirect,asm,iele,scale,eleobj::Eleobj,Λ,X,U,A,t,SP,dbg) where{Eleobj} =
-    addin!(out::AssemblyDirect,asm,iele,scale,eleobj,nosecondorder(Eleobj),Λ,X,U,A,t,SP,dbg)
+    addin!(out::AssemblyDirect,asm,iele,scale,eleobj,no_second_order(Eleobj),Λ,X,U,A,t,SP,dbg)
 function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::Eleobj,fastresidual::Val{true}, 
                                 Λ::NTuple{1  ,SVector{Nx}},
                                 X::NTuple{NDX,SVector{Nx}},

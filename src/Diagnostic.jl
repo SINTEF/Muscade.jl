@@ -297,32 +297,32 @@ end
 
 
 
-#################### studyscale
+#################### study_scale
 
 
-mutable struct AssemblyStudyScale{Tz,Tzz}  <:Assembly
+mutable struct Assemblystudy_scale{Tz,Tzz}  <:Assembly
     Lz    :: Tz
     Lzz   :: Tzz
 end   
-function prepare(::Type{AssemblyStudyScale},model,dis) 
+function prepare(::Type{Assemblystudy_scale},model,dis) 
     dofgr              = allΛXUAdofs(model,dis)
     nZ                 = getndof(dofgr)
     narray,neletyp     = 2,getneletyp(model)
     asm                = Matrix{𝕫2}(undef,narray,neletyp)  
     Lz                 = asmvec!(view(asm,1,:),dofgr,dis) 
     Lzz                = asmmat!(view(asm,2,:),view(asm,1,:),view(asm,1,:),nZ,nZ) 
-    out                = AssemblyStudyScale(Lz,Lzz)
+    out                = Assemblystudy_scale(Lz,Lzz)
     return out,asm,dofgr
 end
-function zero!(out::AssemblyStudyScale)
+function zero!(out::Assemblystudy_scale)
     zero!(out.Lz )
     zero!(out.Lzz )
 end
-function add!(out1::AssemblyStudyScale,out2::AssemblyStudyScale) 
+function add!(out1::Assemblystudy_scale,out2::Assemblystudy_scale) 
     add!(out1.Lz,out2.Lz)
     add!(out1.Lzz,out2.Lzz)
 end
-function addin!(out::AssemblyStudyScale,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxder,<:SVector{Nx}},
+function addin!(out::Assemblystudy_scale,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxder,<:SVector{Nx}},
                                          U::NTuple{Nuder,<:SVector{Nu}},A::SVector{Na},t,SP,dbg) where{E,Nxder,Nx,Nuder,Nu,Na} # TODO make Nx,Nu,Na types
     Nz              = 2Nx+Nu+Na                        # Z =[Λ;X;U;A]       
     scaleZ          = SVector(scale.Λ...,scale.X...,scale.U...,scale.A...)
@@ -378,7 +378,7 @@ function ∞norm(V::Vector,type,types)
     return f
 end
 """
-    scale = Muscade.studyscale(state;[SP=nothing],[verbose=false],[dbg=(;)])
+    scale = Muscade.study_scale(state;[SP=nothing],[verbose=false],[dbg=(;)])
 
 Returns a named tuple of named tuples for scaling the model, accessed as
     `scaled.myclass.myfield`, for example `scale.X.tx1`.
@@ -391,12 +391,12 @@ on the `state` passed as input - as it is computed for a given incremental matri
     
 See also: [`setscale!`](@ref)
 """
-function studyscale(state::State;SP=nothing,verbose::𝕓=true,dbg=(;))
+function study_scale(state::State;SP=nothing,verbose::𝕓=true,dbg=(;))
     model,dis          = state.model,state.dis
     tmp                = state.SP 
     state.SP           = SP
-    out,asm,dofgr      = prepare(AssemblyStudyScale,model,dis)
-    assemble!(out,asm,dis,model,state,(dbg...,solver=:studyscale))
+    out,asm,dofgr      = prepare(Assemblystudy_scale,model,dis)
+    assemble!(out,asm,dis,model,state,(dbg...,solver=:study_scale))
     state.SP           = tmp
     Z                  = zeros(getndof(dofgr))
     getdof!(state,0,Z,dofgr) 
@@ -507,14 +507,14 @@ function studyscale(state::State;SP=nothing,verbose::𝕓=true,dbg=(;))
 end
 
 
-################# studysingular
+################# study_singular
 
-mutable struct AssemblyStudySingular{Tzz,Ticlasses,Tjclasses}  <:Assembly
+mutable struct Assemblystudy_singular{Tzz,Ticlasses,Tjclasses}  <:Assembly
     Lij   :: Tzz
     iclasses :: Ticlasses
     jclasses :: Tjclasses
 end   
-function prepare(::Type{AssemblyStudySingular},model,dis,iclasses=(Λ,:X,:U,:A),jclasses=iclasses) 
+function prepare(::Type{Assemblystudy_singular},model,dis,iclasses=(Λ,:X,:U,:A),jclasses=iclasses) 
     idofgr             = selecteddofs(model,dis,iclasses) 
     jdofgr             = selecteddofs(model,dis,jclasses) 
     ni                 = getndof(idofgr)
@@ -524,16 +524,16 @@ function prepare(::Type{AssemblyStudySingular},model,dis,iclasses=(Λ,:X,:U,:A),
     _Li                = asmvec!(view(asm,1,:),idofgr,dis) 
     _Lj                = asmvec!(view(asm,2,:),jdofgr,dis) 
     Lij                = asmmat!(view(asm,3,:),view(asm,1,:),view(asm,2,:),ni,nj) 
-    out                = AssemblyStudySingular(Lij,iclasses,jclasses)
+    out                = Assemblystudy_singular(Lij,iclasses,jclasses)
     return out,asm,idofgr,jdofgr
 end
-function zero!(out::AssemblyStudySingular)
+function zero!(out::Assemblystudy_singular)
     zero!(out.Lij )
 end
-function add!(out1::AssemblyStudySingular,out2::AssemblyStudySingular) 
+function add!(out1::Assemblystudy_singular,out2::Assemblystudy_singular) 
     add!(out1.Lz,out2.Lij)
 end
-function addin!(out::AssemblyStudySingular,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxder,<:SVector{Nx}},
+function addin!(out::Assemblystudy_singular,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxder,<:SVector{Nx}},
                                          U::NTuple{Nuder,<:SVector{Nu}},A::SVector{Na},t,SP,dbg) where{E,Nxder,Nx,Nuder,Nu,Na} # TODO make Nx,Nu,Na types
 
     Nz              = 2Nx+Nu+Na       
@@ -548,7 +548,7 @@ function addin!(out::AssemblyStudySingular,asm,iele,scale,eleobj::E,Λ,X::NTuple
     add_∂!{1}( out.Lij,asm[3],iele,∇L,i,j)
 end
 """
-    matrix = Muscade.studysingular(state;SP,[iclasses=(Λ,:X,:U,:A)],[jclasses=iclasses],[verbose::𝕓=true],[dbg=(;)])
+    matrix = Muscade.study_singular(state;SP,[iclasses=(Λ,:X,:U,:A)],[jclasses=iclasses],[verbose::𝕓=true],[dbg=(;)])
 
 Generates an incremental matrix for `state` (no time derivatives) corresponding to the classes required, 
 and report on the null space of the matrix.
@@ -557,12 +557,12 @@ In teh present implementation, the incremental matrix is converted to full forma
 
 The function returns the incremental matrix.
 """
-function studysingular(state::State;SP,iclasses=(Λ,:X,:U,:A),jclasses=iclasses,verbose::𝕓=true,dbg=(;))
+function study_singular(state::State;SP,iclasses=(Λ,:X,:U,:A),jclasses=iclasses,verbose::𝕓=true,dbg=(;))
     model,dis              = state.model,state.dis
-    out,asm,idofgr,jdofgr  = prepare(AssemblyStudySingular,model,dis,iclasses,jclasses)
+    out,asm,idofgr,jdofgr  = prepare(Assemblystudy_singular,model,dis,iclasses,jclasses)
     tmp = state.SP
     state.SP = SP
-    assemble!(out,asm,dis,model,state,(dbg...,solver=:studyscale))
+    assemble!(out,asm,dis,model,state,(dbg...,solver=:study_scale))
     state.SP = tmp
     kernel =  nullspace(Matrix(out.Lij))
     nker   = size(kernel,2)
@@ -578,9 +578,9 @@ function studysingular(state::State;SP,iclasses=(Λ,:X,:U,:A),jclasses=iclasses,
     return out.Lij
 end
 
-######### plotmatrixsparsity
+######### plot_matrix_sparsity
 """
-    Muscade.plotmatrixsparsity(M)
+    Muscade.plot_matrix_sparsity(M)
 
 Opens a `GLMakie` figure and plots the sparsity pattern of `M::SparseMatrixCSC`.
 
@@ -594,7 +594,7 @@ Optional inputs:
 - `tol=1e-9`        Tolerance for actual non-zero elements.
 
 """
-function plotmatrixsparsity(M::SparseMatrixCSC;size=500,title=nothing,markersize=3,tol=1e-9)
+function plot_matrix_sparsity(M::SparseMatrixCSC;size=500,title=nothing,markersize=3,tol=1e-9)
     (i,j,v)  = findnz(M)
     nz = findall(abs.(v).>tol)
     if title==nothing
@@ -610,12 +610,12 @@ function plotmatrixsparsity(M::SparseMatrixCSC;size=500,title=nothing,markersize
 end
 
 
-##############  plotblockmatrixsparsity
+##############  plot_block_matrix_sparsity
 
 
 Base.zero(::Type{<:SparseArrays.SparseMatrixCSC})=nothing
 """
-    Muscade.plotblockmatrixsparsity(M)
+    Muscade.plot_block_matrix_sparsity(M)
 
 Specialised tool to visualise the sparsity pattern of a matrix produced by [`DirectXUA`](@ref).
 `M` is either a `Matrix` or a `SparseMatrixCSC` (the block structure), whose entries 
@@ -626,7 +626,7 @@ Optional inputs:
 - `markersize=3`    Size of dots for non-zero elements.
 
 """
-function plotblockmatrixsparsity(pattern::AbstractMatrix{SparseMatrixCSC{Tv,Ti}};pixels=500,markersize=3) where{Tv,Ti}
+function plot_block_matrix_sparsity(pattern::AbstractMatrix{SparseMatrixCSC{Tv,Ti}};pixels=500,markersize=3) where{Tv,Ti}
     nbr,nbc                = size(pattern)  
     # determine the number rows in each row of blocks, store in pgr
     pgr                     = Vector{Int64}(undef,nbr+1)         # pgr[ibr]→igr pointers to the start of each block in global solution vector, where global*solution=rhs

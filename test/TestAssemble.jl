@@ -14,7 +14,7 @@ X        = @SVector [1.,2.]
 U        = @SVector 𝕣[]
 A        = @SVector [0.,0.]  # [Δseadrag,Δskydrag]
 
-out = diffed_residual(turbine;X=(X,),U=(U,),A)
+out = Muscade.diffed_residual(turbine;X=(X,),U=(U,),A)
 @testset "Turbine gradient" begin
     @test out.R                   ≈ [-2, -3]    # R
     @test out.∇R[2][1]            ≈ [0 0;0 0]    # Lx

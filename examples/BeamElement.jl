@@ -77,7 +77,7 @@ struct EulerBeam3D{Mat,Uforce} <: AbstractElement
 end;
 
 # For performance, `residual` will only accept differentiation to first order
-Muscade.nosecondorder(::Type{<:EulerBeam3D}) = Val(true)
+Muscade.no_second_order(::Type{<:EulerBeam3D}) = Val(true)
 
 # Define nodes, classes, and field names of dofs
 Muscade.doflist(     ::Type{EulerBeam3D{Mat,false}}) where{Mat} = 
