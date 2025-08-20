@@ -478,11 +478,5 @@ It is sometimes possible to improve performance by identifying a part of `residu
 
 In [`examples/BeamElement.jl`](StaticBeamAnalysis.md), in function `kinematics`, [`fast`](@ref) is applied to accelerate a process of differentiation to the 2nd order.  In `residual`, [`revariate`](@ref) and [`compose`](@ref) in order to differentiate `kinematics` and accelerate computations by exploiting the fact that `kinematic` is a function of `∂0(X)` only.
 
-## Testing elements
-When developing a new element, it is advisable to test the constructor, and `residual` or `lagrangian` in a direct call (outside of any Muscade solver), and examine the returned outputs.
-
-Generaly, automatic differentiation is unproblematic, but when advanced tools are used (e.g. [`revariate`](@ref) and [`compose`](@ref)), then the derivatives should be inspected.  See [`diffed_residual`](@ref) and [`diffed_lagrangian`](@ref) to compute the derivatives of `R` and `L` returned by `residual` and `lagrangian` respectively. 
-
-See also [`Muscade.SpyAxis`](@ref) for testing of graphic generating functions such as [`Muscade.display_drawing!`](@ref).
 
 

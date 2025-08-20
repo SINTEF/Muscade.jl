@@ -85,7 +85,7 @@ module Muscade
     export FreqXU
 
     include("Diagnostic.jl")
-    export studyscale,studysingular,describe
+    export describe
 
     include("Output.jl")
     export setdof!,getdof,getresult,findlastassigned,eletyp
