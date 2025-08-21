@@ -410,7 +410,7 @@ The initial call to `draw!` on a `Model` will call the above three methods in se
 
 #### Vectorization
 
-The element's method for  [`Muscade.allocate_drawing`](@ref), [`Muscade.update_drawing`](@ref) and [`Muscade.display_drawing!`](@ref) act on all elements of the same type, in one call. This allows to exploit that e.g. in `Makie.jl` multiple lines can be drawn in one call to `lines!` by using `NaN`s to "lift the pen".
+The element's method for [`Muscade.allocate_drawing`](@ref), [`Muscade.update_drawing`](@ref) and [`Muscade.display_drawing!`](@ref) act on all elements of the same type, in one call. This allows to exploit that e.g. in `Makie.jl` multiple lines can be drawn in one call to `lines!` by using `NaN`s to "lift the pen".
 
 ### Keyword arguments
 
@@ -418,37 +418,35 @@ When requesting a drawing of all or part of the model, the user can provide spec
 The user can for example require
 
 ```julia
-draw!(model;linewidth=2)
+draw!(axis,state;linewidth=2)
 ```
 
-The element's [`Muscade.allocate_drawing`](@ref) method *must* accept an arbitrary list of keyword arguments.  Keywords arguments not used by the method are automaticaly ignored.  What instructions can be provided, how they are structured and what effect they will have on the graphics depends on the elements. 
+[`draw!`](@ref) just passes all keyword argument to the [`Muscade.allocate_drawing`](@ref) methods of all element type. A pattern that application developers are encouraged to consider is:
 
-In order not to fail if a *used* keyword argument is not provided by the user, the following mechanisms can be used:  The first is
+- All inputs are optional, all parameters have a default value.
+- Instructions adressed to one element type are gathered by element type.  For example 
+ 
+```julia 
+draw!(axis,state;BeamElement  = (color=:red,linethickness=3),
+                 OtherElement = (;property=:value          ))
+```
+
+[`default`](@ref) provides support for the above pattern:
 
 ```julia
 function Muscade.allocate_drawing(axis,o::AbstractVector{MyElement};kwargs...) 
-    # instead of width = kwargs.linewidth
-    with = default{:linewidth}(kwargs,2.)
+    # Extract the NamedTuple of arguments adressed to MyElement.  
+    # Default to empty NamedTuple (;).
+    args = default{:MyElement}(kwargs,(;))
+    # Create opt, in which the default color=:blue is superseeded by 
+    # input color=:red
+    opt  = default(args,(draw_marking=true,color=:blue,linethickness=2))
     ...
 end
 ```
-
-which can be read: if `kwargs.linewidth` exists, the set `width` to its value, otherwise, set it to `2.`.  The second mechanism is
-
-```julia
-function Muscade.allocate_drawing(axis,o::AbstractVector{MyElement};kwargs...) 
-    defaults = (linewidth=2.,someotherkey=defaultvalue)
-    opt = (default(kwargs,defaults))
-    ...
-end
-```
-
-
-which creates a new `NamedTuple` `opt` from `kwargs`.  For keys in `defaults` not found in `kwargs`, use the value from `defaults`.
-
 `Muscade` provides facilities to draw only selected element types or selected elements, so the element's `Muscade.allocate_drawing` method does not need to implement a switch on *whether* to draw.
 
-See `Muscade/test/SomeElements.jl` for simple examples of implementation.  See also [`examples/BeamElement.jl`](StaticBeamAnalysis.md) for an advanced example of implementation where there are options to create completely different drawings of the same element.  
+See `Muscade/test/SomeElements.jl` for simple examples of implementation.  See also [`examples/BeamElement.jl`](StaticBeamAnalysis.md) for an advanced example of implementation where there are options to create completely different type of drawing for the same element type.  
 
 ### Getting element results
 

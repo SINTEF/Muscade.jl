@@ -233,10 +233,14 @@ macro once(tag,ex)
     end)
 end
 """
-    default{:fieldname}(namedtuple,defval)
+    value      = default{:fieldname}(namedtuple,defaultvalue)
+    namedtuple = default(inputnamedtuple,defaultnamedtuple)
 
-attempt to get a field `fieldname` from a `NamedTuple`. If `namedtuple` does not have 
-such a field - or is not a `NamedTuple`, return `defval`.
+The first syntax attempts to access field `fieldname` from `namedtuple`. If `namedtuple` does not have 
+such a field - or is not a `NamedTuple`, return `defaultvalue`.
+
+The second syntax creates `namedtuple` from `inputnamedtuple`, supplementing with fields and values from `defaultnamedtuple` where
+there is no corresponding field in `inputnamedtuple`.  This a thin wrapper of Julia's `Base.merge`. 
 """
 struct default{S} end
 default{S}(t::T,d=nothing) where{S,T<:Base.Pairs} = default{S}((;t...),d)
