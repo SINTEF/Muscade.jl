@@ -56,3 +56,19 @@ struct Functor{name,Ta}
         return new{name,typeof(nt)}(nt)
     end
 end
+
+# search "Functor" in BasicElements.jl, and StaticXUA001.jl
+
+# planned syntactic sugar:
+#    @capture(a,e=2) f(x::Float64)=a*x^e 
+# generates
+    # f = Functor{:f}(;a,e=2)  
+    # (o::Functor{:f})(x::Float64) = o.captured.a*x^o.captured.e
+# while
+#    @functormethod f(x::Int)=a*x+e 
+# generates
+    # (o::Functor{:f})(x::Int) = o.captured.a*x+o.captured.e
+# and
+#    @functor(a,e=2) f 
+# generates
+    # f = Functor{:f}(;a,e=2)
