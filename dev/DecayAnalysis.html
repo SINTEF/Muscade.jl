@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Estimating model parameters · Muscade.jl</title><meta name="title" content="Estimating model parameters · Muscade.jl"/><meta property="og:title" content="Estimating model parameters · Muscade.jl"/><meta property="twitter:title" content="Estimating model parameters · Muscade.jl"/><meta name="description" content="Documentation for Muscade.jl."/><meta property="og:description" content="Documentation for Muscade.jl."/><meta property="twitter:description" content="Documentation for Muscade.jl."/><script data-outdated-warner src="assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="assets/documenter.js"></script><script src="search_index.js"></script><script src="siteinfo.js"></script><script src="../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="index.html"><img src="assets/logo.png" alt="Muscade.jl logo"/></a><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="index.html">Introduction</a></li><li><a class="tocitem" href="Theory.html">Theory</a></li><li><span class="tocitem">User manual</span><ul><li><a class="tocitem" href="Modelling.html">Creating a model</a></li><li><a class="tocitem" href="Solvers.html">Solvers</a></li><li><a class="tocitem" href="Elements.html">Implementing new elements</a></li></ul></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="BeamElement.html">Euler beam element</a></li><li><a class="tocitem" href="StaticBeamAnalysis.html">Static analysis of a beam</a></li><li><a class="tocitem" href="DynamicBeamAnalysis.html">Modal analysis of a beam</a></li><li class="is-active"><a class="tocitem" href="DecayAnalysis.html">Estimating model parameters</a></li><li><a class="tocitem" href="DryFriction.html">DryFriction</a></li></ul></li><li><a class="tocitem" href="reference.html">Reference</a></li><li><span class="tocitem">Appendix</span><ul><li><a class="tocitem" href="TypeStable.html">Type-stability</a></li><li><a class="tocitem" href="Memory.html">Memory management</a></li><li><a class="tocitem" href="Adiff.html">Automatic differentiation</a></li><li><a class="tocitem" href="litterature.html">Literature</a></li></ul></li><li><a class="tocitem" href="LICENSE.html">MIT License</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href="DecayAnalysis.html">Estimating model parameters</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href="DecayAnalysis.html">Estimating model parameters</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/SINTEF/Muscade.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/SINTEF/Muscade.jl/blob/main/examples/DecayAnalysis.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Estimating-model-parameters"><a class="docs-heading-anchor" href="#Estimating-model-parameters">Estimating model parameters</a><a id="Estimating-model-parameters-1"></a><a class="docs-heading-anchor-permalink" href="#Estimating-model-parameters" title="Permalink"></a></h1><p>We estimate the mass and damping matrices of a coupled linear oscillator (floater moving in the surge, sway and yaw) based on a decay tests In the following, we define the necessary element and residual function describing the dynamic behaviour of the floater.</p><pre><code class="language-julia hljs">using Muscade,StaticArrays,Interpolations,GLMakie
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Estimating model parameters · Muscade.jl</title><meta name="title" content="Estimating model parameters · Muscade.jl"/><meta property="og:title" content="Estimating model parameters · Muscade.jl"/><meta property="twitter:title" content="Estimating model parameters · Muscade.jl"/><meta name="description" content="Documentation for Muscade.jl."/><meta property="og:description" content="Documentation for Muscade.jl."/><meta property="twitter:description" content="Documentation for Muscade.jl."/><script data-outdated-warner src="assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="assets/documenter.js"></script><script src="search_index.js"></script><script src="siteinfo.js"></script><script src="../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="index.html"><img src="assets/logo.png" alt="Muscade.jl logo"/></a><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="index.html">Introduction</a></li><li><a class="tocitem" href="Theory.html">Theory</a></li><li><span class="tocitem">User manual</span><ul><li><a class="tocitem" href="Modelling.html">Creating a model</a></li><li><a class="tocitem" href="Solvers.html">Solvers</a></li><li><a class="tocitem" href="Elements.html">Implementing new elements</a></li></ul></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="BeamElement.html">Euler beam element</a></li><li><a class="tocitem" href="StaticBeamAnalysis.html">Static analysis of a beam</a></li><li><a class="tocitem" href="DynamicBeamAnalysis.html">Modal analysis of a beam</a></li><li class="is-active"><a class="tocitem" href="DecayAnalysis.html">Estimating model parameters</a></li><li><a class="tocitem" href="DryFriction.html">DryFriction</a></li></ul></li><li><a class="tocitem" href="Diagnostic.html">Diagnostic</a></li><li><a class="tocitem" href="reference.html">Reference</a></li><li><span class="tocitem">Appendix</span><ul><li><a class="tocitem" href="TypeStable.html">Type-stability</a></li><li><a class="tocitem" href="Memory.html">Memory management</a></li><li><a class="tocitem" href="Adiff.html">Automatic differentiation</a></li><li><a class="tocitem" href="litterature.html">Literature</a></li></ul></li><li><a class="tocitem" href="LICENSE.html">MIT License</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href="DecayAnalysis.html">Estimating model parameters</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href="DecayAnalysis.html">Estimating model parameters</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/SINTEF/Muscade.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/SINTEF/Muscade.jl/blob/main/examples/DecayAnalysis.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Estimating-model-parameters"><a class="docs-heading-anchor" href="#Estimating-model-parameters">Estimating model parameters</a><a id="Estimating-model-parameters-1"></a><a class="docs-heading-anchor-permalink" href="#Estimating-model-parameters" title="Permalink"></a></h1><p>We estimate the mass and damping matrices of a coupled linear oscillator (floater moving in the surge, sway and yaw) based on a decay tests In the following, we define the necessary element and residual function describing the dynamic behaviour of the floater.</p><pre><code class="language-julia hljs">using Muscade,StaticArrays,Interpolations,GLMakie
 
 fold(x::SVector{6}) = SMatrix{3,3}( x[1],x[2],x[3],
                                     x[2],x[4],x[5],
@@ -15,7 +15,7 @@ struct FloaterOnCalmWater &lt;: AbstractElement
 end
 FloaterOnCalmWater(nod::Vector{Node};K,C,M  )  = FloaterOnCalmWater(K,C,M)
 
-Muscade.nosecondorder(::Type{&lt;:FloaterOnCalmWater}) = Val(true)
+Muscade.no_second_order(::Type{&lt;:FloaterOnCalmWater}) = Val(true)
 
 Muscade.doflist(::Type{&lt;:FloaterOnCalmWater}) = (inod  = (ntuple(i-&gt; 1,3)...,ntuple(i-&gt; 1,3)...,ntuple(i-&gt; 1,6)...,                  ntuple(i-&gt; 1,6)...           ),
                                                  class = (ntuple(i-&gt;:X,3)...,ntuple(i-&gt;:U,3)...,ntuple(i-&gt;:A,6)...,                  ntuple(i-&gt;:A,6)...          ),
@@ -77,7 +77,7 @@ e7             = addelement!(modelXUA,SingleDofCost,[n1];class=:X,field=:yaw,   
 
 #Solve inverse problem
 initialstateXUA    = initialize!(modelXUA;time=0.)
-stateXUA         = solve(DirectXUA{2,0,1};initialstate=initialstateXUA,time=T,
+stateXUA         = solve(DirectXUA{2,0,1};initialstate=[initialstateXUA],time=[T],
                         maxiter=100,saveiter=true,
                         maxΔx=1e-5,maxΔλ=Inf,maxΔu=1e-5,maxΔa=1e-5);</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
 
@@ -89,16 +89,16 @@ stateXUA         = solve(DirectXUA{2,0,1};initialstate=initialstateXUA,time=T,
 
     Iteration   1
         Assembling, solving, decrementing.
-        maxₜ(|ΔΛ|)=6.3e+02 ≤     Inf
-        maxₜ(|ΔX|)=2.2e+00 ≤ 1.0e-05
-        maxₜ(|ΔU|)=1.6e+00 ≤ 1.0e-05
+        maxₜ(|ΔΛ|)=6.1e+02 ≤     Inf
+        maxₜ(|ΔX|)=2.1e+00 ≤ 1.0e-05
+        maxₜ(|ΔU|)=1.5e+00 ≤ 1.0e-05
              |ΔA| =0.0e+00 ≤ 1.0e-05
 
     Iteration   2
         Assembling, solving, decrementing.
-        maxₜ(|ΔΛ|)=4.2e+02 ≤     Inf
-        maxₜ(|ΔX|)=1.2e+00 ≤ 1.0e-05
-        maxₜ(|ΔU|)=6.3e-01 ≤ 1.0e-05
+        maxₜ(|ΔΛ|)=3.8e+02 ≤     Inf
+        maxₜ(|ΔX|)=1.3e+00 ≤ 1.0e-05
+        maxₜ(|ΔU|)=6.8e-01 ≤ 1.0e-05
              |ΔA| =2.2e-01 ≤ 1.0e-05
 
     Iteration   3
@@ -106,105 +106,105 @@ stateXUA         = solve(DirectXUA{2,0,1};initialstate=initialstateXUA,time=T,
         maxₜ(|ΔΛ|)=2.2e+02 ≤     Inf
         maxₜ(|ΔX|)=1.7e+00 ≤ 1.0e-05
         maxₜ(|ΔU|)=1.2e+00 ≤ 1.0e-05
-             |ΔA| =3.0e-01 ≤ 1.0e-05
+             |ΔA| =3.3e-01 ≤ 1.0e-05
 
     Iteration   4
         Assembling, solving, decrementing.
-        maxₜ(|ΔΛ|)=2.1e+02 ≤     Inf
-        maxₜ(|ΔX|)=1.2e+00 ≤ 1.0e-05
-        maxₜ(|ΔU|)=3.4e-01 ≤ 1.0e-05
-             |ΔA| =5.7e-01 ≤ 1.0e-05
+        maxₜ(|ΔΛ|)=2.3e+02 ≤     Inf
+        maxₜ(|ΔX|)=1.1e+00 ≤ 1.0e-05
+        maxₜ(|ΔU|)=3.2e-01 ≤ 1.0e-05
+             |ΔA| =5.2e-01 ≤ 1.0e-05
 
     Iteration   5
         Assembling, solving, decrementing.
-        maxₜ(|ΔΛ|)=1.9e+02 ≤     Inf
-        maxₜ(|ΔX|)=8.5e-01 ≤ 1.0e-05
-        maxₜ(|ΔU|)=2.5e-01 ≤ 1.0e-05
-             |ΔA| =5.7e-01 ≤ 1.0e-05
+        maxₜ(|ΔΛ|)=1.3e+02 ≤     Inf
+        maxₜ(|ΔX|)=8.2e-01 ≤ 1.0e-05
+        maxₜ(|ΔU|)=5.8e-01 ≤ 1.0e-05
+             |ΔA| =6.3e-01 ≤ 1.0e-05
 
     Iteration   6
         Assembling, solving, decrementing.
-        maxₜ(|ΔΛ|)=2.2e+02 ≤     Inf
-        maxₜ(|ΔX|)=7.9e-01 ≤ 1.0e-05
-        maxₜ(|ΔU|)=2.2e-01 ≤ 1.0e-05
-             |ΔA| =5.0e-01 ≤ 1.0e-05
+        maxₜ(|ΔΛ|)=2.7e+02 ≤     Inf
+        maxₜ(|ΔX|)=9.0e-01 ≤ 1.0e-05
+        maxₜ(|ΔU|)=5.7e-01 ≤ 1.0e-05
+             |ΔA| =3.9e-01 ≤ 1.0e-05
 
     Iteration   7
         Assembling, solving, decrementing.
-        maxₜ(|ΔΛ|)=2.1e+02 ≤     Inf
-        maxₜ(|ΔX|)=4.4e-01 ≤ 1.0e-05
-        maxₜ(|ΔU|)=1.8e-01 ≤ 1.0e-05
-             |ΔA| =2.9e-01 ≤ 1.0e-05
+        maxₜ(|ΔΛ|)=1.7e+02 ≤     Inf
+        maxₜ(|ΔX|)=6.3e-01 ≤ 1.0e-05
+        maxₜ(|ΔU|)=3.7e-01 ≤ 1.0e-05
+             |ΔA| =2.7e-01 ≤ 1.0e-05
 
     Iteration   8
         Assembling, solving, decrementing.
-        maxₜ(|ΔΛ|)=2.3e+02 ≤     Inf
-        maxₜ(|ΔX|)=1.8e-01 ≤ 1.0e-05
-        maxₜ(|ΔU|)=5.0e-02 ≤ 1.0e-05
-             |ΔA| =1.9e-01 ≤ 1.0e-05
+        maxₜ(|ΔΛ|)=2.2e+02 ≤     Inf
+        maxₜ(|ΔX|)=3.7e-01 ≤ 1.0e-05
+        maxₜ(|ΔU|)=2.4e-01 ≤ 1.0e-05
+             |ΔA| =3.5e-01 ≤ 1.0e-05
 
     Iteration   9
         Assembling, solving, decrementing.
-        maxₜ(|ΔΛ|)=2.2e+02 ≤     Inf
-        maxₜ(|ΔX|)=5.9e-02 ≤ 1.0e-05
-        maxₜ(|ΔU|)=1.1e-02 ≤ 1.0e-05
-             |ΔA| =1.1e-01 ≤ 1.0e-05
+        maxₜ(|ΔΛ|)=2.1e+02 ≤     Inf
+        maxₜ(|ΔX|)=1.3e-01 ≤ 1.0e-05
+        maxₜ(|ΔU|)=7.9e-02 ≤ 1.0e-05
+             |ΔA| =2.0e-01 ≤ 1.0e-05
 
     Iteration  10
         Assembling, solving, decrementing.
-        maxₜ(|ΔΛ|)=2.3e+02 ≤     Inf
-        maxₜ(|ΔX|)=6.2e-03 ≤ 1.0e-05
-        maxₜ(|ΔU|)=3.9e-03 ≤ 1.0e-05
-             |ΔA| =1.2e-02 ≤ 1.0e-05
+        maxₜ(|ΔΛ|)=2.1e+02 ≤     Inf
+        maxₜ(|ΔX|)=2.5e-02 ≤ 1.0e-05
+        maxₜ(|ΔU|)=1.6e-02 ≤ 1.0e-05
+             |ΔA| =3.5e-02 ≤ 1.0e-05
 
     Iteration  11
         Assembling, solving, decrementing.
-        maxₜ(|ΔΛ|)=2.3e+02 ≤     Inf
-        maxₜ(|ΔX|)=6.5e-04 ≤ 1.0e-05
-        maxₜ(|ΔU|)=3.6e-04 ≤ 1.0e-05
-             |ΔA| =1.9e-03 ≤ 1.0e-05
+        maxₜ(|ΔΛ|)=2.1e+02 ≤     Inf
+        maxₜ(|ΔX|)=2.8e-03 ≤ 1.0e-05
+        maxₜ(|ΔU|)=2.2e-03 ≤ 1.0e-05
+             |ΔA| =3.6e-03 ≤ 1.0e-05
 
     Iteration  12
         Assembling, solving, decrementing.
-        maxₜ(|ΔΛ|)=2.3e+02 ≤     Inf
-        maxₜ(|ΔX|)=1.1e-04 ≤ 1.0e-05
-        maxₜ(|ΔU|)=8.3e-05 ≤ 1.0e-05
-             |ΔA| =3.5e-04 ≤ 1.0e-05
+        maxₜ(|ΔΛ|)=2.1e+02 ≤     Inf
+        maxₜ(|ΔX|)=2.7e-04 ≤ 1.0e-05
+        maxₜ(|ΔU|)=2.3e-04 ≤ 1.0e-05
+             |ΔA| =6.9e-04 ≤ 1.0e-05
 
     Iteration  13
         Assembling, solving, decrementing.
-        maxₜ(|ΔΛ|)=2.3e+02 ≤     Inf
-        maxₜ(|ΔX|)=1.9e-05 ≤ 1.0e-05
-        maxₜ(|ΔU|)=1.3e-05 ≤ 1.0e-05
-             |ΔA| =6.3e-05 ≤ 1.0e-05
+        maxₜ(|ΔΛ|)=2.1e+02 ≤     Inf
+        maxₜ(|ΔX|)=2.7e-05 ≤ 1.0e-05
+        maxₜ(|ΔU|)=3.7e-05 ≤ 1.0e-05
+             |ΔA| =1.1e-04 ≤ 1.0e-05
 
     Iteration  14
         Assembling, solving, decrementing.
-        maxₜ(|ΔΛ|)=2.3e+02 ≤     Inf
-        maxₜ(|ΔX|)=3.4e-06 ≤ 1.0e-05
-        maxₜ(|ΔU|)=2.5e-06 ≤ 1.0e-05
-             |ΔA| =1.1e-05 ≤ 1.0e-05
+        maxₜ(|ΔΛ|)=2.1e+02 ≤     Inf
+        maxₜ(|ΔX|)=4.9e-06 ≤ 1.0e-05
+        maxₜ(|ΔU|)=7.1e-06 ≤ 1.0e-05
+             |ΔA| =2.4e-05 ≤ 1.0e-05
 
     Iteration  15
         Assembling, solving, decrementing.
-        maxₜ(|ΔΛ|)=2.3e+02 ≤     Inf
-        maxₜ(|ΔX|)=6.1e-07 ≤ 1.0e-05
-        maxₜ(|ΔU|)=4.2e-07 ≤ 1.0e-05
-             |ΔA| =2.0e-06 ≤ 1.0e-05
+        maxₜ(|ΔΛ|)=2.1e+02 ≤     Inf
+        maxₜ(|ΔX|)=1.1e-06 ≤ 1.0e-05
+        maxₜ(|ΔU|)=1.4e-06 ≤ 1.0e-05
+             |ΔA| =4.8e-06 ≤ 1.0e-05
 
     Converged in  15 iterations.
     nel=19, nvar=2262, nstep=250
-    DirectXUA{2, 0, 1} time:   11 [s]
-<span class="sgr36"><span class="sgr1">Muscade done.</span></span></code></pre><p>Fetch and display estimated model parameters</p><pre><code class="language-julia hljs">lastIter = findlastassigned(stateXUA); niter = lastIter;
-Mest      = Mguess .* fold(exp10.(SVector{6}(stateXUA[niter][1].A[1:6 ])))
-Cest      = Cguess .* fold(exp10.(SVector{6}(stateXUA[niter][1].A[7:12])));</code></pre><p>Fetch response and loads</p><pre><code class="language-julia hljs">surgeRec   = [s.X[1][1] for s∈stateXUA[niter]]
-swayRec    = [s.X[1][2] for s∈stateXUA[niter]]
-yawRec     = [s.X[1][3] for s∈stateXUA[niter]]
-surgeExtF   = [s.U[1][1] for s∈stateXUA[niter]]
-swayExtF    = [s.U[1][2] for s∈stateXUA[niter]]
-yawExtF     = [s.U[1][3] for s∈stateXUA[niter]]
+    DirectXUA{2, 0, 1} time:   13 [s]
+<span class="sgr36"><span class="sgr1">Muscade done.</span></span></code></pre><p>Fetch and display estimated model parameters</p><pre><code class="language-julia hljs">lastIter = findlastassigned(stateXUA); niter = lastIter; iexp=1;
+Mest      = Mguess .* fold(exp10.(SVector{6}(stateXUA[niter][iexp][1].A[1:6 ])))
+Cest      = Cguess .* fold(exp10.(SVector{6}(stateXUA[niter][iexp][1].A[7:12])));</code></pre><p>Fetch response and loads</p><pre><code class="language-julia hljs">surgeRec    = [s.X[1][1] for s∈stateXUA[niter][iexp]]
+swayRec     = [s.X[1][2] for s∈stateXUA[niter][iexp]]
+yawRec      = [s.X[1][3] for s∈stateXUA[niter][iexp]]
+surgeExtF   = [s.U[1][1] for s∈stateXUA[niter][iexp]]
+swayExtF    = [s.U[1][2] for s∈stateXUA[niter][iexp]]
+yawExtF     = [s.U[1][3] for s∈stateXUA[niter][iexp]]
 req = @request r₂,r₁,r₀
-loads = getresult(stateXUA[niter],req,[e1])
+loads = getresult(stateXUA[niter][iexp],req,[e1])
 inertiaLoads = [loads[i][:r₂] for i∈1:length(T)]
 dampingLoads = [loads[i][:r₁] for i∈1:length(T)]
 stiffnessLoads = [loads[i][:r₀] for i∈1:length(T)];</code></pre><p>Create a figure with the results</p><pre><code class="language-julia hljs">fig      = Figure(size = (2000,1000));</code></pre><p>Display response</p><pre><code class="language-julia hljs">ax=Axis(fig[1,1], ylabel=&quot;Surge&quot;, yminorgridvisible = true,xminorgridvisible = true)
@@ -273,4 +273,4 @@ if occursin(&quot;build&quot;, currentDir)
     save(normpath(joinpath(currentDir,&quot;..&quot;,&quot;src&quot;,&quot;assets&quot;,&quot;decay.png&quot;)),fig)
 elseif occursin(&quot;examples&quot;, currentDir)
     save(normpath(joinpath(currentDir,&quot;decay.png&quot;)),fig)
-end</code></pre><p><img src="assets/decay.png" alt="Result"/></p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="DynamicBeamAnalysis.html">« Modal analysis of a beam</a><a class="docs-footer-nextpage" href="DryFriction.html">DryFriction »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.14.1 on <span class="colophon-date" title="Friday 8 August 2025 08:38">Friday 8 August 2025</span>. Using Julia version 1.11.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+end</code></pre><p><img src="assets/decay.png" alt="Result"/></p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="DynamicBeamAnalysis.html">« Modal analysis of a beam</a><a class="docs-footer-nextpage" href="DryFriction.html">DryFriction »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.14.1 on <span class="colophon-date" title="Friday 22 August 2025 10:59">Friday 22 August 2025</span>. Using Julia version 1.11.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
