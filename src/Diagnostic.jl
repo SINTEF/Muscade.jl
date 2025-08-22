@@ -741,7 +741,7 @@ end
     Useful to study type-stability in `lagrangian`, `residual` and more
     
 """
-macro typeof(ex)
+macro typeof(ex) # see Base.return_types
     _inferred_type(ex, __module__)
 end
 function _inferred_type(ex, mod)

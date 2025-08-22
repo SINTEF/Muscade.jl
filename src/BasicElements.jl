@@ -12,7 +12,7 @@ For once-off costs on A-dofs, see [`Acost`](@ref).
 - `ufield::NTuple{Nu,Symbol}=()` For each U-dof to enter `cost`, its field.
 - `ainod::NTuple{Na,𝕫}=()`       For each A-dof to enter `cost`, its element-node number.
 - `afield::NTuple{Na,Symbol}=()` For each A-dof to enter `cost`, its field.
-- `cost::Function`               `cost(X,U,A,t,costargs...)→ℝ`
+- `cost::Functor`               `cost(X,U,A,t,costargs...)→ℝ`
                                  `X` and `U` are tuples (derivates of dofs...), and `∂0(X)`,`∂1(X)`,`∂2(X)` 
                                  must be used by `cost` to access the value and derivatives of `X` (resp. `U`) 
 - `costargs::NTuple=()` or `NamedTuple` of additional arguments passed to `cost``
@@ -35,7 +35,7 @@ end
 function DofCost(nod::Vector{Node};xinod::NTuple{Nx,𝕫}=(),xfield::NTuple{Nx,Symbol}=(),
                                 uinod::NTuple{Nu,𝕫}=(),ufield::NTuple{Nu,Symbol}=(),
                                 ainod::NTuple{Na,𝕫}=(),afield::NTuple{Na,Symbol}=(),
-                                cost::Function ,costargs=()) where{Nx,Nu,Na} 
+                                cost::Functor ,costargs=()) where{Nx,Nu,Na} 
     return DofCost{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,typeof(cost),typeof(costargs)}(cost,costargs)
 end
 doflist(::Type{<:DofCost{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield}}) where
@@ -58,7 +58,7 @@ For costs per unit of time on A-dofs (not recommended), see [`DofCost`](@ref).
 # Named arguments to the constructor
 - `inod::NTuple{Na,𝕫}=()`       For each A-dof to enter `cost`, its element-node number.
 - `field::NTuple{Na,Symbol}=()` For each A-dof to enter `cost`, its field.
-- `cost::Function`              `cost(A,costargs...)→ℝ`
+- `cost::Functor`              `cost(A,costargs...)→ℝ`
 - `costargs::NTuple=()` or `NamedTuple` of additional arguments passed to `cost``
 
 # Requestable internal variables
@@ -76,7 +76,7 @@ struct Acost{Na,inod,field,Tcost,Tcostargs} <: AbstractElement
     cost     :: Tcost     
     costargs :: Tcostargs
 end
-Acost(nod::Vector{Node};inod::NTuple{Na,𝕫}=(),field::NTuple{Na,Symbol}=(),cost::Function ,costargs=()) where{Na} = Acost{Na,inod,field,typeof(cost),typeof(costargs)}(cost,costargs)
+Acost(nod::Vector{Node};inod::NTuple{Na,𝕫}=(),field::NTuple{Na,Symbol}=(),cost::Functor ,costargs=()) where{Na} = Acost{Na,inod,field,typeof(cost),typeof(costargs)}(cost,costargs)
 doflist(::Type{<:Acost{Na,inod,field}}) where{Na,inod,field} = (inod =inod,class=ntuple(i->:A,Na),field=field)
 @espy function lagrangian(o::Acost,Λ,X,U,A,t,SP,dbg)  
     ☼cost = o.cost(    A  ,o.costargs...)
@@ -132,7 +132,7 @@ struct ElementCost{Teleobj,Treq,Tcost,Tcostargs} <: AbstractElement
     cost     :: Tcost     
     costargs :: Tcostargs
 end
-function ElementCost(nod::Vector{Node};req,cost,costargs=(),ElementType,elementkwargs)
+function ElementCost(nod::Vector{Node};req,cost::Functor,costargs=(),ElementType,elementkwargs)
     eleobj   = ElementType(nod;elementkwargs...)
     return ElementCost(eleobj,(eleres=req,),cost,costargs)
 end
@@ -155,7 +155,7 @@ An element with a single node, for adding a once-off cost to a single A-dof.
 
 # Named arguments to the constructor
 - `field::Symbol`.
-- `cost::Function`, where 
+- `cost::Functor`, where 
     - `cost(a::ℝ,[,costargs...]) → ℝ` 
 - `costargs::NTuple=()` or `NamedTuple` of additional arguments passed to `cost`
 
@@ -174,8 +174,9 @@ e     = addelement!(model,SingleAcost,[node];field=:EI,
 See also: [`DofCost`](@ref), [`SingleDofCost`](@ref),  [`Acost`](@ref), [`ElementCost`](@ref)
 """
 struct SingleAcost <: AbstractElement end
-SingleAcost(nod::Vector{Node};field::Symbol,cost::Function,costargs=()) = 
-    Acost(nod;inod=(1,),field=(field,),cost=(A,args...)->cost(A[1],args...),costargs)
+(o::Functor{:fA})(A) = o.captured.cost(A[1])
+SingleAcost(nod::Vector{Node};field::Symbol,cost::Functor,costargs=()) = 
+    Acost(nod;inod=(1,),field=(field,),cost=Functor{:fA}(;cost),costargs)
 
 """
     SingleDofCost{Derivative,Class,Field,Tcost} <: AbstractElement
@@ -185,7 +186,7 @@ An element with a single node, for adding a cost to a given dof.
 # Named arguments to the constructor
 - `class::Symbol`, either `:X` or `:U`.
 - `field::Symbol`.
-- `cost::Function`, where 
+- `cost::Functor`, where 
     - `cost(x::ℝ,t::ℝ[,costargs...]) → ℝ` if `class` is `:X` or `:U`, and 
     - `cost(x::ℝ,    [,costargs...]) → ℝ` if `class` is `:A`.
 - `[costargs::NTuple=() or NamedTuple] of additional arguments passed to `cost``
@@ -206,10 +207,13 @@ e     = addelement!(model,SingleDofCost,[node];class=:X,field=:tx,
 See also: [`DofCost`](@ref), [`ElementCost`](@ref)
 """
 struct SingleDofCost <: AbstractElement end
-function SingleDofCost(nod::Vector{Node};class::Symbol,field::Symbol,cost::Function,derivative=0::𝕫,costargs=()) 
-    ∂=∂n(derivative)
-    if     class==:X; DofCost(nod;xinod=(1,),xfield=(field,),cost=(X,U,A,t,args...)->cost(∂(X)[1],t,args...),costargs)
-    elseif class==:U; DofCost(nod;uinod=(1,),ufield=(field,),cost=(X,U,A,t,args...)->cost(∂(U)[1],t,args...),costargs)
+(o::Functor{:fX})(X,U,A,t,args...) = o.captured.cost(∂n(o.captured.derivative)(X)[1],t,args...)
+(o::Functor{:fU})(X,U,A,t,args...) = o.captured.cost(∂n(o.captured.derivative)(U)[1],t,args...)
+function SingleDofCost(nod::Vector{Node};class::Symbol,field::Symbol,cost::Functor,derivative=0::𝕫,costargs=()) 
+    if     class==:X; 
+        DofCost(nod;xinod=(1,),xfield=(field,),cost=Functor{:fX}(;cost,derivative),costargs)
+    elseif class==:U; 
+        DofCost(nod;uinod=(1,),ufield=(field,),cost=Functor{:fU}(;cost,derivative),costargs)
     else              muscadeerror("'class' must be :X or :U")
     end
 end    
@@ -225,7 +229,7 @@ The value of the Udof is applied as a load to a Xdof on the same node.
 # Named arguments to the constructor
 - `Xfield::Symbol`.
 - `Ufield::Symbol`.
-- `cost::Function`, where `cost(u::ℝ,t::ℝ[,costargs...]) → ℝ` 
+- `cost::Functor`, where `cost(u::ℝ,t::ℝ[,costargs...]) → ℝ` 
 - `[costargs::NTuple=() or NamedTuple] of additional arguments passed to `cost``
 
 # Requestable internal variables
@@ -262,7 +266,7 @@ An element to apply a loading term to a single X-dof.
 
 # Named arguments to the constructor
 - `field::Symbol`.
-- `value::Function`, where `value(t::ℝ) → ℝ`.
+- `value::Functor`, where `value(t::ℝ) → ℝ`.
 
 # Requestable internal variables
 - `F`, the value of the load.
@@ -281,7 +285,7 @@ struct DofLoad{Field,Tvalue,Targs} <: AbstractElement
     value      :: Tvalue # Function
     args       :: Targs
 end
-DofLoad(nod::Vector{Node};field::Symbol,value::Tvalue,args...) where{Tvalue<:Function} = DofLoad{field,Tvalue,typeof(args)}(value,args)
+DofLoad(nod::Vector{Node};field::Symbol,value::Tvalue,args...) where{Tvalue} = DofLoad{field,Tvalue,typeof(args)}(value,args)
 doflist(::Type{<:DofLoad{Field}}) where{Field}=(inod=(1,), class=(:X,), field=(Field,))
 @espy function residual(o::DofLoad, X,U,A,t,SP,dbg) 
     ☼F = o.value(t,o.args...)
@@ -373,9 +377,9 @@ This element can generate three classes of constraints, depending on the input a
 - `λclass::Symbol`               The class (`:X`,`:U` or `:A`) of the Lagrange multiplier. 
                                  See the explanation above for classes of constraints
 - `λfield::Symbol`               The field of the Lagrange multiplier.
-- `gap::Function`                The gap function.
+- `gap::Functor`                The gap function.
 - `gargs::NTuple`                Additional inputs to the gap function.
-- `mode::Function`               where `mode(t::ℝ) -> Symbol`, with value `:equal`, 
+- `mode::Functor`               where `mode(t::ℝ) -> Symbol`, with value `:equal`, 
                                  `:positive` or `:off` at any time. An `:off` constraint 
                                  will set the Lagrange multiplier to zero.
 
@@ -412,7 +416,7 @@ function DofConstraint(nod::Vector{Node};xinod::NTuple{Nx,𝕫}=(),xfield::NTupl
                                          uinod::NTuple{Nu,𝕫}=(),ufield::NTuple{Nu,Symbol}=(),
                                          ainod::NTuple{Na,𝕫}=(),afield::NTuple{Na,Symbol}=(),
                                          λinod::𝕫, λclass::Symbol, λfield::Symbol,
-                                         gap::Function ,gargs=(),mode::Function) where{Nx,Nu,Na} 
+                                         gap::Functor ,gargs=(),mode::Functor) where{Nx,Nu,Na} 
     (λclass==:X && (Nu>0||Na>0)) && muscadeerror("Constraints with λclass=:X must have zero U-dofs and zero A-dofs") 
     (λclass==:A && (Nx>0||Nu>0)) && muscadeerror("Constraints with λclass=:A must have zero X-dofs and zero U-dofs") 
     return DofConstraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,
@@ -517,7 +521,7 @@ The Lagrangian multiplier introduced by this optimisation constraint is of class
                         `X`, `U` and `A` are the degrees of freedom of the element `ElementType`.
 - `gargs::NTuple`       Additional inputs to the gap function. 
 
-- `mode::Function`      where `mode(t::ℝ) -> Symbol`, with value `:equal`, 
+- `mode::Functor`      where `mode(t::ℝ) -> Symbol`, with value `:equal`, 
                         `:positive` or `:off` at any time. An `:off` constraint 
                         will set the Lagrange multiplier to zero.
 - `ElementType`         The named of the constructor for the relevant element 
@@ -554,7 +558,7 @@ struct ElementConstraint{Teleobj,λinod,λfield,Nu,Treq,Tg,Tgargs,Tmode} <: Abst
     mode     :: Tmode 
 end
 function ElementConstraint(nod::Vector{Node};λinod::𝕫, λfield::Symbol,
-    req,gap::Function,gargs=(;),mode::Function,ElementType,elementkwargs)
+    req,gap::Functor,gargs=(;),mode::Functor,ElementType,elementkwargs)
     eleobj   = ElementType(nod;elementkwargs...)
     Nu       = getndof(typeof(eleobj),:U)
     tmp = ElementConstraint{typeof(eleobj),λinod,λfield,Nu,typeof((eleres=req,)),typeof(gap),typeof(gargs),typeof(mode)}(eleobj,(eleres=req,),gap,gargs,mode)
@@ -596,7 +600,7 @@ The element is intended for testing.  Muscade-based applications should not incl
 # Named arguments to the constructor
 - `inod::NTuple{Nx,𝕫}`. The element-node numbers of the X-dofs.
 - `field::NTuple{Nx,Symbol}`. The fields of the X-dofs.
-- `res::Function`, where `res(X::ℝ1,X′::ℝ1,X″::ℝ1,t::ℝ) → ℝ1`, the residual.
+- `res::Functor`, where `res(X::ℝ1,X′::ℝ1,X″::ℝ1,t::ℝ) → ℝ1`, the residual.
 
 # Examples
 A one-dimensional linear elastic spring with stiffness 2.
@@ -616,7 +620,7 @@ Muscade.EleID(1, 1)
 struct QuickFix{Nx,inod,field,Tres} <: AbstractElement
     res        :: Tres    # R = res(X,X′,X″,t)
 end
-QuickFix(nod::Vector{Node};inod::NTuple{Nx,𝕫},field::NTuple{Nx,Symbol},res::Function) where{Nx} = QuickFix{Nx,inod,field,typeof(res)}(res)
+QuickFix(nod::Vector{Node};inod::NTuple{Nx,𝕫},field::NTuple{Nx,Symbol},res::Functor) where{Nx} = QuickFix{Nx,inod,field,typeof(res)}(res)
 doflist(::Type{<:QuickFix{Nx,inod,field}}) where{Nx,inod,field} = (inod =inod,class=ntuple(i->:X,Nx),field=(field)) 
 @espy function residual(o::QuickFix, X,U,A, t,SP,dbg) 
     ☼R = o.res(∂0(X),∂1(X),∂2(X),t)

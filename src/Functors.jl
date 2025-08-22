@@ -48,4 +48,11 @@ QuadraticFunction(μ::Function,σ::𝕣) = QuadraticFunctionWithMeanFuncOfTime(�
 (f::QuadraticFunctionWithConstantMean  )(x,args...) = .5*((x-f.μ   )/f.σ)^2  # args... allows to ignore an extra t argument
 (f::QuadraticFunctionWithMeanFuncOfTime)(x,t) = .5*((x-f.μ(t))/f.σ)^2
 
-
+export Functor
+struct Functor{name,Ta} 
+    captured::Ta
+    function Functor{name}(;kwargs...) where{name}
+        nt = NamedTuple(kwargs)
+        return new{name,typeof(nt)}(nt)
+    end
+end
