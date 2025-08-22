@@ -1,7 +1,7 @@
 name = "Muscade"
 uuid = "93488820-1883-11ed-0c34-05177b029e4d"
 authors = ["Philippe Maincon <philippe.maincon@sintef.no>","Thomas Sauder <thomas.sauder@sintef.no>"]
-version = "0.5.0"
+version = "0.6.0"
 
 [deps]
 GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
@@ -19,4 +19,6 @@ MacroTools = "0.5"
 SparseArrays = "1"
 SpecialFunctions = "2"
 StaticArrays = "1"
+GLMakie = "0.13"
+KrylovKit = "0.9"
 julia = "1.11"
