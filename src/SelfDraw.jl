@@ -79,7 +79,7 @@ Application developers can implement methods [`Muscade.allocate_drawing`](@ref),
 `kwargs...` is any additional key words arguments that will be passed to the `draw` method of each element, 
 for example to specify colors, etc.  See the elements' documentation.
 
-When a plot of the `Model` is first generated, `axis` must be provided, and `draw!` returns `graphic`. `graphic` can
+When a plot of the [`Model`](@ref) is first generated, `axis` must be provided, and `draw!` returns `graphic`. `graphic` can
 then be provided for further calls to `draw!` to update the graphic.
 
 See also: [`getdof`](@ref), [`@request`](@ref), [`@espy`](@ref), [`addelement!`](@ref), [`solve`](@ref)

@@ -161,7 +161,7 @@ First, `Muscade` is not written to serve a specific domain of physics.  How a [`
 
 Second, while `Muscade` is tested with [`GLMakie.jl`](https://docs.makie.org/), it is intended to support other graphic engines.  For example, `fig` in the above example could be an opened [`Paraview`](https://www.paraview.org/) file (VTK file), and the drawing methods could be made to write to this file. `Muscade` itself only passes `fig` on to the drawing methods, with no form of type checking.
 
-`draw!` accepts a list of keywords argument (`kwargs...`) in the above example, which `Muscade` just passes on to the drawing methods of all elements. This is intended to provide the user control over what is drawn and how (choose which field to display, line thickness, surface color etc.).
+[`draw!`](@ref) accepts a list of keywords argument (`kwargs...`) in the above example, which `Muscade` just passes on to the drawing methods of all elements. This is intended to provide the user control over what is drawn and how (choose which field to display, line thickness, surface color etc.).
 
 ### Interactive exploration with `GUI`
 
