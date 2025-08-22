@@ -143,9 +143,9 @@ runtime overhead, and allow to verify code for unit consistency (`Muscade` does 
 
 ## Drawing
 
-### `Draw!`
+### Generating figures with `Draw!`
 
-To visualise an initialised model, or view the results of an analysis, one can use [`draw!`](@ref):
+To create a snapshot of a `State`, either the initialised model, or a step from an analysis, one can use [`draw!`](@ref):
 ```julia
 using GLMakie
 fig     = Figure(size = (500,500))
@@ -153,18 +153,18 @@ axis    = Axis3(fig[1,1])
 draw!(axis,state;kwargs...)
 ```
 
-`draw!` calls methods [`Muscade.allocate_drawing`](@ref), [`Muscade.update_drawing`](@ref) and [`Muscade.display_drawing!`](@ref) for all (or specific) elements of the model.  
+[`draw!`](@ref) calls methods [`Muscade.allocate_drawing`](@ref), [`Muscade.update_drawing`](@ref) and [`Muscade.display_drawing!`](@ref) for all (or specific) elements of the model.  
 
 Elements that do not implement the above three methods simply have no graphic representation. `Muscade`'s built-in elements, for example, do not implement such methods.  This is for two reasons.
 
 First, `Muscade` is not written to serve a specific domain of physics.  How a [`DofConstraint`](@ref) should be represented would be different in mechanics and chemical species diffusion.  Developers of `Muscade`-based application can create domain-specific drawing methods for specific elements.
 
-Second, while `Muscade` is tested with `GLMakie`, it is intended to support other graphic engines.  For example, `fig` in the above example could be an opened [`Paraview`](https://www.paraview.org/) file (VTK file), and the drawing methods could be made to write to this file. `Muscade` itself only passes `fig` on to the drawing methods, with no form of type checking.
+Second, while `Muscade` is tested with [`GLMakie.jl`](https://docs.makie.org/), it is intended to support other graphic engines.  For example, `fig` in the above example could be an opened [`Paraview`](https://www.paraview.org/) file (VTK file), and the drawing methods could be made to write to this file. `Muscade` itself only passes `fig` on to the drawing methods, with no form of type checking.
 
 `draw!` accepts a list of keywords argument (`kwargs...`) in the above example, which `Muscade` just passes on to the drawing methods of all elements. This is intended to provide the user control over what is drawn and how (choose which field to display, line thickness, surface color etc.).
 
-### `GUI`
+### Interactive exploration with `GUI`
 
-TO DO
+The function [`GUI`](@ref) can be called with a `Vector` of `State`s.  This allows to explore a sequence of steps interactively, and allows to scale results for visualisation, 
 
 

@@ -76,7 +76,7 @@ module Muscade
     export EigX,increment
 
     include("EigXU.jl")
-    export EigXU,GUI
+    export EigXU
 
     include("FreqXU.jl")
     export FreqXU
@@ -88,7 +88,7 @@ module Muscade
     export setdof!,getdof,getresult,findlastassigned,eletyp
 
     include("SelfDraw.jl")
-    export draw!,request2draw
+    export draw!,request2draw,GUI
 
     include("Unit.jl")
     export ←,→
