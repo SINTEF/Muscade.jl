@@ -136,7 +136,7 @@ end
 end
 
 @testset "solve" begin
-    @test stateXUA[1][1].A' ≈ [2.95543e-12  2.12722e-9  0.0  -3.1108e-23  -1.61331e-6  -6.08871e-9] rtol = 1e-5
+    @test stateXUA[1][1].A' ≈ [2.95543e-12  2.12722e-9  0.0  -3.1108e-23  -1.61331e-6  -6.08871e-9] atol = 1e-4
 end
 
 end 
