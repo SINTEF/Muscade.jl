@@ -27,7 +27,7 @@ module Muscade
     export  motion,motion⁻¹,revariate,compose,fast,apply,justinvoke,composevalue,composeJacobian 
 
     include("Functors.jl")
-    export QuadraticFunction,FunctionFromVector 
+    export Functor, @functor
 
     include("Dots.jl")
     export dots,∘₀,∘₁,∘₂,⊗

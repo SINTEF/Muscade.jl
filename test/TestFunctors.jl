@@ -2,18 +2,29 @@ module TestFunctors
 using Muscade
 using Test
 
-f  = FunctionFromVector(0:.1:.9,[0.,1.,1.,1.,1.,2.,2.,2.,3.,4.])
-
-q1 = QuadraticFunction(1.,1.)
-q2 = QuadraticFunction(f,1.)
+a = 3
+@functor (a,e=2)  g(x::Real)=a*x^e
+@functor (a,e=2) function f(x::Real)
+    return a*x^e
+end
+@functor (;) h(x) = 2x
+@functor (;) fu(u,t) = u^2
+fukwargs = (;) 
+a = :a
 
 @testset "functors" begin
-    @test f(.45)        ≈ 1.5
-    @test q1(1.5)       ≈ 0.125
-    @test q2(1.5,.45)   ≈ 0.
-    @test f  isa Function
-    @test q1 isa Function
-    @test q2 isa Function
+    @test typeof(f)    == Functor{:f, @NamedTuple{a::Int64, e::Int64}}
+    @test typeof(g)    == Functor{:g, @NamedTuple{a::Int64, e::Int64}}
+    @test typeof(h)    == Functor{:h, @NamedTuple{}}
+    @test f isa Functor
+    @test f isa Function
+    @test f(2.) ≈ 12.
+    @test g(2.) ≈ 12.
+    @test h(2.) ≈ 4.
+    @test f(2) == 12
+    @test fu(1.,0,fukwargs...) == 1.
+    @test Muscade.@typeof(f(2.)) == (Float64,Float64)
+    @test Muscade.@typeof(f(2)) == (Int64, Int64)
 end
 
 end

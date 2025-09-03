@@ -317,36 +317,36 @@ end
 
 #-------------------------------------------------
 
-"""
-    off(t) → :off
+# """
+#     off(t) → :off
 
-A function which for any value `t` returns the symbol `off`.  Usefull for specifying
-the keyword argument `mode=off` in adding an element of type ``DofConstraint` to
-a `Model`.
+# A function which for any value `t` returns the symbol `off`.  Useful for specifying
+# the keyword argument `mode=off` in adding an element of type ``DofConstraint` to
+# a `Model`.
 
-See also: [`DofConstraint`](@ref), [`ElementConstraint`](@ref), [`equal`](@ref), [`positive`](@ref)
-"""
-off(t)     = :off
-"""
-    equal(t) → :equal
+# See also: [`DofConstraint`](@ref), [`ElementConstraint`](@ref), [`equal`](@ref), [`positive`](@ref)
+# """
+@nakedfunctor (;) off(t)     = :off
+# """
+#     equal(t) → :equal
 
-A function which for any value `t` returns the symbol `equal`.  Usefull for specifying
-the keyword argument `mode=equal` in adding an element of type ``DofConstraint` to
-a `Model`.
+# A function which for any value `t` returns the symbol `equal`.  Useful for specifying
+# the keyword argument `mode=equal` in adding an element of type ``DofConstraint` to
+# a `Model`.
 
-See also: [`DofConstraint`](@ref), [`ElementConstraint`](@ref), [`off`](@ref), [`positive`](@ref)
-"""
-equal(t)   = :equal
-"""
-    positive(t) → :positive
+# See also: [`DofConstraint`](@ref), [`ElementConstraint`](@ref), [`off`](@ref), [`positive`](@ref)
+# """
+@nakedfunctor (;) equal(t)   = :equal
+# """
+#     positive(t) → :positive
 
-A function which for any value `t` returns the symbol `positive`.  Usefull for specifying
-the keyword argument `mode=positive` in adding an element of type ``DofConstraint` to
-a `Model`.
+# A function which for any value `t` returns the symbol `positive`.  Useful for specifying
+# the keyword argument `mode=positive` in adding an element of type ``DofConstraint` to
+# a `Model`.
 
-See also: [`DofConstraint`](@ref), [`ElementConstraint`](@ref), [`off`](@ref), [`equal`](@ref)
-"""
-positive(t) = :positive
+# See also: [`DofConstraint`](@ref), [`ElementConstraint`](@ref), [`off`](@ref), [`equal`](@ref)
+# """
+@nakedfunctor (;) positive(t) = :positive
 """
     DofConstraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,
         afield,λinod,λfield,Tg,Tmode} <: AbstractElement

@@ -26,9 +26,9 @@ n3              = addnode!(model,𝕣[ ]) # anode for spring
 e1              = addelement!(model,El1,[n1], K=1.,C=0.05,M=2.)
 e2              = addelement!(model,El1,[n2], K=0.,C=0.0 ,M=2.)
 e3              = addelement!(model,Spring{1},[n1,n2,n3], EA=1.1)
-@once fu fu(u,t)   = (u/.1)^2/2
-@once l1 l1(tx1,t) = ((tx1-0.1*sin(t))/.01)^2/2
-@once l2 l2(tx1,t) = ((tx1-0.1*cos(t))/.01)^2/2
+@functor (;) fu(u,t)   = (u/.1)^2/2
+@functor (;) l1(tx1,t) = ((tx1-0.1*sin(t))/.01)^2/2
+@functor (;) l2(tx1,t) = ((tx1-0.1*cos(t))/.01)^2/2
 e10             = addelement!(model,SingleUdof   ,[n1];Xfield=:tx1,Ufield=:tx1, cost=fu)
 e11             = addelement!(model,SingleUdof   ,[n2];Xfield=:tx1,Ufield=:tx1, cost=fu)
 e12             = addelement!(model,SingleDofCost,[n1];class=:X,field=:tx1,     cost=l1)

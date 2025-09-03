@@ -89,7 +89,7 @@ _       = Muscade.display_drawing!(axis,typeof(instrumentedbeam),mut,opt)
     @test axis.call[2].fun == :scatter! # call to EulerBeam3D took place
 end
 
-function straincost(eleres,X,U,A,t) 
+@functor (;) function straincost(eleres,X,U,A,t) 
     σ  = 15e-6
     ε  = eleres.ε
     εₘ = SVector(cos(t),0.,-cos(t),0.,cos(t)/2)*0.001  

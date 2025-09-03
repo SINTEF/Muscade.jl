@@ -11,9 +11,7 @@ n3              = addnode!(model,𝕣[ 0,10])  # anchor 2
 n4              = addnode!(model,𝕣[     ])  # A-nod for springs
 e1              = addelement!(model,Spring{2},[n1,n2,n4], EA=10) # springs share Adofs
 e2              = addelement!(model,Spring{2},[n1,n3,n4], EA=10)
-#@once load load(t)  = 0.1*t
-load = Functor{:load}()  
-(o::Functor{:load})(t) = 0.1*t
+@functor (;) load(t)  = 0.1*t
 
 e3              = addelement!(model,DofLoad,[n1], field=:tx1      ,value=load)
 e3b             = addelement!(model,DofLoad,[n1], field=:tx2      ,value=load)
@@ -21,13 +19,9 @@ e4              = addelement!(model,Hold   ,[n2], field=:tx1)
 e5              = addelement!(model,Hold   ,[n2], field=:tx2)
 e6              = addelement!(model,Hold   ,[n3], field=:tx1)
 e7              = addelement!(model,Hold   ,[n3], field=:tx2)
-#@once positionMeas positionMeas(x,t)   = 0.5*((x-0.12t)/0.01)^2
-positionMeas = Functor{:positionMeas}()
-(o::Functor{:positionMeas})(x,t) = 0.5*((x-0.12t)/0.01)^2
+@functor (;) positionMeas(x,t)   = 0.5*((x-0.12t)/0.01)^2
 
-#@once acost acost(a)     = 0.5*(a/.1)^2
-acost = Functor{:acost}()
-(o::Functor{:acost})(a) = 0.5*(a/.1)^2
+@functor (;) acost(a)     = 0.5*(a/.1)^2
 
 e8              = addelement!(model,SingleDofCost ,class=:X, field=:tx1,[n1]      ,cost=positionMeas)
 e9              = addelement!(model,SingleDofCost ,class=:X, field=:tx2,[n1]      ,cost=positionMeas)
@@ -35,7 +29,7 @@ e10             = addelement!(model,SingleAcost   ,          field=:ΞL₀,[n4] 
 e11             = addelement!(model,SingleAcost   ,          field=:ΞEI,[n4]      ,cost=acost)
 initialstate    = initialize!(model)
 stateX          = solve(SweepX{0};  initialstate,time=[0.],verbose=false)
-stateXUA        = solve(DirectXUA{0,0,1};initialstate=[stateX[1]],time = [0:.1:1],verbose=true,maxiter=50)
+stateXUA        = solve(DirectXUA{0,0,1};initialstate=[stateX[1]],time = [0:.1:1],verbose=false,maxiter=50)
 iexp = 1
 @testset "solution" begin
     @test stateXUA[iexp][2].X[1]' ≈ [0.0154897  0.0154897  0.0  0.0  0.0  0.0  -0.0100155  1.55379e-5  1.55379e-5  -0.0100155] rtol=1e-4
