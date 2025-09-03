@@ -19,7 +19,7 @@ end
 # run all Muscade tests, 
 workingDir = joinpath(muscadeDir,"test")
 devMuscadeIn(workingDir,muscadeDir)
-include(joinpath(workingDir,"run_tests.jl"));
+include(joinpath(workingDir,"runtests.jl"));
 
 # run all examples
 workingDir = joinpath(muscadeDir,"examples")
