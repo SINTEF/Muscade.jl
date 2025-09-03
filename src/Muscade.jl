@@ -15,7 +15,7 @@ module Muscade
     export ℝ1,ℤ1,𝕣1,𝕫1,𝔹1,𝕓1
     export ℝ2,ℤ2,𝕣2,𝕫2,𝔹2,𝕓2
     export ℝ11,ℤ11,𝕣11,𝕫11,𝔹11,𝕓11
-    export toggle,default,@once,mod_onebased
+    export toggle,default,mod_onebased
 
     include("Adiff.jl")
     export  ∂ℝ #\partial \bbR

@@ -35,6 +35,9 @@ or
 
     a = 3
     @functor (a,e=2)  f(x::Real)=a*x^e
+    e = 1
+    @functor (;a,e)   f(x::Real)=a*x^e
+    @functor (;)      f(x::Real)=x^2
 
 This is roughly equivalent to a closure defined as
 
@@ -44,12 +47,9 @@ Functors are meant to facilitate the definition of "functions" in a Muscade inpu
 while avoiding several of the issues associated with defining a function (and in particular
 a closure) in a script:    
 
-- A closure captures a variable "by reference", while `@functor` captures it by value, which
-might be more intuitive. 
-- To ensure type stability, the variables captured by a closure
-would have to be declared `const` - forbidding to update the input value without restarting Julia
-- If the code of the function is not changed, the function is not parsed and compiled again, accelerating
-the re-analysis.
+- A closure captures a variable "by reference", while `@functor` captures it by value, which might be more intuitive. 
+- To ensure type stability, the variables captured by a closure would have to be declared `const` - forbidding to update the input value without restarting Julia
+- If the code of the function is not changed, the function is not parsed and compiled again, accelerating the re-analysis.
 
 It is not possible to associate multiple methods to a functor.
 
@@ -68,14 +68,15 @@ macro functor(capturedargs,foo)
         capargnames[iarg] = arg isa Symbol ? arg : arg.args[1]
     end
 
-    foodic             = splitdef(foo)
-    foodic[:body]      = MacroTools.postwalk(foodic[:body]) do ex
+    foodict            = splitdef(foo)
+    # TODO rather than replacing all occurences of a with o.captured.a, prefix the body of the function with a=o.captured.a
+    foodict[:body]     = MacroTools.postwalk(foodict[:body]) do ex
         ex isa Symbol && ex∈capargnames ? :(o.captured.$ex) : ex # prefix captured args with `o.captured.`
     end    
-    functionname       = foodic[:name]
+    functionname       = foodict[:name]
     functionsym        = QuoteNode(functionname)
-    foodic[:name]      = :((o::Functor{$functionsym}))
-    foo                = combinedef(foodic)
+    foodict[:name]     = :((o::Functor{$functionsym}))
+    foo                = combinedef(foodict)
     ex                 = MacroTools.postwalk(rmlines,foo)
     ex                 = MacroTools.postwalk(unblock,ex)
     qex                = QuoteNode(ex) # unannotated code for the function 
@@ -86,30 +87,6 @@ macro functor(capturedargs,foo)
             $tag = $qex
             $foo
         end                                                          
-    end))
-end
-
-macro nakedfunctor(capturedargs,foo)
-    @assert capturedargs.head == :tuple
-    caparglist         = capturedargs.args
-    ncaparg            = caparglist == Any[:($(Expr(:parameters)))] ? 0 : length(caparglist)
-    capargnames        = Vector{Symbol}(undef,ncaparg)
-    for iarg           = 1:ncaparg 
-        arg            = caparglist[iarg]
-        capargnames[iarg] = arg isa Symbol ? arg : arg.args[1]
-    end
-
-    foodic             = splitdef(foo)
-    foodic[:body]      = MacroTools.postwalk(foodic[:body]) do ex
-        ex isa Symbol && ex∈capargnames ? :(o.captured.$ex) : ex # prefix captured args with `o.captured.`
-    end    
-    functionname       = foodic[:name]
-    functionsym        = QuoteNode(functionname)
-    foodic[:name]      = :((o::Functor{$functionsym}))
-    foo                = combinedef(foodic)
-    return prettify(esc(quote
-        $functionname = Functor{$functionsym}(;$(capturedargs)...)    # f = Functor{:f}(;(a,e=2)...)  
-        $foo
     end))
 end
 

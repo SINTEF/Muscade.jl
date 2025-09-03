@@ -95,7 +95,7 @@ as input to the `ElementCost` constructor.
 # Named arguments to the constructor
 - `req`                 A request for element-results to be extracted from the target element, see [`@request`](@ref).
                         The request is formulated as if adressed directly to the target element.
-- `cost`                A cost function `cost(eleres,X,U,A,t,costargs...)→ℝ`. 
+- `cost`                A cost `Functor` `cost(eleres,X,U,A,t,costargs...)→ℝ`. 
                         `eleres` is the output of the above-mentionned request to the target element.     
                         `X` and `U` are tuples (derivates of dofs...), and `∂0(X)`,`∂1(X)`,`∂2(X)` 
                         must be used by `cost` to access the value and derivatives of `X` (resp. `U`).
@@ -116,7 +116,7 @@ the analysis, request results from `ElementConstraint`
 
 # Example
 ```
-@once cost(eleres,X,U,A,t;Fh0) = (eleres.Fh-Fh0)^2
+@functor (;) cost(eleres,X,U,A,t;Fh0) = (eleres.Fh-Fh0)^2
 ele1 = addelement!(model,ElementCost,[nod1];req=@request(Fh),
                    cost=cost,
                    costargs = (;Fh0=0.27)
@@ -124,7 +124,7 @@ ele1 = addelement!(model,ElementCost,[nod1];req=@request(Fh),
                    elementkwargs=(Λₘtop=[5.,0,0], xₘbot=[250.,0], L=290., buoyancy=-5e3))
 ```
 
-See also: [`SingleDofCost`](@ref), [`DofCost`](@ref), [`@request`](@ref), [`@once`](@ref) 
+See also: [`SingleDofCost`](@ref), [`DofCost`](@ref), [`@request`](@ref), [`@functor`](@ref) 
 """
 struct ElementCost{Teleobj,Treq,Tcost,Tcostargs} <: AbstractElement
     eleobj   :: Teleobj
@@ -282,10 +282,10 @@ e     = addelement!(model,DofLoad,[node];field=:tx,value=t->3t-1)
 See also: [`Hold`](@ref), [`DofCost`](@ref)  
 """
 struct DofLoad{Field,Tvalue,Targs} <: AbstractElement 
-    value      :: Tvalue # Function
+    value      :: Tvalue # Functor
     args       :: Targs
 end
-DofLoad(nod::Vector{Node};field::Symbol,value::Tvalue,args...) where{Tvalue} = DofLoad{field,Tvalue,typeof(args)}(value,args)
+DofLoad(nod::Vector{Node};field::Symbol,value::Tvalue,args...) where{Tvalue<:Functor} = DofLoad{field,Tvalue,typeof(args)}(value,args)
 doflist(::Type{<:DofLoad{Field}}) where{Field}=(inod=(1,), class=(:X,), field=(Field,))
 @espy function residual(o::DofLoad, X,U,A,t,SP,dbg) 
     ☼F = o.value(t,o.args...)
@@ -317,36 +317,39 @@ end
 
 #-------------------------------------------------
 
-# """
-#     off(t) → :off
+@functor (;) off(t)     = :off
+"""
+    off(t) → :off
 
-# A function which for any value `t` returns the symbol `off`.  Useful for specifying
-# the keyword argument `mode=off` in adding an element of type ``DofConstraint` to
-# a `Model`.
+A function which for any value `t` returns the symbol `off`.  Useful for specifying
+the keyword argument `mode=off` in adding an element of type ``DofConstraint` to
+a `Model`.
 
-# See also: [`DofConstraint`](@ref), [`ElementConstraint`](@ref), [`equal`](@ref), [`positive`](@ref)
-# """
-@nakedfunctor (;) off(t)     = :off
-# """
-#     equal(t) → :equal
+See also: [`DofConstraint`](@ref), [`ElementConstraint`](@ref), [`equal`](@ref), [`positive`](@ref)
+"""
+off
+@functor (;) equal(t)   = :equal
+"""
+    equal(t) → :equal
 
-# A function which for any value `t` returns the symbol `equal`.  Useful for specifying
-# the keyword argument `mode=equal` in adding an element of type ``DofConstraint` to
-# a `Model`.
+A function which for any value `t` returns the symbol `equal`.  Useful for specifying
+the keyword argument `mode=equal` in adding an element of type ``DofConstraint` to
+a `Model`.
 
-# See also: [`DofConstraint`](@ref), [`ElementConstraint`](@ref), [`off`](@ref), [`positive`](@ref)
-# """
-@nakedfunctor (;) equal(t)   = :equal
-# """
-#     positive(t) → :positive
+See also: [`DofConstraint`](@ref), [`ElementConstraint`](@ref), [`off`](@ref), [`positive`](@ref)
+"""
+equal
+@functor (;) positive(t) = :positive
+"""
+    positive(t) → :positive
 
-# A function which for any value `t` returns the symbol `positive`.  Useful for specifying
-# the keyword argument `mode=positive` in adding an element of type ``DofConstraint` to
-# a `Model`.
+A function which for any value `t` returns the symbol `positive`.  Useful for specifying
+the keyword argument `mode=positive` in adding an element of type ``DofConstraint` to
+a `Model`.
 
-# See also: [`DofConstraint`](@ref), [`ElementConstraint`](@ref), [`off`](@ref), [`equal`](@ref)
-# """
-@nakedfunctor (;) positive(t) = :positive
+See also: [`DofConstraint`](@ref), [`ElementConstraint`](@ref), [`off`](@ref), [`equal`](@ref)
+"""
+positive
 """
     DofConstraint{λclass,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,
         afield,λinod,λfield,Tg,Tmode} <: AbstractElement
@@ -359,12 +362,12 @@ The sign convention is that the gap `g≥0` and the Lagrange multiplier `λ≥0`
 
 This element can generate three classes of constraints, depending on the input argument `λclass`.
 - `λclass=:X` Physical constraint.  In mechanics, the Lagrange multiplier dof is a 
-   generalized force, dual of the gap. The gap function must be of the form `gap(x,t,gargs...)`.
+   generalized force, dual of the gap. The gap `Functor` must be of the form `gap(x,t,gargs...)`.
 - `λclass=:U` Time varying optimisation constraint. For example: find `A`-parameters so that
-   at all times, the response does not exceed a given criteria. The gap function must be of the form   
+   at all times, the response does not exceed a given criteria. The gap `Functor` must be of the form   
    `gap(x,u,a,t,gargs...)`.
 - `λclass=:A` Time invariant optimisation constraint. For example: find `A`-parameters such that
-   `A[1]+A[2]=gargs.somevalue`. The gap function must be of the form `gap(a,gargs...)`.
+   `A[1]+A[2]=gargs.somevalue`. The gap `Functor` must be of the form `gap(a,gargs...)`.
 
 # Named arguments to the constructor
 - `xinod::NTuple{Nx,𝕫}=()`       For each X-dof to be constrained, its element-node number.
@@ -377,9 +380,9 @@ This element can generate three classes of constraints, depending on the input a
 - `λclass::Symbol`               The class (`:X`,`:U` or `:A`) of the Lagrange multiplier. 
                                  See the explanation above for classes of constraints
 - `λfield::Symbol`               The field of the Lagrange multiplier.
-- `gap::Functor`                The gap function.
+- `gap::Functor`                 The gap function.
 - `gargs::NTuple`                Additional inputs to the gap function.
-- `mode::Functor`               where `mode(t::ℝ) -> Symbol`, with value `:equal`, 
+- `mode::Functor`                where `mode(t::ℝ) -> Symbol`, with value `:equal`, 
                                  `:positive` or `:off` at any time. An `:off` constraint 
                                  will set the Lagrange multiplier to zero.
 
@@ -388,11 +391,13 @@ This element can generate three classes of constraints, depending on the input a
 using Muscade
 model           = Model(:TestModel)
 n1              = addnode!(model,𝕣[0]) 
+@functor (;) gap(x,t)=x[1]+.1
+@functor (;) res(x,u,a,t)=0.4x.+.08+.5x.^2)
 e1              = addelement!(model,DofConstraint,[n1],xinod=(1,),xfield=(:t1,),
-                              λinod=1, λclass=:X, λfield=:λ1,gap=(x,t)->x[1]+.1,
+                              λinod=1, λclass=:X, λfield=:λ1,gap=gap,
                               mode=positive)
 e2              = addelement!(model,QuickFix  ,[n1],inod=(1,),field=(:t1,),
-                              res=(x,u,a,t)->0.4x.+.08+.5x.^2)
+                              res=res
 initialstate    = initialize!(model)
 setdof!(initialstate,1.;field=:λ1)
 state           = solve(SweepX{0};initialstate,time=[0.],verbose=false) 
@@ -532,7 +537,7 @@ The Lagrangian multiplier introduced by this optimisation constraint is of class
 Not to be confused with the `req` provided as input to `addelement!` when adding an `ElementConstraint`, one can, after 
 the analysis, request results from `ElementConstraint` 
 - `λ`                   The constraints Lagrange multiplier
-- `gap`                 The constraints gap function
+- `gap`                 The constraints gap `Functor`
 - `eleres(...)`         where `...` is the list of requestables wanted from the target element.  The "prefix"  
                         `eleres` is there to prevent possible confusion with variables requestable from `ElementConstraint`.  
                         For example `@request gap` would extract the value of the `ElementConstraint`'s function `gap`, while
@@ -541,14 +546,14 @@ the analysis, request results from `ElementConstraint`
 # Example
 
 ```
-@once gap(eleres,X,U,A,t) = eleres.Fh^2
+@functor (;) gap(eleres,X,U,A,t) = eleres.Fh^2
 ele1 = addelement!(model,ElementCoonstraint,[nod1];req=@request(Fh),
                    gap,λinod=1,λfield=:λ,mode=equal, 
                    ElementType=AnchorLine,
                    elementkwargs=(Δxₘtop=[5.,0,0], xₘbot=[250.,0],L=290., buoyancy=-5e3))
 ```
 
-See also: [`Hold`](@ref), [`DofConstraint`](@ref), [`off`](@ref), [`equal`](@ref), [`positive`](@ref), [`@request`](@ref), [`@once`](@ref)
+See also: [`Hold`](@ref), [`DofConstraint`](@ref), [`off`](@ref), [`equal`](@ref), [`positive`](@ref), [`@request`](@ref), [`@functor`](@ref)
 """
 struct ElementConstraint{Teleobj,λinod,λfield,Nu,Treq,Tg,Tgargs,Tmode} <: AbstractElement
     eleobj   :: Teleobj
@@ -609,8 +614,8 @@ using Muscade
 model = Model(:TestModel)
 node1  = addnode!(model,𝕣[0])
 node2  = addnode!(model,𝕣[1])
-e = addelement!(model,QuickFix,[node1,node2];inod=(1,2),field=(:tx1,:tx1),
-                res=(X,X′,X″,t)->Svector{2}(2*(X[1]-X[2]),2*(X[2]-X[1])) )
+@functor (;) res(x,u,a,t)=0.4x.+.08+.5x.^2) 
+e = addelement!(model,QuickFix,[node1,node2];inod=(1,2),field=(:tx1,:tx1),res=res)
 
 # output
 

@@ -165,8 +165,8 @@ end
 @functor (;) g2(x,t)       = -.4x[1] + .3x[2]+.1
 @functor (;) f1(x)         = -(-0.1*sin(1.2*x)+.2x-1) 
 @functor (;) f2(x)         = (-1/.3)*(-.4x + .1)
+@functor (;) gravity(t)    = -2.
 
-gravity(t)      = -2.
 model           = Model(:TestModel)
 n1              = addnode!(model,𝕣[0,0]) 
 e1              = addelement!(model,DofConstraint,[n1],xinod=(1,1),xfield=(:t1,:t2),λinod=1, λclass=:X, λfield=:λ1,gap=g1,mode=positive)

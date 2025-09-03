@@ -18,9 +18,9 @@ model           = Model(:TestModel)
 n1              = addnode!(model,[0.]) 
 n2              = addnode!(model,[1.])
 e1              = addelement!(model,Hold,[n1];field=:tx1)                       # Hold first node
-@once id1 load(t) = 3t
+@functor (;) load(t) = 3t
 e2              = addelement!(model,DofLoad,[n2];field=:tx1,value=load)        # Increase load on second node
-@once id2 res(X,X′,X″,t)  = 12SVector(X[1]-X[2],X[2]-X[1])
+@functor (;) res(X,X′,X″,t)  = 12SVector(X[1]-X[2],X[2]-X[1])
 e3              = addelement!(model,QuickFix,[n1,n2];inod=(1,2),field=(:tx1,:tx1),
                               res=res)  # Linear elastic spring with stiffness 12
 initialstate    = initialize!(model)
@@ -45,7 +45,7 @@ The definition of a model is done in three phases:
 
 `Muscade` does not provide a mesher. There are some general purposes meshers with Julia API, which outputs could be used to generate calls to [`addnode!`](@ref) and [`addelement!`](@ref).
 
-Note that two `function`s, `load` and `res` are defined in the script, and then passed as argument to element constructors. In the script it is *recommended* (but not compulsory) to annotate the function definition with the macro[`@once`](@ref).  The first argument must be a unique variable name. The second argument is the function definition.  The macro prevents the function to be re-parsed if unchanged, which in turn prevents unnecessary recompilations of Muscade when the script is runned multiple times in a session. 
+Note that two `Function`s, `load` and `res` are defined in the script, and then passed as argument to element constructors. Elements require that the function has been defined by using the macro [`@functor`](@ref).  The first argument is a list of parameters captured by the function. The macro ensures that the *values* of the parameters are captured. The second argument is the function definition.  The macro prevents the function to be re-parsed if unchanged, which in turn prevents unnecessary recompilations of Muscade when the script is runned multiple times in a session. 
 
 The model - either finitialized or under construction, can be examined using [`describe`](@ref) and [`getndof`](@ref).  
 
