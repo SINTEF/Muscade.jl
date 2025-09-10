@@ -69,7 +69,7 @@ macro functor(capturedargs,foo)
     end
 
     foodict            = splitdef(foo)
-    # TODO rather than replacing all occurences of a with o.captured.a, prefix the body of the function with a=o.captured.a
+    # TODO all variables must be either capturedargs or fooargs, no closure. Throw error otherwise
     foodict[:body]     = MacroTools.postwalk(foodict[:body]) do ex
         ex isa Symbol && ex∈capargnames ? :(o.captured.$ex) : ex # prefix captured args with `o.captured.`
     end    

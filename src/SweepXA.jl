@@ -1,6 +1,6 @@
 ### Assembler
 
-mutable struct AssemblySweepX{ORDER,Tλ,Tλx} <: Assembly
+mutable struct AssemblySweepXA{ORDER,Tλ,Tλx} <: Assembly
     # up
     Lλ        :: Tλ                
     Lλx       :: Tλx
@@ -13,17 +13,17 @@ mutable struct AssemblySweepX{ORDER,Tλ,Tλx} <: Assembly
     firstiter :: 𝕓   
     line      :: 𝕓
 end   
-function prepare(::Type{AssemblySweepX{ORDER}},model,dis) where{ORDER}
+function prepare(::Type{AssemblySweepXA{ORDER}},model,dis) where{ORDER}
     Xdofgr             = allXdofs(model,dis)  # dis: the model's disassembler
     ndof               = getndof(Xdofgr)
     narray,neletyp     = 2,getneletyp(model)
     asm                = Matrix{𝕫2}(undef,narray,neletyp)  # asm[iarray,ieletyp][ieledof,iele]
     Lλ                 = asmvec!(view(asm,1,:),Xdofgr,dis) 
     Lλx                = asmmat!(view(asm,2,:),view(asm,1,:),view(asm,1,:),ndof,ndof) 
-    out                = AssemblySweepX{ORDER,typeof(Lλ),typeof(Lλx)}(Lλ,Lλx,∞,∞,0.,0,(a₁=0.,a₂=0.,a₃=0.,b₁=0.,b₂=0.,b₃=0.),false,false) 
+    out                = AssemblySweepXA{ORDER,typeof(Lλ),typeof(Lλx)}(Lλ,Lλx,∞,∞,0.,0,(a₁=0.,a₂=0.,a₃=0.,b₁=0.,b₂=0.,b₃=0.),false,false) 
     return out,asm,Xdofgr
 end
-function zero!(out::AssemblySweepX) 
+function zero!(out::AssemblySweepXA) 
     zero!(out.Lλ)
     zero!(out.Lλx)
     out.ming = ∞    
@@ -39,28 +39,55 @@ end
         out.npos  += 1
     end
 end
-function addin!(out::AssemblySweepX{ORDER},asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A,t,SP,dbg) where{ORDER,E,Nxder,Nx}
+function addin!(out::AssemblySweepXA{ORDER},asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A::SVector{Na},t,SP,dbg) where{ORDER,E,Nxder,Nx,Na}
     if Nx==0; return end   
     a₁,a₂,a₃,b₁,b₂,b₃ = out.c.a₁,out.c.a₂,out.c.a₃,out.c.b₁,out.c.b₂,out.c.b₃
-    if ~out.line # TODO type instability because δX has ≠ type in ≠ branches!
+    Nz                = 2Nx+Na
+    iΛ                = SVector{Nx,𝕫}(    1: Nx  )
+    iX                = SVector{Nx,𝕫}( Nx+1:2Nx  )
+    iA                = SVector{Na,𝕫}(2Nx+1: Nz  )
+    ir                =                      Nz+1
+    if ~out.line
         if ORDER==2 && out.firstiter
-            i          = SVector{Nx,𝕫}(1:Nx)
-            δXr        = δ{1,Nx+1,𝕣}(SVector{Nx+1,𝕣}(scale.X...,1.))      
-            δX         = δXr[i]        
-            δr         = δXr[Nx+1]     # Newmark-β special: we need C⋅a and M⋅b
+            s¹         = SVector{Nz+1,𝕣}(scale.Λ...,scale.X...,1.,scale.A...)
+            δZ¹        = δ{1,Nz+1,𝕣}(s¹) + δ{2,Nz+1,𝕣}(s¹)      
+            δΛ¹        = δZ¹[iΛ]        
+            δX¹        = δZ¹[iX]        
+            δA¹        = δZ¹[iA]        
+            δr¹        = δZ¹[ir]     # Newmark-β special: we need C⋅a and M⋅b
             x,x′,x″    = ∂0(X),∂1(X),∂2(X)
             a          = a₂*x′ + a₃*x″
             b          = b₂*x′ + b₃*x″
-            vx         = x  +    δX
-            vx′        = x′ + a₁*δX + a*δr 
-            vx″        = x″ + b₁*δX + b*δr
-            Lλ,FB      = getresidual(eleobj,(vx,vx′,vx″),U,A,t,SP,dbg)
-            Lλ         = Lλ .* scale.X
-            add_value!(                    out.Lλ ,asm[1],iele,Lλ             )         # rhs  = R    
-            add_∂!{1,:notranspose,:minus}( out.Lλ ,asm[1],iele,Lλ,ia=1:Nx,ida=(Nx+1,))  # rhs +=  -C⋅a -M⋅b 
-            add_∂!{1                    }( out.Lλx,asm[2],iele,Lλ,ia=1:Nx,ida=1:Nx   )  # Mat +=  
+            vx¹        = x     +    δX¹
+            vx¹′       = x′    + a₁*δX¹ + a*δr¹ 
+            vx¹″       = x″    + b₁*δX¹ + b*δr¹
+            L,FB       = getlagrangian(eleobj,Λ+δΛ¹,(vx¹,vx¹′,vx¹″),U,A+δA¹,t,SP,dbg)
+            ∇L¹        = ∂{2,Nz+1}(L)
+
+            add_value!(                   out.Lλ ,asm[1],iele,∇L¹,ia=iΛ          )  # Lλ  = R    
+            add_∂!{1,:notranspose,:minus}(out.Lλ ,asm[1],iele,∇L¹,ia=iX,ida=(ir,))  # Lλ -=   C⋅a + M⋅b 
+            add_value!(                   out.Lx ,asm[2],iele,∇L¹,ia=iX          )  # Lx         
+            add_value!(                   out.La ,asm[3],iele,∇L¹,ia=iA          )             
+            add_∂!{1                    }(out.Lλx,asm[4],iele,∇L¹,ia=iΛ,ida= iX  )  # Lλx = K + a₁C + b₁M
+            add_∂!{1                    }(out.Lλa,asm[5],iele,∇L¹,ia=iΛ,ida= iA  )    
+            add_∂!{1                    }(out.Lxx,asm[6],iele,∇L¹,ia=iX,ida= iX  )  
+            add_∂!{1                    }(out.Lxa,asm[7],iele,∇L¹,ia=iX,ida= iA  )  
+            add_∂!{1                    }(out.Laa,asm[8],iele,∇L¹,ia=iA,ida= iA  )  
+
+# REPRISE
+# 1) Lλa? Lxx? Lxa?
+# 2) implement other if-branches, remember typestab
+# 3) prepare assembler
+# 4) addin! (Acost) (cf. DirectXUA)
+# 5) SweepX if-branches, typestability
+# 6) this way of ∂-ing is more readable than DirectXUA.  Is there a performance penalty? Make DirectXUA more readable?
         else
-            δX         = δ{1,Nx,𝕣}(scale.X)
+            s          = SVector{Nzr,𝕣}(scale.Λ...,scale.X...,1.,scale.A...)
+            δZ         = δ{1,Nzr,𝕣}(s) + δ{2,Nzr,𝕣}(s)      
+            δΛ         = δZ[iΛ]        
+            δX         = δZ[iX]        
+            δr         = δZ[ir]     # Newmark-β special: we need C⋅a and M⋅b
+            δA         = δZ[iA]        
             if     ORDER==0  Lλ,FB = getresidual(eleobj,(∂0(X)+δX,                         ),U,A,t,SP,dbg)
             elseif ORDER==1  Lλ,FB = getresidual(eleobj,(∂0(X)+δX, ∂1(X)+a₁*δX             ),U,A,t,SP,dbg)
             elseif ORDER==2  Lλ,FB = getresidual(eleobj,(∂0(X)+δX, ∂1(X)+a₁*δX, ∂2(X)+b₁*δX),U,A,t,SP,dbg)
@@ -94,14 +121,14 @@ end
 
 
 """
-	SweepX{ORDER}
+	SweepXA{ORDER}
 
 A non-linear, time domain solver, that solves the problem time-step by time-step.
 Only the `X`-dofs of the model are solved for, while `U`-dofs and `A`-dofs are unchanged.
 
-- `SweepX{0}` is Newton-Raphson, with feasibility line-search, to handle inequality constraints. 
-- `SweepX{1}` is implicit Euler, with feasibility line-search. 
-- `SweepX{2}` is Newmark-β, with Newton-Raphson iterations and feasibility line search
+- `SweepXA{0}` is Newton-Raphson, with feasibility line-search, to handle inequality constraints. 
+- `SweepXA{1}` is implicit Euler, with feasibility line-search. 
+- `SweepXA{2}` is Newmark-β, with Newton-Raphson iterations and feasibility line search
 
 IMPORTANT NOTE: Muscade does not allow elements to have state variables, for example, plastic strain,
 or shear-free position for dry friction.  Where the element implements such physics, this 
@@ -113,13 +140,13 @@ An analysis is carried out by a call with the following syntax:
 ```
 initialstate    = initialize!(model)
 setdof!(initialstate,1.;class=:U,field=:λcsr)
-states           = solve(SweepX{2};initialstate=initialstate,time=0:10)
+states           = solve(SweepXA{2};initialstate=initialstate,time=0:10)
 ```
 # Named arguments to `solve`:
 - `dbg=(;)`           a named tuple to trace the call tree (for debugging)
 - `verbose=true`      set to false to suppress printed output (for testing)
 - `silenterror=false` set to true to suppress print out of error (for testing) 
-- `initialstate`      a `State`, obtain from `ìnitialize!` or `SweepX`.
+- `initialstate`      a `State`, obtain from `ìnitialize!` or `SweepXA`.
 - `time`              maximum number of Newton-Raphson iterations 
 - `β=1/4`,`γ=1/2`     parameters to the Newmark-β algorithm. Dummy if `ORDER<2`
 - `maxiter=50`        maximum number of equilibrium iterations at each step.
@@ -145,8 +172,8 @@ A vector of length equal to that of the named input argument `time` containing t
 
 See also: [`solve`](@ref), [`initialize!`](@ref), [`findlastassigned`](@ref), [`study_singular`](@ref), [`DirectXUA`](@ref), [`FreqXU`](@ref)  
 """
-struct        SweepX{ORDER} <: AbstractSolver end
-function solve(SX::Type{SweepX{ORDER}},pstate,verbose,dbg;
+struct        SweepXA{ORDER} <: AbstractSolver end
+function solve(SX::Type{SweepXA{ORDER}},pstate,verbose,dbg;
                     time::AbstractVector{𝕣},
                     initialstate::State,
                     β::𝕣=1/4,γ::𝕣=1/2,
@@ -154,7 +181,7 @@ function solve(SX::Type{SweepX{ORDER}},pstate,verbose,dbg;
                     saveiter::𝔹=false,
                     maxLineIter::ℤ=50,sfac::𝕣=.5,γfac::𝕣=.5) where{ORDER}
     model,dis        = initialstate.model,initialstate.dis
-    out,asm,Xdofgr   = prepare(AssemblySweepX{ORDER},model,dis)  
+    out,asm,Xdofgr   = prepare(AssemblySweepXA{ORDER},model,dis)  
     ndof             = getndof(Xdofgr)
     if ORDER≥1    x′ = 𝕣1(undef,ndof) end 
     if ORDER≥2    x″ = 𝕣1(undef,ndof) end 
@@ -177,7 +204,7 @@ function solve(SX::Type{SweepX{ORDER}},pstate,verbose,dbg;
         state.time   = t
         out.firstiter= true
         out.line     = true
-        assemble!(out,asm,dis,model,state,(dbg...,solver=:SweepX,phase=:preliminary,step=step))
+        assemble!(out,asm,dis,model,state,(dbg...,solver=:SweepXA,phase=:preliminary,step=step))
         out.ming ≤ 0 && muscadeerror(@sprintf("Initial point is not strictly primal-feasible at step=%3d",step)) # This is going to suck
         out.minλ ≤ 0 && muscadeerror(@sprintf("Initial point is not strictly dual-feasible at step=%3d"  ,step)) # This is going to suck
         state.SP     = (γ=out.Σλg/out.npos * γfac,)   # γ, is in interior point, g(X)*λ=γ
@@ -185,7 +212,7 @@ function solve(SX::Type{SweepX{ORDER}},pstate,verbose,dbg;
             citer   += 1
             out.firstiter = firstiter = iiter==1
             out.line = false
-            assemble!(out,asm,dis,model,state,(dbg...,solver=:SweepX,step=step,iiter=iiter))
+            assemble!(out,asm,dis,model,state,(dbg...,solver=:SweepXA,step=step,iiter=iiter))
             try if step==1 && firstiter  facLλx = lu(out.Lλx) 
             else                         lu!(facLλx, out.Lλx) 
             end catch; muscadeerror(@sprintf("matrix factorization failed at step=%i, iiter=%i",step,iiter)) end
@@ -199,7 +226,7 @@ function solve(SX::Type{SweepX{ORDER}},pstate,verbose,dbg;
             out.line = true    
             s = 1.    
             for iline = 1:maxLineIter
-                assemble!(out,asm,dis,model,state,(dbg...,solver=:SweepX,phase=:linesearch,step=step,iiter=iiter,iline=iline))
+                assemble!(out,asm,dis,model,state,(dbg...,solver=:SweepXA,phase=:linesearch,step=step,iiter=iiter,iline=iline))
                 out.minλ > 0 && out.ming > 0 &&  break
                 iline==maxLineIter && muscadeerror(@sprintf("Line search failed at step=%3d, iiter=%3d, iline=%3d, s=%7.1e",step,iiter,iline,s))
                 Δs    = s*(sfac-1)
@@ -223,29 +250,4 @@ function solve(SX::Type{SweepX{ORDER}},pstate,verbose,dbg;
     end
     verbose && @printf "\n    nel=%d, ndof=%d, nstep=%d, niter=%d, niter/nstep=%5.2f\n" getnele(model) getndof(Xdofgr) length(time) citer citer/length(time)
     return
-end
-function decr2!(state,Δx ,Xdofgr,c,firstiter,x′,x″) # x′, x″ are just mutable memory, neither input nor output.
-    a₁,a₂,a₃,b₁,b₂,b₃ = c.a₁,c.a₂,c.a₃,c.b₁,c.b₂,c.b₃
-    if firstiter
-        getdof!(state,1,x′,Xdofgr) 
-        getdof!(state,2,x″,Xdofgr) 
-        a        = a₂*x′+a₃*x″
-        b        = b₂*x′+b₃*x″
-        Δx′      = a₁*Δx + a
-        Δx″      = b₁*Δx + b
-    else
-        Δx′      = a₁*Δx 
-        Δx″      = b₁*Δx 
-    end
-    decrement!(state,1,Δx ,Xdofgr)
-    decrement!(state,2,Δx′,Xdofgr)
-    decrement!(state,3,Δx″,Xdofgr)
-end
-function decr1!(state,Δx ,Xdofgr,c)
-    Δx′      = c.a₁*Δx 
-    decrement!(state,1,Δx ,Xdofgr)
-    decrement!(state,2,Δx′,Xdofgr)
-end
-function decr0!(state,Δx ,Xdofgr)
-    decrement!(state,1,Δx ,Xdofgr)
 end

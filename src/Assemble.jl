@@ -517,21 +517,23 @@ function add_value!(out::𝕣1,asm,iele,a::SVector{Na,<:ℝ};ia=1:Na,iasm=idvec)
     end
 end   
 
-struct   add_∂!{P,T} end # to allow syntax with type-parameter P: priority, and T (transpose)
-function add_∂!{P,T}(out::Array,asm,iele,a::SVector{Na,∂ℝ{P,Nda,R}};ia=1:Na,ida=1:Nda,iasm=idvec,idasm=idvec) where{P,Nda,R,Na,T}
+struct   add_∂!{P,T,M} end # to allow syntax with type-parameter P: precedence, T (transpose), M (minus)
+function add_∂!{P,T,M}(out::Array,asm,iele,a::SVector{Na,∂ℝ{P,Nda,R}};ia=1:Na,ida=1:Nda,iasm=idvec,idasm=idvec) where{P,Nda,R,Na,T,M}
     for (i,iaᵢ) ∈ enumerate(ia), (j,idaⱼ) ∈ enumerate(ida)
         k = if T==:transpose idasm[j]+length(ida)*( iasm[i]-1)   
         else                  iasm[i]+length( ia)*(idasm[j]-1)  
         end
         iout = asm[k,iele]
         if iout≠0
-            out[iout]+=a[iaᵢ].dx[idaⱼ]  
+            if M==:plus  out[iout]+=a[iaᵢ].dx[idaⱼ]  
+            else         out[iout]-=a[iaᵢ].dx[idaⱼ]  
+            end
         end
     end
 end  
-add_∂!{P  }(                                     args...;kwargs...) where{P       } = add_∂!{P,:notranspose}(args...;kwargs...) 
-add_∂!{P,T}(out::SparseMatrixCSC,                args...;kwargs...) where{P,     T} = add_∂!{P,T}(out.nzval, args...;kwargs...)
-add_∂!{P,T}(out::Array,asm,iele,a::SVector{Na,R},args...;kwargs...) where{P,Na,R,T} = nothing
+add_∂!{P    }(                                     args...;kwargs...) where{P         } = add_∂!{P,:notranspose,:plus}(args...;kwargs...) 
+add_∂!{P,T,M}(out::SparseMatrixCSC,                args...;kwargs...) where{P,     T,M} = add_∂!{P,T,M}(out.nzval, args...;kwargs...)
+add_∂!{P,T,M}(out::Array,asm,iele,a::SVector{Na,R},args...;kwargs...) where{P,Na,R,T,M} = nothing # if P does not match
 
 
 ####### called by addin!, and by nested elements to "get a Lagrangian" and "get a residual"
