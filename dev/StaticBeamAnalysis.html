@@ -17,12 +17,12 @@ model       = Model(:TestModel)
 nodid       = addnode!(model,nodeCoord)
 mesh        = hcat(nodid[1:nnodes-1],nodid[2:nnodes])
 eleid       = addelement!(model,EulerBeam3D,mesh;mat=mat,orient2=SVector(0.,1.,0.))
-[addelement!(model,Hold,[nodid[1]]  ;field) for field∈[:t1,:t2,:t3,:r1,:r2,:r3]]; # Clamp at one end</code></pre><p>Define the loading procedure. First 300 N then 450  and 600 N</p><pre><code class="language-julia hljs">function load(t)
+[addelement!(model,Hold,[nodid[1]]  ;field) for field∈[:t1,:t2,:t3,:r1,:r2,:r3]]; # Clamp at one end</code></pre><p>Define the loading procedure. First 300 N then 450  and 600 N</p><pre><code class="language-julia hljs">@functor (;) function load(t)
     t&lt;=1. ? load=t*300. :
     t&gt;1. &amp;&amp; t&lt;=2. ? load=300. +(t-1)*150. :
     load=450. +(t-2)*150.
 end
-addelement!(model,DofLoad,[nodid[nnodes]];field=:t2,value=t-&gt;load(t));                                        # Force along axis2 at other</code></pre><p>Run the static analysis</p><pre><code class="language-julia hljs">initialstate    = initialize!(model);
+addelement!(model,DofLoad,[nodid[nnodes]];field=:t2,value=load);                                        # Force along axis2 at other</code></pre><p>Run the static analysis</p><pre><code class="language-julia hljs">initialstate    = initialize!(model);
 loadSteps = [0.,1.,2.,3.];
 nLoadSteps = length(loadSteps)
 state           = solve(SweepX{0};initialstate,time=loadSteps,verbose=true,maxΔx=1e-9);</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
@@ -36,7 +36,7 @@ state           = solve(SweepX{0};initialstate,time=loadSteps,verbose=true,maxΔ
     step   4 converged in   8 iterations. |Δx|=1.4e-11 |Lλ|=1.4e-06
 
     nel=15, ndof=60, nstep=4, niter=28, niter/nstep= 7.00
-    SweepX{0} time:  5720 [ms]
+    SweepX{0} time:  5600 [ms]
 <span class="sgr36"><span class="sgr1">Muscade done.</span></span></code></pre><p>Fetch and show beam profile for all load cases</p><pre><code class="language-julia hljs">x_ = [getdof(state[idxLoad];field=:t1,nodID=nodid[1:nnodes]) for idxLoad ∈ 1:nLoadSteps]
 y_ = [getdof(state[idxLoad];field=:t2,nodID=nodid[1:nnodes]) for idxLoad ∈ 1:nLoadSteps]
 z_ = [getdof(state[idxLoad];field=:t3,nodID=nodid[1:nnodes]) for idxLoad ∈ 1:nLoadSteps]
@@ -126,4 +126,4 @@ if occursin(&quot;build&quot;, currentDir)
 elseif occursin(&quot;examples&quot;, currentDir)
     save(normpath(joinpath(currentDir,&quot;StaticBeamAnalysis3.png&quot;)),fig)
 end
-#![Result](assets/StaticBeamAnalysis3.png)</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="BeamElement.html">« Euler beam element</a><a class="docs-footer-nextpage" href="DynamicBeamAnalysis.html">Modal analysis of a beam »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.14.1 on <span class="colophon-date" title="Friday 22 August 2025 11:04">Friday 22 August 2025</span>. Using Julia version 1.11.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+#![Result](assets/StaticBeamAnalysis3.png)</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="BeamElement.html">« Euler beam element</a><a class="docs-footer-nextpage" href="DynamicBeamAnalysis.html">Modal analysis of a beam »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.14.1 on <span class="colophon-date" title="Wednesday 10 September 2025 13:34">Wednesday 10 September 2025</span>. Using Julia version 1.11.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
