@@ -71,13 +71,13 @@ function addin!(out::AssemblySweepX{ORDER},asm,iele,scale,eleobj::E,Λ,X::NTuple
         end
     else # if out.line
         if ORDER==2 && out.firstiter
-            δr         = δ{1}()              # Newmark-β special: we need C⋅a and M⋅b
+            δℓ         = δ{1}()              # Newmark-β special: we need C⋅a and M⋅b
             x,x′,x″    = ∂0(X),∂1(X),∂2(X)
             a          = a₂*x′ + a₃*x″
             b          = b₂*x′ + b₃*x″
             vx         = x 
-            vx′        = x′ - a .*δr 
-            vx″        = x″ - b .*δr 
+            vx′        = x′ - a .*δℓ 
+            vx″        = x″ - b .*δℓ 
             Lλ,FB      = getresidual(eleobj,promote(vx,vx′,vx″),U,A,t,SP,dbg)
             Lλ         = Lλ .* scale.X
             add_value!(out.Lλ ,asm[1],iele,Lλ)  # rhs = R 

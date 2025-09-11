@@ -39,6 +39,15 @@ end
         out.npos  += 1
     end
 end
+
+# REPRISE
+# 2) implement other if-branches, remember typestab
+#    >>>>  what does line search do in SweepX, and what should it do in SweepXA?
+# 3) prepare assembler
+# 4) addin! (Acost) (cf. DirectXUA)
+# 5) SweepX if-branches, typestability
+# 6) this way of ∂-ing is more readable than DirectXUA.  Is there a performance penalty? Make DirectXUA more readable?
+
 function addin!(out::AssemblySweepXA{ORDER},asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A::SVector{Na},t,SP,dbg) where{ORDER,E,Nxder,Nx,Na}
     if Nx==0; return end   
     a₁,a₂,a₃,b₁,b₂,b₃ = out.c.a₁,out.c.a₂,out.c.a₃,out.c.b₁,out.c.b₂,out.c.b₃
@@ -46,7 +55,7 @@ function addin!(out::AssemblySweepXA{ORDER},asm,iele,scale,eleobj::E,Λ,X::NTupl
     iΛ                = SVector{Nx,𝕫}(    1: Nx  )
     iX                = SVector{Nx,𝕫}( Nx+1:2Nx  )
     iA                = SVector{Na,𝕫}(2Nx+1: Nz  )
-    ir                =                      Nz+1
+    ir                = SVector{1 ,𝕫}(       Nz+1)
     if ~out.line
         if ORDER==2 && out.firstiter
             s¹         = SVector{Nz+1,𝕣}(scale.Λ...,scale.X...,1.,scale.A...)
@@ -63,49 +72,49 @@ function addin!(out::AssemblySweepXA{ORDER},asm,iele,scale,eleobj::E,Λ,X::NTupl
             vx¹″       = x″    + b₁*δX¹ + b*δr¹
             L,FB       = getlagrangian(eleobj,Λ+δΛ¹,(vx¹,vx¹′,vx¹″),U,A+δA¹,t,SP,dbg)
             ∇L¹        = ∂{2,Nz+1}(L)
-
-            add_value!(                   out.Lλ ,asm[1],iele,∇L¹,ia=iΛ          )  # Lλ  = R    
-            add_∂!{1,:notranspose,:minus}(out.Lλ ,asm[1],iele,∇L¹,ia=iX,ida=(ir,))  # Lλ -=   C⋅a + M⋅b 
-            add_value!(                   out.Lx ,asm[2],iele,∇L¹,ia=iX          )  # Lx         
-            add_value!(                   out.La ,asm[3],iele,∇L¹,ia=iA          )             
-            add_∂!{1                    }(out.Lλx,asm[4],iele,∇L¹,ia=iΛ,ida= iX  )  # Lλx = K + a₁C + b₁M
-            add_∂!{1                    }(out.Lλa,asm[5],iele,∇L¹,ia=iΛ,ida= iA  )    
-            add_∂!{1                    }(out.Lxx,asm[6],iele,∇L¹,ia=iX,ida= iX  )  
-            add_∂!{1                    }(out.Lxa,asm[7],iele,∇L¹,ia=iX,ida= iA  )  
-            add_∂!{1                    }(out.Laa,asm[8],iele,∇L¹,ia=iA,ida= iA  )  
-
-# REPRISE
-# 1) Lλa? Lxx? Lxa?
-# 2) implement other if-branches, remember typestab
-# 3) prepare assembler
-# 4) addin! (Acost) (cf. DirectXUA)
-# 5) SweepX if-branches, typestability
-# 6) this way of ∂-ing is more readable than DirectXUA.  Is there a performance penalty? Make DirectXUA more readable?
+            add_value!(                   out.Lλ , asm[ 1], iele, ∇L¹, ia=iΛ        )  # Lλ  = R    
+            add_∂!{1,:notranspose,:minus}(out.Lλ , asm[ 1], iele, ∇L¹, ia=iX, ida=ir)  # Lλ -=   C⋅a + M⋅b 
+            add_value!(                   out.Lx , asm[ 2], iele, ∇L¹, ia=iX        )  # Lx         
+            add_value!(                   out.Lr , asm[ 3], iele, ∇L¹, ia=ir        )  # Lr     NB: vector of length 1, not scalar...    
+            add_value!(                   out.La , asm[ 4], iele, ∇L¹, ia=iA        )             
+            add_∂!{1                    }(out.Lλx, asm[ 5], iele, ∇L¹, ia=iΛ, ida=iX)  # Lλx = K + a₁C + b₁M - there is no Lλr
+            add_∂!{1                    }(out.Lλa, asm[ 6], iele, ∇L¹, ia=iΛ, ida=iA)    
+            add_∂!{1                    }(out.Lxx, asm[ 7], iele, ∇L¹, ia=iX, ida=iX)  
+            add_∂!{1                    }(out.Lxr, asm[ 8], iele, ∇L¹, ia=iX, ida=ir)  
+            add_∂!{1                    }(out.Lrr, asm[ 9], iele, ∇L¹, ia=ir, ida=ir)  
+            add_∂!{1                    }(out.Lax, asm[10], iele, ∇L¹, ia=iA, ida=iX)  
+            add_∂!{1                    }(out.Lar, asm[11], iele, ∇L¹, ia=iA, ida=ir)  
+            add_∂!{1                    }(out.Laa, asm[12], iele, ∇L¹, ia=iA, ida=iA)  
         else
-            s          = SVector{Nzr,𝕣}(scale.Λ...,scale.X...,1.,scale.A...)
-            δZ         = δ{1,Nzr,𝕣}(s) + δ{2,Nzr,𝕣}(s)      
-            δΛ         = δZ[iΛ]        
-            δX         = δZ[iX]        
-            δr         = δZ[ir]     # Newmark-β special: we need C⋅a and M⋅b
-            δA         = δZ[iA]        
-            if     ORDER==0  Lλ,FB = getresidual(eleobj,(∂0(X)+δX,                         ),U,A,t,SP,dbg)
-            elseif ORDER==1  Lλ,FB = getresidual(eleobj,(∂0(X)+δX, ∂1(X)+a₁*δX             ),U,A,t,SP,dbg)
-            elseif ORDER==2  Lλ,FB = getresidual(eleobj,(∂0(X)+δX, ∂1(X)+a₁*δX, ∂2(X)+b₁*δX),U,A,t,SP,dbg)
+            s²         = SVector{Nzr,𝕣}(scale.Λ...,scale.X...,scale.A...)
+            δZ²        = δ{1,Nz,𝕣}(s²) + δ{2,Nz,𝕣}(s²)      
+            δΛ²        = δZ[iΛ²]        
+            δX²        = δZ[iX²]        
+            δA²        = δZ[iA²]        
+            if     ORDER==0  L,FB = getlagrangian(eleobj,Λ+δΛ²,(∂0(X)+δX,                         ),U,A+δA²,t,SP,dbg)
+            elseif ORDER==1  L,FB = getlagrangian(eleobj,Λ+δΛ²,(∂0(X)+δX, ∂1(X)+a₁*δX             ),U,A+δA²,t,SP,dbg)
+            elseif ORDER==2  L,FB = getlagrangian(eleobj,Λ+δΛ²,(∂0(X)+δX, ∂1(X)+a₁*δX, ∂2(X)+b₁*δX),U,A+δA²,t,SP,dbg)
             end
-            Lλ         = Lλ .* scale.X
-            add_value!(out.Lλ ,asm[1],iele,Lλ)
-            add_∂!{1}( out.Lλx,asm[2],iele,Lλ)
+            ∇L²        = ∂{2,Nz}(L)
+            add_value!(                   out.Lλ , asm[ 1], iele, ∇L², ia=iΛ        )  # Lλ  = R    
+            add_value!(                   out.Lx , asm[ 2], iele, ∇L², ia=iX        )  # Lx         
+            add_value!(                   out.La , asm[ 4], iele, ∇L², ia=iA        )             
+            add_∂!{1                    }(out.Lλx, asm[ 5], iele, ∇L², ia=iΛ ,ida=iX)  # Lλx = K + a₁C + b₁M - there is no Lλr
+            add_∂!{1                    }(out.Lλa, asm[ 6], iele, ∇L², ia=iΛ ,ida=iA)    
+            add_∂!{1                    }(out.Lxx, asm[ 7], iele, ∇L², ia=iX ,ida=iX)  
+            add_∂!{1                    }(out.Lax, asm[10], iele, ∇L², ia=iA ,ida=iX)  
+            add_∂!{1                    }(out.Laa, asm[12], iele, ∇L², ia=iA ,ida=iA)  
         end
     else # if out.line
         if ORDER==2 && out.firstiter
-            δr         = δ{1}()              # Newmark-β special: we need C⋅a and M⋅b
+            δℓ         = δ{1}()              # Newmark-β special: we need C⋅a and M⋅b
             x,x′,x″    = ∂0(X),∂1(X),∂2(X)
             a          = a₂*x′ + a₃*x″
             b          = b₂*x′ + b₃*x″
             vx         = x 
-            vx′        = x′ - a .*δr 
-            vx″        = x″ - b .*δr 
-            Lλ,FB      = getresidual(eleobj,promote(vx,vx′,vx″),U,A,t,SP,dbg)
+            vx′        = x′ - a .*δℓ 
+            vx″        = x″ - b .*δℓ 
+            Lλ,FB      = getlagrangian(eleobj,promote(vx,vx′,vx″),U,A,t,SP,dbg)
             Lλ         = Lλ .* scale.X
             add_value!(out.Lλ ,asm[1],iele,Lλ)  # rhs = R 
             add_∂!{1}( out.Lλ ,asm[1],iele,Lλ)  # rhs = -C⋅a -M⋅b 

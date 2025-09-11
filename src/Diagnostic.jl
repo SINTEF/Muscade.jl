@@ -738,7 +738,9 @@ end
     inftyp,rettyp = Muscade.@typeof(foo(args...[;kwargs...]))
 
     Determine the inferred type and the returned type of the output[s] returned by the relevant method-instance of foo.
-    Useful to study type-stability in `lagrangian`, `residual` and more
+    Useful to study type-stability in `lagrangian`, `residual` and more.
+
+    This is based on undocumented Julia functionality, and does not work on Ubuntu: only use this in the REPL.
     
 """
 macro typeof(ex) # see Base.return_types
