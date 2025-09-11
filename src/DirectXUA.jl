@@ -386,10 +386,16 @@ function solve(::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
     # State storage
     S                     = State{1,OX+1,OU+1,@NamedTuple{γ::Float64,iter::Int64}}
     state                 = [Vector{S}(undef,nstep[iexp]) for iexp=1:nexp] # state[iexp][istep]
-    for iexp              = 1:nexp
-        s                 = State{1,OX+1,OU+1}(copy(initialstate[iexp],time=time[iexp][1],SP=(γ=0.,iter=1)))   
+    # for iexp              = 1:nexp
+    #     s                 = State{1,OX+1,OU+1}(copy(initialstate[iexp],time=time[iexp][1],SP=(γ=0.,iter=1)))   
+    #     for (istep,timeᵢ) = enumerate(time[iexp])
+    #         state[iexp][istep] = istep==1 ? s : State(timeᵢ,deepcopy(s.Λ),deepcopy(s.X),deepcopy(s.U),s.A,s.SP,s.model,s.dis) # all state[iexp][istep].A are === 
+    #     end
+    # end
+    s = initialstate[1]
+    for (iexp,initialstateᵢ) ∈ enumerate(initialstate)
         for (istep,timeᵢ) = enumerate(time[iexp])
-            state[iexp][istep] = istep==1 ? s : State(timeᵢ,deepcopy(s.Λ),deepcopy(s.X),deepcopy(s.U),s.A,s.SP,s.model,s.dis) # all state[iexp][istep].A are === 
+            state[iexp][istep] = State{1,OX+1,OU+1}(timeᵢ,deepcopy(initialstateᵢ.Λ),deepcopy(initialstateᵢ.X),deepcopy(initialstateᵢ.U),s.A,SP=(γ=0.,iter=1),s.model,s.dis) # all state[iexp][istep].A are === 
         end
     end
 
