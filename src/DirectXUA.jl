@@ -395,7 +395,7 @@ function solve(::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
     s = initialstate[1]
     for (iexp,initialstateᵢ) ∈ enumerate(initialstate)
         for (istep,timeᵢ) = enumerate(time[iexp])
-            state[iexp][istep] = State{1,OX+1,OU+1}(timeᵢ,deepcopy(initialstateᵢ.Λ),deepcopy(initialstateᵢ.X),deepcopy(initialstateᵢ.U),s.A,SP=(γ=0.,iter=1),s.model,s.dis) # all state[iexp][istep].A are === 
+            state[iexp][istep] = State{1,OX+1,OU+1}(timeᵢ,deepcopy(initialstateᵢ.Λ),deepcopy(initialstateᵢ.X),deepcopy(initialstateᵢ.U),s.A,(γ=0.,iter=1),s.model,s.dis) # all state[iexp][istep].A are === 
         end
     end
 

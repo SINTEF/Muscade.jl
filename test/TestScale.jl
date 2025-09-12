@@ -49,10 +49,10 @@ end
 
 scale=Muscade.study_scale(stateX1[end],SP=(γ=0,),verbose=false) # scaling suggestions from looking at a state
 @testset "study_scale" begin
-    @test scale.Λ.tx1 ≈ 1700.0
-    @test scale.Λ.tx2 ≈ 1700.0
-    @test scale.X.λtx2 ≈ 0.00058
+    @test scale.Λ.tx1 ≈ 1900.0
+    @test scale.Λ.tx2 ≈ 1900.0
+    @test scale.X.λtx2 ≈ 0.00052
     @test scale.U == (;)
-    @test scale.A.ΞL₀ ≈  8.4e-5
+    @test scale.A.ΞL₀ ≈  8.3e-5
 end    
 end
