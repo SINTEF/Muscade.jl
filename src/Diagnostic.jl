@@ -685,7 +685,11 @@ function plot_block_matrix_sparsity(pattern::AbstractMatrix{SparseMatrixCSC{Tv,T
     end
     return fig
 end
+"""
+    print_nz(S::SparseMatrixCSC)
 
+List the structuraly non-zero entries of the sparse matrix.    
+"""
 function print_nz(S)
     (i,j,v) = findnz(S)
     for ℓ = 1:nnz(S)
