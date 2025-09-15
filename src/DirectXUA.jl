@@ -18,9 +18,8 @@ arrnum(α,β)  = nclass + β + nclass*(α-1)
 mutable struct AssemblyDirect{OX,OU,IA}  <:Assembly
     L1 :: Vector{Vector{𝕣1      }}    # L1[α  ][αder     ]  α∈ λ,x,u,a
     L2 :: Matrix{Matrix{Sparse𝕣2}}    # L2[α,β][αder,βder]
-    matrices     :: 𝔹
 end  
-function prepare(::Type{AssemblyDirect{OX,OU,IA}},model,dis;Xwhite=false,XUindep=false,UAindep=false,XAindep=false,matrices=true) where{OX,OU,IA}
+function prepare(::Type{AssemblyDirect{OX,OU,IA}},model,dis;Xwhite=false,XUindep=false,UAindep=false,XAindep=false) where{OX,OU,IA}
     dofgr    = (allΛdofs(model,dis),allXdofs(model,dis),allUdofs(model,dis),allAdofs(model,dis))
     ndof     = getndof.(dofgr)
     neletyp  = getneletyp(model)
@@ -52,43 +51,40 @@ function prepare(::Type{AssemblyDirect{OX,OU,IA}},model,dis;Xwhite=false,XUindep
             L2[α,β][αder,βder] = copy(am)
         end
     end
-    out      = AssemblyDirect{OX,OU,IA}(L1,L2,matrices)
+    out      = AssemblyDirect{OX,OU,IA}(L1,L2)
     return out,asm,dofgr
 end
-function zero!(out::AssemblyDirect)
+function zero!(out::AssemblyDirect) # who calls this???
     for L1∈out.L1 
         for ℓ1∈L1
             zero!(ℓ1)
         end
     end
-
-    if out.matrices
-        for L2∈out.L2 
-            for ℓ2∈L2
-                zero!(ℓ2)
-            end
+    for L2∈out.L2 
+        for ℓ2∈L2
+            zero!(ℓ2)
         end
     end
 end
 
 
-function addin!(out::AssemblyDirect,asm,iele,scale,eleobj::Acost,A::SVector{Na},dbg) where{Na} # addin Atarget element
+function addin!{mission}(out::AssemblyDirect,asm,iele,scale,eleobj::Acost,A::SVector{Na},dbg) where{Na,mission} # addin Atarget element
     A∂  = SVector{Na,∂ℝ{2,Na,∂ℝ{1,Na,𝕣}}}(∂²ℝ{1,Na}(A[idof],idof, scale.A[idof])   for idof=1:Na)
     ø   = nothing
     C,_ = lagrangian(eleobj,ø,ø,ø,A∂,ø,ø ,dbg)
     ∇ₐC = ∂{2,Na}(C)
     add_value!(out.L1[ind.A][1],asm[arrnum(ind.A)],iele,∇ₐC)
-    if out.matrices
+    if mission==:matrices
         add_∂!{1}(out.L2[ind.A,ind.A][1,1],asm[arrnum(ind.A,ind.A)],iele,∇ₐC)
     end
 end
-addin!(out::AssemblyDirect,asm,iele,scale,eleobj::Eleobj,Λ,X,U,A,t,SP,dbg) where{Eleobj} =
-    addin!(out::AssemblyDirect,asm,iele,scale,eleobj,no_second_order(Eleobj),Λ,X,U,A,t,SP,dbg)
-function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::Eleobj,fastresidual::Val{true}, 
+addin!{mission}(out::AssemblyDirect,asm,iele,scale,eleobj::Eleobj,Λ,X,U,A,t,SP,dbg) where{Eleobj,mission} =
+    addin!{mission}(out::AssemblyDirect,asm,iele,scale,eleobj,no_second_order(Eleobj),Λ,X,U,A,t,SP,dbg)
+function addin!{mission}(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::Eleobj,fastresidual::Val{true}, 
                                 Λ::NTuple{1  ,SVector{Nx}},
                                 X::NTuple{NDX,SVector{Nx}},
                                 U::NTuple{NDU,SVector{Nu}},
-                                A::           SVector{Na} ,t,SP,dbg) where{OX,OU,IA,NDX,NDU,Nx,Nu,Na,Eleobj} 
+                                A::           SVector{Na} ,t,SP,dbg) where{mission,OX,OU,IA,NDX,NDU,Nx,Nu,Na,Eleobj} 
     @assert NDX==OX+1 @sprintf("got OX=%i and NDX=%i. Expected OX+1==NDX",OX,NDX)
     @assert NDU==OU+1 @sprintf("got OU=%i and NDU=%i. Expected OU+1==NDU",OU,NDU)
     ndof   = (Nx, Nx, Nu, Na)
@@ -108,7 +104,7 @@ function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::Eleobj,fast
     iλ   = 1:ndof[ind.Λ]
     Lλ   = out.L1[ind.Λ]
     add_value!(Lλ[1] ,asm[arrnum(ind.Λ)],iele,R,ia=iλ)
-    if out.matrices
+    if mission==:matrices
         pβ       = 0
         for β∈xua, j=1:nder[β]
             iβ   = pβ.+(1:ndof[β])
@@ -122,11 +118,11 @@ function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::Eleobj,fast
         end
     end 
 end
-function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::Eleobj,fastresidual::Val{false}, 
+function addin!{mission}(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::Eleobj, 
     Λ::NTuple{1  ,SVector{Nx}},
     X::NTuple{NDX,SVector{Nx}},
     U::NTuple{NDU,SVector{Nu}},
-    A::           SVector{Na} ,t,SP,dbg) where{OX,OU,IA,NDX,NDU,Nx,Nu,Na,Eleobj} 
+    A::           SVector{Na} ,t,SP,dbg) where{mission,OX,OU,IA,NDX,NDU,Nx,Nu,Na,Eleobj} 
 
     @assert NDX==OX+1 @sprintf("got OX=%i and NDX=%i. Expected OX+1==NDX",OX,NDX)
     @assert NDU==OU+1 @sprintf("got OU=%i and NDU=%i. Expected OU+1==NDU",OU,NDU)
@@ -155,7 +151,7 @@ function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::Eleobj,fast
 #            add_value!(out.L1[α][i] ,asm[arrnum(α)],iele,∇L,ia=iα)
             add_value!(Lα[i] ,asm[arrnum(α)],iele,∇L,ia=iα)
         end
-        if out.matrices
+        if mission==:matrices
             pβ       = 0
             for β∈λxua, j=1:nder[β]
                 iβ   = pβ.+(1:ndof[β])
@@ -242,13 +238,14 @@ function preparebig(IA,nstep,out)
     Lv                       = 𝕣1(undef,size(Lvv,1))
     return Lvv,Lv,Lvvasm,Lvasm,Lvdis
 end
-function assemblebig!(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out::AssemblyDirect{OX,OU,IA},state,nstep,Δt,SP,dbg) where{OX,OU,IA}
+struct assemblebig!{mission} end
+function assemblebig!{mission}(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out::AssemblyDirect{OX,OU,IA},state,nstep,Δt,SP,dbg) where{mission,OX,OU,IA}
     zero!(Lvv)
     zero!(Lv )
     cumblk = 0
     if IA==1
         Ablk = 3sum(nstep)+1  
-        assembleA!(out,asm,dis,model,state[1][1],(dbg...,asm=:assemblebig!)) 
+        assembleA!{mission}(out,asm,dis,model,state[1][1],(dbg...,asm=:assemblebig!)) 
         addin!(Lvasm ,Lv ,out.L1[ind.A      ][1  ],Ablk     )  
         addin!(Lvvasm,Lvv,out.L2[ind.A,ind.A][1,1],Ablk,Ablk)
     end    
@@ -256,7 +253,7 @@ function assemblebig!(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out::AssemblyDirect{OX,O
     for iexp = 1:length(nstep)
         for istep = 1:nstep[iexp]
             state[iexp][istep].SP   = SP
-            assemble!(out,asm,dis,model,state[iexp][istep],(dbg...,asm=:assemblebig!,step=istep))
+            assemble!{mission}(out,asm,dis,model,state[iexp][istep],(dbg...,asm=:assemblebig!,step=istep))
             for β∈class
                 Lβ = out.L1[β]
                 for βder = 1:size(Lβ,1)
@@ -403,7 +400,7 @@ function solve(::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
     # Prepare assembler
     verbose && @printf("\n    Preparing assembler\n")
     out,asm,dofgr         = prepare(AssemblyDirect{OX,OU,IA},model,dis;kwargs...)          # mem and assembler for system at any given step
-    assemble!(out,asm,dis,model,state[1][1],(dbg...,solver=:DirectXUA,phase=:sparsity))    # create a sample "out" for preparebig
+    assemble!{:matrices}(out,asm,dis,model,state[1][1],(dbg...,solver=:DirectXUA,phase=:sparsity))    # create a sample "out" for preparebig
     Lvv,Lv,Lvvasm,Lvasm,Lvdis = preparebig(IA,nstep,out)                                   # mem and assembler for big system
 
     for iter              = 1:maxiter
@@ -411,7 +408,7 @@ function solve(::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
 
         verbose && @printf("        Assembling")
         SP = (γ=γ,iter=iter)
-        assemblebig!(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out,state,nstep,Δt,SP,(dbg...,solver=:DirectXUA,iter=iter))
+        assemblebig!{:matrices}(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out,state,nstep,Δt,SP,(dbg...,solver=:DirectXUA,iter=iter))
         verbose && @printf(", solving")
         try 
             if iter==1 LU = lu(Lvv) 

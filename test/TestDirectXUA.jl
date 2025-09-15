@@ -63,7 +63,7 @@ for i=1:nstep
     state[i].time = Δt*i
 end
 
-Muscade.assembleA!(out,asm,dis,model,state[1],(;))
+Muscade.assembleA!{:matrices}(out,asm,dis,model,state[1],(;))
 @testset "prepareA_out" begin
     @test all(all(v.==0) for  v∈out.L1[1])
     @test all(all(v.==0) for  v∈out.L1[2])
@@ -82,7 +82,7 @@ pattern    = Muscade.makepattern(IA,[nstep],out)
 
 Lvv,Lv,Lvvasm,Lvasm,Lvdis  = Muscade.preparebig(IA,nstep,out)
 
-Muscade.assemblebig!(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out,[state],[nstep],Δt,(γ=0.,iter=1),(caller=:TestDirectXUA,))
+Muscade.assemblebig!{:matrices}(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out,[state],[nstep],Δt,(γ=0.,iter=1),(caller=:TestDirectXUA,))
 
 # using GLMakie
 # fig = Muscade.spy(Lvv,title="bigsparse Lvv sparsity",size=500)

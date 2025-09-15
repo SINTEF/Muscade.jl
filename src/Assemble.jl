@@ -445,37 +445,41 @@ end
 
 
 abstract type Assembly end # solver define concrete "assemblies" which is a collection of matrices and solvers wanted for a phase in the solution process
-
-function assemble!(out::Assembly,asm,dis,model,state,dbg) 
+struct assemble!{mission} end
+struct assemble_!{mission} end
+struct assembleA!{mission} end
+struct assembleA_!{mission} end
+struct addin!{mission} end
+function assemble!{mission}(out::Assembly,asm,dis,model,state,dbg) where{mission}
     zero!(out)
     for ieletyp = 1:lastindex(model.eleobj)
         eleobj  = model.eleobj[ieletyp]
-        assemble_!(out,view(asm,:,ieletyp),dis.dis[ieletyp],eleobj,state,state.time,state.SP,(dbg...,ieletyp=ieletyp))
+        assemble_!{mission}(out,view(asm,:,ieletyp),dis.dis[ieletyp],eleobj,state,state.time,state.SP,(dbg...,ieletyp=ieletyp))
     end
 end
-assemble_!(out::Assembly,asm,dis,eleobj::Acost,state,t,SP,dbg) = nothing
-function assemble_!(out::Assembly,asm,dis,eleobj,state::State{nΛder,nXder,nUder},t,SP,dbg) where{nΛder,nXder,nUder}
+assemble_!{mission}(out::Assembly,asm,dis,eleobj::Acost,state,t,SP,dbg) where{mission} = nothing
+function assemble_!{mission}(out::Assembly,asm,dis,eleobj,state::State{nΛder,nXder,nUder},t,SP,dbg) where{mission,nΛder,nXder,nUder}
     for iele  = 1:lastindex(eleobj)
         index = dis.index[iele]
         Λe    = NTuple{nΛder}(λ[index.X] for λ∈state.Λ)
         Xe    = NTuple{nXder}(x[index.X] for x∈state.X)
         Ue    = NTuple{nUder}(u[index.U] for u∈state.U)
         Ae    = state.A[index.A]
-        addin!(out,asm,iele,dis.scale,eleobj[iele],Λe,Xe,Ue,Ae, t,SP,(dbg...,iele=iele)) # defined by solver.  Called for each element. But the asm that is passed
+        addin!{mission}(out,asm,iele,dis.scale,eleobj[iele],Λe,Xe,Ue,Ae, t,SP,(dbg...,iele=iele)) # defined by solver.  Called for each element. But the asm that is passed
     end                                                                              # is of the form asm[iarray][i,iele], because addin! will add to all arrays in one pass
 end
-function assembleA!(out::Assembly,asm,dis,model,state,dbg) 
+function assembleA!{mission}(out::Assembly,asm,dis,model,state,dbg) where{mission}
     zero!(out)
     for ieletyp = 1:lastindex(model.eleobj)
         eleobj  = model.eleobj[ieletyp]
-        assembleA_!(out,view(asm,:,ieletyp),dis.dis[ieletyp],eleobj,state,(dbg...,assembleA=true,ieletyp=ieletyp))
+        assembleA_!{mission}(out,view(asm,:,ieletyp),dis.dis[ieletyp],eleobj,state,(dbg...,assembleA=true,ieletyp=ieletyp))
     end
 end
-assembleA_!(out::Assembly,asm,dis,eleobj,state,dbg) = nothing
-function assembleA_!(out::Assembly,asm,dis,eleobj::Vector{A},state,dbg) where{A<:Acost}
+assembleA_!{mission}(out::Assembly,asm,dis,eleobj,state,dbg) where{mission} = nothing
+function assembleA_!{mission}(out::Assembly,asm,dis,eleobj::Vector{A},state,dbg) where{mission,A<:Acost}
     for iele  = 1:lastindex(eleobj)
         Ae    = state.A[dis.index[iele].A]
-        addin!(out,asm,iele,dis.scale,eleobj[iele],Ae,(dbg...,iele=iele))                
+        addin!{mission}(out,asm,iele,dis.scale,eleobj[iele],Ae,(dbg...,iele=iele))                
     end
 end
 
