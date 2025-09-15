@@ -37,7 +37,10 @@ end
         out.npos  += 1
     end
 end
-#addin!{mission}(out::AssemblySweepX,asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{0}},U,A,t,SP,dbg) where{mission,Nxder} = return
+addin!{:newmark    }(out::AssemblySweepX,asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{0}},U,A,t,SP,dbg) where{mission,Nxder} = return
+addin!{:iter       }(out::AssemblySweepX,asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{0}},U,A,t,SP,dbg) where{mission,Nxder} = return
+addin!{:newmarkline}(out::AssemblySweepX,asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{0}},U,A,t,SP,dbg) where{mission,Nxder} = return
+addin!{:iterline   }(out::AssemblySweepX,asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{0}},U,A,t,SP,dbg) where{mission,Nxder} = return
 function addin!{:newmark}(out::AssemblySweepX,asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A,t,SP,dbg) where{Nxder,Nx}
     a₁,a₂,a₃,b₁,b₂,b₃ = out.c.a₁,out.c.a₂,out.c.a₃,out.c.b₁,out.c.b₂,out.c.b₃
     i          = SVector{Nx,𝕫}(1:Nx)
@@ -67,12 +70,11 @@ function addin!{:iter}(out::AssemblySweepX{ORDER},asm,iele,scale,eleobj,Λ,X::NT
     add_value!(out.Lλ ,asm[1],iele,Lλ)
     add_∂!{1}( out.Lλx,asm[2],iele,Lλ)
 end
-
-function addin!{:newmarkline}(out::AssemblySweepX{2},asm,iele,scale,eleobj,Λ,X,U,A,t,SP,dbg) 
+function addin!{:newmarkline}(out::AssemblySweepX,asm,iele,scale,eleobj,Λ,X,U,A,t,SP,dbg) 
     a₁,a₂,a₃,b₁,b₂,b₃ = out.c.a₁,out.c.a₂,out.c.a₃,out.c.b₁,out.c.b₂,out.c.b₃
     δℓ         = δ{1}()              # Newmark-β special: we need C⋅a and M⋅b
-    x,x′,x″    = ∂0(X),∂1(X),∂2(X)
-    a          = a₂*x′ + a₃*x″
+    x,x′,x″    = ∂0(X),∂1(X),∂2(X)   # we are not providing gradient in a step direction, only value of R
+    a          = a₂*x′ + a₃*x″       # but the value must be correct for Newmark-β
     b          = b₂*x′ + b₃*x″
     vx         = x 
     vx′        = x′ - a .*δℓ 
@@ -89,6 +91,34 @@ function addin!{:iterline}(out::AssemblySweepX,asm,iele,scale,eleobj,Λ,X,U,A,t,
     add_value!(out.Lλ ,asm[1],iele,Lλ)
     lineFB!(out,FB)
 end
+struct decr!{ORDER} end
+function decr!{2}(state,Δx ,Xdofgr,c,firstiter,x′,x″) # x′, x″ are just mutable memory, neither input nor output.
+    a₁,a₂,a₃,b₁,b₂,b₃ = c.a₁,c.a₂,c.a₃,c.b₁,c.b₂,c.b₃
+    if firstiter
+        getdof!(state,1,x′,Xdofgr) 
+        getdof!(state,2,x″,Xdofgr) 
+        a        = a₂*x′+a₃*x″
+        b        = b₂*x′+b₃*x″
+        Δx′      = a₁*Δx + a
+        Δx″      = b₁*Δx + b
+    else
+        Δx′      = a₁*Δx 
+        Δx″      = b₁*Δx 
+    end
+    decrement!(state,1,Δx ,Xdofgr)
+    decrement!(state,2,Δx′,Xdofgr)
+    decrement!(state,3,Δx″,Xdofgr)
+end
+function decr!{1}(state,Δx ,Xdofgr,c,args...)
+    Δx′      = c.a₁*Δx 
+    decrement!(state,1,Δx ,Xdofgr)
+    decrement!(state,2,Δx′,Xdofgr)
+end
+function decr!{0}(state,Δx ,Xdofgr,args...)
+    decrement!(state,1,Δx ,Xdofgr)
+end
+
+
 
 """
 	SweepX{ORDER}
@@ -153,8 +183,8 @@ function solve(SX::Type{SweepX{ORDER}},pstate,verbose,dbg;
     model,dis        = initialstate.model,initialstate.dis
     out,asm,Xdofgr   = prepare(AssemblySweepX{ORDER},model,dis)  
     ndof             = getndof(Xdofgr)
-    if ORDER≥1    x′ = 𝕣1(undef,ndof) end 
-    if ORDER≥2    x″ = 𝕣1(undef,ndof) end 
+    x′               = 𝕣1(undef,ORDER≥1 ? ndof : 0)  
+    x″               = 𝕣1(undef,ORDER≥2 ? ndof : 0)  
     citer            = 0
     cΔx²,cLλ²        = maxΔx^2,maxLλ^2
     state            = State{1,ORDER+1,1}(copy(initialstate,SP=(γ=0.,))) 
@@ -179,33 +209,27 @@ function solve(SX::Type{SweepX{ORDER}},pstate,verbose,dbg;
         for iiter    = 1:maxiter
             citer   += 1
             firstiter = iiter==1
-            if ORDER==2 && firstiter
-                assemble!{:newmark}(out,asm,dis,model,state,(dbg...,solver=:SweepX,step=step,iiter=iiter))
-            else
-                assemble!{:iter}(out,asm,dis,model,state,(dbg...,solver=:SweepX,step=step,iiter=iiter))
+            if ORDER==2 && firstiter  assemble!{:newmark}(out,asm,dis,model,state,(dbg...,solver=:SweepX,step=step,iiter=iiter))
+            else                      assemble!{:iter   }(out,asm,dis,model,state,(dbg...,solver=:SweepX,step=step,iiter=iiter))
             end
             try if step==1 && firstiter  facLλx = lu(out.Lλx) 
             else                         lu!(facLλx, out.Lλx) 
-            end catch; muscadeerror(@sprintf("matrix factorization failed at step=%i, iiter=%i",step,iiter)) end
+            end catch;                   muscadeerror(@sprintf("matrix factorization failed at step=%i, iiter=%i",step,iiter)) end
             Δx       = facLλx\out.Lλ
             Δx²,Lλ²  = sum(Δx.^2),sum(out.Lλ.^2)
-            if     ORDER==0  decr0!(state,Δx ,Xdofgr                      )
-            elseif ORDER==1  decr1!(state,Δx ,Xdofgr,out.c                )
-            elseif ORDER==2  decr2!(state,Δx ,Xdofgr,out.c,firstiter,x′,x″)
-            end
+            decr!{ORDER}(state,Δx ,Xdofgr,out.c,firstiter,x′,x″)
 
-            # s = 1.    
-            # for iline = 1:maxLineIter
-            #     assemble!{Val{(firstiter,true)}}(out,asm,dis,model,state,(dbg...,solver=:SweepX,phase=:linesearch,step=step,iiter=iiter,iline=iline))
-            #     out.minλ > 0 && out.ming > 0 &&  break
-            #     iline==maxLineIter && muscadeerror(@sprintf("Line search failed at step=%3d, iiter=%3d, iline=%3d, s=%7.1e",step,iiter,iline,s))
-            #     Δs    = s*(sfac-1)
-            #     s    += Δs
-            #     if     ORDER==0  decr0!(state,Δs*Δx ,Xdofgr                      )
-            #     elseif ORDER==1  decr1!(state,Δs*Δx ,Xdofgr,out.c                )
-            #     elseif ORDER==2  decr2!(state,Δs*Δx ,Xdofgr,out.c,firstiter,x′,x″)
-            #     end
-            # end
+            s = 1.    
+            for iline = 1:maxLineIter
+                if ORDER==2 && firstiter  assemble!{:newmarkline}(out,asm,dis,model,state,(dbg...,solver=:SweepX,phase=:linesearch,step=step,iiter=iiter,iline=iline))
+                else                      assemble!{:iterline   }(out,asm,dis,model,state,(dbg...,solver=:SweepX,phase=:linesearch,step=step,iiter=iiter,iline=iline))
+                end
+                out.minλ > 0 && out.ming > 0 &&  break
+                iline==maxLineIter && muscadeerror(@sprintf("Line search failed at step=%3d, iiter=%3d, iline=%3d, s=%7.1e",step,iiter,iline,s))
+                Δs    = s*(sfac-1)
+                s    += Δs
+                decr!{ORDER}(state,Δs*Δx ,Xdofgr,out.c,firstiter,x′,x″)
+            end
 
             verbose && saveiter && @printf("        iteration %3d, γ= %7.1e\n",iiter,γ)
             saveiter && (states[iiter]=State(state.time,state.Λ,deepcopy(state.X),state.U,state.A,state.SP,model,dis))
@@ -220,29 +244,4 @@ function solve(SX::Type{SweepX{ORDER}},pstate,verbose,dbg;
     end
     verbose && @printf "\n    nel=%d, ndof=%d, nstep=%d, niter=%d, niter/nstep=%5.2f\n" getnele(model) getndof(Xdofgr) length(time) citer citer/length(time)
     return
-end
-function decr2!(state,Δx ,Xdofgr,c,firstiter,x′,x″) # x′, x″ are just mutable memory, neither input nor output.
-    a₁,a₂,a₃,b₁,b₂,b₃ = c.a₁,c.a₂,c.a₃,c.b₁,c.b₂,c.b₃
-    if firstiter
-        getdof!(state,1,x′,Xdofgr) 
-        getdof!(state,2,x″,Xdofgr) 
-        a        = a₂*x′+a₃*x″
-        b        = b₂*x′+b₃*x″
-        Δx′      = a₁*Δx + a
-        Δx″      = b₁*Δx + b
-    else
-        Δx′      = a₁*Δx 
-        Δx″      = b₁*Δx 
-    end
-    decrement!(state,1,Δx ,Xdofgr)
-    decrement!(state,2,Δx′,Xdofgr)
-    decrement!(state,3,Δx″,Xdofgr)
-end
-function decr1!(state,Δx ,Xdofgr,c)
-    Δx′      = c.a₁*Δx 
-    decrement!(state,1,Δx ,Xdofgr)
-    decrement!(state,2,Δx′,Xdofgr)
-end
-function decr0!(state,Δx ,Xdofgr)
-    decrement!(state,1,Δx ,Xdofgr)
 end
