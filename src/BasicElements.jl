@@ -22,8 +22,9 @@ For once-off costs on A-dofs, see [`Acost`](@ref).
 
 # Example
 ```
+@functor (;) xcost(X,U,A,t;X0) = (X[1]-X0)^2
 ele1 = addelement!(model,DofCost,[nod1],xinod=(1,),xfield=(:tx1,),
-       cost=(X,U,A,t;X0)->(X[1]-X0)^2,costargs=(;X0=0.27)
+       cost=xcost,costargs=(;X0=0.27)
 ```
 
 See also: [`Acost`](@ref), [`SingleDofCost`](@ref), [`ElementCost`](@ref), [`addelement!`](@ref)  
@@ -33,9 +34,9 @@ struct DofCost{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,Tcost,Tcostargs} 
     costargs :: Tcostargs
 end
 function DofCost(nod::Vector{Node};xinod::NTuple{Nx,𝕫}=(),xfield::NTuple{Nx,Symbol}=(),
-                                uinod::NTuple{Nu,𝕫}=(),ufield::NTuple{Nu,Symbol}=(),
-                                ainod::NTuple{Na,𝕫}=(),afield::NTuple{Na,Symbol}=(),
-                                cost::Functor ,costargs=()) where{Nx,Nu,Na} 
+                                   uinod::NTuple{Nu,𝕫}=(),ufield::NTuple{Nu,Symbol}=(),
+                                   ainod::NTuple{Na,𝕫}=(),afield::NTuple{Na,Symbol}=(),
+                                   cost::Functor ,costargs=()) where{Nx,Nu,Na} 
     return DofCost{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,typeof(cost),typeof(costargs)}(cost,costargs)
 end
 doflist(::Type{<:DofCost{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield}}) where
@@ -66,8 +67,9 @@ For costs per unit of time on A-dofs (not recommended), see [`DofCost`](@ref).
 
 # Example
 ```
+@functor (;) acost(A;A0)=(A[1]-A0)^2
 ele1 = addelement!(model,Acost,[nod1],inod=(1,),field=(:EI,),
-       cost=(A;A0)->(A[1]-A0)^2,costargs=(;A0=0.27)
+       cost=acost,costargs=(;A0=0.27)
 ```
 
 See also:  [`SingleAcost`](@ref), [`DofCost`](@ref), [`SingleDofCost`](@ref), [`ElementCost`](@ref), [`addelement!`](@ref)  
@@ -167,8 +169,9 @@ An element with a single node, for adding a once-off cost to a single A-dof.
 using Muscade
 model = Model(:TestModel)
 node  = addnode!(model,𝕣[0,0])
+@functor (;) acost(a,three)=(a/three)^2
 e     = addelement!(model,SingleAcost,[node];field=:EI,
-                    costargs=(3.,),cost=(a,three)->(a/three)^2)
+                    costargs=(3.,),cost=acost)
 ```    
 
 See also: [`DofCost`](@ref), [`SingleDofCost`](@ref),  [`Acost`](@ref), [`ElementCost`](@ref)
@@ -200,21 +203,22 @@ An element with a single node, for adding a cost to a given dof.
 using Muscade
 model = Model(:TestModel)
 node  = addnode!(model,𝕣[0,0])
+@functor (;) xcost(x,t,three)=(x/three)^2
 e     = addelement!(model,SingleDofCost,[node];class=:X,field=:tx,
-                    costargs=(3.,),cost=(x,t,three)->(x/three)^2)
+                    costargs=(3.,),cost=xcost)
 ```    
 
 See also: [`DofCost`](@ref), [`ElementCost`](@ref)
 """
 struct SingleDofCost <: AbstractElement end
-(o::Functor{:fX})(X,U,A,t,args...) = o.captured.cost(∂n(o.captured.derivative)(X)[1],t,args...)
-(o::Functor{:fU})(X,U,A,t,args...) = o.captured.cost(∂n(o.captured.derivative)(U)[1],t,args...)
+# 1) @functor macro is not called.  Instead, we have a method definition and a call to object constructor
+# 2) Method defined for the functor is called by DofCost/lagrangian, extracts correct derivative and calls userfunctor(X,t,args...)
+(o::Functor{:singleXcost})(X,U,A,t,args...) = o.captured.cost(∂n(o.captured.derivative)(X)[1],t,args...)
+(o::Functor{:singleUcost})(X,U,A,t,args...) = o.captured.cost(∂n(o.captured.derivative)(U)[1],t,args...)
 function SingleDofCost(nod::Vector{Node};class::Symbol,field::Symbol,cost::Functor,derivative=0::𝕫,costargs=()) 
-    if     class==:X; 
-        DofCost(nod;xinod=(1,),xfield=(field,),cost=Functor{:fX}(;cost,derivative),costargs)
-    elseif class==:U; 
-        DofCost(nod;uinod=(1,),ufield=(field,),cost=Functor{:fU}(;cost,derivative),costargs)
-    else              muscadeerror("'class' must be :X or :U")
+    if     class==:X;   DofCost(nod;xinod=(1,),xfield=(field,),cost=Functor{:singleXcost}(;cost,derivative),costargs)
+    elseif class==:U;   DofCost(nod;uinod=(1,),ufield=(field,),cost=Functor{:singleUcost}(;cost,derivative),costargs)
+    else                muscadeerror("'class' must be :X or :U")
     end
 end    
 
@@ -240,8 +244,9 @@ The value of the Udof is applied as a load to a Xdof on the same node.
 using Muscade
 model = Model(:TestModel)
 node  = addnode!(model,𝕣[0,0])
+@functor (;) ucost(u,t,three)->(u/three)^2
 e     = addelement!(model,SingleUdof,[node];Xfield=:tx,Ufield=:utx,
-                    costargs=(3.,),cost=(x,t,three)->(x/three)^2)
+                    costargs=(3.,),cost=ucost)
 ```    
 
 See also: [`DofCost`](@ref), [`ElementCost`](@ref)

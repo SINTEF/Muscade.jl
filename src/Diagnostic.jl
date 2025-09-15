@@ -322,8 +322,8 @@ function add!(out1::Assemblystudy_scale,out2::Assemblystudy_scale)
     add!(out1.Lz,out2.Lz)
     add!(out1.Lzz,out2.Lzz)
 end
-function addin!(out::Assemblystudy_scale,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxder,<:SVector{Nx}},
-                                         U::NTuple{Nuder,<:SVector{Nu}},A::SVector{Na},t,SP,dbg) where{E,Nxder,Nx,Nuder,Nu,Na} # TODO make Nx,Nu,Na types
+function addin!{mission}(out::Assemblystudy_scale,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxder,<:SVector{Nx}},
+                                         U::NTuple{Nuder,<:SVector{Nu}},A::SVector{Na},t,SP,dbg) where{mission,E,Nxder,Nx,Nuder,Nu,Na} # TODO make Nx,Nu,Na types
     Nz              = 2Nx+Nu+Na                        # Z =[Λ;X;U;A]       
     scaleZ          = SVector(scale.Λ...,scale.X...,scale.U...,scale.A...)
     ΔZ              = variate{2,Nz}(δ{1,Nz,𝕣}(scaleZ),scaleZ)                 
@@ -396,7 +396,7 @@ function study_scale(state::State;SP=nothing,verbose::𝕓=true,dbg=(;))
     tmp                = state.SP 
     state.SP           = SP
     out,asm,dofgr      = prepare(Assemblystudy_scale,model,dis)
-    assemble!(out,asm,dis,model,state,(dbg...,solver=:study_scale))
+    assemble!{:ok}(out,asm,dis,model,state,(dbg...,solver=:study_scale))
     state.SP           = tmp
     Z                  = zeros(getndof(dofgr))
     getdof!(state,0,Z,dofgr) 
@@ -533,8 +533,8 @@ end
 function add!(out1::Assemblystudy_singular,out2::Assemblystudy_singular) 
     add!(out1.Lz,out2.Lij)
 end
-function addin!(out::Assemblystudy_singular,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxder,<:SVector{Nx}},
-                                         U::NTuple{Nuder,<:SVector{Nu}},A::SVector{Na},t,SP,dbg) where{E,Nxder,Nx,Nuder,Nu,Na} # TODO make Nx,Nu,Na types
+function addin!{mission}(out::Assemblystudy_singular,asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxder,<:SVector{Nx}},
+                                         U::NTuple{Nuder,<:SVector{Nu}},A::SVector{Na},t,SP,dbg) where{mission,E,Nxder,Nx,Nuder,Nu,Na} # TODO make Nx,Nu,Na types
 
     Nz              = 2Nx+Nu+Na       
     scaleZ          = SVector(scale.Λ...,scale.X...,scale.U...,scale.A...)

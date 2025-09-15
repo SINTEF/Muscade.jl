@@ -34,10 +34,10 @@ GJ   = 1e6;  # Torsional stiffness [Nm²]
 μ    = 1;
 ι₁   = 1;
 hasU = true
-const σε   = 100e-6*100 # precision of strain measurements
+σε   = 100e-6*100 # precision of strain measurements
 σx   = 1e-1
 σu   = 1e-0
-const σa   = 1e5
+σa   = 1e5
 
 α           = iels/nel*2π
 XnodeCoord  = hcat(cos.(α),sin.(α),zeros(nel,1))
@@ -51,29 +51,33 @@ nakedmesh   = mesh[inaked,:]
 strainmesh  = mesh[istrain,:]
 accmesh     = reshape(Xnod[iacc],(length(iacc),1))
 addelement!(model,EulerBeam3D{hasU},nakedmesh;mat=mat,orient2=SVector(0.,0.,1.))
+@functor (;σε) straincost(eleres,X,U,A,t) = sum((eleres.ε/σε).^2)/2
 addelement!(model,ElementCost,strainmesh;
                         req           = @request(ε),
-                        cost          = (eleres,X,U,A,t) -> sum((eleres.ε/σε).^2)/2,
+                        cost          = straincost,
                         ElementType   = StrainGaugeOnEulerBeam3D,
                         elementkwargs = (P             = SMatrix{3,4}(0.,0.,.05, 0.,0.05,0.,  0.,0.,-.05,  0.,-.05,0.),
                                          D             = SMatrix{3,4}(1.,0.,0.,  1.,0.,0.,    1.,0.,0.,    1.,0.,0.  ),
                                          ElementType   = EulerBeam3D{true},
                                          elementkwargs = (mat     = mat,
                                                           orient2 = SVector(0.,0.,1.))))
+@functor (;σa) acccost(eleres,X,U,A,t) = sum((eleres.a/σa).^2)/2
 addelement!(model,ElementCost,accmesh;
                         req           = @request(a),
-                        cost          = (eleres,X,U,A,t) -> sum((eleres.a/σa).^2)/2,
+                        cost          = acccost,
                         ElementType   = Position3D,
                         elementkwargs = (P             = SMatrix{3,3}(0.,0.,.1,  0.,0.,.1,  0.,0.,.1),
                                          D             = SMatrix{3,3}(1.,0.,0.,  0.,1.,0.,    0.,0.,1.) ))
 # Ucost
-addelement!( model, SingleDofCost, Muscade.columnmatrix(Unod         )    ,class=:U, field=:t1,cost=QuadraticFunction(0.,0.5(σu^-2)))
-addelement!( model, SingleDofCost, Muscade.columnmatrix(Unod         )    ,class=:U, field=:t2,cost=QuadraticFunction(0.,0.5(σu^-2)))
-addelement!( model, SingleDofCost, Muscade.columnmatrix(Unod         )    ,class=:U, field=:t3,cost=QuadraticFunction(0.,0.5(σu^-2)))
+@functor (;σu) ucost(U,t) = (U/σu).^2/2
+addelement!( model, SingleDofCost, Muscade.columnmatrix(Unod         )    ,class=:U, field=:t1,cost=ucost)
+addelement!( model, SingleDofCost, Muscade.columnmatrix(Unod         )    ,class=:U, field=:t2,cost=ucost)
+addelement!( model, SingleDofCost, Muscade.columnmatrix(Unod         )    ,class=:U, field=:t3,cost=ucost)
 # disp meas
-addelement!( model, SingleDofCost, Muscade.columnmatrix(Xnod[istrain])    ,class=:X, field=:t1,cost=QuadraticFunction(0.,0.5(σx^-2)))
-addelement!( model, SingleDofCost, Muscade.columnmatrix(Xnod[istrain])    ,class=:X, field=:t2,cost=QuadraticFunction(0.,0.5(σx^-2)))
-addelement!( model, SingleDofCost, Muscade.columnmatrix(Xnod[istrain])    ,class=:X, field=:t3,cost=QuadraticFunction(0.,0.5(σx^-2)))
+@functor (;σx) xcost(X,t) = (X/σx).^2/2
+addelement!( model, SingleDofCost, Muscade.columnmatrix(Xnod[istrain])    ,class=:X, field=:t1,cost=xcost)
+addelement!( model, SingleDofCost, Muscade.columnmatrix(Xnod[istrain])    ,class=:X, field=:t2,cost=xcost)
+addelement!( model, SingleDofCost, Muscade.columnmatrix(Xnod[istrain])    ,class=:X, field=:t3,cost=xcost)
 
 initialstate      = initialize!(model)   
 initialstate.time     = 0.
