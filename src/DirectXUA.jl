@@ -383,10 +383,10 @@ function solve(::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
     # State storage
     S                     = State{1,OX+1,OU+1,@NamedTuple{γ::Float64,iter::Int64}}
     state                 = [Vector{S}(undef,nstep[iexp]) for iexp=1:nexp] # state[iexp][istep]
-    for iexp              = 1:nexp
-        s                 = State{1,OX+1,OU+1}(copy(initialstate[iexp],time=time[iexp][1],SP=(γ=0.,iter=1)))   
+    s                     = initialstate[1]
+    for (iexp,initialstateᵢ) ∈ enumerate(initialstate)
         for (istep,timeᵢ) = enumerate(time[iexp])
-            state[iexp][istep] = istep==1 ? s : State(timeᵢ,deepcopy(s.Λ),deepcopy(s.X),deepcopy(s.U),s.A,s.SP,s.model,s.dis) # all state[iexp][istep].A are === 
+            state[iexp][istep] = State{1,OX+1,OU+1}(timeᵢ,deepcopy(initialstateᵢ.Λ),deepcopy(initialstateᵢ.X),deepcopy(initialstateᵢ.U),s.A,(γ=0.,iter=1),s.model,s.dis) # all state[iexp][istep].A are === 
         end
     end
 
@@ -402,24 +402,22 @@ function solve(::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
     out,asm,dofgr         = prepare(AssemblyDirect{OX,OU,IA},model,dis;kwargs...)          # mem and assembler for system at any given step
     assemble!{:matrices}(out,asm,dis,model,state[1][1],(dbg...,solver=:DirectXUA,phase=:sparsity))    # create a sample "out" for preparebig
     Lvv,Lv,Lvvasm,Lvasm,Lvdis = preparebig(IA,nstep,out)                                   # mem and assembler for big system
-
+    cLvv = copy(Lvv)
     for iter              = 1:maxiter
         verbose && @printf("\n    Iteration %3d\n",iter)
 
         verbose && @printf("        Assembling")
         SP = (γ=γ,iter=iter)
         assemblebig!{:matrices}(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out,state,nstep,Δt,SP,(dbg...,solver=:DirectXUA,iter=iter))
+        sparser!(cLvv,Lvv,1e-20)
         verbose && @printf(", solving")
         try 
-            if iter==1 LU = lu(Lvv) 
-            else       lu!(LU ,Lvv)
-            end 
+            LU = lu(cLvv) 
         catch 
             verbose && @printf("\n")
-            muscadeerror(@sprintf("Lvv matrix factorization failed at iter=%i",iter));
+            muscadeerror("Lvv matrix factorization failed");
         end
         Δv               = LU\Lv # use ldiv! to save allocation
-
 
         verbose && @printf(", decrementing.\n")
         decrementbig!(state,Δ²,Lvdis,dofgr,Δv,nder,Δt,nstep)

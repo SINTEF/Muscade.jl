@@ -60,6 +60,8 @@ j = [2, 2, 3, 3, 3, 4, 4, 4, 6, 6, 7, 7, 7, 8, 8, 9, 9, 9, 9, 10, 10, 11]
 v = [0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0]
 
 s = sparse(i,j,v)
+t = copy(s)
+Muscade.sparser!(t,s,i->s.nzval[i]>0.5)
 Muscade.sparser!(s,i->s.nzval[i]>0.5)
 
 @testset "sparser!" begin
@@ -67,6 +69,10 @@ Muscade.sparser!(s,i->s.nzval[i]>0.5)
     @test s.rowval == [7, 6, 2, 7, 4, 1, 9]
     @test s.nzval ≈ [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
     @test size(s) == (10,11)
+    @test s.colptr == t.colptr
+    @test s.rowval == t.rowval
+    @test s.nzval ≈ t.nzval
+    @test size(s) == size(t)
 end
 
 

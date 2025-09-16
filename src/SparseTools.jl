@@ -150,10 +150,12 @@ and `false` otherwise. Alternatively, `keep` can be a `Vector{Bool}`
 
 # Examples
 
-    sparser!(S,i->abs(S.nzval[i])>tol)
-    sparser!(S,keep)
+    sparser!([T],S,i->abs(S.nzval[i])>tol)
+    sparser!([T],S,keep::Vector{Boolean}) 
     sparser!([S1,S2],1e-9)
-    sparser!(S1,S2],1e-9)
+
+If `T` is provided (initialised as `T = copy(S)`), then result is set in `T`, `S` is unchanged, other wise `S` is mutated in place.
+The input `keep::Vector{Boolean}` must be of length `nnz(S)`.
 
 !!! warning
     In the first example, the `keep` *function* accesses `S.nzval[i]`, and the term is then mutated by `sparser!`. 
@@ -162,39 +164,38 @@ and `false` otherwise. Alternatively, `keep` can be a `Vector{Bool}`
 !!! warning
     Note that `assemble!` computes the `nzval` of a sparse, assumning that its sparsity structure `colptr` and `rowval`
     is unchanged since sparse storage was allocated by `asmmat` in `prepare`.  In other words, if applying `sparser!`
-    directly to a `sparse` returned by `assemble!`, `assemble!` can no longer be called for this matrix. In that case,
-    1) deepcopy the returned matrix
-    2) apply `sparser!` to the copy
-    3) after a new call to `assemble!` use `keep` when copying `nzval`  
+    directly to a `sparse` returned by `assemble!`, `assemble!` can no longer be called for this matrix. 
 """
-function sparser!(S::SparseMatrixCSC,keep::Function) 
+function sparser!(T::SparseMatrixCSC,S::SparseMatrixCSC,keep::Function) 
+    # it is assumed that T has same memory-shape and matrix-shape as S.
+    # works also with S===T
     ndrop               = 0
     @inbounds for icol  = 1:S.n
         colptr          = S.colptr[icol]
-        S.colptr[icol] -= ndrop
+        T.colptr[icol]  = colptr-ndrop
         for inz         = colptr:S.colptr[icol+1]-1
             if keep(inz)
-                S.nzval[ inz-ndrop] = S.nzval[ inz]
-                S.rowval[inz-ndrop] = S.rowval[inz]
+                T.nzval[ inz-ndrop] = S.nzval[ inz]
+                T.rowval[inz-ndrop] = S.rowval[inz]
             else    
                 ndrop  += 1
             end
         end
     end
-    @inbounds S.colptr[S.n+1] -= ndrop
+    @inbounds T.colptr[T.n+1] = S.colptr[S.n+1] - ndrop
     nnz                 = length(S.nzval)
-    resize!(S.nzval ,nnz-ndrop)
-    resize!(S.rowval,nnz-ndrop)
+    resize!(T.nzval ,nnz-ndrop)
+    resize!(T.rowval,nnz-ndrop)
 end
-
-sparser!(S::SparseMatrixCSC,keep::Vector{Bool})  = sparser!(S,i->keep[i])
-function sparser!(S::SparseMatrixCSC,tol=1e-9) 
-    tol  *= maximum(abs,S)
-    sparser!(S,i->abs(S.nzval[i])≥tol)
+sparser!(T::SparseMatrixCSC,S::SparseMatrixCSC,keep::Vector{Bool})  = sparser!(T,S,i->keep[i])
+function sparser!(T::SparseMatrixCSC,S::SparseMatrixCSC,rtol=1e-9) 
+    atol  = rtol*maximum(abs,S)
+    sparser!(T,S,i->abs(S.nzval[i])≥atol)
 end
-function sparser!(S::AbstractVector{SP},tol=1e-9) where{SP<:SparseMatrixCSC}
-    tolm  = [tol*maximum(abs,Sᵢ) for Sᵢ∈S]
-    keep  = [any(abs(S[i].nzval[j]) >tolm[i] for i∈eachindex(S)) for j∈1:nnz(S[1])]
+sparser!(S::SparseMatrixCSC,args...) = sparser!(S,S,args...) 
+function sparser!(S::AbstractVector{SMat},rtol=1e-9::𝕣) where{SMat<:SparseMatrixCSC}
+    atol  = [rtol*maximum(abs,Sᵢ) for Sᵢ∈S]
+    keep  = [any(abs(S[i].nzval[j]) >atol[i] for i∈eachindex(S)) for j∈1:nnz(S[1])]
     for Sᵢ ∈ S
         sparser!(Sᵢ,keep)
     end

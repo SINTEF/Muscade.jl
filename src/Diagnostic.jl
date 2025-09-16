@@ -591,12 +591,13 @@ Optional inputs:
 - `size=500`        Size in pizel of the figure window.
 - `title=nothing`   Title of the figure window.
 - `markersize=3`    Size of dots for non-zero elements.
-- `tol=1e-9`        Tolerance for actual non-zero elements.
+- `atol=1e-9`        Tolerance for actual non-zero elements.
 
 """
-function plot_matrix_sparsity(M::SparseMatrixCSC;size=500,title=nothing,markersize=3,tol=1e-9)
+function plot_matrix_sparsity(M::SparseMatrixCSC;size=500,title=nothing,markersize=3,rtol=1e-9)
     (i,j,v)  = findnz(M)
-    nz = findall(abs.(v).>tol)
+    atol  = rtol*maximum(abs,v)
+    nz = findall(abs.(v).>atol)
     if title==nothing
         title = @sprintf("nnz=%i (structural),nnz=%i (actual)",nnz(M),length(nz))
     end
@@ -684,7 +685,18 @@ function plot_block_matrix_sparsity(pattern::AbstractMatrix{SparseMatrixCSC{Tv,T
     end
     return fig
 end
+"""
+    print_nz(S::SparseMatrixCSC)
 
+List the structuraly non-zero entries of the sparse matrix.    
+"""
+function print_nz(S)
+    (i,j,v) = findnz(S)
+    for ℓ = 1:nnz(S)
+        @printf("i=%i3, j=%i3, v=%g\n",i[ℓ],j[ℓ],v[ℓ])
+    end
+    @printf("_______________\n")
+end
 
 ##############  Monitor
 

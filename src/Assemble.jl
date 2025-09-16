@@ -119,6 +119,7 @@ mutable struct State{nΛder,nXder,nUder,TSP}
     # Provide type, undef'd values    
     State{nΛder,nXder,nUder,TSP}() where{nΛder,nXder,nUder,TSP} = new{nΛder,nXder,nUder,TSP}()   
 end
+
 # a constructor that provides an initial zero state, specify derivatives
 State{nΛder,nXder,nUder}(model::Model,dis;time=-∞) where{nΛder,nXder,nUder} = 
                                   State(time,ntuple(i->zeros(getndof(model,:X)),nΛder),
@@ -127,18 +128,20 @@ State{nΛder,nXder,nUder}(model::Model,dis;time=-∞) where{nΛder,nXder,nUder} 
                                                        zeros(getndof(model,:A))       ,
                                              nothing,model,dis)
 # a shallow copy "constructor" to shave off unwanted derivatives (or pad with zeros) 
-function State{nΛder,nXder,nUder}(s::State,SP::TSP=s.SP) where{nΛder,nXder,nUder,TSP}
+State{nΛder,nXder,nUder}(s::State,SP=s.SP) where{nΛder,nXder,nUder} = State{nΛder,nXder,nUder}(s.time,s.Λ,s.X,s.U,s.A,SP,s.model,s.dis)
+# the same but from components
+function State{nΛder,nXder,nUder}(time,Λ,X,U,A,SP::TSP,model,dis) where{nΛder,nXder,nUder,TSP}
     state       = State{nΛder,nXder,nUder,TSP}()
-    state.time  = s.time
-    state.Λ     = ntuple(i->∂n(s.Λ,i-1),nΛder)
-    state.X     = ntuple(i->∂n(s.X,i-1),nXder)
-    state.U     = ntuple(i->∂n(s.U,i-1),nUder)
-    state.A     = s.A
-    state.SP    = s.SP
-    state.model = s.model
-    state.dis   = s.dis
+    state.time  = time
+    state.Λ     = ntuple(i->∂n(Λ,i-1),nΛder)
+    state.X     = ntuple(i->∂n(X,i-1),nXder)
+    state.U     = ntuple(i->∂n(U,i-1),nUder)
+    state.A     = A
+    state.SP    = SP
+    state.model = model
+    state.dis   = dis
     return state
-end 
+end
 
 # A deep copy - except for SP,model and dis
 Base.copy(s::State;time=s.time,SP=s.SP) = State(time,deepcopy(s.Λ),deepcopy(s.X),deepcopy(s.U),deepcopy(s.A),SP,s.model,s.dis) 
