@@ -131,7 +131,7 @@ function addin!{mission}(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::El
     Npfast =      Nx*(OX+1) + Nu*(OU+1) + Na*IA # number of partials
     Np     = Nx + Nx*(OX+1) + Nu*(OU+1) + Na*IA # number of partials
 
-    T  = ∂ℝ{2,Np,∂ℝ{1,Np,𝕣}}
+    T  = ∂ℝ{2,Np,∂ℝ{1,Np,𝕣}} # TODO differentiation to 2nd order also if only vectors wanted???
     Λ∂ =              SVector{Nx,T}(∂²ℝ{1,Np}(Λ[1   ][idof],                           idof, scale.Λ[idof])   for idof=1:Nx)
     X∂ = ntuple(ider->SVector{Nx,T}(∂²ℝ{1,Np}(X[ider][idof],Nx            +Nx*(ider-1)+idof, scale.X[idof])   for idof=1:Nx),Val(NDX))
     U∂ = ntuple(ider->SVector{Nu,T}(∂²ℝ{1,Np}(U[ider][idof],Nx+Nx*(OX+1)  +Nu*(ider-1)+idof, scale.U[idof])   for idof=1:Nu),Val(NDU))

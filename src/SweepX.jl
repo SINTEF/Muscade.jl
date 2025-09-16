@@ -70,25 +70,8 @@ function addin!{:iter}(out::AssemblySweepX{ORDER},asm,iele,scale,eleobj,Λ,X::NT
     add_value!(out.Lλ ,asm[1],iele,Lλ)
     add_∂!{1}( out.Lλx,asm[2],iele,Lλ)
 end
-function addin!{:newmarkline}(out::AssemblySweepX,asm,iele,scale,eleobj,Λ,X,U,A,t,SP,dbg) 
-    a₁,a₂,a₃,b₁,b₂,b₃ = out.c.a₁,out.c.a₂,out.c.a₃,out.c.b₁,out.c.b₂,out.c.b₃
-    δℓ         = δ{1}()              # Newmark-β special: we need C⋅a and M⋅b
-    x,x′,x″    = ∂0(X),∂1(X),∂2(X)   # we are not providing gradient in a step direction, only value of R
-    a          = a₂*x′ + a₃*x″       # but the value must be correct for Newmark-β
-    b          = b₂*x′ + b₃*x″
-    vx         = x 
-    vx′        = x′ - a .*δℓ 
-    vx″        = x″ - b .*δℓ 
-    Lλ,FB      = getresidual(eleobj,promote(vx,vx′,vx″),U,A,t,SP,dbg)
-    Lλ         = Lλ .* scale.X
-    add_value!(out.Lλ ,asm[1],iele,Lλ)  # rhs = R 
-    add_∂!{1}( out.Lλ ,asm[1],iele,Lλ)  # rhs = -C⋅a -M⋅b 
-    lineFB!(out,FB)
-end
-function addin!{:iterline}(out::AssemblySweepX,asm,iele,scale,eleobj,Λ,X,U,A,t,SP,dbg) 
-    Lλ,FB      = getresidual(eleobj,X,U,A,t,SP,dbg)
-    Lλ         = Lλ .* scale.X
-    add_value!(out.Lλ ,asm[1],iele,Lλ)
+function addin!{:linesearch}(out::AssemblySweepX,asm,iele,scale,eleobj,Λ,X,U,A,t,SP,dbg) 
+    _,FB      = getresidual(eleobj,X,U,A,t,SP,dbg)
     lineFB!(out,FB)
 end
 struct decr!{ORDER} end
@@ -221,9 +204,7 @@ function solve(SX::Type{SweepX{ORDER}},pstate,verbose,dbg;
 
             s = 1.    
             for iline = 1:maxLineIter
-                if ORDER==2 && firstiter  assemble!{:newmarkline}(out,asm,dis,model,state,(dbg...,solver=:SweepX,phase=:linesearch,step=step,iiter=iiter,iline=iline))
-                else                      assemble!{:iterline   }(out,asm,dis,model,state,(dbg...,solver=:SweepX,phase=:linesearch,step=step,iiter=iiter,iline=iline))
-                end
+                assemble!{:linesearch}(out,asm,dis,model,state,(dbg...,solver=:SweepX,phase=:linesearch,step=step,iiter=iiter,iline=iline))
                 out.minλ > 0 && out.ming > 0 &&  break
                 iline==maxLineIter && muscadeerror(@sprintf("Line search failed at step=%3d, iiter=%3d, iline=%3d, s=%7.1e",step,iiter,iline,s))
                 Δs    = s*(sfac-1)

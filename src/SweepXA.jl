@@ -41,13 +41,12 @@ end
 end
 
 # REPRISE
-# 2) implement other if-branches, remember typestab
-#    >>>>  what does line search do in SweepX, and what should it do in SweepXA?
-# 3) prepare assembler
-# 4) addin! (Acost) (cf. DirectXUA)
-# 5) SweepX if-branches, typestability
-# 6) this way of ∂-ing is more readable than DirectXUA.  Is there a performance penalty? Make DirectXUA more readable?
-
+# 1) prepare assembler
+# 2) solver
+# 3) addin! (Acost) (cf. DirectXUA)
+# 4) this way of adiffing is more readable than DirectXUA/addin!.  
+# Is there a performance penalty to SweepXA's style? Make DirectXUA (and other solvers' addin!) more readable? Merge first from branch DirectXUA!!!
+# 5) It seems that DirectXUA/addin! uses adiff to the second order also when only vectors are required.  This would be very significant for FreqXU.
 
 function addin!{:newmark}(out::AssemblySweepXA,asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A::SVector{Na},t,SP,dbg) where{Nxder,Nx,Na}
     a₁,a₂,a₃,b₁,b₂,b₃ = out.c.a₁,out.c.a₂,out.c.a₃,out.c.b₁,out.c.b₂,out.c.b₃
@@ -109,25 +108,8 @@ function addin!{:iter}(out::AssemblySweepXA{ORDER},asm,iele,scale,eleobj,Λ,X::N
     add_∂!{1 }(out.Lax, asm[10], iele, ∇L², ia=iA ,ida=iX)  
     add_∂!{1 }(out.Laa, asm[12], iele, ∇L², ia=iA ,ida=iA)  
 end
-function addin!{:newmarkline}(out::AssemblySweepXA,asm,iele,scale,eleobj,Λ,X,U,A,t,SP,dbg) 
-    a₁,a₂,a₃,b₁,b₂,b₃ = out.c.a₁,out.c.a₂,out.c.a₃,out.c.b₁,out.c.b₂,out.c.b₃
-    δℓ                = δ{1}()              # Newmark-β special: we need C⋅a and M⋅b
-    x,x′,x″           = ∂0(X),∂1(X),∂2(X)   # we are not providing gradient in a step direction, only value of R
-    a                 = a₂*x′ + a₃*x″       # but the value must be correct for Newmark-β
-    b                 = b₂*x′ + b₃*x″
-    vx                = x 
-    vx′               = x′ - a .*δℓ 
-    vx″               = x″ - b .*δℓ 
-    Lλ,FB             = getlagrangian(eleobj,promote(vx,vx′,vx″),U,A,t,SP,dbg)
-    Lλ                = Lλ .* scale.X
-    add_value!(out.Lλ ,asm[1],iele,Lλ)  # rhs = R 
-    add_∂!{1}( out.Lλ ,asm[1],iele,Lλ)  # rhs = -C⋅a -M⋅b 
-    lineFB!(out,FB)
-end
-function addin!{:iterline}(out::AssemblySweepXA{ORDER},asm,iele,scale,eleobj::E,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A::SVector{Na},t,SP,dbg) where{ORDER,E,Nxder,Nx,Na}
-    Lλ,FB             = getresidual(eleobj,X,U,A,t,SP,dbg)
-    Lλ                = Lλ .* scale.X
-    add_value!(out.Lλ ,asm[1],iele,Lλ)
+function addin!{:iterline}(out::AssemblySweepXA,asm,iele,scale,eleobj,Λ,X,U,A,t,SP,dbg) 
+    _,FB             = getlagrangian(eleobj,Λ,X,U,A,t,SP,dbg)
     lineFB!(out,FB)
 end
 
