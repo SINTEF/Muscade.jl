@@ -18,13 +18,11 @@ a = :a
     @test typeof(h)    == Functor{:h, @NamedTuple{}}
     @test f isa Functor
     @test f isa Function
-    @test f(2.) ≈ 12.
-    @test g(2.) ≈ 12.
-    @test h(2.) ≈ 4.
-    @test f(2) == 12
-    @test fu(1.,0,fukwargs...) == 1.
-    @test Muscade.@typeof(f(2.)) == (Float64,Float64)
-    @test Muscade.@typeof(f(2)) == (Int64, Int64)
+    @test @inferred f(2.) ≈ 12.
+    @test @inferred g(2.) ≈ 12.
+    @test @inferred h(2.) ≈ 4.
+    @test @inferred f(2) == 12
+    @test @inferred fu(1.,0,fukwargs...) == 1.
 end
 
 end
