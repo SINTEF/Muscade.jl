@@ -108,7 +108,7 @@ function addin!{:iter}(out::AssemblySweepXA{ORDER},asm,iele,scale,eleobj,Λ,X::N
     add_∂!{1 }(out.Lax, asm[10], iele, ∇L², ia=iA ,ida=iX)  
     add_∂!{1 }(out.Laa, asm[12], iele, ∇L², ia=iA ,ida=iA)  
 end
-function addin!{:iterline}(out::AssemblySweepXA,asm,iele,scale,eleobj,Λ,X,U,A,t,SP,dbg) 
+function addin!{:linesearch}(out::AssemblySweepXA,asm,iele,scale,eleobj,Λ,X,U,A,t,SP,dbg) 
     _,FB             = getlagrangian(eleobj,Λ,X,U,A,t,SP,dbg)
     lineFB!(out,FB)
 end

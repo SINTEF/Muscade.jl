@@ -471,6 +471,8 @@ function assemble_!{mission}(out::Assembly,asm,dis,eleobj,state::State{nΛder,nX
         addin!{mission}(out,asm,iele,dis.scale,eleobj[iele],Λe,Xe,Ue,Ae, t,SP,(dbg...,iele=iele)) # defined by solver.  Called for each element. But the asm that is passed
     end                                                                              # is of the form asm[iarray][i,iele], because addin! will add to all arrays in one pass
 end
+
+
 function assembleA!{mission}(out::Assembly,asm,dis,model,state,dbg) where{mission}
     zero!(out)
     for ieletyp = 1:lastindex(model.eleobj)
