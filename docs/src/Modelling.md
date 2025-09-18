@@ -25,7 +25,7 @@ e3              = addelement!(model,QuickFix,[n1,n2];inod=(1,2),field=(:tx1,:tx1
                               res=res)  # Linear elastic spring with stiffness 12
 initialstate    = initialize!(model)
 state           = solve(SweepX{0};initialstate,time=[0.,1.],verbose=false)      # Solve the problem
-tx1,_           = getdof(state[2],field=:tx1,nodID=[n2])                        # Extract the displacement of the free node
+tx1             = getdof(state[2],field=:tx1,nodID=[n2])                        # Extract the displacement of the free node
 req             = @request F                                                    # Extract internal results from the spring element
 eleres          = getresult(state,req,[e2]) 
 iele,istep      = 1,2
