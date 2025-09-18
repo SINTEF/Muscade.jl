@@ -23,8 +23,8 @@ a = :a
     @test h(2.) ≈ 4.
     @test f(2) == 12
     @test fu(1.,0,fukwargs...) ≈ 1.
-    # @test Muscade.@typeof(f(2.)) == (Float64,Float64) # @typeof does no work on ubuntu linux
-    # @test Muscade.@typeof(f(2 )) == (  Int64,  Int64)
+    @inferred f(2.)
+    @inferred f(2)
 end
 
 end

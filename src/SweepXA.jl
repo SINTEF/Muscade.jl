@@ -45,7 +45,7 @@ end
 # 2) solver
 # 3) addin! (Acost) (cf. DirectXUA)
 # 4) this way of adiffing is more readable than DirectXUA/addin!.  
-# Is there a performance penalty to SweepXA's style? Make DirectXUA (and other solvers' addin!) more readable? Merge first from branch DirectXUA!!!
+#    Is there a performance penalty to SweepXA's style? Make DirectXUA (and other solvers' addin!) more readable?
 # 5) It seems that DirectXUA/addin! uses adiff to the second order also when only vectors are required.  This would be very significant for FreqXU.
 
 function addin!{:newmark}(out::AssemblySweepXA,asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A::SVector{Na},t,SP,dbg) where{Nxder,Nx,Na}

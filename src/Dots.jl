@@ -60,6 +60,7 @@ See also: [`∘₁`](@ref),[`∘₂`](@ref)
         end
     end
 end
+
 dots(a::              Ta    ,b::AbstractArray{Tb,Nb},::Val{0}) where {Ta<:Number,Tb<:Number   ,Nb} = a*b
 dots(a::AbstractArray{Ta,Na},b::              Tb    ,::Val{0}) where {Ta<:Number,Tb<:Number,Na   } = a*b
 dots(a::              Ta    ,b::              Tb    ,::Val{0}) where {Ta<:Number,Tb<:Number      } = a*b

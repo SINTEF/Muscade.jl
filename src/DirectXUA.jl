@@ -409,7 +409,7 @@ function solve(::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
         verbose && @printf("        Assembling")
         SP = (γ=γ,iter=iter)
         assemblebig!{:matrices}(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out,state,nstep,Δt,SP,(dbg...,solver=:DirectXUA,iter=iter))
-        sparser!(cLvv,Lvv,1e-20)
+        sparser!(cLvv,Lvv,1e-20) # TODO user defined parameter
         verbose && @printf(", solving")
         try 
             LU = lu(cLvv) 
