@@ -8,6 +8,9 @@ module Runtest
         @testset "TestElementAPI" begin
             include("TestElementAPI.jl")
         end
+        @testset "TestDots" begin
+            include("TestDots.jl")
+        end
         @testset "TestAdiff" begin
             include("TestAdiff.jl")
         end
