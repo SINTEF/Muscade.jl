@@ -38,9 +38,9 @@ end
     end
 end
 # jump over elements without Xdofs in a SweepX analysis
-addin!{:newmark   }(out::AssemblySweepX,asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{0}},U,A,t,SP,dbg) where{mission,Nxder} = return
-addin!{:iter      }(out::AssemblySweepX,asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{0}},U,A,t,SP,dbg) where{mission,Nxder} = return
-addin!{:linesearch}(out::AssemblySweepX,asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{0}},U,A,t,SP,dbg) where{mission,Nxder} = return
+addin!{:newmark   }(out::AssemblySweepX,asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{0}},U,A,t,SP,dbg) where{Nxder} = return
+addin!{:iter      }(out::AssemblySweepX,asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{0}},U,A,t,SP,dbg) where{Nxder} = return
+addin!{:linesearch}(out::AssemblySweepX,asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{0}},U,A,t,SP,dbg) where{Nxder} = return
 function addin!{:newmark}(out::AssemblySweepX,asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A,t,SP,dbg) where{Nxder,Nx}
     a₁,a₂,a₃,b₁,b₂,b₃ = out.c.a₁,out.c.a₂,out.c.a₃,out.c.b₁,out.c.b₂,out.c.b₃
     i          = SVector{Nx,𝕫}(1:Nx)

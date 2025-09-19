@@ -85,7 +85,6 @@ doflist(::Type{<:Acost{Na,inod,field}}) where{Na,inod,field} = (inod =inod,class
     return cost,noFB
 end
 
-
 """
     ElementCost{Teleobj,Treq,Tcost,Tcostargs} <: AbstractElement
 
