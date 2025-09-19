@@ -1,19 +1,19 @@
 ### Assembler
 
-mutable struct AssemblySweepXA{ORDER,Lλ,Lx,Lr,La,Lλx,Lλa,Lxx,Lxr,Lrr,Lax,Lar,Laa} <: Assembly
+mutable struct AssemblySweepXA{ORDER} <: Assembly
     # up
-    Lλ         :: TLλ  
-    Lx         :: TLx  
-    Lr         :: TLr  
-    La         :: TLa  
-    Lλx        :: TLλx 
-    Lλa        :: TLλa 
-    Lxx        :: TLxx 
-    Lxr        :: TLxr 
-    Lrr        :: TLrr 
-    Lax        :: TLax 
-    Lar        :: TLar 
-    Laa        :: TLaa 
+    Lλ         :: 𝕣1  
+    Lx         :: 𝕣1  
+    Lr         :: Base.RefValue{𝕣}  
+    La         :: 𝕣1  
+    Lλx        :: Sparse𝕣2 
+    Lλa        :: Sparse𝕣2 
+    Lxx        :: Sparse𝕣2 
+    Lxr        :: 𝕣1 
+    Lrr        :: Base.RefValue{𝕣} 
+    Lax        :: Sparse𝕣2 
+    Lar        :: 𝕣1 
+    Laa        :: Sparse𝕣2 
 
     ming      :: 𝕣
     minλ      :: 𝕣
@@ -36,21 +36,34 @@ function prepare(::Type{AssemblySweepXA{ORDER}},model,dis) where{ORDER}
     asm                = Matrix{𝕫2}(undef,narray,neletyp)  # asm[iarray,ieletyp][ieledof,iele]
     Lλ                 = asmvec!(view(asm, 1,:),Λdofgr,dis)
     Lx                 = asmvec!(view(asm, 2,:),Xdofgr,dis)
+    Lr                 = Ref(0.)
     La                 = asmvec!(view(asm, 3,:),Adofgr,dis)
     Lλx                = asmmat!(view(asm, 4,:),view(asm,1,:),view(asm,2,:),nXdof,nXdof)
     Lλa                = asmmat!(view(asm, 5,:),view(asm,1,:),view(asm,4,:),nXdof,nAdof)
     Lxx                = asmmat!(view(asm, 6,:),view(asm,2,:),view(asm,2,:),nXdof,nXdof)
     Lxr                = asmvec!(view(asm, 7,:),Xdofgr,dis) 
+    Lrr                = Ref(0.)
     Lax                = asmmat!(view(asm, 8,:),view(asm,4,:),view(asm,2,:),nAdof,nXdof)
     Lar                = asmvec!(view(asm, 9,:),Adofgr,dis)  
     Laa                = asmmat!(view(asm,10,:),view(asm,4,:),view(asm,4,:),nAdof,nAdof)
 
-    out                = AssemblySweepXA{ORDER,typeof(Lλ),typeof(Lλx)}(Lλ,Lλx,∞,∞,0.,0,(a₁=0.,a₂=0.,a₃=0.,b₁=0.,b₂=0.,b₃=0.),false,false) 
+    out                = AssemblySweepXA{ORDER,typeof(Lλ),typeof(Lλx)}(Lλ,Lx,Lr,La,Lλx,Lλa,Lxx,Lxr,Lrr,Lax,Lar,Laa,
+                                                                       ∞,∞,0.,0,(a₁=0.,a₂=0.,a₃=0.,b₁=0.,b₂=0.,b₃=0.),false,false) 
     return out,asm,Xdofgr
 end
-function zero!(out::AssemblySweepXA) 
-    zero!(out.Lλ)
+function zero!(out::AssemblySweepXA) # TODO
+    zero!(out.Lλ )
+    zero!(out.Lx )
+    zero!(out.Lr )
+    zero!(out.La )
     zero!(out.Lλx)
+    zero!(out.Lλa)
+    zero!(out.Lxx)
+    zero!(out.Lxr)
+    zero!(out.Lrr)
+    zero!(out.Lax)
+    zero!(out.Lar)
+    zero!(out.Laa)
     out.ming = ∞    
     out.minλ = ∞
     out.Σλg  = 0.
@@ -66,18 +79,12 @@ end
 end
 
 #=
-NOTE
-Lr and Lrr are scalars, and they do not correspond to dofs, hence:
-1) There is no corresponding entry in asm - but there are still corresponding entries in out::AssemblySweepXA
-2) in addition to add_value! and add_∂! we need further operations to extract the right partial derivatives and add them into out.Lr and out.Lrr
-
 REPRISE
-1) addin! needs to add to out.Lr, out.Lrr etc: write add_value! and add_∂! methods
-2) implement addinA! (for once-off Acost)
-3) solver
-4) this way of adiffing is more readable than DirectXUA/addin!.  
+1) test the whole assembly process
+2) solver
+3) this way of adiffing is more readable than DirectXUA/addin!.  
    Is there a performance penalty to SweepXA's style? Make DirectXUA (and other solvers' addin!) more readable?
-5) It seems that DirectXUA/addin! uses adiff to the second order also when only vectors are required.  This would be very significant for FreqXU.
+4) It seems that DirectXUA/addin! uses adiff to the second order also when only vectors are required.  This would be very significant for FreqXU.
 =#
 
 function addin!{:newmark}(out::AssemblySweepXA,asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A::SVector{Na},t,SP,dbg) where{Nxder,Nx,Na}
@@ -101,19 +108,19 @@ function addin!{:newmark}(out::AssemblySweepXA,asm,iele,scale,eleobj,Λ,X::NTupl
     vx″               = x″    + b₁*δX + b*δr
     L,FB              = getlagrangian(eleobj,Λ+δΛ,(vx,vx′,vx″),U,A+δA,t,SP,dbg)
     ∇L                = ∂{2,Nz+1}(L)
-    add_value!(                   out.Lλ , asm[ 1], iele, ∇L, ia=iΛ        )  # Lλ  = R    
-    add_∂!{1,:notranspose,:minus}(out.Lλ , asm[ 1], iele, ∇L, ia=iΛ, ida=ir)  # Lλ -=   C⋅a + M⋅b   TODO new method 1: out.Lλ is a vector, r is scalar
-    add_value!(                   out.Lx , asm[ 2], iele, ∇L, ia=iX        )  # Lx    
-    add_value!(                   out.Lr ,                ∇L. ia=ir        )  # TODO new method 2: out.Lr is scalar, r is scalar    
-    add_value!(                   out.La , asm[ 3], iele, ∇L, ia=iA        )             
-    add_∂!{1                    }(out.Lλx, asm[ 4], iele, ∇L, ia=iΛ, ida=iX)  # Lλx = K + a₁C + b₁M - there is no Lλr
-    add_∂!{1                    }(out.Lλa, asm[ 5], iele, ∇L, ia=iΛ, ida=iA)    
-    add_∂!{1                    }(out.Lxx, asm[ 6], iele, ∇L, ia=iX, ida=iX)  
-    add_∂!{1                    }(out.Lxr, asm[ 7], iele, ∇L, ia=iX, ida=ir)  # TODO new method 1: out.Lxr is a vector, r is scalar
-    add_∂!{1                    }(out.Lrr,                ∇L, ia=ir, ida=ir)  # TODO new method 3: outl.Lrr is scalar, r is scalar 
-    add_∂!{1                    }(out.Lax, asm[ 8], iele, ∇L, ia=iA, ida=iX)  
-    add_∂!{1                    }(out.Lar, asm[ 9], iele, ∇L, ia=iA, ida=ir)  # TODO new method 1: out.Lar is a vector, r is scalar
-    add_∂!{1                    }(out.Laa, asm[10], iele, ∇L, ia=iA, ida=iA)  
+    add_value!(      out.Lλ , asm[ 1], iele, ∇L, ia=iΛ        )  # Lλ  = R    
+    add_∂!{1,:minus}(out.Lλ , asm[ 1], iele, ∇L, ia=iΛ, ida=ir)  # Lλ -=   C⋅a + M⋅b   
+    add_value!(      out.Lx , asm[ 2], iele, ∇L, ia=iX        )  # Lx    
+    add_value!(      out.Lr ,                ∇L, ia=ir        )     
+    add_value!(      out.La , asm[ 3], iele, ∇L, ia=iA        )             
+    add_∂!{1       }(out.Lλx, asm[ 4], iele, ∇L, ia=iΛ, ida=iX)  # Lλx = K + a₁C + b₁M - there is no Lλr
+    add_∂!{1       }(out.Lλa, asm[ 5], iele, ∇L, ia=iΛ, ida=iA)    
+    add_∂!{1       }(out.Lxx, asm[ 6], iele, ∇L, ia=iX, ida=iX)  
+    add_∂!{1       }(out.Lxr, asm[ 7], iele, ∇L, ia=iX, ida=ir)  
+    add_∂!{1       }(out.Lrr,                ∇L, ia=ir, ida=ir)   
+    add_∂!{1       }(out.Lax, asm[ 8], iele, ∇L, ia=iA, ida=iX)  
+    add_∂!{1       }(out.Lar, asm[ 9], iele, ∇L, ia=iA, ida=ir)  
+    add_∂!{1       }(out.Laa, asm[10], iele, ∇L, ia=iA, ida=iA)  
 end
 function addin!{:iter}(out::AssemblySweepXA{ORDER},asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A::SVector{Na},t,SP,dbg) where{ORDER,Nxder,Nx,Na}
     a₁,b₁             = out.c.a₁,out.c.b₁₃
@@ -144,7 +151,7 @@ function addin!{:linesearch}(out::AssemblySweepXA,asm,iele,scale,eleobj,Λ,X,U,A
     _,FB             = getlagrangian(eleobj,Λ,X,U,A,t,SP,dbg)
     lineFB!(out,FB)
 end
-function addinA!{mission}(out::AssemblyDirect,asm,iele,scale,eleobj::Acost,A::SVector{Na},dbg) where{Na,mission} # addin Atarget element
+function addin!{mission}(out::AssemblySweepXA,asm,iele,scale,eleobj::Acost,A::SVector{Na},dbg) where{Na,mission} # addin Atarget element
     A∂  = SVector{Na,∂ℝ{2,Na,∂ℝ{1,Na,𝕣}}}(∂²ℝ{1,Na}(A[idof],idof, scale.A[idof])   for idof=1:Na)
     ø   = nothing
     C,_ = lagrangian(eleobj,ø,ø,ø,A∂,ø,ø ,dbg)
@@ -154,7 +161,7 @@ function addinA!{mission}(out::AssemblyDirect,asm,iele,scale,eleobj::Acost,A::SV
         add_∂!{1}(out.Laa,asm[arrnum(ind.A,ind.A)],iele,∇ₐC)
     end
 end
-addinA!{:linesearch}(args...) = nothing
+addin!{:linesearch}(args...) = nothing
 
 
 """
