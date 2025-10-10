@@ -176,7 +176,7 @@ e     = addelement!(model,SingleAcost,[node];field=:EI,
 See also: [`DofCost`](@ref), [`SingleDofCost`](@ref),  [`Acost`](@ref), [`ElementCost`](@ref)
 """
 struct SingleAcost <: AbstractElement end
-(o::Functor{:fA})(A) = o.captured.cost(A[1])
+(o::Functor{:fA})(A,args...) = o.captured.cost(A[1],args...)
 SingleAcost(nod::Vector{Node};field::Symbol,cost::Functor,costargs=()) = 
     Acost(nod;inod=(1,),field=(field,),cost=Functor{:fA}(;cost),costargs)
 

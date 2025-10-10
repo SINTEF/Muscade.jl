@@ -57,7 +57,7 @@ function addin!{:newmark}(out::AssemblySweepX,asm,iele,scale,eleobj,Λ,X::NTuple
     Lλ         = Lλ .* scale.X
     add_value!(       out.Lλ ,asm[1],iele,Lλ             )  # rhs  = R    
     add_∂!{1,:minus}( out.Lλ ,asm[1],iele,Lλ,1:Nx,(Nx+1,))  # rhs +=  -C⋅a -M⋅b 
-    add_∂!{1       }( out.Lλx,asm[2],iele,Lλ,1:Nx,1:Nx   )  # Mat +=  
+    add_∂!{1       }( out.Lλx,asm[2],iele,Lλ,1:Nx,1:Nx   )  # Mat  =  K + a₁C + b₁M
 end
 function addin!{:iter}(out::AssemblySweepX{ORDER},asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A,t,SP,dbg) where{ORDER,Nxder,Nx} 
     a₁,b₁      = out.c.a₁,out.c.b₁
