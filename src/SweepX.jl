@@ -55,9 +55,9 @@ function addin!{:newmark}(out::AssemblySweepX,asm,iele,scale,eleobj,Λ,X::NTuple
     vx″        = x″ + b₁*δX + b*δr
     Lλ,FB      = getresidual(eleobj,(vx,vx′,vx″),U,A,t,SP,dbg)
     Lλ         = Lλ .* scale.X
-    add_value!(                    out.Lλ ,asm[1],iele,Lλ             )         # rhs  = R    
-    add_∂!{1,:notranspose,:minus}( out.Lλ ,asm[1],iele,Lλ,ia=1:Nx,ida=(Nx+1,))  # rhs +=  -C⋅a -M⋅b 
-    add_∂!{1                    }( out.Lλx,asm[2],iele,Lλ,ia=1:Nx,ida=1:Nx   )  # Mat +=  
+    add_value!(       out.Lλ ,asm[1],iele,Lλ             )  # rhs  = R    
+    add_∂!{1,:minus}( out.Lλ ,asm[1],iele,Lλ,1:Nx,(Nx+1,))  # rhs +=  -C⋅a -M⋅b 
+    add_∂!{1       }( out.Lλx,asm[2],iele,Lλ,1:Nx,1:Nx   )  # Mat +=  
 end
 function addin!{:iter}(out::AssemblySweepX{ORDER},asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A,t,SP,dbg) where{ORDER,Nxder,Nx} 
     a₁,b₁      = out.c.a₁,out.c.b₁

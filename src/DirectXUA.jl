@@ -103,7 +103,7 @@ function addin!{mission}(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::El
     end        
     iλ   = 1:ndof[ind.Λ]
     Lλ   = out.L1[ind.Λ]
-    add_value!(Lλ[1] ,asm[arrnum(ind.Λ)],iele,R,ia=iλ)
+    add_value!(Lλ[1] ,asm[arrnum(ind.Λ)],iele,R,iλ)
     if mission==:matrices
         pβ       = 0
         for β∈xua, j=1:nder[β]
@@ -112,8 +112,8 @@ function addin!{mission}(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::El
             Lλβ  = out.L2[ind.Λ,β]
             Lβλ  = out.L2[β,ind.Λ]
             if j≤size(Lλβ,2) # ...but only add into existing matrices of L2, for better sparsity
-                add_∂!{1           }(Lλβ[1,j],asm[arrnum(ind.Λ,β)],iele,R,ia=iλ,ida=iβ)
-                add_∂!{1,:transpose}(Lβλ[j,1],asm[arrnum(β,ind.Λ)],iele,R,ia=iλ,ida=iβ)
+                add_∂!{1           }(Lλβ[1,j],asm[arrnum(ind.Λ,β)],iele,R,iλ,iβ)
+                add_∂!{1,:transpose}(Lβλ[j,1],asm[arrnum(β,ind.Λ)],iele,R,iλ,iβ)
             end
         end
     end 
@@ -148,7 +148,7 @@ function addin!{mission}(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::El
         pα      += ndof[α]
         Lα = out.L1[α]
         if i≤size(Lα,1)  # ...but only add into existing vectors of L1, for speed
-            add_value!(Lα[i] ,asm[arrnum(α)],iele,∇L,ia=iα)
+            add_value!(Lα[i] ,asm[arrnum(α)],iele,∇L,iα)
         end
         if mission==:matrices
             pβ       = 0
@@ -157,7 +157,7 @@ function addin!{mission}(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::El
                 pβ  += ndof[β]
                 Lαβ = out.L2[α,β]
                 if i≤size(Lαβ,1) && j≤size(Lαβ,2) # ...but only add into existing matrices of L2, for better sparsity
-                    add_∂!{1}(Lαβ[i,j],asm[arrnum(α,β)],iele,∇L,ia=iα,ida=iβ)
+                    add_∂!{1}(Lαβ[i,j],asm[arrnum(α,β)],iele,∇L,iα,iβ)
                 end
             end
         end

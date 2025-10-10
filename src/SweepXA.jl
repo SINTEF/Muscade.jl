@@ -21,8 +21,6 @@ mutable struct AssemblySweepXA{ORDER} <: Assembly
     npos      :: 𝕫
     # down
     c         :: @NamedTuple{a₁::𝕣, a₂::𝕣, a₃::𝕣, b₁::𝕣, b₂::𝕣, b₃::𝕣}
-    firstiter :: 𝕓   
-    line      :: 𝕓
 end   
 
 function prepare(::Type{AssemblySweepXA{ORDER}},model,dis) where{ORDER}
@@ -32,23 +30,22 @@ function prepare(::Type{AssemblySweepXA{ORDER}},model,dis) where{ORDER}
     nΛdof              = getndof(Λdofgr)
     nXdof              = getndof(Xdofgr)
     nAdof              = getndof(Adofgr)
-    narray,neletyp     = 12,getneletyp(model)
+    narray,neletyp     = 10,getneletyp(model)
     asm                = Matrix{𝕫2}(undef,narray,neletyp)  # asm[iarray,ieletyp][ieledof,iele]
     Lλ                 = asmvec!(view(asm, 1,:),Λdofgr,dis)
     Lx                 = asmvec!(view(asm, 2,:),Xdofgr,dis)
     Lr                 = Ref(0.)
     La                 = asmvec!(view(asm, 3,:),Adofgr,dis)
     Lλx                = asmmat!(view(asm, 4,:),view(asm,1,:),view(asm,2,:),nXdof,nXdof)
-    Lλa                = asmmat!(view(asm, 5,:),view(asm,1,:),view(asm,4,:),nXdof,nAdof)
+    Lλa                = asmmat!(view(asm, 5,:),view(asm,1,:),view(asm,3,:),nXdof,nAdof)
     Lxx                = asmmat!(view(asm, 6,:),view(asm,2,:),view(asm,2,:),nXdof,nXdof)
     Lxr                = asmvec!(view(asm, 7,:),Xdofgr,dis) 
     Lrr                = Ref(0.)
-    Lax                = asmmat!(view(asm, 8,:),view(asm,4,:),view(asm,2,:),nAdof,nXdof)
+    Lax                = asmmat!(view(asm, 8,:),view(asm,3,:),view(asm,2,:),nAdof,nXdof)
     Lar                = asmvec!(view(asm, 9,:),Adofgr,dis)  
-    Laa                = asmmat!(view(asm,10,:),view(asm,4,:),view(asm,4,:),nAdof,nAdof)
+    Laa                = asmmat!(view(asm,10,:),view(asm,3,:),view(asm,3,:),nAdof,nAdof)
 
-    out                = AssemblySweepXA{ORDER,typeof(Lλ),typeof(Lλx)}(Lλ,Lx,Lr,La,Lλx,Lλa,Lxx,Lxr,Lrr,Lax,Lar,Laa,
-                                                                       ∞,∞,0.,0,(a₁=0.,a₂=0.,a₃=0.,b₁=0.,b₂=0.,b₃=0.),false,false) 
+    out                = AssemblySweepXA{ORDER}(Lλ,Lx,Lr,La,Lλx,Lλa,Lxx,Lxr,Lrr,Lax,Lar,Laa, ∞,∞,0.,0, (a₁=0.,a₂=0.,a₃=0.,b₁=0.,b₂=0.,b₃=0.)) 
     return out,asm,Xdofgr
 end
 function zero!(out::AssemblySweepXA) # TODO
@@ -69,14 +66,14 @@ function zero!(out::AssemblySweepXA) # TODO
     out.Σλg  = 0.
     out.npos = 0    
 end
-@inline function lineFB!(out,FB)
-    if hasfield(typeof(FB),:mode) && FB.mode==:positive
-        out.ming   = min(out.ming,VALUE(FB.g))
-        out.minλ   = min(out.minλ,VALUE(FB.λ))
-        out.Σλg   += VALUE(FB.g)*VALUE(FB.λ)
-        out.npos  += 1
-    end
-end
+# @inline function lineFB!(out,FB)
+#     if hasfield(typeof(FB),:mode) && FB.mode==:positive
+#         out.ming   = min(out.ming,VALUE(FB.g))
+#         out.minλ   = min(out.minλ,VALUE(FB.λ))
+#         out.Σλg   += VALUE(FB.g)*VALUE(FB.λ)
+#         out.npos  += 1
+#     end
+# end
 
 #=
 REPRISE
@@ -93,7 +90,7 @@ function addin!{:newmark}(out::AssemblySweepXA,asm,iele,scale,eleobj,Λ,X::NTupl
     iΛ                = SVector{Nx  ,𝕫}(    1: Nx  )
     iX                = SVector{Nx  ,𝕫}( Nx+1:2Nx  )
     iA                = SVector{Na  ,𝕫}(2Nx+1: Nz  )
-    ir                = SVector{1   ,𝕫}(       Nz+1)
+    ir                =                        Nz+1
     s                 = SVector{Nz+1,𝕣}(scale.Λ...,scale.X...,1.,scale.A...)
     δZ                = δ{1,Nz+1,𝕣}(s) + δ{2,Nz+1,𝕣}(s)      
     δΛ                = δZ[iΛ]        
@@ -106,21 +103,22 @@ function addin!{:newmark}(out::AssemblySweepXA,asm,iele,scale,eleobj,Λ,X::NTupl
     vx                = x     +    δX
     vx′               = x′    + a₁*δX + a*δr 
     vx″               = x″    + b₁*δX + b*δr
-    L,FB              = getlagrangian(eleobj,Λ+δΛ,(vx,vx′,vx″),U,A+δA,t,SP,dbg)
+    vλ                = ∂0(Λ) + δΛ
+    L,FB              = getlagrangian(eleobj,vλ,(vx,vx′,vx″),U,A+δA,t,SP,dbg)
     ∇L                = ∂{2,Nz+1}(L)
-    add_value!(      out.Lλ , asm[ 1], iele, ∇L, ia=iΛ        )  # Lλ  = R    
-    add_∂!{1,:minus}(out.Lλ , asm[ 1], iele, ∇L, ia=iΛ, ida=ir)  # Lλ -=   C⋅a + M⋅b   
-    add_value!(      out.Lx , asm[ 2], iele, ∇L, ia=iX        )  # Lx    
-    add_value!(      out.Lr ,                ∇L, ia=ir        )     
-    add_value!(      out.La , asm[ 3], iele, ∇L, ia=iA        )             
-    add_∂!{1       }(out.Lλx, asm[ 4], iele, ∇L, ia=iΛ, ida=iX)  # Lλx = K + a₁C + b₁M - there is no Lλr
-    add_∂!{1       }(out.Lλa, asm[ 5], iele, ∇L, ia=iΛ, ida=iA)    
-    add_∂!{1       }(out.Lxx, asm[ 6], iele, ∇L, ia=iX, ida=iX)  
-    add_∂!{1       }(out.Lxr, asm[ 7], iele, ∇L, ia=iX, ida=ir)  
-    add_∂!{1       }(out.Lrr,                ∇L, ia=ir, ida=ir)   
-    add_∂!{1       }(out.Lax, asm[ 8], iele, ∇L, ia=iA, ida=iX)  
-    add_∂!{1       }(out.Lar, asm[ 9], iele, ∇L, ia=iA, ida=ir)  
-    add_∂!{1       }(out.Laa, asm[10], iele, ∇L, ia=iA, ida=iA)  
+    add_value!(      out.Lλ , asm[ 1], iele, ∇L, iΛ    )  # Lλ  = R    
+    add_∂!{1,:minus}(out.Lλ , asm[ 1], iele, ∇L, iΛ, ir)  # Lλ -=   C⋅a + M⋅b   
+    add_value!(      out.Lx , asm[ 2], iele, ∇L, iX    )  # Lx    
+    add_value!(      out.Lr ,                ∇L, ir    )     
+    add_value!(      out.La , asm[ 3], iele, ∇L, iA    )             
+    add_∂!{1       }(out.Lλx, asm[ 4], iele, ∇L, iΛ, iX)  # Lλx = K + a₁C + b₁M - there is no Lλr
+    add_∂!{1       }(out.Lλa, asm[ 5], iele, ∇L, iΛ, iA)    
+    add_∂!{1       }(out.Lxx, asm[ 6], iele, ∇L, iX, iX)  
+    add_∂!{1       }(out.Lxr, asm[ 7], iele, ∇L, iX, ir) 
+    add_∂!{1       }(out.Lrr,                ∇L, ir, ir)   
+    add_∂!{1       }(out.Lax, asm[ 8], iele, ∇L, iA, iX)  
+    add_∂!{1       }(out.Lar, asm[ 9], iele, ∇L, iA, ir)  
+    add_∂!{1       }(out.Laa, asm[10], iele, ∇L, iA, iA)  
 end
 function addin!{:iter}(out::AssemblySweepXA{ORDER},asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A::SVector{Na},t,SP,dbg) where{ORDER,Nxder,Nx,Na}
     a₁,b₁             = out.c.a₁,out.c.b₁₃
@@ -138,14 +136,14 @@ function addin!{:iter}(out::AssemblySweepXA{ORDER},asm,iele,scale,eleobj,Λ,X::N
     elseif ORDER==2  L,FB = getlagrangian(eleobj,Λ+δΛ²,(∂0(X)+δX, ∂1(X)+a₁*δX, ∂2(X)+b₁*δX),U,A+δA,t,SP,dbg)
     end
     ∇L²              = ∂{2,Nz}(L)
-    add_value!(out.Lλ , asm[ 1], iele, ∇L², ia=iΛ        )  # Lλ  = R    
-    add_value!(out.Lx , asm[ 2], iele, ∇L², ia=iX        )  # Lx         
-    add_value!(out.La , asm[ 3], iele, ∇L², ia=iA        )             
-    add_∂!{1 }(out.Lλx, asm[ 4], iele, ∇L², ia=iΛ ,ida=iX)  # Lλx = K + a₁C + b₁M - there is no Lλr
-    add_∂!{1 }(out.Lλa, asm[ 5], iele, ∇L², ia=iΛ ,ida=iA)    
-    add_∂!{1 }(out.Lxx, asm[ 6], iele, ∇L², ia=iX ,ida=iX)  
-    add_∂!{1 }(out.Lax, asm[ 8], iele, ∇L², ia=iA ,ida=iX)  
-    add_∂!{1 }(out.Laa, asm[10], iele, ∇L², ia=iA ,ida=iA)  
+    add_value!(out.Lλ , asm[ 1], iele, ∇L², iΛ    )  # Lλ  = R    
+    add_value!(out.Lx , asm[ 2], iele, ∇L², iX    )  # Lx         
+    add_value!(out.La , asm[ 3], iele, ∇L², iA    )             
+    add_∂!{1 }(out.Lλx, asm[ 4], iele, ∇L², iΛ ,iX)  # Lλx = K + a₁C + b₁M - there is no Lλr
+    add_∂!{1 }(out.Lλa, asm[ 5], iele, ∇L², iΛ ,iA)    
+    add_∂!{1 }(out.Lxx, asm[ 6], iele, ∇L², iX ,iX)  
+    add_∂!{1 }(out.Lax, asm[ 8], iele, ∇L², iA ,iX)  
+    add_∂!{1 }(out.Laa, asm[10], iele, ∇L², iA ,iA)  
 end
 function addin!{:linesearch}(out::AssemblySweepXA,asm,iele,scale,eleobj,Λ,X,U,A,t,SP,dbg) 
     _,FB             = getlagrangian(eleobj,Λ,X,U,A,t,SP,dbg)
@@ -216,82 +214,82 @@ A vector of length equal to that of the named input argument `time` containing t
 
 See also: [`solve`](@ref), [`initialize!`](@ref), [`findlastassigned`](@ref), [`study_singular`](@ref), [`DirectXUA`](@ref), [`FreqXU`](@ref)  
 """
-struct        SweepXA{ORDER} <: AbstractSolver end
-function solve(SX::Type{SweepXA{ORDER}},pstate,verbose,dbg;
-                    time::AbstractVector{𝕣},
-                    initialstate::State,
-                    β::𝕣=1/4,γ::𝕣=1/2,
-                    maxiter::ℤ=50,maxΔx::ℝ=1e-5,maxLλ::ℝ=∞,
-                    saveiter::𝔹=false,
-                    maxLineIter::ℤ=50,sfac::𝕣=.5,γfac::𝕣=.5) where{ORDER}
-    model,dis        = initialstate.model,initialstate.dis
-    out,asm,Xdofgr   = prepare(AssemblySweepXA{ORDER},model,dis)  
-    ndof             = getndof(Xdofgr)
-    if ORDER≥1    x′ = 𝕣1(undef,ndof) end 
-    if ORDER≥2    x″ = 𝕣1(undef,ndof) end 
-    citer            = 0
-    cΔx²,cLλ²        = maxΔx^2,maxLλ^2
-    state            = State{1,ORDER+1,1}(copy(initialstate,SP=(γ=0.,))) 
+# struct        SweepXA{ORDER} <: AbstractSolver end
+# function solve(SX::Type{SweepXA{ORDER}},pstate,verbose,dbg;
+#                     time::AbstractVector{𝕣},
+#                     initialstate::State,
+#                     β::𝕣=1/4,γ::𝕣=1/2,
+#                     maxiter::ℤ=50,maxΔx::ℝ=1e-5,maxLλ::ℝ=∞,
+#                     saveiter::𝔹=false,
+#                     maxLineIter::ℤ=50,sfac::𝕣=.5,γfac::𝕣=.5) where{ORDER}
+#     model,dis        = initialstate.model,initialstate.dis
+#     out,asm,Xdofgr   = prepare(AssemblySweepXA{ORDER},model,dis)  
+#     ndof             = getndof(Xdofgr)
+#     if ORDER≥1    x′ = 𝕣1(undef,ndof) end 
+#     if ORDER≥2    x″ = 𝕣1(undef,ndof) end 
+#     citer            = 0
+#     cΔx²,cLλ²        = maxΔx^2,maxLλ^2
+#     state            = State{1,ORDER+1,1}(copy(initialstate,SP=(γ=0.,))) 
 
 
-    states           = allocate(pstate,Vector{typeof(state)}(undef,saveiter ? maxiter : length(time))) # states is not a return argument of this function.  Hence it is not lost in case of exception
-    local facLλx 
-    for (step,t)     ∈ enumerate(time)
-        oldt         = state.time
-        state.time   = t
-        Δt           = t-oldt
-        Δt ≤ 0 && ORDER>0 && muscadeerror(@sprintf("Time step length not strictly positive at step=%3d",step))
-        if     ORDER==0 out.c= (a₁=0.      , a₂=0. , a₃=0.         , b₁=0.        , b₂=0.      , b₃=0.  )
-        elseif ORDER==1 out.c= (a₁=1/Δt    , a₂=0  , a₃=0.         , b₁=0.        , b₂=0.      , b₃=0.  )
-        elseif ORDER==2 out.c= (a₁=γ/(β*Δt), a₂=γ/β, a₃=(γ/2β-1)*Δt, b₁=1/(β*Δt^2), b₂=1/(β*Δt), b₃=1/2β) # γ, as in Newmark's β and γ
-        end
-        state.time   = t
-        out.firstiter= true
-        out.line     = true
-        assemble!(out,asm,dis,model,state,(dbg...,solver=:SweepXA,phase=:preliminary,step=step))
-        out.ming ≤ 0 && muscadeerror(@sprintf("Initial point is not strictly primal-feasible at step=%3d",step)) # This is going to suck
-        out.minλ ≤ 0 && muscadeerror(@sprintf("Initial point is not strictly dual-feasible at step=%3d"  ,step)) # This is going to suck
-        state.SP     = (γ=out.Σλg/out.npos * γfac,)   # γ, is in interior point, g(X)*λ=γ
-        for iiter    = 1:maxiter
-            citer   += 1
-            out.firstiter = firstiter = iiter==1
-            out.line = false
-            assemble!(out,asm,dis,model,state,(dbg...,solver=:SweepXA,step=step,iiter=iiter))
-            try if step==1 && firstiter  facLλx = lu(out.Lλx) 
-            else                         lu!(facLλx, out.Lλx) 
-            end catch; muscadeerror(@sprintf("matrix factorization failed at step=%i, iiter=%i",step,iiter)) end
-            Δx       = facLλx\out.Lλ
-            Δx²,Lλ²  = sum(Δx.^2),sum(out.Lλ.^2)
-            if     ORDER==0  decr0!(state,Δx ,Xdofgr                      )
-            elseif ORDER==1  decr1!(state,Δx ,Xdofgr,out.c                )
-            elseif ORDER==2  decr2!(state,Δx ,Xdofgr,out.c,firstiter,x′,x″)
-            end
+#     states           = allocate(pstate,Vector{typeof(state)}(undef,saveiter ? maxiter : length(time))) # states is not a return argument of this function.  Hence it is not lost in case of exception
+#     local facLλx 
+#     for (step,t)     ∈ enumerate(time)
+#         oldt         = state.time
+#         state.time   = t
+#         Δt           = t-oldt
+#         Δt ≤ 0 && ORDER>0 && muscadeerror(@sprintf("Time step length not strictly positive at step=%3d",step))
+#         if     ORDER==0 out.c= (a₁=0.      , a₂=0. , a₃=0.         , b₁=0.        , b₂=0.      , b₃=0.  )
+#         elseif ORDER==1 out.c= (a₁=1/Δt    , a₂=0  , a₃=0.         , b₁=0.        , b₂=0.      , b₃=0.  )
+#         elseif ORDER==2 out.c= (a₁=γ/(β*Δt), a₂=γ/β, a₃=(γ/2β-1)*Δt, b₁=1/(β*Δt^2), b₂=1/(β*Δt), b₃=1/2β) # γ, as in Newmark's β and γ
+#         end
+#         state.time   = t
+#         out.firstiter= true
+#         out.line     = true
+#         assemble!(out,asm,dis,model,state,(dbg...,solver=:SweepXA,phase=:preliminary,step=step))
+#         out.ming ≤ 0 && muscadeerror(@sprintf("Initial point is not strictly primal-feasible at step=%3d",step)) # This is going to suck
+#         out.minλ ≤ 0 && muscadeerror(@sprintf("Initial point is not strictly dual-feasible at step=%3d"  ,step)) # This is going to suck
+#         state.SP     = (γ=out.Σλg/out.npos * γfac,)   # γ, is in interior point, g(X)*λ=γ
+#         for iiter    = 1:maxiter
+#             citer   += 1
+#             out.firstiter = firstiter = iiter==1
+#             out.line = false
+#             assemble!(out,asm,dis,model,state,(dbg...,solver=:SweepXA,step=step,iiter=iiter))
+#             try if step==1 && firstiter  facLλx = lu(out.Lλx) 
+#             else                         lu!(facLλx, out.Lλx) 
+#             end catch; muscadeerror(@sprintf("matrix factorization failed at step=%i, iiter=%i",step,iiter)) end
+#             Δx       = facLλx\out.Lλ
+#             Δx²,Lλ²  = sum(Δx.^2),sum(out.Lλ.^2)
+#             if     ORDER==0  decr0!(state,Δx ,Xdofgr                      )
+#             elseif ORDER==1  decr1!(state,Δx ,Xdofgr,out.c                )
+#             elseif ORDER==2  decr2!(state,Δx ,Xdofgr,out.c,firstiter,x′,x″)
+#             end
 
-            out.line = true    
-            s = 1.    
-            for iline = 1:maxLineIter
-                assemble!(out,asm,dis,model,state,(dbg...,solver=:SweepXA,phase=:linesearch,step=step,iiter=iiter,iline=iline))
-                out.minλ > 0 && out.ming > 0 &&  break
-                iline==maxLineIter && muscadeerror(@sprintf("Line search failed at step=%3d, iiter=%3d, iline=%3d, s=%7.1e",step,iiter,iline,s))
-                Δs    = s*(sfac-1)
-                s    += Δs
-                if     ORDER==0  decr0!(state,Δs*Δx ,Xdofgr                      )
-                elseif ORDER==1  decr1!(state,Δs*Δx ,Xdofgr,out.c                )
-                elseif ORDER==2  decr2!(state,Δs*Δx ,Xdofgr,out.c,firstiter,x′,x″)
-                end
-            end
+#             out.line = true    
+#             s = 1.    
+#             for iline = 1:maxLineIter
+#                 assemble!(out,asm,dis,model,state,(dbg...,solver=:SweepXA,phase=:linesearch,step=step,iiter=iiter,iline=iline))
+#                 out.minλ > 0 && out.ming > 0 &&  break
+#                 iline==maxLineIter && muscadeerror(@sprintf("Line search failed at step=%3d, iiter=%3d, iline=%3d, s=%7.1e",step,iiter,iline,s))
+#                 Δs    = s*(sfac-1)
+#                 s    += Δs
+#                 if     ORDER==0  decr0!(state,Δs*Δx ,Xdofgr                      )
+#                 elseif ORDER==1  decr1!(state,Δs*Δx ,Xdofgr,out.c                )
+#                 elseif ORDER==2  decr2!(state,Δs*Δx ,Xdofgr,out.c,firstiter,x′,x″)
+#                 end
+#             end
 
-            verbose && saveiter && @printf("        iteration %3d, γ= %7.1e\n",iiter,γ)
-            saveiter && (states[iiter]=State(state.time,state.Λ,deepcopy(state.X),state.U,state.A,state.SP,model,dis))
-            if Δx²≤cΔx² && Lλ²≤cLλ² 
-                verbose && @printf "    step %3d converged in %3d iterations. |Δx|=%7.1e |Lλ|=%7.1e\n" step iiter √(Δx²) √(Lλ²)
-                ~saveiter && (states[step]=State(state.time,state.Λ,deepcopy(state.X),state.U,state.A,state.SP,model,dis))
-                break#out of the iiter loop
-            end
-            iiter==maxiter && muscadeerror(@sprintf("no convergence of step %3d after %3d iterations |Δx|=%g / %g, |Lλ|=%g / %g",step,iiter,√(Δx²),maxΔx,√(Lλ²)^2,maxLλ))
-            state.SP     = (γ=state.SP.γ*γfac,)
-        end
-    end
-    verbose && @printf "\n    nel=%d, ndof=%d, nstep=%d, niter=%d, niter/nstep=%5.2f\n" getnele(model) getndof(Xdofgr) length(time) citer citer/length(time)
-    return
-end
+#             verbose && saveiter && @printf("        iteration %3d, γ= %7.1e\n",iiter,γ)
+#             saveiter && (states[iiter]=State(state.time,state.Λ,deepcopy(state.X),state.U,state.A,state.SP,model,dis))
+#             if Δx²≤cΔx² && Lλ²≤cLλ² 
+#                 verbose && @printf "    step %3d converged in %3d iterations. |Δx|=%7.1e |Lλ|=%7.1e\n" step iiter √(Δx²) √(Lλ²)
+#                 ~saveiter && (states[step]=State(state.time,state.Λ,deepcopy(state.X),state.U,state.A,state.SP,model,dis))
+#                 break#out of the iiter loop
+#             end
+#             iiter==maxiter && muscadeerror(@sprintf("no convergence of step %3d after %3d iterations |Δx|=%g / %g, |Lλ|=%g / %g",step,iiter,√(Δx²),maxΔx,√(Lλ²)^2,maxLλ))
+#             state.SP     = (γ=state.SP.γ*γfac,)
+#         end
+#     end
+#     verbose && @printf "\n    nel=%d, ndof=%d, nstep=%d, niter=%d, niter/nstep=%5.2f\n" getnele(model) getndof(Xdofgr) length(time) citer citer/length(time)
+#     return
+# end

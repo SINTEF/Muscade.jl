@@ -69,6 +69,9 @@ module Muscade
     include("SweepX.jl")
     export SweepX
 
+    include("SweepXA.jl")
+    export SweepXA
+
     include("DirectXUA.jl")
     export DirectXUA
 

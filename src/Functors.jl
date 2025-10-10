@@ -48,14 +48,14 @@ while avoiding several of the issues associated with defining a function (and in
 a closure) in a script:    
 
 - A closure captures a variable "by reference", while `@functor` captures it by value, which might be more intuitive. 
-- To ensure type stability, the variables captured by a closure would have to be declared `const` - forbidding to update the input value without restarting Julia
+- To ensure type stability, the variables captured by a closure would have to be declared `const` - forbidding to update the input value without restarting Julia.
 - If the code of the function is not changed, the function is not parsed and compiled again, accelerating the re-analysis.
 
 It is not possible to associate multiple methods to a functor.
 
 `Functor` is a subtype of the abstract type `Function`: functions that accept a `arg::Function` as an 
-input will accept `arg to be a `Functor`.  Functions that require `arg:Functor` will not accept a classical
-`Function`, allowing to ensure capture by value etc.
+input will accept `arg` to be a `Functor`.  Functions that require `arg:Functor` will not accept a classical
+`Function`, thus enforcing capture by value etc.
 
 """
 macro functor(capturedargs,foo)

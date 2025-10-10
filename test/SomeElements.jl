@@ -206,3 +206,19 @@ SdofOscillator(nod::Vector{Node};K₁=0.::𝕣,K₂::𝕣=0.,C₁=0.::𝕣,C₂:
 end
 Muscade.doflist( ::Type{SdofOscillator})  = (inod =(1 ,1 ), class=(:X,:U), field=(:tx1,:tu1))
 
+### AdjustableSdofOscillator
+
+struct AdjustableSdofOscillator <: AbstractElement
+    K :: 𝕣
+    C :: 𝕣
+    M :: 𝕣
+end
+AdjustableSdofOscillator(nod::Vector{Node};K=1.::𝕣,C=0.::𝕣,M=0.::𝕣) = AdjustableSdofOscillator(K,C,M)
+@espy function Muscade.residual(o::AdjustableSdofOscillator, X,U,A, t,SP,dbg) 
+    x,x′,x″,u = ∂0(X)[1], ∂1(X)[1], ∂2(X)[1], ∂0(U)[1]
+    ☼C        = o.C *exp10(A[1]) 
+    ☼M        = o.M *exp10(A[2]) 
+    R         = SVector(-u +o.K*x +C*x′ +M*x″)
+    return R,noFB
+end
+Muscade.doflist( ::Type{AdjustableSdofOscillator})  = (inod =(1 ,1, 1, 1), class=(:X,:U,:A,:A), field=(:tx1,:tu1,:ΞC,:ΞM))

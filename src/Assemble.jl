@@ -520,7 +520,7 @@ end
 # out[asm[iasm,iele]] += a      # pick: 'a' is only a part of the element vector (FreqXU)   
 # out[asm[:,   iele]] += a[ia]  # split: parts of 'a' are assembled (DirectXUA)   
 # out[asm[iasm,iele]] += a[ia]  # not used
-function add_value!(out::𝕣1,asm,iele,a::SVector{Na,<:ℝ};ia=1:Na,iasm=idvec) where{Na}
+function add_value!(out::𝕣1,asm,iele,a::SVector{Na,<:ℝ},ia=1:Na;iasm=idvec) where{Na}
     for (i,iaᵢ) ∈ enumerate(ia)
         iout = asm[iasm[i],iele]
         if iout≠0 
@@ -528,20 +528,12 @@ function add_value!(out::𝕣1,asm,iele,a::SVector{Na,<:ℝ};ia=1:Na,iasm=idvec)
         end
     end
 end   
-function add_value!(out::𝕣1,asm,iele,a::SVector{Na,<:ℝ};ia=1:Na,iasm=idvec) where{Na}
-    for (i,iaᵢ) ∈ enumerate(ia)
-        iout = asm[iasm[i],iele]
-        if iout≠0 
-            out[iout]+=VALUE(a[iaᵢ]) 
-        end
-    end
-end   
-function add_value!(out::Base.RefValue,a,ia::𝕫)  
-    out[] += a[ia]
+function add_value!(out::Base.RefValue,a,ia::𝕫)  # # Lr, scalar in Newmakr-β context
+    out[] += VALUE(a[ia])
 end
 
 struct   add_∂!{P,T,M} end # to allow syntax with type-parameter P: precedence, T (transpose), M (minus)
-function add_∂!{P,T,M}(out::Array,asm,iele,a::SVector{Na,∂ℝ{P,Nda,R}};ia=1:Na,ida=1:Nda,iasm=idvec,idasm=idvec) where{P,Nda,R,Na,T,M}
+function add_∂!{P,T,M}(out::Array,asm,iele,a::SVector{Na,∂ℝ{P,Nda,R}},ia=1:Na,ida=1:Nda;iasm=idvec,idasm=idvec) where{P,Nda,R,Na,T,M}
     for (i,iaᵢ) ∈ enumerate(ia), (j,idaⱼ) ∈ enumerate(ida)
         k = if T==:transpose idasm[j]+length(ida)*( iasm[i]-1)   
         else                  iasm[i]+length( ia)*(idasm[j]-1)  
@@ -555,12 +547,13 @@ function add_∂!{P,T,M}(out::Array,asm,iele,a::SVector{Na,∂ℝ{P,Nda,R}};ia=1
     end
 end  
 add_∂!{P    }(                                     args...;kwargs...) where{P         } = add_∂!{P,:notranspose,:plus}(args...;kwargs...) 
+add_∂!{P  ,M}(                                     args...;kwargs...) where{P       ,M} = add_∂!{P,:notranspose,M    }(args...;kwargs...) 
 add_∂!{P,T,M}(out::SparseMatrixCSC,                args...;kwargs...) where{P,     T,M} = add_∂!{P,T,M}(out.nzval, args...;kwargs...)
 add_∂!{P,T,M}(out::Array,asm,iele,a::SVector{Na,R},args...;kwargs...) where{P,Na,R,T,M} = nothing # if P does not match
 
-function add_∂!{P,M}(out::Vector,asm, iele, a::SVector{Na,∂ℝ{P,Nda,R}},ia,ida::𝕫) where{P,Nda,R,Na,M} # addin Lλr::Vector in Newmark-β context
+function add_∂!{P,T,M}(out::Vector,asm, iele, a::SVector{Na,∂ℝ{P,Nda,R}},ia,ida::𝕫) where{P,T,Nda,R,Na,M} # Lλr::Vector in Newmark-β context
     for (i,iaᵢ) ∈ enumerate(ia)
-        iout = asm[iasm[i],iele]
+        iout = asm[i,iele]
         if iout≠0
             if     M==:plus   out[iout]+=a[iaᵢ].dx[ida]  
             elseif M==:minus  out[iout]-=a[iaᵢ].dx[ida]  
@@ -568,7 +561,7 @@ function add_∂!{P,M}(out::Vector,asm, iele, a::SVector{Na,∂ℝ{P,Nda,R}},ia,
         end
     end
 end   
-function add_∂!{P,M}(out::Base.RefValue,a::SVector{Na,∂ℝ{P,Nda,R}},ia::𝕫,ida::𝕫) where{P,Nda,R,Na,M} 
+function add_∂!{P,T,M}(out::Base.RefValue,a::SVector{Na,∂ℝ{P,Nda,R}},ia::𝕫,ida::𝕫) where{P,T,Nda,R,Na,M} # Lrr, scalar in Newmark-β context
     if     M==:plus   out[]+=a[ia].dx[ida]  
     elseif M==:minus  out[]-=a[ia].dx[ida]  
     end
