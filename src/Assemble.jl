@@ -440,8 +440,10 @@ end
 # The call stack     who dunnit               why
 # 
 # MySolver           Muscade/SomeSolver.jl    wants some matrices and vectors
-# assemble!          Muscade/Assemble.jl      loop over element types (barrier function)
-# assemble_!         Muscade/Assemble.jl      loop over elements within type (typestable)
+# assemble!          Muscade/Assemble.jl      loop over element types (barrier function) 
+# assemble_!         Muscade/Assemble.jl      loop over elements within type (typestable) (except Acost: do nothing)
+# assemble!          Muscade/Assemble.jl      loop over element types (barrier function) 
+# assemble_!         Muscade/Assemble.jl      loop over elements within type (typestable) if Acost otherwise do nothing if Acost
 # addin!             Muscade/SomeSolver.jl    do adiff and add-in, solver-specific
 # getresidual        Muscade/Assemble.jl      typechecking the call from addin! call residual or Lagrangian as available, check for NaNs
 # residual           MyElement.jl             the element code 

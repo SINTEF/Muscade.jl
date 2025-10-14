@@ -106,7 +106,7 @@ const exp𝑖  = cis
 """
     𝕫log2(i::𝕫)
 
-Compute the integer `log2` of an integer, fails if `i` is not a power of two.
+Compute the integer `log2` of an integer, fast. Fails if `i` is not a power of two.
 """
 function 𝕫log2(i::𝕫) 
     a = 63-leading_zeros(i)
@@ -120,7 +120,7 @@ for T in (:𝔹,:ℕ,:ℤ,:ℝ,:ℂ)
     #@eval export $T
     @eval const  $(Symbol(T,:x)) = AbstractArray{t} where {t<: $T}
     #@eval export $(Symbol(T,:x))  
-    for N in (:1,:2,:3,:4)
+    for N in (:0,:1,:2,:3,:4)
         TN = Symbol(T,N)
         @eval const  $TN{t} = AbstractArray{t,$N} where {t<: $T}
         #@eval export $TN
@@ -128,7 +128,7 @@ for T in (:𝔹,:ℕ,:ℤ,:ℝ,:ℂ)
 end
 for T in (:𝕓,:𝕟,:𝕫,:𝕣,:𝕔)
     #@eval export $T
-    for N in (:1,:2,:3,:4)
+    for N in (:0,:1,:2,:3,:4)
         TN = Symbol(T,N)
         @eval const  $TN = Array{$T,$N}
         #@eval export $TN
@@ -142,6 +142,7 @@ const 𝕫11      = Vector{Vector{𝕫}}
 const 𝕔11      = Vector{Vector{𝕔}}
 const Sparse𝕣2 = SparseMatrixCSC{𝕣,𝕫}
 const Sparse𝕔2 = SparseMatrixCSC{𝕔,𝕫}
+const LU𝕣      = SparseArrays.UMFPACK.UmfpackLU{𝕣,𝕫}
 
 ## Miscellaneous
 subtypeof(a::AbstractVector,b::AbstractVector) = a[a .<: Union{b...}]

@@ -17,6 +17,8 @@ module Muscade
     export ℝ11,ℤ11,𝕣11,𝕫11,𝔹11,𝕓11
     export toggle,default,mod_onebased
 
+    include("OffsetVector.jl")
+
     include("Adiff.jl")
     export  ∂ℝ #\partial \bbR
     export  variate,δ,directional # \delta

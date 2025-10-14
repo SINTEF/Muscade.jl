@@ -74,33 +74,38 @@ function addin!{:linesearch}(out::AssemblySweepX,asm,iele,scale,eleobj,Λ,X,U,A,
     _,FB      = getresidual(eleobj,X,U,A,t,SP,dbg)
     lineFB!(out,FB)
 end
-struct decr!{ORDER} end
-function decr!{2}(state,Δx ,Xdofgr,c,firstiter,x′,x″) # x′, x″ are just mutable memory, neither input nor output.
+struct   Newmarkβdecrement!{ORDER} end
+function Newmarkβdecrement!{2}(state,Δx ,Xdofgr,c,firstiter,x′,x″) # x′, x″ are just mutable memory, neither input nor output.
     a₁,a₂,a₃,b₁,b₂,b₃ = c.a₁,c.a₂,c.a₃,c.b₁,c.b₂,c.b₃
     if firstiter
         getdof!(state,1,x′,Xdofgr) 
         getdof!(state,2,x″,Xdofgr) 
-        a        = a₂*x′+a₃*x″
+        a        = a₂*x′+a₃*x″ # TODO these four lines allocate 
         b        = b₂*x′+b₃*x″
         Δx′      = a₁*Δx + a
         Δx″      = b₁*Δx + b
     else
-        Δx′      = a₁*Δx 
+        Δx′      = a₁*Δx # TODO these two lines allocate
         Δx″      = b₁*Δx 
     end
     decrement!(state,1,Δx ,Xdofgr)
     decrement!(state,2,Δx′,Xdofgr)
     decrement!(state,3,Δx″,Xdofgr)
 end
-function decr!{1}(state,Δx ,Xdofgr,c,args...)
-    Δx′      = c.a₁*Δx 
+function Newmarkβdecrement!{1}(state,Δx ,Xdofgr,c,args...)
+    Δx′      = c.a₁*Δx            # TODO this line allocates
     decrement!(state,1,Δx ,Xdofgr)
     decrement!(state,2,Δx′,Xdofgr)
 end
-function decr!{0}(state,Δx ,Xdofgr,args...)
+function Newmarkβdecrement!{0}(state,Δx ,Xdofgr,args...)
     decrement!(state,1,Δx ,Xdofgr)
 end
-
+function Newmarkβcoefficients(order,Δt,β,γ)
+    if     order==0 (a₁=0.      , a₂=0. , a₃=0.         , b₁=0.        , b₂=0.      , b₃=0.  )
+    elseif order==1 (a₁=1/Δt    , a₂=0  , a₃=0.         , b₁=0.        , b₂=0.      , b₃=0.  )
+    elseif order==2 (a₁=γ/(β*Δt), a₂=γ/β, a₃=(γ/2β-1)*Δt, b₁=1/(β*Δt^2), b₂=1/(β*Δt), b₃=1/2β) # γ, as in Newmark's β and γ
+    end
+end
 
 
 """
@@ -116,7 +121,7 @@ Only the `X`-dofs of the model are solved for, while `U`-dofs and `A`-dofs are u
 IMPORTANT NOTE: Muscade does not allow elements to have state variables, for example, plastic strain,
 or shear-free position for dry friction.  Where the element implements such physics, this 
 is implemented by introducing the state as a degree of freedom of the element, and solving
-for its evolution, *even in a static problem*, requires the use of `ORDER≥1`
+for its evolution, *even in a quasi-static problem*, requires the use of `ORDER≥1`.
 
 An analysis is carried out by a call with the following syntax:
 
@@ -166,8 +171,8 @@ function solve(SX::Type{SweepX{ORDER}},pstate,verbose,dbg;
     model,dis        = initialstate.model,initialstate.dis
     out,asm,Xdofgr   = prepare(AssemblySweepX{ORDER},model,dis)  
     ndof             = getndof(Xdofgr)
-    x′               = 𝕣1(undef,ORDER≥1 ? ndof : 0)  
-    x″               = 𝕣1(undef,ORDER≥2 ? ndof : 0)  
+    x′               = 𝕣1(undef,ORDER≥1 ? ndof : 0)  # workmem for Newmarkβdecrement!
+    x″               = 𝕣1(undef,ORDER≥2 ? ndof : 0)  # workmem for Newmarkβdecrement! 
     citer            = 0
     cΔx²,cLλ²        = maxΔx^2,maxLλ^2
     state            = State{1,ORDER+1,1}(copy(initialstate,SP=(γ=0.,))) 
@@ -180,10 +185,7 @@ function solve(SX::Type{SweepX{ORDER}},pstate,verbose,dbg;
         state.time   = t
         Δt           = t-oldt
         Δt ≤ 0 && ORDER>0 && muscadeerror(@sprintf("Time step length not strictly positive at step=%3d",step))
-        if     ORDER==0 out.c= (a₁=0.      , a₂=0. , a₃=0.         , b₁=0.        , b₂=0.      , b₃=0.  )
-        elseif ORDER==1 out.c= (a₁=1/Δt    , a₂=0  , a₃=0.         , b₁=0.        , b₂=0.      , b₃=0.  )
-        elseif ORDER==2 out.c= (a₁=γ/(β*Δt), a₂=γ/β, a₃=(γ/2β-1)*Δt, b₁=1/(β*Δt^2), b₂=1/(β*Δt), b₃=1/2β) # γ, as in Newmark's β and γ
-        end
+        out.c        = Newmarkβcoefficients(order,Δt,β,γ)
         state.time   = t
         assemble!{:linesearch}(out,asm,dis,model,state,(dbg...,solver=:SweepX,phase=:preliminary,step=step))
         out.ming ≤ 0 && muscadeerror(@sprintf("Initial point is not strictly primal-feasible at step=%3d",step)) # This is going to suck
@@ -200,7 +202,7 @@ function solve(SX::Type{SweepX{ORDER}},pstate,verbose,dbg;
             end catch;                   muscadeerror(@sprintf("matrix factorization failed at step=%i, iiter=%i",step,iiter)) end
             Δx       = facLλx\out.Lλ
             Δx²,Lλ²  = sum(Δx.^2),sum(out.Lλ.^2)
-            decr!{ORDER}(state,Δx ,Xdofgr,out.c,firstiter,x′,x″)
+            Newmarkβdecrement!{ORDER}(state,Δx ,Xdofgr,out.c,firstiter,x′,x″)
 
             s = 1.    
             for iline = 1:maxLineIter
@@ -209,7 +211,7 @@ function solve(SX::Type{SweepX{ORDER}},pstate,verbose,dbg;
                 iline==maxLineIter && muscadeerror(@sprintf("Line search failed at step=%3d, iiter=%3d, iline=%3d, s=%7.1e",step,iiter,iline,s))
                 Δs    = s*(sfac-1)
                 s    += Δs
-                decr!{ORDER}(state,Δs*Δx ,Xdofgr,out.c,firstiter,x′,x″)
+                Newmarkβdecrement!{ORDER}(state,Δs*Δx ,Xdofgr,out.c,firstiter,x′,x″)
             end
 
             verbose && saveiter && @printf("        iteration %3d, γ= %7.1e\n",iiter,γ)
