@@ -75,25 +75,26 @@ function addin!{:linesearch}(out::AssemblySweepX,asm,iele,scale,eleobj,Λ,X,U,A,
     lineFB!(out,FB)
 end
 struct   Newmarkβdecrement!{ORDER} end
-function Newmarkβdecrement!{2}(state,Δx ,Xdofgr,c,firstiter,x′,x″) # x′, x″ are just mutable memory, neither input nor output.
+function Newmarkβdecrement!{2}(state,Δx ,Xdofgr,c,firstiter, a,b,x′,x″,Δx′,Δx″) # x′, x″ are just mutable memory, neither input nor output.
     a₁,a₂,a₃,b₁,b₂,b₃ = c.a₁,c.a₂,c.a₃,c.b₁,c.b₂,c.b₃
+
     if firstiter
         getdof!(state,1,x′,Xdofgr) 
         getdof!(state,2,x″,Xdofgr) 
-        a        = a₂*x′+a₃*x″ # TODO these four lines allocate 
-        b        = b₂*x′+b₃*x″
-        Δx′      = a₁*Δx + a
-        Δx″      = b₁*Δx + b
+        a       .= a₂*x′.+ a₃*x″ 
+        b       .= b₂*x′.+ b₃*x″
+        Δx′     .= a₁*Δx .+ a
+        Δx″     .= b₁*Δx .+ b
     else
-        Δx′      = a₁*Δx # TODO these two lines allocate
-        Δx″      = b₁*Δx 
+        Δx′     .= a₁*Δx 
+        Δx″     .= b₁*Δx 
     end
     decrement!(state,1,Δx ,Xdofgr)
     decrement!(state,2,Δx′,Xdofgr)
     decrement!(state,3,Δx″,Xdofgr)
 end
-function Newmarkβdecrement!{1}(state,Δx ,Xdofgr,c,args...)
-    Δx′      = c.a₁*Δx            # TODO this line allocates
+function Newmarkβdecrement!{1}(state,Δx ,Xdofgr,c,_,Δx′,args...)
+    Δx′      .= c.a₁*Δx            
     decrement!(state,1,Δx ,Xdofgr)
     decrement!(state,2,Δx′,Xdofgr)
 end
@@ -171,8 +172,7 @@ function solve(SX::Type{SweepX{ORDER}},pstate,verbose,dbg;
     model,dis        = initialstate.model,initialstate.dis
     out,asm,Xdofgr   = prepare(AssemblySweepX{ORDER},model,dis)  
     ndof             = getndof(Xdofgr)
-    x′               = 𝕣1(undef,ORDER≥1 ? ndof : 0)  # workmem for Newmarkβdecrement!
-    x″               = 𝕣1(undef,ORDER≥2 ? ndof : 0)  # workmem for Newmarkβdecrement! 
+    buffer           = ntuple(i->𝕣1(undef,nXdof), 6)  
     citer            = 0
     cΔx²,cLλ²        = maxΔx^2,maxLλ^2
     state            = State{1,ORDER+1,1}(copy(initialstate,SP=(γ=0.,))) 
@@ -202,7 +202,7 @@ function solve(SX::Type{SweepX{ORDER}},pstate,verbose,dbg;
             end catch;                   muscadeerror(@sprintf("matrix factorization failed at step=%i, iiter=%i",step,iiter)) end
             Δx       = facLλx\out.Lλ
             Δx²,Lλ²  = sum(Δx.^2),sum(out.Lλ.^2)
-            Newmarkβdecrement!{ORDER}(state,Δx ,Xdofgr,out.c,firstiter,x′,x″)
+            Newmarkβdecrement!{ORDER}(state,Δx ,Xdofgr,out.c,firstiter,buffer...)
 
             s = 1.    
             for iline = 1:maxLineIter
@@ -211,7 +211,7 @@ function solve(SX::Type{SweepX{ORDER}},pstate,verbose,dbg;
                 iline==maxLineIter && muscadeerror(@sprintf("Line search failed at step=%3d, iiter=%3d, iline=%3d, s=%7.1e",step,iiter,iline,s))
                 Δs    = s*(sfac-1)
                 s    += Δs
-                Newmarkβdecrement!{ORDER}(state,Δs*Δx ,Xdofgr,out.c,firstiter,x′,x″)
+                Newmarkβdecrement!{ORDER}(state,Δs*Δx ,Xdofgr,out.c,firstiter,buffer...)
             end
 
             verbose && saveiter && @printf("        iteration %3d, γ= %7.1e\n",iiter,γ)

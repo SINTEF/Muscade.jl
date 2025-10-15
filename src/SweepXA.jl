@@ -242,22 +242,14 @@ function solve(SX::Type{SweepXA{ORDER}},pstate,verbose,dbg;
         state[istep] = State{1,ORDER+1,1}(time[istep],copy(s.Λ),copy(s.X),s.U,s.A,s.SP,s.model,s.dis)
     end 
     
+    buffer           = ntuple(i->𝕣1(undef,nXdof), 6)  
     Lλx              = Vector{LU𝕣     }(undef,nstep)
-    Lx               = Vector{𝕣1      }(undef,nstep)
     Lxx              = Vector{Sparse𝕣2}(undef,nstep)
-    Lax              = Vector{𝕣2      }(undef,nstep)
-    Δxₐ              = Vector{𝕣2      }(undef,nstep)
-    Δx               = Vector{𝕣1      }(undef,nstep)
-    LxxΔx            = Vector{𝕣1      }(undef,nstep)
-    for istep        = 1:nstep
-        Lx[   istep] = 𝕣1(undef,nXdof      )    
-        Lax[  istep] = 𝕣2(undef,nAdof,nXdof)   
-        Δxₐ[  istep] = 𝕣2(undef,nXdof,nAdof)     
-        Δx[   istep] = 𝕣1(undef,nXdof      )    
-        LxxΔx[istep] = 𝕣1(undef,nXdof      ) 
-    end
-    x′               = 𝕣1(undef,ORDER≥1 ? ndof : 0)  # workmem for Newmarkβdecrement!
-    x″               = 𝕣1(undef,ORDER≥2 ? ndof : 0)  # workmem for Newmarkβdecrement! 
+    Lx               = [𝕣1(undef,nXdof      ) for istep=1:nstep]    
+    Lax              = [𝕣2(undef,nAdof,nXdof) for istep=1:nstep]   
+    Δxₐ              = [𝕣2(undef,nXdof,nAdof) for istep=1:nstep]     
+    Δx               = [𝕣1(undef,nXdof      ) for istep=1:nstep]    
+    LxxΔx            = [𝕣1(undef,nXdof      ) for istep=1:nstep] 
     La♯              = 𝕣1(undef,nAdof      )
     Laa♯             = 𝕣2(undef,nAdof,nAdof)
     Lx♯              = 𝕣1(undef,nXdof      ) 
@@ -295,7 +287,7 @@ function solve(SX::Type{SweepXA{ORDER}},pstate,verbose,dbg;
                 end catch;                         muscadeerror(@sprintf("Lλx matrix factorization failed at Aiter=%3d, istep=%i, iiter=%i",iAiter,istep,iiter)) end
                 δx         .= Lλx[istep]\out.Lλ
                 Δx[istep] .+= δx
-                Newmarkβdecrement!{ORDER}(state[istep],δx ,Xdofgr,out.c,out.firstiter,x′,x″) 
+                Newmarkβdecrement!{ORDER}(state[istep],δx ,Xdofgr,out.c,out.firstiter,buffer...) 
                 δx²,Lλ²     = sum(δx.^2),sum(out.Lλ.^2)
                 cXiter     += 1
                 if δx²≤cΔx² && Lλ²≤cLλ² 
@@ -315,7 +307,7 @@ function solve(SX::Type{SweepXA{ORDER}},pstate,verbose,dbg;
             Δxₐ[istep] .= Lλx[istep]\out.Lλa 
             δx         .= Lλx[istep]\out.Lλ  
             Δx[ istep].+= δx
-            Newmarkβdecrement!{ORDER}(state[istep],δx ,Xdofgr,out.c,firstiter,x′,x″) 
+            Newmarkβdecrement!{ORDER}(state[istep],δx ,Xdofgr,out.c,firstiter,buffer...) 
 
             # TODO causing allocations here?
             LxxΔx[istep] .= Lxx[istep]  ∘₁ Δx[   istep]                            .+ out.Lr   # x
@@ -339,7 +331,7 @@ function solve(SX::Type{SweepXA{ORDER}},pstate,verbose,dbg;
         # backward sweep
         for istep = nstep:-1:1
             δX        .= Δxₐ[istep] ∘₁ ΔA
-            Newmarkβdecrement!{ORDER}(state[istep],δx ,Xdofgr,out.c,false,x′,x″)
+            Newmarkβdecrement!{ORDER}(state[istep],δx ,Xdofgr,out.c,false,buffer...)
             Δx[istep].+= δx
             Lx♯       .= Lx[istep] - LxxΔx[istep] - Lax[istep]' ∘₁ ΔA 
             ΔΛ        .= Lλx[istep]'\Lx♯

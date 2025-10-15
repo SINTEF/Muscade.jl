@@ -513,7 +513,7 @@ another "target" element. The target element must *not* be added separately to t
 This element generates a time varying optimisation constraint. For example: find `A`-parameters so that
    at all times, the element-result von-Mises stress does not exceed a given value. 
 
-The Lagrangian multiplier introduced by this optimisation constraint is of class :U   
+The Lagrangian multiplier introduced by this optimisation constraint is of class :U.   
 
 # Named arguments to the constructor
 
