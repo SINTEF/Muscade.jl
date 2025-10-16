@@ -36,8 +36,8 @@ or
     a = 3
     @functor (a,e=2)  f(x::Real)=a*x^e
     e = 1
-    @functor (;a,e)   f(x::Real)=a*x^e
-    @functor (;)      f(x::Real)=x^2
+    @functor (a,e)    f(x::Real)=a*x^e
+    @functor ()       f(x::Real)=x^2
 
 This is roughly equivalent to a closure defined as
 
@@ -59,13 +59,24 @@ input will accept `arg to be a `Functor`.  Functions that require `arg:Functor` 
 
 """
 macro functor(capturedargs,foo)
-    @assert capturedargs.head == :tuple
-    caparglist         = capturedargs.args
-    ncaparg            = caparglist == Any[:($(Expr(:parameters)))] ? 0 : length(caparglist)
-    capargnames        = Vector{Symbol}(undef,ncaparg)
-    for iarg           = 1:ncaparg 
-        arg            = caparglist[iarg]
-        capargnames[iarg] = arg isa Symbol ? arg : arg.args[1]
+    if capturedargs isa Expr
+        if capturedargs.head == :tuple
+            caparglist         = capturedargs.args
+            ncaparg            = caparglist == Any[:($(Expr(:parameters)))] ? 0 : length(caparglist)
+            capargnames        = Vector{Symbol}(undef,ncaparg)
+            for iarg           = 1:ncaparg 
+                arg            = caparglist[iarg]
+                capargnames[iarg] = arg isa Symbol ? arg : arg.args[1]
+            end
+        elseif capturedargs.head == :(=)
+            capargnames        = [capturedargs.args[1]]
+        else
+            muscadeerror("Invalid @functor definition")    
+        end
+    elseif capturedargs isa Symbol
+            capargnames        = [capturedargs] 
+    else
+        muscadeerror("Invalid @functor definition") 
     end
 
     foodict            = splitdef(foo)
@@ -81,8 +92,12 @@ macro functor(capturedargs,foo)
     ex                 = MacroTools.postwalk(unblock,ex)
     qex                = QuoteNode(ex) # unannotated code for the function 
     tag                = Symbol("tag_for_the_functor_macro_",functionname)
+    constructfunctor   = if length(capargnames) == 1
+            :($functionname = Functor{$functionsym}(;$(capturedargs)   ))    # f = Functor{:f}(;  a        )  
+    else    :($functionname = Functor{$functionsym}(;$(capturedargs)...))    # f = Functor{:f}(;(;a,e=2)...)  
+    end
     return prettify(esc(quote
-        $functionname = Functor{$functionsym}(;$(capturedargs)...)    # f = Functor{:f}(;(a,e=2)...)  
+        $constructfunctor
         if  ~@isdefined($tag) || $tag≠$qex
             $tag = $qex
             $foo
