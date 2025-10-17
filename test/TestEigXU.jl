@@ -6,7 +6,10 @@
 
 
 #invs = @snoop_invalidations 
-# using Muscade, Test, StaticArrays,SparseArrays;
+using Muscade, Test, StaticArrays,SparseArrays;
+using ProfileView
+using Profile
+using BenchmarkTools
 
 
 q          = 6
@@ -52,10 +55,10 @@ strainmesh  = mesh[istrain,:]
 accmesh     = reshape(Xnod[iacc],(length(iacc),1))
 addelement!(model,EulerBeam3D{hasU},nakedmesh;mat=mat,orient2=SVector(0.,0.,1.))
 
-@functor (;σε) costStrain(eleres,X,U,A,t) = .5*sum((eleres.ε/σε).^2)
-@functor (;σa) costAcc(eleres,X,U,A,t) =    .5*sum((eleres.a/σa).^2)
-@functor (;σu) costU(u) =                   .5*(u/σu).^2
-@functor (;σx) costX(x) =                   .5*(x/σx).^2
+@functor (σε) costStrain(eleres,X,U,A,t) = .5*sum((eleres.ε/σε).^2)
+@functor (σa) costAcc(eleres,X,U,A,t) =    .5*sum((eleres.a/σa).^2)
+@functor (σu) costU(u,t) =                 .5*(u/σu).^2
+@functor (σx) costX(x,t) =                 .5*(x/σx).^2
 
 addelement!(model,ElementCost,strainmesh;
                         req           = @request(ε),
@@ -99,7 +102,7 @@ OX,OU                 = 2,0
 
 ## EigXU analysis
 Δω                = 2^-6 
-p                 = 11
+p                 = 2#11
 nmod              = 5
 
 
@@ -120,14 +123,34 @@ nmod              = 5
 
 eigincXU          = solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=true,verbosity=1,tol=1e-20,σₓᵤ)
 
-nα                = 32
-α                 = 2π*(1:nα)/nα
-circle            = 0.05*[cos.(α) sin.(α)]'
-GUI(initialstate,eigincXU;shadow = (;EulerBeam3D              = (;style=:shape,line_color=:grey,Udof=false),
-                                    StrainGaugeOnEulerBeam3D  = (;gauge_color=:transparent)         ),
-                          model  = (;EulerBeam3D              = (;style=:solid,section=circle),
-                                     StrainGaugeOnEulerBeam3D = (;L=0.03),
-                                     Position3D               = (;L=.03)) ) 
+mission = :profile
+if mission == :report
+    eigincXU           = solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=true,verbosity=1,tol=1e-20,σₓᵤ)
+
+elseif mission == :time
+    eigincXU           = solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=true,verbosity=1,tol=1e-20,σₓᵤ)
+    @btime eigincXU    = solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=true,verbosity=1,tol=1e-20,σₓᵤ)
+elseif mission == :profile
+    eigincXU           = solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=true,verbosity=1,tol=1e-20,σₓᵤ)
+    Profile.clear()
+    Profile.@profile for i=1:100
+        local eigincXU = solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=true,verbosity=1,tol=1e-20,σₓᵤ)
+    end
+    ProfileView.view(fontsize=30);
+    # After clicking on a bar in the flame diagram, you can type warntype_last() and see the result of 
+    # code_warntype for the call represented by that bar.
+end
+
+
+
+# nα                = 32
+# α                 = 2π*(1:nα)/nα
+# circle            = 0.05*[cos.(α) sin.(α)]'
+# GUI(initialstate,eigincXU;shadow = (;EulerBeam3D              = (;style=:shape,line_color=:grey,Udof=false),
+#                                     StrainGaugeOnEulerBeam3D  = (;gauge_color=:transparent)         ),
+#                           model  = (;EulerBeam3D              = (;style=:solid,section=circle),
+#                                      StrainGaugeOnEulerBeam3D = (;L=0.03),
+#                                      Position3D               = (;L=.03)) ) 
 
 
 # using SnoopCompileCore, SnoopCompile, AbstractTrees, ProfileView

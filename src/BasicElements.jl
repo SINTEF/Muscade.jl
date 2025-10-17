@@ -119,7 +119,7 @@ the analysis, request results from `ElementConstraint`
 @functor (;) cost(eleres,X,U,A,t;Fh0) = (eleres.Fh-Fh0)^2
 ele1 = addelement!(model,ElementCost,[nod1];req=@request(Fh),
                    cost=cost,
-                   costargs = (;Fh0=0.27)
+                   costargs = (;Fh0=0.27),
                    ElementType=AnchorLine,
                    elementkwargs=(Λₘtop=[5.,0,0], xₘbot=[250.,0], L=290., buoyancy=-5e3))
 ```
@@ -138,7 +138,6 @@ function ElementCost(nod::Vector{Node};req,cost::Functor,costargs=(),ElementType
 end
 doflist( ::Type{<:ElementCost{Teleobj}}) where{Teleobj} = doflist(Teleobj)
 @espy function lagrangian(o::ElementCost, Λ,X,U,A,t,SP,dbg)
-    #@show typeof(X)
     req          = mergerequest(o.req)
     L,FB,☼eleres = getlagrangian(o.eleobj,Λ,X,U,A,t,SP,(dbg...,via=ElementCost),req.eleres)
     ☼cost        = o.cost(eleres,X,U,A,t,o.costargs...) 

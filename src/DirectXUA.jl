@@ -122,7 +122,7 @@ function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::Eleobj,fast
         end
     end 
 end
-function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::Eleobj,fastresidual::Val{false}, 
+function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::Eleobj,no_second_order::Val{false}, 
     Λ::NTuple{1  ,SVector{Nx}},
     X::NTuple{NDX,SVector{Nx}},
     U::NTuple{NDU,SVector{Nu}},
@@ -152,7 +152,6 @@ function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::Eleobj,fast
         pα      += ndof[α]
         Lα = out.L1[α]
         if i≤size(Lα,1)  # ...but only add into existing vectors of L1, for speed
-#            add_value!(out.L1[α][i] ,asm[arrnum(α)],iele,∇L,ia=iα)
             add_value!(Lα[i] ,asm[arrnum(α)],iele,∇L,ia=iα)
         end
         if out.matrices
@@ -162,7 +161,6 @@ function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::Eleobj,fast
                 pβ  += ndof[β]
                 Lαβ = out.L2[α,β]
                 if i≤size(Lαβ,1) && j≤size(Lαβ,2) # ...but only add into existing matrices of L2, for better sparsity
-#                    add_∂!{1}(out.L2[α,β][i,j],asm[arrnum(α,β)],iele,∇L,ia=iα,ida=iβ)
                     add_∂!{1}(Lαβ[i,j],asm[arrnum(α,β)],iele,∇L,ia=iα,ida=iβ)
                 end
             end

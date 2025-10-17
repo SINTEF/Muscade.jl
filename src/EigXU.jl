@@ -169,12 +169,12 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
             for imod               = 1:ncv[iω]
                 Δ                  = ΔΛXU[iω][imod]
                 wrk[ixu]          .= view(Δ,ixu)                   # this copy can be optimised by viewing the classes in Δ, operating on out.L2[α,β][αder,βder], and combining over derivatives.  Is it worth the effort?   
-                Anorm              = √(ℜ(wrk  ∘₁ (A ∘₁ wrk))/2)  # ΔΛXU is real, A is complex Hermitian, so square norm is real: (imag part is zero to machine precision)
+                Anorm              = √(ℜ(dot(wrk,A,wrk))/2)  # ΔΛXU is real, A is complex Hermitian, so square norm is real: (imag part is zero to machine precision)
                 if iω>1  &&  imod≤nmod  &&  sum(Δ[idof]*ΔΛXU[iω-1][imod][idof] for idof∈λxu_dofgr.jX)<0
-                        Anorm = -Anorm
+                    Anorm          = -Anorm
                 end
                 Δ                .*= 2.575829303549/Anorm          # corresponds to a probability of exceedance of 0.01                        
-                nor[iω][imod]      = √(ℜ(Δ ∘₁ (B ∘₁ Δ))/2) 
+                nor[iω][imod]      = √(ℜ(dot(Δ,B,Δ))/2) 
             end
         catch 
             muscadewarning(@sprintf("Factorization of matrix A failed for ω=%f",ωᵢ));
