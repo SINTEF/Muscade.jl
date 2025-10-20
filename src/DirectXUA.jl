@@ -84,7 +84,7 @@ function addin!(out::AssemblyDirect,asm,iele,scale,eleobj::Acost,A::SVector{Na},
 end
 addin!(out::AssemblyDirect,asm,iele,scale,eleobj::Eleobj,Λ,X,U,A,t,SP,dbg) where{Eleobj} =
     addin!(out::AssemblyDirect,asm,iele,scale,eleobj,no_second_order(Eleobj),Λ,X,U,A,t,SP,dbg)
-function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::Eleobj,fastresidual::Val{true}, 
+function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::Eleobj,no_second_order::Val{true}, 
                                 Λ::NTuple{1  ,SVector{Nx}},
                                 X::NTuple{NDX,SVector{Nx}},
                                 U::NTuple{NDU,SVector{Nu}},
@@ -95,7 +95,7 @@ function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::Eleobj,fast
     nder   = (1,OX+1,OU+1,IA)
     Npfast =      Nx*(OX+1) + Nu*(OU+1) + Na*IA # number of partials  
     Np     = Nx + Nx*(OX+1) + Nu*(OU+1) + Na*IA # number of partials  
-
+    # TODO does adiff even if only residual is wanted!
     T  = ∂ℝ{1,Npfast,𝕣} 
     X∂ = ntuple(ider->SVector{Nx,T}(∂ℝ{1,Npfast}(X[ider][idof],   Nx*(ider-1)            +idof, scale.X[idof])   for idof=1:Nx), Val(NDX))
     U∂ = ntuple(ider->SVector{Nu,T}(∂ℝ{1,Npfast}(U[ider][idof],   Nx*(OX+1)  +Nu*(ider-1)+idof, scale.U[idof])   for idof=1:Nu), Val(NDU))
@@ -135,7 +135,7 @@ function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::Eleobj,no_s
     Npfast =      Nx*(OX+1) + Nu*(OU+1) + Na*IA # number of partials
     Np     = Nx + Nx*(OX+1) + Nu*(OU+1) + Na*IA # number of partials
 
-    T  = ∂ℝ{2,Np,∂ℝ{1,Np,𝕣}}
+    T  = ∂ℝ{2,Np,∂ℝ{1,Np,𝕣}} # TODO does 2nd order adiff even if out.matrices==false !!! 
     Λ∂ =              SVector{Nx,T}(∂²ℝ{1,Np}(Λ[1   ][idof],                           idof, scale.Λ[idof])   for idof=1:Nx)
     X∂ = ntuple(ider->SVector{Nx,T}(∂²ℝ{1,Np}(X[ider][idof],Nx            +Nx*(ider-1)+idof, scale.X[idof])   for idof=1:Nx),Val(NDX))
     U∂ = ntuple(ider->SVector{Nu,T}(∂²ℝ{1,Np}(U[ider][idof],Nx+Nx*(OX+1)  +Nu*(ider-1)+idof, scale.U[idof])   for idof=1:Nu),Val(NDU))
@@ -167,6 +167,76 @@ function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::Eleobj,no_s
         end
     end
 end
+
+
+
+function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::ElementCost,no_second_order::Val{true}, 
+                                Λ::NTuple{1  ,SVector{Nx}},
+                                X::NTuple{NDX,SVector{Nx}},
+                                U::NTuple{NDU,SVector{Nu}},
+                                A::           SVector{Na} ,t,SP,dbg) where{OX,OU,IA,NDX,NDU,Nx,Nu,Na,Eleobj} 
+    @assert NDX==OX+1 @sprintf("got OX=%i and NDX=%i. Expected OX+1==NDX",OX,NDX)
+    @assert NDU==OU+1 @sprintf("got OU=%i and NDU=%i. Expected OU+1==NDU",OU,NDU)
+    ndof   = (Nx, Nx, Nu, Na)
+    nder   = (1,OX+1,OU+1,IA)
+    Npfast =      Nx*(OX+1) + Nu*(OU+1) + Na*IA # number of partials  
+    Np     = Nx + Nx*(OX+1) + Nu*(OU+1) + Na*IA # number of partials  
+
+    T  = ∂ℝ{1,Npfast,𝕣} 
+    X∂ = ntuple(ider->SVector{Nx,T}(∂ℝ{1,Npfast}(X[ider][idof],   Nx*(ider-1)            +idof, scale.X[idof])   for idof=1:Nx), Val(NDX))
+    U∂ = ntuple(ider->SVector{Nu,T}(∂ℝ{1,Npfast}(U[ider][idof],   Nx*(OX+1)  +Nu*(ider-1)+idof, scale.U[idof])   for idof=1:Nu), Val(NDU))
+    if IA == 1
+        A∂          = SVector{Na,T}(∂ℝ{1,Npfast}(A[      idof],   Nx*(OX+1)  +Nu*(OU+1)  +idof, scale.A[idof])   for idof=1:Na)
+        R,FB,eleres = residual(o.eleobj, X∂,U∂,A∂,t,SP,dbg,o.req)  
+    else
+        R,FB,eleres = residual(o.eleobj, X∂,U∂,A ,t,SP,dbg,o.req)
+    end
+    Releres         = revariate{1}(eleres)
+    Rcost           = o.cost(Releres,t,o.costargs...)
+    cost            = compose(Rcost,order2(eleres))
+    L               = Λ[1] ∘₁ R + cost
+    
+    ∇L           = ∂{2,Np}(L)
+    pα           = 0   # points into the partials, 1 entry before the start of relevant partial derivative in α,ider-loop
+    for α∈λxua, i=1:nder[α]   # we must loop over all time derivatives to correctly point into the adiff-partials...
+        iα       = pα.+(1:ndof[α])
+        pα      += ndof[α]
+        Lα = out.L1[α]
+        if i≤size(Lα,1)  # ...but only add into existing vectors of L1, for speed
+            add_value!(Lα[i] ,asm[arrnum(α)],iele,∇L,ia=iα)
+        end
+        if out.matrices
+            pβ       = 0
+            for β∈λxua, j=1:nder[β]
+                iβ   = pβ.+(1:ndof[β])
+                pβ  += ndof[β]
+                Lαβ = out.L2[α,β]
+                if i≤size(Lαβ,1) && j≤size(Lαβ,2) # ...but only add into existing matrices of L2, for better sparsity
+                    add_∂!{1}(Lαβ[i,j],asm[arrnum(α,β)],iele,∇L,ia=iα,ida=iβ)
+                end
+            end
+        end
+    end
+
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ## Assembly of bigsparse for all time steps at once
 function makepattern(IA,nstep,out) 

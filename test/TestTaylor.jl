@@ -125,13 +125,12 @@ end
 # 10: Neleres
 Releres  = Muscade.revariate{1}(eleres)
 Rq       = cost(Releres)
-q        = Muscade.compose(Rq,Muscade.order2(Muscade.flatten(eleres)))
+q        = Muscade.compose(Rq,Muscade.order2(eleres))
 q2       = cost(Muscade.order2(eleres))
 
 @testset "compose NamedTuple" begin
     @test Muscade.flat_eltype(Muscade.revariate{1}(eleres))             == ∂ℝ{2, 10, ∂ℝ{1, 10, Float64}}
     @test Muscade.flat_eltype(Rq)                                       == ∂ℝ{2, 10, ∂ℝ{1, 10, Float64}}
-    @test Muscade.flat_eltype(Muscade.order2(Muscade.flatten(eleres)))  == ∂ℝ{2, 4 , ∂ℝ{1, 4 , Float64}} 
     @test Muscade.flat_eltype(q)                                        == ∂ℝ{2, 4 , ∂ℝ{1, 4 , Float64}} 
     @test Muscade.flat_eltype(Muscade.order2(eleres))                   == ∂ℝ{2, 4 , ∂ℝ{1, 4 , Float64}} 
     @test Muscade.flat_eltype(q2)                                       == ∂ℝ{2, 4 , ∂ℝ{1, 4 , Float64}} 

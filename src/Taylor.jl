@@ -189,13 +189,19 @@ if the length of `x` is smaller than the length of its partials.
 
 See also: [`revariate`](@ref), [`fast`](@ref)    
 """
-compose(Ty,x) = McLaurin(Ty,x.-VALUE(x))
+function compose(Ty,x) 
+    fx = flatten(x)
+    McLaurin(Ty,fx.-VALUE(fx))
+end
 
 """
     y,... = fast(f,x)
 
 In the context of forward automatic differentiation using `∂ℝ`, accelerate the evaluation of
 `y,...= f(x)` if the length of `x` is smaller than the length of its partials.
+
+Also work where `x` is a nested structure of `Tuple`s and `NamedTuple`s where the leaves
+are `ℝ` or `SArray{S,R} where {S,R<:ℝ}`.    
 
 Be extremely careful with closures, making sure that `f` does not capture variables of type `∂ℝ`.
 
