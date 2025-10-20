@@ -66,15 +66,52 @@ motion⁻¹{P,ND   }(a...              ) where{P,ND} = motion⁻¹{P,ND}(a)
 
 #############
 
-struct revariate{ O    }   end
-struct revariate_{P,N  }   end
-struct Trevariate{P,N,R}   end
-revariate(a) = revariate{0}(a)
+
+
+flat_length(a::NamedTuple   )                = flat_length(values(a))
+flat_length(a::Tuple        )                = flat_length(first(a))+flat_length(Base.tail(a))
+flat_length(a::Tuple{}      )                = 0
+flat_length(a::SArray       )                = length(a) 
+flat_length(a::ℝ            )                = 1
+
+flat_eltype(a::NamedTuple   )                = flat_eltype(values(a))
+flat_eltype(a::Tuple        )                = promote_type(flat_eltype(first(a)),flat_eltype(Base.tail(a)))
+flat_eltype(a::Tuple{X}     ) where{X}       = flat_eltype(a[1]) 
+flat_eltype(a::SArray{S,T}  ) where{S,T}     = T  
+flat_eltype(a::R            ) where{R<:ℝ}    = R
+
+precedence(a::NamedTuple   )                 = precedence(values(a))
+precedence(a::Tuple        )                 = max(precedence(first(a)),precedence(Base.tail(a)))
+precedence(a::Tuple{X}     ) where{X}        = precedence(a[1]) 
+
+struct flatten{T} end
+flatten(a)                                   = flatten{flat_eltype(a)}(a)
+flatten{T}(a::NamedTuple   ) where{T}        = flatten{T}(values(a))
+flatten{T}(a::Tuple        ) where{T}        = SVector{flat_length(a),T}(flatten{T}(first(a))..., flatten{T}(Base.tail(a))...)  
+flatten{T}(a::Tuple{}      ) where{T}        = ()
+flatten{T}(a::SArray       ) where{T}        = SVector{length(a),T}(a)  
+flatten{T}(a::ℝ            ) where{T}        = T(a)
+
+struct type_multivariate_𝕣{P,N}   end
+type_multivariate_𝕣{0,N}() where{  N} = 𝕣
+type_multivariate_𝕣{P,N}() where{P,N} = ∂ℝ{P,N,type_multivariate_𝕣{P-1,N}()} # this causes (slight) type instability - because if Ra isnot ℝ, then return type is different.
+
+struct multivariate_𝕣{P,N} end
+multivariate_𝕣{P,N}(a   ,i) where{P,N}          = ∂ℝ{P,N  }(multivariate_𝕣{P-1,N}(a,i),i) 
+multivariate_𝕣{0,N}(a::𝕣,i) where{  N}          = a
+
+struct revariate_{P,N}   end
+revariate_{P,N}(a::NamedTuple   ,i) where{P,N}   = NamedTuple{keys(a)}(revariate_{P,N}(values(a),i)) 
+revariate_{P,N}(a::Tuple        ,i) where{P,N}   = (revariate_{P,N}(first(a),i),revariate_{P,N}(Base.tail(a),i+flat_length(first(a)))...)
+revariate_{P,N}(a::Tuple{}      ,i) where{P,N}   = ()
+revariate_{P,N}(a::SArray{S}    ,i) where{P,N,S} = SArray{S,type_multivariate_𝕣{P,N}()}(revariate_{P,N}(aⱼ,i-1+j) for (j,aⱼ)∈enumerate(a))
+revariate_{P,N}(a::ℝ            ,i) where{P,N}   = multivariate_𝕣{P,N}(VALUE(a),i)
+
 """ 
-    TX = revariate{O}(X)
+    TX = revariate{ΔP}(X)
 
 The vector `X` of `Real`s (possibly: `∂ℝ`s) is stripped of its partials, an revariated to the
-order `precedence(X)+O`.
+order `precedence(X)+ΔP`.
 
     TX = revariate(X)
 
@@ -88,16 +125,9 @@ containing  `∂ℝ`s but not produced by the same `revariate`.
 
 See also: [`compose`](@ref)
 """
-function revariate{O}(a::SV{N,R}) where{O,N,R} 
-    P  = precedence(R)+O
-    va = VALUE(a)
-    Ro = Trevariate{P,N,𝕣}() # always specify eltype when constructing array by comprehension!
-    P==0 ? va : SV{N,Ro}(revariate_{P,N}(va[i],i)  for i=1:N)
-end
-revariate_{P,N   }(a,i) where{P,N   } = ∂ℝ{P,N  }(revariate_{P-1,N}(a,i),i)
-revariate_{0,N   }(a,i) where{  N   } =                             a
-Trevariate{0,N,Ra}(   ) where{  N,Ra<:ℝ} = Ra
-Trevariate{P,N,Ra}(   ) where{P,N,Ra<:ℝ} = ∂ℝ{P,N,Trevariate{P-1,N,Ra}()} # this causes (slight) type instability - because if Ra isnot ℝ, then return type is different.
+struct revariate{ΔP}   end
+revariate(a)               = revariate{0}(a)
+revariate{ΔP}(a) where{ΔP} = revariate_{precedence(a)+ΔP,flat_length(a)}(a,1)
 
 """
     McLaurin(Ty,x)

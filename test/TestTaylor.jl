@@ -97,4 +97,51 @@ fooyy =                       (variate{1,3}(SVector{3,𝕣}(1,2,3)) ,
     @test yy === fooyy
 end
 
+#### Compose with NamedTuple
+
+x      = SVector(1.,2.,2.5,3.)
+X      = variate{1,4}(x)
+ε      = SMatrix{2,2}((X.^2)...)
+eleres = (part=(ε = ε, x = X), y = 2x[2],z = 3.)
+
+cost(eleres) = sum(eleres.part.ε)+eleres.y
+
+Neleres = Muscade.flat_length(eleres)
+Teleres = Muscade.flat_eltype(eleres)
+Peleres = precedence(eleres)
+Feleres = Muscade.flatten(eleres)
+
+@testset "flatten" begin
+    @test Neleres               == 10
+    @test Teleres               == ∂ℝ{1,4,𝕣}
+    @test Peleres               == 1
+    @test length(Feleres)       == 10
+    @test eltype(Feleres)       == ∂ℝ{1,4,𝕣}
+    @test precedence(Feleres)   == 1
+end
+
+# eleres, P=1 comes from the element
+# 4: Ndof
+# 10: Neleres
+Releres  = Muscade.revariate{1}(eleres)
+Rq       = cost(Releres)
+q        = Muscade.compose(Rq,Muscade.order2(Muscade.flatten(eleres)))
+q2       = cost(Muscade.order2(eleres))
+
+@testset "compose NamedTuple" begin
+    @test Muscade.flat_eltype(Muscade.revariate{1}(eleres))             == ∂ℝ{2, 10, ∂ℝ{1, 10, Float64}}
+    @test Muscade.flat_eltype(Rq)                                       == ∂ℝ{2, 10, ∂ℝ{1, 10, Float64}}
+    @test Muscade.flat_eltype(Muscade.order2(Muscade.flatten(eleres)))  == ∂ℝ{2, 4 , ∂ℝ{1, 4 , Float64}} 
+    @test Muscade.flat_eltype(q)                                        == ∂ℝ{2, 4 , ∂ℝ{1, 4 , Float64}} 
+    @test Muscade.flat_eltype(Muscade.order2(eleres))                   == ∂ℝ{2, 4 , ∂ℝ{1, 4 , Float64}} 
+    @test Muscade.flat_eltype(q2)                                       == ∂ℝ{2, 4 , ∂ℝ{1, 4 , Float64}} 
+    @test q == q2
+end
+
+@testset "inferred" begin
+    @inferred Muscade.revariate{1}(eleres)
+    @inferred Muscade.order2(Muscade.flatten(eleres))
+    @inferred Muscade.compose(Rq,Muscade.order2(Muscade.flatten(eleres)))
+end
+
 end # module
