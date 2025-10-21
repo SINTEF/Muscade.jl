@@ -97,4 +97,16 @@ module Muscade
     #export getδf,getδt(n3,δf3′),𝔉𝕣(g.(t3),δt3),𝔉𝕣⁻¹(X3′′,δf3)
 
     include("Eigenmodes.jl")
+
+    module Toolbox
+        include("../toolbox/Rotations.jl")
+        export Rodrigues, Rodrigues⁻¹, adjust, scac, sinc1, sinc1′,sinc1″, sinc1‴, sinc1⁗, intrinsicrotationrates
+        include("../toolbox/BeamElement.jl")
+        export EulerBeam3D, BeamCrossSection
+        include("../toolbox/StrainGaugeOnBeamElement.jl")
+        export StrainGaugeOnEulerBeam3D
+        include("../toolbox/PositionElement.jl")
+        export Position3D  
+    end
+
 end

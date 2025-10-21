@@ -1,6 +1,5 @@
 module TestPositionElement
-using Test, Muscade, StaticArrays, LinearAlgebra
-include("../examples/PositionElement.jl")
+using Test, Muscade, Muscade.Toolbox, StaticArrays, LinearAlgebra
 
 model            = Model(:TestModel)
 xₘ               = SVector{3,𝕣}(0,0,1)

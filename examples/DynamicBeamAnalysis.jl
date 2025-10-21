@@ -3,7 +3,7 @@
 
 # Beam simply supported at both ends  
 using Muscade, StaticArrays, GLMakie
-include("BeamElement.jl");
+using Muscade.Toolbox
 
 L = 1;  # Beam length [m]
 q = 0.0;  # Uniform lateral load [N/m]

@@ -4,19 +4,19 @@ docs        = @__DIR__
 muscade     = normpath(joinpath(docs,".."))
 docsrc      = joinpath(docs,"src")
 examplesrc(ex) = normpath(joinpath(docs,"..","examples",ex))
-examples    = ["BeamElement","StaticBeamAnalysis","DynamicBeamAnalysis","DecayAnalysis","DryFriction"]
+examples    = ["StaticBeamAnalysis","DynamicBeamAnalysis","DecayAnalysis","DryFriction"]
 
 requiredIncludeFiles = ["BeamElement.jl","Rotations.jl"]
  for includeFile ∈ requiredIncludeFiles
-        cp(joinpath(muscade,"examples",includeFile),joinpath(muscade,"docs","src",includeFile),force=true)             
+        cp(joinpath(muscade,"toolbox",includeFile),joinpath(muscade,"docs","src",includeFile),force=true)             
  end
 
 
 using Pkg
-Pkg.activate(docs) 
+Pkg.activate(docs)
 
-using Muscade
-using Documenter, Literate, DocumenterCitations,Printf
+using Muscade, Muscade.Toolbox
+using Documenter, Literate, DocumenterCitations, Printf, Interpolations
 
 cp(joinpath(muscade,"LICENSE.md"),joinpath(docsrc,"LICENSE.md"),force=true)
 
@@ -37,8 +37,8 @@ bib = CitationBibliography(joinpath(docsrc, "ref.bib"); style=:authoryear) #:num
 
 @printf "\nDocumenter.makedocs: *.md → *.html\n\n"
 makedocs(sitename ="Muscade.jl",
-        modules   = [Muscade],
-        doctest   = false, # we do not use doctest, we run Literate.jl on mydemo.jl files that are also included in unit test files
+        modules   = [Muscade, Muscade.Toolbox],
+        doctest   = false,
         format    = Documenter.HTML(    prettyurls          = false,
                                         sidebar_sitename    = false,
                                         size_threshold_warn = 256*1024,
@@ -60,7 +60,9 @@ makedocs(sitename ="Muscade.jl",
                                                 "litterature.md"],
                         "LICENSE.md"],
                         source  = "src",
-                        build   = "build"                 
+                        build   = "build",
+                        checkdocs = :none
+                        # checkdocs = :all
         )
 
 
