@@ -71,7 +71,6 @@ function zero!(out::AssemblyDirect)
     end
 end
 
-
 function addin!(out::AssemblyDirect,asm,iele,scale,eleobj::Acost,A::SVector{Na},dbg) where{Na} # addin Atarget element
     A∂  = SVector{Na,∂ℝ{2,Na,∂ℝ{1,Na,𝕣}}}(∂²ℝ{1,Na}(A[idof],idof, scale.A[idof])   for idof=1:Na)
     ø   = nothing
@@ -117,25 +116,12 @@ function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::Eleobj,no_s
         end
     end 
 end
-function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::Eleobj,no_second_order::Val{false}, 
-    Λ::NTuple{1  ,SVector{Nx}},
-    X::NTuple{NDX,SVector{Nx}},
-    U::NTuple{NDU,SVector{Nu}},
-    A::           SVector{Na} ,t,SP,dbg) where{OX,OU,IA,NDX,NDU,Nx,Nu,Na,Eleobj} 
-
-    @assert NDX==OX+1 @sprintf("got OX=%i and NDX=%i. Expected OX+1==NDX",OX,NDX)
-    @assert NDU==OU+1 @sprintf("got OU=%i and NDU=%i. Expected OU+1==NDU",OU,NDU)
+struct   DirectXUA_lagrangian_addition!{Nx,Nu,Na,OX,OU,IA} end
+function DirectXUA_lagrangian_addition!{Nx,Nu,Na,OX,OU,IA}(out,asm,L,iele) where{Nx,Nu,Na,OX,OU,IA}
     ndof   = (Nx, Nx, Nu, Na)
     nder   = (1,OX+1,OU+1,IA)
     Np     = Nx + Nx*(OX+1) + Nu*(OU+1) + Na*IA # number of partials
-
-    if IA == 1
-        d    = revariate{2}((;Λ=Λ[1],X,U,A),(;Λ=scale.Λ,X=scale.X,U=scale.U,A=scale.A))
-        L,FB = getlagrangian(eleobj, d.Λ,d.X,d.U,d.A,t,SP,dbg)
-    else
-        d    = revariate{2}((;Λ=Λ[1],X,U),(;Λ=scale.Λ,X=scale.X,U=scale.U))
-        L,FB = getlagrangian(eleobj, d.Λ,d.X,d.U,A  ,t,SP,dbg)
-    end
+    λxua   = 1:4
     ∇L           = ∂{2,Np}(L)
     pα           = 0   # points into the partials, 1 entry before the start of relevant partial derivative in α,ider-loop
     for α∈λxua, i=1:nder[α]   # we must loop over all time derivatives to correctly point into the adiff-partials...
@@ -157,7 +143,26 @@ function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::Eleobj,no_s
             end
         end
     end
+end    
+function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::Eleobj,no_second_order::Val{false}, 
+    Λ::NTuple{1  ,SVector{Nx}},
+    X::NTuple{NDX,SVector{Nx}},
+    U::NTuple{NDU,SVector{Nu}},
+    A::           SVector{Na} ,t,SP,dbg) where{OX,OU,IA,NDX,NDU,Nx,Nu,Na,Eleobj} 
+
+    @assert NDX==OX+1 @sprintf("got OX=%i and NDX=%i. Expected OX+1==NDX",OX,NDX)
+    @assert NDU==OU+1 @sprintf("got OU=%i and NDU=%i. Expected OU+1==NDU",OU,NDU)
+ 
+    if IA == 1
+        d    = revariate{2}((;Λ=Λ[1],X,U,A),(;Λ=scale.Λ,X=scale.X,U=scale.U,A=scale.A))
+        L,FB = getlagrangian(eleobj, d.Λ,d.X,d.U,d.A,t,SP,dbg)
+    else
+        d    = revariate{2}((;Λ=Λ[1],X,U),(;Λ=scale.Λ,X=scale.X,U=scale.U))
+        L,FB = getlagrangian(eleobj, d.Λ,d.X,d.U,A  ,t,SP,dbg)
+    end
+    DirectXUA_lagrangian_addition!{Nx,Nu,Na,OX,OU,IA}(out,asm,L,iele)
 end
+# Specialised to accelerate ElementCost and ElementConstraint
 function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::ElementCost,no_second_order::Val{true}, 
                                 Λ::NTuple{1  ,SVector{Nx}},
                                 X::NTuple{NDX,SVector{Nx}},
@@ -165,42 +170,18 @@ function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::ElementCost
                                 A::           SVector{Na} ,t,SP,dbg) where{OX,OU,IA,NDX,NDU,Nx,Nu,Na} 
     @assert NDX==OX+1 @sprintf("got OX=%i and NDX=%i. Expected OX+1==NDX",OX,NDX)
     @assert NDU==OU+1 @sprintf("got OU=%i and NDU=%i. Expected OU+1==NDU",OU,NDU)
-    ndof            = (Nx, Nx, Nu, Na)
-    nder            = (1,OX+1,OU+1,IA)
-    if     IA == 1  # NB: compile-time condition
+     if     IA == 1  # NB: compile-time condition
         d           = revariate{1}((X=X,U=U,A=A),(;Λ=scale.Λ,X=scale.X,U=scale.U,A=scale.A))
         R,FB,eleres = residual(o.eleobj, d.X,d.U,d.A,t,SP,dbg,o.req)  
     elseif IA == 0
         d           = revariate{1}((X=X,U=U    ),(;Λ=scale.Λ,X=scale.X,U=scale.U))
         R,FB,eleres = residual(o.eleobj, d.X,d.U,  A,t,SP,dbg,o.req)  
     end
-    Np              = flat_length(∂)
     Releres         = revariate{2}(eleres)
     Rcost           = o.cost(Releres,t,o.costargs...)
     cost            = compose(Rcost,order2(eleres))
     L               = Λ[1] ∘₁ R + cost
-    ∇L              = ∂{2,Np}(L)
-    pα              = 0   # points into the partials, 1 entry before the start of relevant partial derivative in α,ider-loop
-    for α∈λxua, i=1:nder[α]   # we must loop over all time derivatives to correctly point into the adiff-partials...
-        iα       = pα.+(1:ndof[α])
-        pα      += ndof[α]
-        Lα = out.L1[α]
-        if i≤size(Lα,1)  # ...but only add into existing vectors of L1, for speed
-            add_value!(Lα[i] ,asm[arrnum(α)],iele,∇L,ia=iα)
-        end
-        if out.matrices
-            pβ       = 0
-            for β∈λxua, j=1:nder[β]
-                iβ   = pβ.+(1:ndof[β])
-                pβ  += ndof[β]
-                Lαβ  = out.L2[α,β]
-                if i≤size(Lαβ,1) && j≤size(Lαβ,2) # ...but only add into existing matrices of L2, for better sparsity
-                    add_∂!{1}(Lαβ[i,j],asm[arrnum(α,β)],iele,∇L,ia=iα,ida=iβ)
-                end
-            end
-        end
-    end
-
+    DirectXUA_lagrangian_addition!{Nx,Nu,Na,OX,OU,IA}(out,asm,L,iele)
 end
 
 
