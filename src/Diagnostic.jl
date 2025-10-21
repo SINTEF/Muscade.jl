@@ -865,7 +865,7 @@ function diffed_lagrangian{P}(ele::Eletyp; Λ,X,U,A, t::𝕣=0.,SP=nothing) wher
     ndof      = (Nx,   Nx,   Nu, Na)
     nder      = ( 1, OX+1, OU+1, IA)
     Np        = Nx + Nx*(OX+1) + Nu*(OU+1) + Na*IA # number of partials 
-    d         = revariate{P}((Λ=Λ,X=X,U=U,A=A))
+    d         = revariate{P}((;Λ,X,U,A))
 
     L,FB      = lagrangian(ele, d.Λ,d.X,d.U,d.A,t,SP,(;calledby=:test_element))
     
@@ -941,7 +941,7 @@ function diffed_residual(ele::Eletyp; X,U,A, t::𝕣=0.,SP=nothing) where{Eletyp
     ndof      = (0, Nx,   Nu, Na)
     nder      = (0 ,OX+1, OU+1, IA)
     Np        = Nx*(OX+1) + Nu*(OU+1) + Na*IA # number of partials 
-    d         = revariate{1}((X=X,U=U,A=A))
+    d         = revariate{1}((;X,U,A))
     r_,FB     = residual(ele, d.X,d.U,d.A,t,SP,(;calledby=:test_element))
     #inftyp,rettyp = @typeof(residual(ele, X∂,U∂,A∂,t,SP,(;calledby=:test_element)))
     R,∇r      = value_∂{1,Np}(r_)

@@ -93,17 +93,12 @@ function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::Eleobj,no_s
     @assert NDU==OU+1 @sprintf("got OU=%i and NDU=%i. Expected OU+1==NDU",OU,NDU)
     ndof   = (Nx, Nx, Nu, Na)
     nder   = (1,OX+1,OU+1,IA)
-    Npfast =      Nx*(OX+1) + Nu*(OU+1) + Na*IA # number of partials  
-    Np     = Nx + Nx*(OX+1) + Nu*(OU+1) + Na*IA # number of partials  
-    # TODO does adiff even if only residual is wanted!
-    T  = ∂ℝ{1,Npfast,𝕣} 
-    X∂ = ntuple(ider->SVector{Nx,T}(∂ℝ{1,Npfast}(X[ider][idof],   Nx*(ider-1)            +idof, scale.X[idof])   for idof=1:Nx), Val(NDX))
-    U∂ = ntuple(ider->SVector{Nu,T}(∂ℝ{1,Npfast}(U[ider][idof],   Nx*(OX+1)  +Nu*(ider-1)+idof, scale.U[idof])   for idof=1:Nu), Val(NDU))
     if IA == 1
-        A∂   =        SVector{Na,T}(∂ℝ{1,Npfast}(A[      idof],   Nx*(OX+1)  +Nu*(OU+1)  +idof, scale.A[idof])   for idof=1:Na)
-        R,FB = residual(eleobj, X∂,U∂,A∂,t,SP,dbg)
+        d    = revariate{1}((;X,U,A),(;Λ=scale.Λ,X=scale.X,U=scale.U,A=scale.A))
+        R,FB = residual(eleobj, d.X,d.U,d.A,t,SP,dbg)
     else
-        R,FB = residual(eleobj, X∂,U∂,A ,t,SP,dbg)
+        d    = revariate{1}((;X,U  ),(;Λ=scale.Λ,X=scale.X,U=scale.U))
+        R,FB = residual(eleobj, d.X∂,d.U,  A,t,SP,dbg)
     end        
     iλ   = 1:ndof[ind.Λ]
     Lλ   = out.L1[ind.Λ]
@@ -132,18 +127,14 @@ function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::Eleobj,no_s
     @assert NDU==OU+1 @sprintf("got OU=%i and NDU=%i. Expected OU+1==NDU",OU,NDU)
     ndof   = (Nx, Nx, Nu, Na)
     nder   = (1,OX+1,OU+1,IA)
-    Npfast =      Nx*(OX+1) + Nu*(OU+1) + Na*IA # number of partials
     Np     = Nx + Nx*(OX+1) + Nu*(OU+1) + Na*IA # number of partials
 
-    T  = ∂ℝ{2,Np,∂ℝ{1,Np,𝕣}} # TODO does 2nd order adiff even if out.matrices==false !!! 
-    Λ∂ =              SVector{Nx,T}(∂²ℝ{1,Np}(Λ[1   ][idof],                           idof, scale.Λ[idof])   for idof=1:Nx)
-    X∂ = ntuple(ider->SVector{Nx,T}(∂²ℝ{1,Np}(X[ider][idof],Nx            +Nx*(ider-1)+idof, scale.X[idof])   for idof=1:Nx),Val(NDX))
-    U∂ = ntuple(ider->SVector{Nu,T}(∂²ℝ{1,Np}(U[ider][idof],Nx+Nx*(OX+1)  +Nu*(ider-1)+idof, scale.U[idof])   for idof=1:Nu),Val(NDU))
     if IA == 1
-        A∂   =        SVector{Na,T}(∂²ℝ{1,Np}(A[      idof],Nx+Nx*(OX+1)  +Nu*(OU+1)  +idof, scale.A[idof])   for idof=1:Na)
-        L,FB = getlagrangian(eleobj, Λ∂,X∂,U∂,A∂,t,SP,dbg)
+        d    = revariate{2}((;Λ=Λ[1],X,U,A),(;Λ=scale.Λ,X=scale.X,U=scale.U,A=scale.A))
+        L,FB = getlagrangian(eleobj, d.Λ,d.X,d.U,d.A,t,SP,dbg)
     else
-        L,FB = getlagrangian(eleobj, Λ∂,X∂,U∂,A ,t,SP,dbg)
+        d    = revariate{2}((;Λ=Λ[1],X,U),(;Λ=scale.Λ,X=scale.X,U=scale.U))
+        L,FB = getlagrangian(eleobj, d.Λ,d.X,d.U,A  ,t,SP,dbg)
     end
     ∇L           = ∂{2,Np}(L)
     pα           = 0   # points into the partials, 1 entry before the start of relevant partial derivative in α,ider-loop
@@ -167,9 +158,6 @@ function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::Eleobj,no_s
         end
     end
 end
-
-
-
 function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::ElementCost,no_second_order::Val{true}, 
                                 Λ::NTuple{1  ,SVector{Nx}},
                                 X::NTuple{NDX,SVector{Nx}},
@@ -180,10 +168,10 @@ function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::ElementCost
     ndof            = (Nx, Nx, Nu, Na)
     nder            = (1,OX+1,OU+1,IA)
     if     IA == 1  # NB: compile-time condition
-        d           = revariate{1}((X=X,U=U,A=A))
+        d           = revariate{1}((X=X,U=U,A=A),(;Λ=scale.Λ,X=scale.X,U=scale.U,A=scale.A))
         R,FB,eleres = residual(o.eleobj, d.X,d.U,d.A,t,SP,dbg,o.req)  
     elseif IA == 0
-        d           = revariate{1}((X=X,U=U    ))
+        d           = revariate{1}((X=X,U=U    ),(;Λ=scale.Λ,X=scale.X,U=scale.U))
         R,FB,eleres = residual(o.eleobj, d.X,d.U,  A,t,SP,dbg,o.req)  
     end
     Np              = flat_length(∂)
@@ -214,23 +202,6 @@ function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::ElementCost
     end
 
 end
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 ## Assembly of bigsparse for all time steps at once

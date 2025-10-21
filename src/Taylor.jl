@@ -99,16 +99,11 @@ type_multivariate_𝕣{0,N}() where{  N} = 𝕣
 type_multivariate_𝕣{P,N}() where{P,N} = ∂ℝ{P,N,type_multivariate_𝕣{P-1,N}()} # this causes (slight) type instability - because if Ra isnot ℝ, then return type is different.
 
 struct multivariate_𝕣{P,N} end
-multivariate_𝕣{P,N}(a   ,i) where{P,N}          = ∂ℝ{P,N  }(multivariate_𝕣{P-1,N}(a,i),i) 
-multivariate_𝕣{0,N}(a::𝕣,i) where{  N}          = a
+multivariate_𝕣{P,N}(a   ,i      ) where{P,N}          = ∂ℝ{P,N  }(multivariate_𝕣{P-1,N}(a,i      ),i) 
+multivariate_𝕣{0,N}(a::𝕣,i      ) where{  N}          = a
 
-# TODO revariate_ renamed revariate
-struct revariate_{P,N}   end
-revariate_{P,N}(a::NamedTuple   ,i) where{P,N}   = NamedTuple{keys(a)}(revariate_{P,N}(values(a),i)) 
-revariate_{P,N}(a::Tuple        ,i) where{P,N}   = (revariate_{P,N}(first(a),i),revariate_{P,N}(Base.tail(a),i+flat_length(first(a)))...)
-revariate_{P,N}(a::Tuple{}      ,i) where{P,N}   = ()
-revariate_{P,N}(a::SArray{S}    ,i) where{P,N,S} = SArray{S,type_multivariate_𝕣{P,N}()}(revariate_{P,N}(aⱼ,i-1+j) for (j,aⱼ)∈enumerate(a))
-revariate_{P,N}(a::ℝ            ,i) where{P,N}   = multivariate_𝕣{P,N}(VALUE(a),i)
+multivariate_𝕣{P,N}(a::R,i,scale) where{P,N,R}        = ∂ℝ{P,N  }(multivariate_𝕣{P-1,N}(a,i,scale),SV{N,R}(i==j ? scale : zero(R) for j=1:N)) 
+multivariate_𝕣{0,N}(a::𝕣,i,scale) where{  N}          = a
 
 """ 
     TX = revariate{P}(X)
@@ -128,9 +123,29 @@ containing  `∂ℝ`s but not produced by the same `revariate`.
 
 See also: [`compose`](@ref)
 """
-struct revariate{P}   end
-revariate(a)             = revariate{precedence(a)}(a)
-revariate{P}(a) where{P} = revariate_{P,flat_length(a)}(a,1)
+struct revariate{P,N}   end
+revariate(a)                                    = revariate{precedence(a)}(a)
+revariate{P}(a)                    where{P}     = revariate{P,flat_length(a)}(a,1)
+revariate{P,N}(a::NamedTuple   ,i) where{P,N}   = NamedTuple{keys(a)}(revariate{P,N}(values(a),i)) 
+revariate{P,N}(a::Tuple        ,i) where{P,N}   = (revariate{P,N}(first(a),i),revariate{P,N}(Base.tail(a),i+flat_length(first(a)))...)
+revariate{P,N}(a::Tuple{}      ,i) where{P,N}   = ()
+revariate{P,N}(a::SArray{S}    ,i) where{P,N,S} = SArray{S,type_multivariate_𝕣{P,N}()}(revariate{P,N}(aⱼ,i-1+j) for (j,aⱼ)∈enumerate(a))
+revariate{P,N}(a::ℝ            ,i) where{P,N}   = multivariate_𝕣{P,N}(VALUE(a),i)
+
+# Specialised to adiff dofs, with scaling
+# s for scale
+# in a Tuple (but not NamedTuple), all a[i] share the same s
+struct revariatevalues{P,N}   end
+revariate(a,s)                                                 = revariate{precedence(a)}(a,s)
+revariate{P}(a,s)                    where{P}                  = revariate{P,flat_length(a)}(a,1,s)
+revariate{P,N}(a::NamedTuple   ,i,s) where{P,N}                = NamedTuple{keys(a)}(revariatevalues{P,N}(values(a),i,values(s))) 
+revariatevalues{P,N}(a::Tuple  ,i,s) where{P,N}                = (revariate{P,N}(first(a),i,first(s)),revariatevalues{P,N}(Base.tail(a),i+flat_length(first(a)),Base.tail(s))...)
+revariatevalues{P,N}(a::Tuple{},i,s) where{P,N}                = ()
+revariate{P,N}(a::Tuple        ,i,s) where{P,N}                = (revariate{P,N}(first(a),i,      s ),revariate{      P,N}(Base.tail(a),i+flat_length(first(a)),          s )...)
+revariate{P,N}(a::Tuple{}      ,i,s) where{P,N}                = ()
+revariate{P,N}(a::SArray{S}    ,i,s::SArray{S,𝕣}) where{P,N,S} = SArray{S,type_multivariate_𝕣{P,N}()}(revariate{P,N}(a[j],i-1+j,s[j]) for j∈eachindex(a))
+revariate{P,N}(a::ℝ            ,i,s::𝕣) where{P,N}             = multivariate_𝕣{P,N}(VALUE(a),i,s)
+
 
 """
     McLaurin(Ty,x)
