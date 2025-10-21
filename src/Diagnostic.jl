@@ -750,10 +750,11 @@ end
     inftyp,rettyp = Muscade.@typeof(foo(args...[;kwargs...]))
 
     Determine the inferred type and the returned type of the output[s] returned by the relevant method-instance of foo.
-    Useful to study type-stability in `lagrangian`, `residual` and more
+    Useful to study type-stability in `lagrangian`, `residual` and more.
+    This does not work on MacOS, and should thus only be used for debugging.  In tests, use `Test.@inferred`
     
 """
-macro typeof(ex) # see Base.return_types
+macro typeof(ex) # see Base.return_types, and Test.jl/@inferred
     _inferred_type(ex, __module__)
 end
 function _inferred_type(ex, mod)
@@ -844,7 +845,8 @@ The output is a `NamedTuple` with fields `Λ`, `X`, `U`, `A`, `t`, `SP` echoing 
 
 See also: [`diffed_residual`](@ref), [`print_element_array`](@ref)
 """     
-function diffed_lagrangian(ele::Eletyp; Λ,X,U,A, t::𝕣=0.,SP=nothing) where{Eletyp<:AbstractElement}
+struct diffed_lagrangian{P} end
+function diffed_lagrangian{P}(ele::Eletyp; Λ,X,U,A, t::𝕣=0.,SP=nothing) where{P,Eletyp<:AbstractElement}
     OX,OU,IA         = length(X)-1,length(U)-1,1
     Nλ               = length(   Λ ) 
     Nx               = length(∂0(X)) 
@@ -861,38 +863,51 @@ function diffed_lagrangian(ele::Eletyp; Λ,X,U,A, t::𝕣=0.,SP=nothing) where{E
     ndof      = (Nx,   Nx,   Nu, Na)
     nder      = ( 1, OX+1, OU+1, IA)
     Np        = Nx + Nx*(OX+1) + Nu*(OU+1) + Na*IA # number of partials 
-    T         = ∂ℝ{2, Np, ∂ℝ{1, Np, Float64}}
-    Λ∂        =              SVector{Nx,T}(∂²ℝ{1,Np}(Λ[      idof],                           idof)   for idof=1:Nx)
-    X∂        = ntuple(ider->SVector{Nx,T}(∂²ℝ{1,Np}(X[ider][idof],Nx+Nx*(ider-1)            +idof)   for idof=1:Nx),Val(OX+1))
-    U∂        = ntuple(ider->SVector{Nu,T}(∂²ℝ{1,Np}(U[ider][idof],Nx+Nx*(OX+1)  +Nu*(ider-1)+idof)   for idof=1:Nu),Val(OU+1))
-    A∂        =              SVector{Na,T}(∂²ℝ{1,Np}(A[      idof],Nx+Nx*(OX+1)  +Nu*(OU+1)  +idof)   for idof=1:Na)
+    d         = revariate{P}((Λ=Λ,X=X,U=U,A=A))
 
-    L,FB      = lagrangian(ele, Λ∂,X∂,U∂,A∂,t,SP,(;calledby=:test_element))
+    L,FB      = lagrangian(ele, d.Λ,d.X,d.U,d.A,t,SP,(;calledby=:test_element))
     
+    if P==1
+        ∇Lz       = ∂{1,Np}(L)
+        ∇L        = Vector{Vector{Any}}(undef,4  )
+        pα        = 0   # points into the partials, 1 entry before the start of relevant partial derivative in α,ider-loop
+        for α∈λxua 
+            ∇L[α] = Vector{Any}(undef,nder[α])
+            for i=1:nder[α]   # we must loop over all time derivatives to correctly point into the adiff-partials...
+                iα       = pα.+(1:ndof[α])
+                pα      += ndof[α]
+                ∇L[α][i] = ∇Lz[iα]
+                pβ       = 0
+            end
+        end
+        return (Λ=Λ,X=X,U=U,A=A,t=t,SP=SP,∇L=∇L,FB=FB)#,inftyp=inftyp,rettyp=rettyp)
 
-    ∇Lz,HLz   = value_∂{1,Np}(∂{2,Np}(L))
+    elseif P==2
 
-    ∇L        = Vector{Vector{Any}}(undef,4  )
-    HL        = Matrix{Matrix{Any}}(undef,4,4)
-    pα        = 0   # points into the partials, 1 entry before the start of relevant partial derivative in α,ider-loop
-    for α∈λxua 
-        ∇L[α] = Vector{Any}(undef,nder[α])
-        for i=1:nder[α]   # we must loop over all time derivatives to correctly point into the adiff-partials...
-            iα       = pα.+(1:ndof[α])
-            pα      += ndof[α]
-            ∇L[α][i] = ∇Lz[iα]
-            pβ       = 0
-            for β∈λxua 
-                HL[α,β] = Matrix{Any}(undef,nder[α],nder[β])
-                for j=1:nder[β]
-                    iβ   = pβ.+(1:ndof[β])
-                    pβ  += ndof[β]
-                    HL[α,β][i,j] = HLz[iα,iβ]
+        ∇Lz,HLz   = value_∂{1,Np}(∂{2,Np}(L))
+
+        ∇L        = Vector{Vector{Any}}(undef,4  )
+        HL        = Matrix{Matrix{Any}}(undef,4,4)
+        pα        = 0   # points into the partials, 1 entry before the start of relevant partial derivative in α,ider-loop
+        for α∈λxua 
+            ∇L[α] = Vector{Any}(undef,nder[α])
+            for i=1:nder[α]   # we must loop over all time derivatives to correctly point into the adiff-partials...
+                iα       = pα.+(1:ndof[α])
+                pα      += ndof[α]
+                ∇L[α][i] = ∇Lz[iα]
+                pβ       = 0
+                for β∈λxua 
+                    HL[α,β] = Matrix{Any}(undef,nder[α],nder[β])
+                    for j=1:nder[β]
+                        iβ   = pβ.+(1:ndof[β])
+                        pβ  += ndof[β]
+                        HL[α,β][i,j] = HLz[iα,iβ]
+                    end
                 end
             end
         end
+        return (Λ=Λ,X=X,U=U,A=A,t=t,SP=SP,∇L=∇L,HL=HL,FB=FB)#,inftyp=inftyp,rettyp=rettyp)
     end
-    return (Λ=Λ,X=X,U=U,A=A,t=t,SP=SP,∇L=∇L,HL=HL,FB=FB)#,inftyp=inftyp,rettyp=rettyp)
 end
 
 ############# diffed_residual 

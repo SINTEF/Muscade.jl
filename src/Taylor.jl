@@ -92,7 +92,9 @@ flatten{T}(a::Tuple{}      ) where{T}        = ()
 flatten{T}(a::SArray       ) where{T}        = SVector{length(a),T}(a)  
 flatten{T}(a::ℝ            ) where{T}        = T(a)
 
-struct type_multivariate_𝕣{P,N}   end
+struct type_multivariate_𝕣{P,N} 
+    dummy::𝕫  
+end
 type_multivariate_𝕣{0,N}() where{  N} = 𝕣
 type_multivariate_𝕣{P,N}() where{P,N} = ∂ℝ{P,N,type_multivariate_𝕣{P-1,N}()} # this causes (slight) type instability - because if Ra isnot ℝ, then return type is different.
 
@@ -100,6 +102,7 @@ struct multivariate_𝕣{P,N} end
 multivariate_𝕣{P,N}(a   ,i) where{P,N}          = ∂ℝ{P,N  }(multivariate_𝕣{P-1,N}(a,i),i) 
 multivariate_𝕣{0,N}(a::𝕣,i) where{  N}          = a
 
+# TODO revariate_ renamed revariate
 struct revariate_{P,N}   end
 revariate_{P,N}(a::NamedTuple   ,i) where{P,N}   = NamedTuple{keys(a)}(revariate_{P,N}(values(a),i)) 
 revariate_{P,N}(a::Tuple        ,i) where{P,N}   = (revariate_{P,N}(first(a),i),revariate_{P,N}(Base.tail(a),i+flat_length(first(a)))...)
@@ -108,10 +111,10 @@ revariate_{P,N}(a::SArray{S}    ,i) where{P,N,S} = SArray{S,type_multivariate_�
 revariate_{P,N}(a::ℝ            ,i) where{P,N}   = multivariate_𝕣{P,N}(VALUE(a),i)
 
 """ 
-    TX = revariate{ΔP}(X)
+    TX = revariate{P}(X)
 
-The vector `X` of `Real`s (possibly: `∂ℝ`s) is stripped of its partials, an revariated to the
-order `precedence(X)+ΔP`.
+The vector `X` of `Real`s (possibly: `∂ℝ`s) is stripped of its partials, an revariated to 
+order `P`.
 
     TX = revariate(X)
 
@@ -125,9 +128,9 @@ containing  `∂ℝ`s but not produced by the same `revariate`.
 
 See also: [`compose`](@ref)
 """
-struct revariate{ΔP}   end
-revariate(a)               = revariate{0}(a)
-revariate{ΔP}(a) where{ΔP} = revariate_{precedence(a)+ΔP,flat_length(a)}(a,1)
+struct revariate{P}   end
+revariate(a)             = revariate{precedence(a)}(a)
+revariate{P}(a) where{P} = revariate_{P,flat_length(a)}(a,1)
 
 """
     McLaurin(Ty,x)

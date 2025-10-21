@@ -112,12 +112,9 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
     model,dis             = initialstate.model, initialstate.dis
     nω                    = 2^p
     IA                    = 0
-
     # State storage
-#    S                     = State{1,3,3,Nothing}
     S                     = State{1,OX+1,OU+1,Nothing}
     pstate[] = state      = Vector{S}(undef,nω)                                                                           
-#    state₀                = State{1,3,3}(copy(initialstate))   
     state₀                = State{1,OX+1,OU+1}(copy(initialstate))   
 
     verbose && @printf("    Preparing assembler\n")

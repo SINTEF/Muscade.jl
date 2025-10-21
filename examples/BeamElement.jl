@@ -130,7 +130,7 @@ end;
     vᵢ                  = intrinsicrotationrates(rₛₘ)
     ## compute all Jacobians of the above quantities with respect to X₀
     X₀                  = ∂0(X) # returns concrete type
-    TX₀                 = revariate{1}(X₀)  # returns ::Any
+    TX₀                 = revariate{P}(X₀)  # returns ::Any
     Tgp,Tε,Tvₛₘ,_,_,_,_  = kinematics{:compose}(o,TX₀) # the crux
     gp∂X₀,ε∂X₀,vₛₘ∂X₀    = composeJacobian{P}((Tgp,Tε,Tvₛₘ),X₀)
     ## Quadrature loop: compute resultants

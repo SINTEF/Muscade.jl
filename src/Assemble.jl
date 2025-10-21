@@ -450,7 +450,7 @@ end
 abstract type Assembly end # solver define concrete "assemblies" which is a collection of matrices and solvers wanted for a phase in the solution process
 
 function assemble!(out::Assembly,asm,dis,model,state,dbg) 
-    zero!(out)
+   zero!(out)
     for ieletyp = 1:lastindex(model.eleobj)
         eleobj  = model.eleobj[ieletyp]
         assemble_!(out,view(asm,:,ieletyp),dis.dis[ieletyp],eleobj,state,state.time,state.SP,(dbg...,ieletyp=ieletyp))

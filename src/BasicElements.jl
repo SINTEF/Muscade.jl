@@ -95,24 +95,11 @@ as input to the `ElementCost` constructor.
 # Named arguments to the constructor
 - `req`                 A request for element-results to be extracted from the target element, see [`@request`](@ref).
                         The request is formulated as if adressed directly to the target element.
-- `cost`                A cost `Functor` `cost(eleres,X,U,A,t,costargs...)→ℝ`. 
-                        `eleres` is the output of the above-mentionned request to the target element.     
-                        `X` and `U` are tuples (derivates of dofs...), and `∂0(X)`,`∂1(X)`,`∂2(X)` 
-                        must be used by `cost` to access the value and derivatives of `X` (resp. `U`).
-                        `X`, `U` and `A` are the degrees of freedom of the element `ElementType`.
+- `cost`                A cost `Functor` `cost(eleres,t,costargs...)→ℝ`. 
+                        `eleres` is the output of the above-mentionned request to the target element.  
 - `costargs::NTuple=()` or `NamedTuple` of additional arguments passed to `cost`.
 - `ElementType`         The named of the constructor for the relevant element.
 - `elementkwargs`       A named tuple containing the named arguments of the `ElementType` constructor.     
-
-# Requestable internal variables
-
-Not to be confused with the `req` provided as input to `addelement!` when adding an `ElementCost`, one can, after 
-the analysis, request results from `ElementConstraint` 
-- `cost`               The value of `cost(eleres,X,U,A,t,costargs...)`.
-- `eleres(...)`        where `...` is the list of requestables wanted from the target element.  The "prefix"  
-                       `eleres` is there to prevent possible confusion with variables requestable from `ElementConstraint`.  
-                       For example `@request cost` would extract the value of the `ElementConstraint`'s function `cost`, while
-                       `@request eleres(cost)` refers to the value of a variable called `cost` in the target element. 
 
 # Example
 ```
@@ -138,9 +125,8 @@ function ElementCost(nod::Vector{Node};req,cost::Functor,costargs=(),ElementType
 end
 doflist( ::Type{<:ElementCost{Teleobj}}) where{Teleobj} = doflist(Teleobj)
 @espy function lagrangian(o::ElementCost, Λ,X,U,A,t,SP,dbg)
-    req          = mergerequest(o.req)
-    L,FB,☼eleres = getlagrangian(o.eleobj,Λ,X,U,A,t,SP,(dbg...,via=ElementCost),req.eleres)
-    ☼cost        = o.cost(eleres,X,U,A,t,o.costargs...) 
+    L,FB,eleres  = getlagrangian(o.eleobj,Λ,X,U,A,t,SP,(dbg...,via=ElementCost),o.req.eleres)
+    cost         = o.cost(eleres,t,o.costargs...) 
     return L+cost,FB
 end   
 allocate_drawing(axis,eleobj::AbstractVector{Teleobj};kwargs...)                    where{Teleobj<:ElementCost} = allocate_drawing(axis,[eᵢ.eleobj for eᵢ∈eleobj];kwargs...)

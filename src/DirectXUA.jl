@@ -174,30 +174,25 @@ function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::ElementCost
                                 Λ::NTuple{1  ,SVector{Nx}},
                                 X::NTuple{NDX,SVector{Nx}},
                                 U::NTuple{NDU,SVector{Nu}},
-                                A::           SVector{Na} ,t,SP,dbg) where{OX,OU,IA,NDX,NDU,Nx,Nu,Na,Eleobj} 
+                                A::           SVector{Na} ,t,SP,dbg) where{OX,OU,IA,NDX,NDU,Nx,Nu,Na} 
     @assert NDX==OX+1 @sprintf("got OX=%i and NDX=%i. Expected OX+1==NDX",OX,NDX)
     @assert NDU==OU+1 @sprintf("got OU=%i and NDU=%i. Expected OU+1==NDU",OU,NDU)
-    ndof   = (Nx, Nx, Nu, Na)
-    nder   = (1,OX+1,OU+1,IA)
-    Npfast =      Nx*(OX+1) + Nu*(OU+1) + Na*IA # number of partials  
-    Np     = Nx + Nx*(OX+1) + Nu*(OU+1) + Na*IA # number of partials  
-
-    T  = ∂ℝ{1,Npfast,𝕣} 
-    X∂ = ntuple(ider->SVector{Nx,T}(∂ℝ{1,Npfast}(X[ider][idof],   Nx*(ider-1)            +idof, scale.X[idof])   for idof=1:Nx), Val(NDX))
-    U∂ = ntuple(ider->SVector{Nu,T}(∂ℝ{1,Npfast}(U[ider][idof],   Nx*(OX+1)  +Nu*(ider-1)+idof, scale.U[idof])   for idof=1:Nu), Val(NDU))
-    if IA == 1
-        A∂          = SVector{Na,T}(∂ℝ{1,Npfast}(A[      idof],   Nx*(OX+1)  +Nu*(OU+1)  +idof, scale.A[idof])   for idof=1:Na)
-        R,FB,eleres = residual(o.eleobj, X∂,U∂,A∂,t,SP,dbg,o.req)  
-    else
-        R,FB,eleres = residual(o.eleobj, X∂,U∂,A ,t,SP,dbg,o.req)
+    ndof            = (Nx, Nx, Nu, Na)
+    nder            = (1,OX+1,OU+1,IA)
+    if     IA == 1  # NB: compile-time condition
+        d           = revariate{1}((X=X,U=U,A=A))
+        R,FB,eleres = residual(o.eleobj, d.X,d.U,d.A,t,SP,dbg,o.req)  
+    elseif IA == 0
+        d           = revariate{1}((X=X,U=U    ))
+        R,FB,eleres = residual(o.eleobj, d.X,d.U,  A,t,SP,dbg,o.req)  
     end
-    Releres         = revariate{1}(eleres)
+    Np              = flat_length(∂)
+    Releres         = revariate{2}(eleres)
     Rcost           = o.cost(Releres,t,o.costargs...)
     cost            = compose(Rcost,order2(eleres))
     L               = Λ[1] ∘₁ R + cost
-    
-    ∇L           = ∂{2,Np}(L)
-    pα           = 0   # points into the partials, 1 entry before the start of relevant partial derivative in α,ider-loop
+    ∇L              = ∂{2,Np}(L)
+    pα              = 0   # points into the partials, 1 entry before the start of relevant partial derivative in α,ider-loop
     for α∈λxua, i=1:nder[α]   # we must loop over all time derivatives to correctly point into the adiff-partials...
         iα       = pα.+(1:ndof[α])
         pα      += ndof[α]
@@ -210,7 +205,7 @@ function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::ElementCost
             for β∈λxua, j=1:nder[β]
                 iβ   = pβ.+(1:ndof[β])
                 pβ  += ndof[β]
-                Lαβ = out.L2[α,β]
+                Lαβ  = out.L2[α,β]
                 if i≤size(Lαβ,1) && j≤size(Lαβ,2) # ...but only add into existing matrices of L2, for better sparsity
                     add_∂!{1}(Lαβ[i,j],asm[arrnum(α,β)],iele,∇L,ia=iα,ida=iβ)
                 end
