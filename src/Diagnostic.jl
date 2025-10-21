@@ -832,15 +832,17 @@ end
 ############ diffed_lagrangian
 
 """
-    Muscade.diffed_lagrangian(eleobj;Λ,X,U,A,t=0.,SP=nothing)
+    Muscade.diffed_lagrangian{P}(eleobj;Λ,X,U,A,t=0.,SP=nothing)
 
 Compute the Lagrangian, its gradients and Hessian, and the memory of an element.
 For element debugging and testing. 
 
+`P`, the order of differentiation must be 1 or 2.
+
 The output is a `NamedTuple` with fields `Λ`, `X`, `U`, `A`, `t`, `SP` echoing the inputs and fields
 - `∇L` of format `∇L[iclass][ider]`so that for example `∇L[2][3]` contains the gradient of the Lagrangian wrt to the acceleration.
    `iclass` is 1,2,3 and 4 for `Λ`, `X`, `U` and `A` respectively.
-- `HL` of format `HL[iclass,jclass][ider,jder]`so that for example `HL[1,2][1,3]` contains the mass matrix.
+- if `P==2`: `HL` of format `HL[iclass,jclass][ider,jder]`so that for example `HL[1,2][1,3]` contains the mass matrix.
 - `FB` as returned by `lagrangian`
 
 See also: [`diffed_residual`](@ref), [`print_element_array`](@ref)
@@ -881,11 +883,8 @@ function diffed_lagrangian{P}(ele::Eletyp; Λ,X,U,A, t::𝕣=0.,SP=nothing) wher
             end
         end
         return (Λ=Λ,X=X,U=U,A=A,t=t,SP=SP,∇L=∇L,FB=FB)#,inftyp=inftyp,rettyp=rettyp)
-
     elseif P==2
-
         ∇Lz,HLz   = value_∂{1,Np}(∂{2,Np}(L))
-
         ∇L        = Vector{Vector{Any}}(undef,4  )
         HL        = Matrix{Matrix{Any}}(undef,4,4)
         pα        = 0   # points into the partials, 1 entry before the start of relevant partial derivative in α,ider-loop
@@ -942,11 +941,8 @@ function diffed_residual(ele::Eletyp; X,U,A, t::𝕣=0.,SP=nothing) where{Eletyp
     ndof      = (0, Nx,   Nu, Na)
     nder      = (0 ,OX+1, OU+1, IA)
     Np        = Nx*(OX+1) + Nu*(OU+1) + Na*IA # number of partials 
-    X∂        = ntuple(ider->SVector{Nx,∂ℝ{1,Np,𝕣}}(∂ℝ{1,Np}(X[ider][idof],Nx*(ider-1)            +idof)   for idof=1:Nx),Val(OX+1))
-    U∂        = ntuple(ider->SVector{Nu,∂ℝ{1,Np,𝕣}}(∂ℝ{1,Np}(U[ider][idof],Nx*(OX+1)  +Nu*(ider-1)+idof)   for idof=1:Nu),Val(OU+1))
-    A∂        =              SVector{Na,∂ℝ{1,Np,𝕣}}(∂ℝ{1,Np}(A[      idof],Nx*(OX+1)  +Nu*(OU+1)  +idof)   for idof=1:Na)
-
-    r_,FB     = residual(ele, X∂,U∂,A∂,t,SP,(;calledby=:test_element))
+    d         = revariate{1}((X=X,U=U,A=A))
+    r_,FB     = residual(ele, d.X,d.U,d.A,t,SP,(;calledby=:test_element))
     #inftyp,rettyp = @typeof(residual(ele, X∂,U∂,A∂,t,SP,(;calledby=:test_element)))
     R,∇r      = value_∂{1,Np}(r_)
 
