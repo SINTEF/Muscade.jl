@@ -504,11 +504,8 @@ The Lagrangian multiplier introduced by this optimisation constraint is of class
                         The request is formulated as if adressed directly to the target element.
 - `gₛ::𝕣=1.`             A scale for the gap.
 - `λₛ::𝕣=1.`             A scale for the Lagrange multiplier.
-- `gap`                 A gap function `gap(eleres,X,U,A,t,gargs...)→ℝ`.
+- `gap`                 A gap function `gap(eleres,t,gargs...)→ℝ`.
                         `eleres` is the output of the above-mentionned request to the target element. 
-                        `X` and `U` are tuples (derivates of dofs...), and `∂0(X)`,`∂1(X)`,`∂2(X)` 
-                        must be used by `cost` to access the value and derivatives of `X` (resp. `U`).
-                        `X`, `U` and `A` are the degrees of freedom of the element `ElementType`.
 - `gargs::NTuple`       Additional inputs to the gap function. 
 
 - `mode::Functor`      where `mode(t::ℝ) -> Symbol`, with value `:equal`, 
@@ -531,7 +528,7 @@ the analysis, request results from `ElementConstraint`
 # Example
 
 ```
-@functor (;) gap(eleres,X,U,A,t) = eleres.Fh^2
+@functor (;) gap(eleres,t) = eleres.Fh^2
 ele1 = addelement!(model,ElementCoonstraint,[nod1];req=@request(Fh),
                    gap,λinod=1,λfield=:λ,mode=equal, 
                    ElementType=AnchorLine,
@@ -565,7 +562,7 @@ doflist( ::Type{<:ElementConstraint{Teleobj,λinod,λfield}}) where{Teleobj,λin
     u          = getsomedofs(U,SVector{Nu}(1:Nu)) 
     ☼λ         = ∂0(U)[Nu+1]
     L,FB,☼eleres = getlagrangian(o.eleobj,Λ,X,u,A,t,SP,(dbg...,via=ElementConstraint),req.eleres)
-    ☼gap       = o.gap(eleres,X,u,A,t,o.gargs...)
+    ☼gap       = o.gap(eleres,t,o.gargs...)
     L += if    m==:equal;    -gap*λ   
     elseif     m==:positive; -KKT(λ,gap,γ) 
     elseif     m==:off;      -0.5λ^2 

@@ -118,16 +118,16 @@ function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::Eleobj,no_s
 end
 struct   DirectXUA_lagrangian_addition!{Nx,Nu,Na,OX,OU,IA} end
 function DirectXUA_lagrangian_addition!{Nx,Nu,Na,OX,OU,IA}(out,asm,L,iele) where{Nx,Nu,Na,OX,OU,IA}
-    ndof   = (Nx, Nx, Nu, Na)
-    nder   = (1,OX+1,OU+1,IA)
-    Np     = Nx + Nx*(OX+1) + Nu*(OU+1) + Na*IA # number of partials
-    λxua   = 1:4
+    ndof         = (Nx, Nx, Nu, Na)
+    nder         = (1,OX+1,OU+1,IA)
+    Np           = Nx + Nx*(OX+1) + Nu*(OU+1) + Na*IA # number of partials
+    λxua         = 1:4
     ∇L           = ∂{2,Np}(L)
     pα           = 0   # points into the partials, 1 entry before the start of relevant partial derivative in α,ider-loop
     for α∈λxua, i=1:nder[α]   # we must loop over all time derivatives to correctly point into the adiff-partials...
         iα       = pα.+(1:ndof[α])
         pα      += ndof[α]
-        Lα = out.L1[α]
+        Lα       = out.L1[α]
         if i≤size(Lα,1)  # ...but only add into existing vectors of L1, for speed
             add_value!(Lα[i] ,asm[arrnum(α)],iele,∇L,ia=iα)
         end
@@ -172,15 +172,44 @@ function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::ElementCost
     @assert NDU==OU+1 @sprintf("got OU=%i and NDU=%i. Expected OU+1==NDU",OU,NDU)
      if     IA == 1  # NB: compile-time condition
         d           = revariate{1}((X=X,U=U,A=A),(;Λ=scale.Λ,X=scale.X,U=scale.U,A=scale.A))
-        R,FB,eleres = residual(o.eleobj, d.X,d.U,d.A,t,SP,dbg,o.req)  
+        R,FB,eleres = residual(o.eleobj, d.X,d.U,d.A,t,SP,(dbg...,via=:ElementCostAccelerator),o.req)  
     elseif IA == 0
         d           = revariate{1}((X=X,U=U    ),(;Λ=scale.Λ,X=scale.X,U=scale.U))
-        R,FB,eleres = residual(o.eleobj, d.X,d.U,  A,t,SP,dbg,o.req)  
+        R,FB,eleres = residual(o.eleobj, d.X,d.U,  A,t,SP,(dbg...,via=:ElementCostAccelerator),o.req)  
     end
     Releres         = revariate{2}(eleres)
     Rcost           = o.cost(Releres,t,o.costargs...)
     cost            = compose(Rcost,order2(eleres))
     L               = Λ[1] ∘₁ R + cost
+    DirectXUA_lagrangian_addition!{Nx,Nu,Na,OX,OU,IA}(out,asm,L,iele)
+end
+function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::ElementConstraint,no_second_order::Val{true}, 
+                                Λ::NTuple{1  ,SVector{Nx}},
+                                X::NTuple{NDX,SVector{Nx}},
+                                U::NTuple{NDU,SVector{Nu}},
+                                A::           SVector{Na} ,t,SP,dbg) where{OX,OU,IA,NDX,NDU,Nx,Nu,Na} 
+# TODO Specialised code to accelerate constraints in DirectXUA, but... it does not set FB, and DIrectXUA/solve has no line search...                                
+    @assert NDX==OX+1 @sprintf("got OX=%i and NDX=%i. Expected OX+1==NDX",OX,NDX)
+    @assert NDU==OU+1 @sprintf("got OU=%i and NDU=%i. Expected OU+1==NDU",OU,NDU)
+
+    u               = getsomedofs(U,SVector{Nu}(1:Nu-1))
+    λ               = ∂0(U)[Nu]
+    γ               = default{:γ}(SP,0.)
+    m               = eleobj.mode(t)
+    if     IA == 1  # NB: compile-time condition
+        d           = revariate{1}((X=X,U=U,A=A),(;Λ=scale.Λ,X=scale.X,U=scale.U,A=scale.A))
+        R,FB,eleres = residual(o.eleobj, d.X,d.U,d.A,t,SP,(dbg...,via=:ElementCoonstraintAccelerator),o.req)  
+    elseif IA == 0
+        d           = revariate{1}((X=X,U=U    ),(;Λ=scale.Λ,X=scale.X,U=scale.U))
+        R,FB,eleres = residual(o.eleobj, d.X,d.U,  A,t,SP,(dbg...,via=:ElementConstraintAccelerator),o.req)  
+    end
+    Releres         = revariate{2}(eleres)
+    Rgap            = o.gap(eleres,t,o.gargs...)
+    gap             = compose(Rgap,order2(eleres))
+    L               = Λ[1] ∘₁ R +   if      m==:equal;    -gap*λ   
+                                    elseif  m==:positive; -KKT(λ,gap,γ) 
+                                    elseif  m==:off;      -0.5λ^2 
+                                    end
     DirectXUA_lagrangian_addition!{Nx,Nu,Na,OX,OU,IA}(out,asm,L,iele)
 end
 
