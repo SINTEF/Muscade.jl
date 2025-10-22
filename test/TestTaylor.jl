@@ -87,15 +87,16 @@ vX₀  = variate{1,3}(X₀)
     @test fast(w,vX₀) === w(vX₀)
 end
 
-yy    = Muscade.firstorderonly(variate{2,3}(variate{1,3}(SVector{3,𝕣}(1,2,3))),
-                               variate{2,3}(variate{1,3}(SVector{3,𝕣}(4,5,6))),
-                               3.)
-fooyy =                       (variate{1,3}(SVector{3,𝕣}(1,2,3)) ,
-                               variate{1,3}(SVector{3,𝕣}(4,5,6)) ,
-                               3.)                    
+yy    = Muscade.to_order{1}((revariate{1}(SVector(4.,5.,6.)),revariate{2}(SVector(7.,8.,9.)) ))  
 @testset "firstorderonly" begin
-    @test yy === fooyy
+    @test yy[1] === revariate{1}(SVector(4.,5.,6.)) 
+    @test yy[2] === revariate{1}(SVector(7.,8.,9.)) 
+    @test Muscade.to_order{0}(3.) == 3.0
+    @test Muscade.to_order{1}(3.) == ∂ℝ{1, 0, Float64}(3.0, Float64[])
+    @test Muscade.to_order{2}(3.) == ∂ℝ{2, 0, ∂ℝ{1, 0, Float64}}(∂ℝ{1, 0, Float64}(3.0, Float64[]), ∂ℝ{1, 0, Float64}[])
 end
+
+
 
 #### Compose with NamedTuple
 
@@ -125,22 +126,22 @@ end
 # 10: Neleres
 Releres  = Muscade.revariate{2}(eleres)
 Rq       = cost(Releres)
-q        = Muscade.compose(Rq,Muscade.order2(eleres))
-q2       = cost(Muscade.order2(eleres))
+q        = Muscade.compose(Rq,Muscade.to_order{2}(eleres))   # TODO this hangs. verify the output of to_order{2}(eleres) carefully.  There are empty partials.
+q2       = cost(Muscade.to_order{2}(eleres))
 
 @testset "compose NamedTuple" begin
     @test Muscade.flat_eltype(Muscade.revariate{2}(eleres))             == ∂ℝ{2, 10, ∂ℝ{1, 10, 𝕣}}
     @test Muscade.flat_eltype(Rq)                                       == ∂ℝ{2, 10, ∂ℝ{1, 10, 𝕣}}
     @test Muscade.flat_eltype(q)                                        == ∂ℝ{2, 4 , ∂ℝ{1, 4 , 𝕣}} 
-    @test Muscade.flat_eltype(Muscade.order2(eleres))                   == ∂ℝ{2, 4 , ∂ℝ{1, 4 , 𝕣}} 
+    @test Muscade.flat_eltype(Muscade.to_order{2}(eleres))                   == ∂ℝ{2, 4 , ∂ℝ{1, 4 , 𝕣}} 
     @test Muscade.flat_eltype(q2)                                       == ∂ℝ{2, 4 , ∂ℝ{1, 4 , 𝕣}} 
     @test q == q2
 end
 
 @testset "inferred" begin
     @inferred Muscade.revariate{2}(eleres)
-    @inferred Muscade.order2(Muscade.flatten(eleres))
-    @inferred Muscade.compose(Rq,Muscade.order2(Muscade.flatten(eleres)))
+    @inferred Muscade.to_order{2}(Muscade.flatten(eleres))
+    @inferred Muscade.compose(Rq,Muscade.to_order{2}(Muscade.flatten(eleres)))
 end
 
 X     = (SVector(1.,2.),SVector(3.,4.))
@@ -161,5 +162,7 @@ d     = Muscade.revariate{2}((;X,U),scale)
 end
 
 
+
+ 
 
 end # module

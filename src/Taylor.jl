@@ -66,8 +66,6 @@ motion⁻¹{P,ND   }(a...              ) where{P,ND} = motion⁻¹{P,ND}(a)
 
 #############
 
-
-
 flat_length(a::NamedTuple   )                = flat_length(values(a))
 flat_length(a::Tuple        )                = flat_length(first(a))+flat_length(Base.tail(a))
 flat_length(a::Tuple{}      )                = 0
@@ -83,6 +81,10 @@ flat_eltype(a::R            ) where{R<:ℝ}    = R
 precedence(a::NamedTuple   )                 = precedence(values(a))
 precedence(a::Tuple        )                 = max(precedence(first(a)),precedence(Base.tail(a)))
 precedence(a::Tuple{X}     ) where{X}        = precedence(a[1]) 
+
+npartial(  a::NamedTuple   )                 = npartial(values(a))
+npartial(  a::Tuple        )                 = max(npartial(first(a)),npartial(Base.tail(a)))
+npartial(  a::Tuple{X}     ) where{X}        = npartial(a[1]) 
 
 struct flatten{T} end
 flatten(a)                                   = flatten{flat_eltype(a)}(a)
@@ -106,20 +108,35 @@ multivariate_𝕣{P,N}(a::R,i,scale) where{P,N,R}        = ∂ℝ{P,N  }(multiva
 multivariate_𝕣{0,N}(a::𝕣,i,scale) where{  N}          = a
 
 """ 
-    TX = revariate{P}(X)
+    TX = revariate{P}(V)
 
-The vector `X` of `Real`s (possibly: `∂ℝ`s) is stripped of its partials, an revariated to 
+The variable `V` is a nested structure `NamedTuple`s, `Tuple`s and `SArrays` of 
+`Real`s (possibly: `∂ℝ`s).
+
+`V` is stripped of its partials, an revariated to 
 order `P`.
 
-    TX = revariate(X)
+    TV = revariate(VX)
 
-revariates to the order `precedence(X)`.  
+revariates to the order `precedence(V)`.  
 
 `revariate`, in conjunction with `compose` can be used to improve performance when the length of 
-`X` is smaller than the length of its partials.
+`V` is smaller than the length of its partials.
 
-Be extremely careful never to mix any variable that is a function of `X` with any other variables
+Be extremely careful never to mix any variable that is a function of `V` with any other variables
 containing  `∂ℝ`s but not produced by the same `revariate`.
+
+A special version of `revariate`
+
+    V = (;X,U,A)
+    S = (X=scale.X,U=scale.U,A=scale.A)
+    TV = revariate{P}(V,S)
+
+allows to introduce scaling in automatic differentiation.  For this method, `S` and `V`
+have the same structure, with the important exception that `Tuple`s in `V` must be
+`ntuple`s (have elements of identical type `T`), and, to a `Tuple` in `V` corresponds 
+a variable of type `T` in `V`. Put simply: the same scale `scale.X` will be applied
+to `∂0[X]`, `∂1[X]` and `∂2[X]`. 
 
 See also: [`compose`](@ref)
 """
@@ -261,27 +278,30 @@ composeJacobian{P}(Ty::NamedTuple,X₀) where{P} = NamedTuple{keys(Ty)}(composeJ
 composeJacobian{P}(Ty::Tuple     ,X₀) where{P} = (composeJacobian{P}(first(Ty),X₀),composeJacobian{P}(Base.tail(Ty),X₀)...)
 composeJacobian{P}(Ty::Tuple{}   ,X₀) where{P} = ()
 
-# ∂ℝ( ∂ℝ(a,aₓ), ∂ℝ(aₓ,aₓₓ) ) → ∂ℝ(a,aₓ)   
-firstorderonly(a...;)             = firstorderonly(a)
-firstorderonly(a::Tuple)          = (firstorderonly(first(a)),firstorderonly(Base.tail(a))...)
-firstorderonly(a::Tuple{})        = ()
-firstorderonly(a::AbstractArray)  = firstorderonly.(a)
-firstorderonly(a::∂ℝ)             = precedence(a)≤1 ? a : firstorderonly(a.x) 
-firstorderonly(a)                 = a
-order2(a::NamedTuple   )          = NamedTuple{keys(a)}(order2(values(a)))
-order2(a::Tuple        )          = (order2(first(a)),order2(Base.tail(a))...)
-order2(a::Tuple{}      )          = ()
-order2(a::AbstractArray)          = order2.(a)
-order2(a::ℝ            )          = a
-order2(a::∂ℝ{1,N,𝕣}    ) where{N} = ∂ℝ{2,N,∂ℝ{1,N,𝕣}}(a,  
-                                                      SV{N}(∂ℝ{1,N,𝕣}(
-                                                                       a.dx[i],
-                                                                       SV{N,𝕣}(zero(𝕣) for j=1:N)
-                                                                       ) for i=1:N)
-                                                      )      
-struct toorder{P} end
-toorder{0}(a) = a
-toorder{1}(a) = a
-toorder{2}(a) = order2(a)
-toorder{2}()  = ()
+"""
+    to_order{P}(V)
+
+Decrease (lossy) or increase (pad partials with zeros) the order of differentiation of `V`.
+`V` is a nested structure of `NamedTuple`, `Tuple`, `SArray`, and the components
+of `V` must be of type `∂ℝ` (otherwise, the number of partials would be undefined).
+"""
+struct to_order{P,N} end
+to_order{P,N}(a::NamedTuple   ) where{P,N} = NamedTuple{keys(a)}(to_order{P,N}(values(a)))
+to_order{P,N}(a::Tuple        ) where{P,N} = (to_order{P,N}(first(a)),to_order{P,N}(Base.tail(a))...)
+to_order{P,N}(a::Tuple{}      ) where{P,N} = ()
+to_order{P,N}(a::AbstractArray) where{P,N} = to_order{P,N}.(a)
+function to_order{P,N}(a::Ra)  where{Ra<:∂ℝ{Pa,N},P} where{Pa,N}
+    if     Pa==P
+        a
+    elseif Pa> P   
+        to_order{P,N}(value{Pa}(a))
+    elseif Pa< P
+        ap  = to_order{P-1,N}(a) 
+        ∂ℝ{P,N}(ap, SVector{N}(∂ℝ{P-1,N}(ap.dx[i]) for i=1:N) )
+    end
+end
+function to_order{P,N}(a::𝕣) where{P,N} 
+    P==0 ? a : ∂ℝ{P,N}(to_order{P-1,N}(a))
+end
+to_order{Pa}(a) where{Pa}= to_order{Pa,npartial(a)}(a)
  
