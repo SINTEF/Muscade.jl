@@ -159,7 +159,7 @@ The input `keep::Vector{Boolean}` must be of length `nnz(S)`.
 
 !!! warning
     In the first example, the `keep` *function* accesses `S.nzval[i]`, and the term is then mutated by `sparser!`. 
-    Any criteria requiring multipe access to *nzval* must build a `Vector` before calling `sparser!`.
+    Any criteria requiring multiple access to *nzval* must build a `Vector` before calling `sparser!`.
 
 !!! warning
     Note that `assemble!` computes the `nzval` of a sparse, assumning that its sparsity structure `colptr` and `rowval`
@@ -170,7 +170,7 @@ function sparser!(T::SparseMatrixCSC,S::SparseMatrixCSC,keep::Function)
     # it is assumed that T has same memory-shape and matrix-shape as S.
     # works also with S===T
     ndrop               = 0
-    @inbounds for icol  = 1:S.n
+    for icol  = 1:S.n
         colptr          = S.colptr[icol]
         T.colptr[icol]  = colptr-ndrop
         for inz         = colptr:S.colptr[icol+1]-1
@@ -182,9 +182,9 @@ function sparser!(T::SparseMatrixCSC,S::SparseMatrixCSC,keep::Function)
             end
         end
     end
-    @inbounds T.colptr[T.n+1] = S.colptr[S.n+1] - ndrop
+    T.colptr[T.n+1] = S.colptr[S.n+1] - ndrop
     nnz                 = length(S.nzval)
-    resize!(T.nzval ,nnz-ndrop)
+    resize!(T.nzval ,nnz-ndrop) 
     resize!(T.rowval,nnz-ndrop)
 end
 sparser!(T::SparseMatrixCSC,S::SparseMatrixCSC,keep::Vector{Bool})  = sparser!(T,S,i->keep[i])

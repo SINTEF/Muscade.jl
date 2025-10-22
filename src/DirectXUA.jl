@@ -470,13 +470,13 @@ function solve(::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
     out,asm,dofgr         = prepare(AssemblyDirect{OX,OU,IA},model,dis;kwargs...)          # mem and assembler for system at any given step
     assemble!(out,asm,dis,model,state[1][1],(dbg...,solver=:DirectXUA,phase=:sparsity))    # create a sample "out" for preparebig
     Lvv,Lv,Lvvasm,Lvasm,Lvdis = preparebig(IA,nstep,out)                                   # mem and assembler for big system
-    cLvv = copy(Lvv)
     for iter              = 1:maxiter
         verbose && @printf("\n    Iteration %3d\n",iter)
 
         verbose && @printf("        Assembling")
         SP = (γ=γ,iter=iter)
         assemblebig!(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out,state,nstep,Δt,SP,(dbg...,solver=:DirectXUA,iter=iter))
+        cLvv = copy(Lvv)
         sparser!(cLvv,Lvv,1e-20)
         #plot_matrix_sparsity(Lvv;size=500,title=nothing,markersize=3,rtol=1e-20)
         #print_nz(cLvv)
