@@ -128,13 +128,13 @@ if mission == :report
     eigincXU           = solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=true,verbosity=1,tol=1e-20,σₓᵤ)
 
 elseif mission == :time
-    eigincXU           = solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=true,verbosity=1,tol=1e-20,σₓᵤ)
-    @btime eigincXU    = solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=true,verbosity=1,tol=1e-20,σₓᵤ)
+    eigincXU           = solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=false,verbosity=1,tol=1e-20,σₓᵤ)
+    @btime eigincXU    = solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=false,verbosity=1,tol=1e-20,σₓᵤ)
 elseif mission == :profile
-    eigincXU           = solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=true,verbosity=1,tol=1e-20,σₓᵤ)
+    eigincXU           = solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=false,verbosity=1,tol=1e-20,σₓᵤ)
     Profile.clear()
     Profile.@profile for i=1:100
-        local eigincXU = solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=true,verbosity=1,tol=1e-20,σₓᵤ)
+        local eigincXU = solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=false,verbosity=1,tol=1e-20,σₓᵤ)
     end
     ProfileView.view(fontsize=30);
     # After clicking on a bar in the flame diagram, you can type warntype_last() and see the result of 

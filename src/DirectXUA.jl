@@ -93,11 +93,11 @@ function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::Eleobj,no_s
     ndof   = (Nx, Nx, Nu, Na)
     nder   = (1,OX+1,OU+1,IA)
     if IA == 1
-        d    = revariate{1}((;X,U,A),(;Λ=scale.Λ,X=scale.X,U=scale.U,A=scale.A))
+        d    = revariate{1}((;X,U,A),(;X=scale.X,U=scale.U,A=scale.A))
         R,FB = residual(eleobj, d.X,d.U,d.A,t,SP,dbg)
     else
-        d    = revariate{1}((;X,U  ),(;Λ=scale.Λ,X=scale.X,U=scale.U))
-        R,FB = residual(eleobj, d.X∂,d.U,  A,t,SP,dbg)
+        d    = revariate{1}((;X,U  ),(;X=scale.X,U=scale.U))
+        R,FB = residual(eleobj, d.X,d.U,  A,t,SP,dbg)
     end        
     iλ   = 1:ndof[ind.Λ]
     Lλ   = out.L1[ind.Λ]
@@ -163,6 +163,13 @@ function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::Eleobj,no_s
     DirectXUA_lagrangian_addition!{Nx,Nu,Na,OX,OU,IA}(out,asm,L,iele)
 end
 # Specialised to accelerate ElementCost and ElementConstraint
+function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::ElementCost,no_second_order::Val{false}, 
+                                Λ::NTuple{1  ,SVector{Nx}},
+                                X::NTuple{NDX,SVector{Nx}},
+                                U::NTuple{NDU,SVector{Nu}},
+                                A::           SVector{Na} ,t,SP,dbg) where{OX,OU,IA,NDX,NDU,Nx,Nu,Na} 
+         addin!(out,asm,iele,scale,eleobj,Val(true),Λ,X,U,A,t,SP,dbg) 
+end
 function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::ElementCost,no_second_order::Val{true}, 
                                 Λ::NTuple{1  ,SVector{Nx}},
                                 X::NTuple{NDX,SVector{Nx}},
@@ -171,17 +178,25 @@ function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::ElementCost
     @assert NDX==OX+1 @sprintf("got OX=%i and NDX=%i. Expected OX+1==NDX",OX,NDX)
     @assert NDU==OU+1 @sprintf("got OU=%i and NDU=%i. Expected OU+1==NDU",OU,NDU)
      if     IA == 1  # NB: compile-time condition
-        d           = revariate{1}((X=X,U=U,A=A),(;Λ=scale.Λ,X=scale.X,U=scale.U,A=scale.A))
-        R,FB,eleres = residual(o.eleobj, d.X,d.U,d.A,t,SP,(dbg...,via=:ElementCostAccelerator),o.req)  
+        d           = revariate{1}((X=X,U=U,A=A),(;X=scale.X,U=scale.U,A=scale.A))
+        R,FB,eleres = residual(eleobj.eleobj, d.X,d.U,d.A,t,SP,(dbg...,via=:ElementCostAccelerator),eleobj.req.eleres)  
     elseif IA == 0
-        d           = revariate{1}((X=X,U=U    ),(;Λ=scale.Λ,X=scale.X,U=scale.U))
-        R,FB,eleres = residual(o.eleobj, d.X,d.U,  A,t,SP,(dbg...,via=:ElementCostAccelerator),o.req)  
+        d           = revariate{1}((X=X,U=U    ),(;X=scale.X,U=scale.U))
+        R,FB,eleres = residual(eleobj.eleobj, d.X,d.U,  A,t,SP,(dbg...,via=:ElementCostAccelerator),eleobj.req.eleres)  
     end
     Releres         = revariate{2}(eleres)
-    Rcost           = o.cost(Releres,t,o.costargs...)
-    cost            = compose(Rcost,order2(eleres))
+    
+    Rcost           = eleobj.cost(Releres,t,eleobj.costargs...)
+    cost            = compose(Rcost,to_order{2}(eleres))
     L               = Λ[1] ∘₁ R + cost
     DirectXUA_lagrangian_addition!{Nx,Nu,Na,OX,OU,IA}(out,asm,L,iele)
+end
+function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::ElementConstraint,no_second_order::Val{false}, 
+                                Λ::NTuple{1  ,SVector{Nx}},
+                                X::NTuple{NDX,SVector{Nx}},
+                                U::NTuple{NDU,SVector{Nu}},
+                                A::           SVector{Na} ,t,SP,dbg) where{OX,OU,IA,NDX,NDU,Nx,Nu,Na} 
+         addin!(out,asm,iele,scale,eleobj,Val(true),Λ,X,U,A,t,SP,dbg) 
 end
 function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::ElementConstraint,no_second_order::Val{true}, 
                                 Λ::NTuple{1  ,SVector{Nx}},
@@ -197,15 +212,15 @@ function addin!(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::ElementCons
     γ               = default{:γ}(SP,0.)
     m               = eleobj.mode(t)
     if     IA == 1  # NB: compile-time condition
-        d           = revariate{1}((X=X,U=U,A=A),(;Λ=scale.Λ,X=scale.X,U=scale.U,A=scale.A))
-        R,FB,eleres = residual(o.eleobj, d.X,d.U,d.A,t,SP,(dbg...,via=:ElementCoonstraintAccelerator),o.req)  
+        d           = revariate{1}((X=X,U=U,A=A),(;X=scale.X,U=scale.U,A=scale.A))
+        R,FB,eleres = residual(eleobj.eleobj, d.X,d.U,d.A,t,SP,(dbg...,via=:ElementCoonstraintAccelerator),eleobj.req)  
     elseif IA == 0
-        d           = revariate{1}((X=X,U=U    ),(;Λ=scale.Λ,X=scale.X,U=scale.U))
-        R,FB,eleres = residual(o.eleobj, d.X,d.U,  A,t,SP,(dbg...,via=:ElementConstraintAccelerator),o.req)  
+        d           = revariate{1}((X=X,U=U    ),(;X=scale.X,U=scale.U))
+        R,FB,eleres = residual(eleobj.eleobj, d.X,d.U,  A,t,SP,(dbg...,via=:ElementConstraintAccelerator),eleobj.req)  
     end
     Releres         = revariate{2}(eleres)
-    Rgap            = o.gap(eleres,t,o.gargs...)
-    gap             = compose(Rgap,order2(eleres))
+    Rgap            = eleobj.gap(eleres,t,eleobj.gargs...)
+    gap             = compose(Rgap,to_order{2}(eleres))
     L               = Λ[1] ∘₁ R +   if      m==:equal;    -gap*λ   
                                     elseif  m==:positive; -KKT(λ,gap,γ) 
                                     elseif  m==:off;      -0.5λ^2 

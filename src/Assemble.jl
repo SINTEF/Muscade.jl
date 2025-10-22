@@ -650,7 +650,7 @@ end
 # has residual with no second order
 function getlagrangian(eleobj::Eleobj,hasres::Val{true},haslag::Val{false},nso::Val{true}, Λ::SVector{Nx}, X::NTuple{Ndx,SVector{Nx}}, 
         U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na}, t::ℝ,SP,dbg,req)     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
-    P = constants(X,U,A,t)-1
+    P           = constants(X,U,A,t)-1
     X1,U1,A1,t1 = to_order{max(1,P)}((X,U,A,t)) 
     R,FB,eleres = residual(  eleobj,  X1,U1,A1,t1,SP,dbg,req)
     L           = Λ ∘₁ to_order{P}(R) # to avoid loosing symmetry of Hessian...
@@ -658,7 +658,7 @@ function getlagrangian(eleobj::Eleobj,hasres::Val{true},haslag::Val{false},nso::
 end
 function getlagrangian(eleobj::Eleobj,hasres::Val{true},haslag::Val{false},nso::Val{true}, Λ::SVector{Nx}, X::NTuple{Ndx,SVector{Nx}}, 
         U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na}, t::ℝ,SP,dbg    )     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
-    P = constants(X,U,A,t)-1
+    P           = constants(X,U,A,t)-1
     X1,U1,A1,t1 = to_order{max(1,P)}((X,U,A,t)) 
     R,FB        = residual(  eleobj,  X1,U1,A1,t1,SP,dbg    )
     L           = Λ ∘₁ to_order{P}(R) # to avoid loosing symmetry of Hessian...
