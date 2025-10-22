@@ -144,7 +144,7 @@ disblock(pgc::𝕫1,v::Vector,ibc::𝕫) = view(v,pgc[ibc]:(pgc[ibc+1]-1))
     sparser!(S::SparseMatrixCSC,keep::Function)
 
 Eliminate terms that do not satisfy a criteria from the storage of a sparse matrix.
-`S` will be mutated.
+`S` will be mutated, and the size of its internal storage modified.
 `keep` is a `Function` which to an index into `S.nzval` associate `true` if storage is to be kept for this term
 and `false` otherwise. Alternatively, `keep` can be a `Vector{Bool}`
 
@@ -152,10 +152,13 @@ and `false` otherwise. Alternatively, `keep` can be a `Vector{Bool}`
 
     sparser!([T],S,i->abs(S.nzval[i])>tol)
     sparser!([T],S,keep::Vector{Boolean}) 
-    sparser!([S1,S2],1e-9)
 
 If `T` is provided (initialised as `T = copy(S)`), then result is set in `T`, `S` is unchanged, other wise `S` is mutated in place.
 The input `keep::Vector{Boolean}` must be of length `nnz(S)`.
+
+    sparser!([S1,S2,...],rtol=1e-9)
+    
+Operates in place, reducing the sparses `S1`, `S2` etc... to a common sparsity pattern.    
 
 !!! warning
     In the first example, the `keep` *function* accesses `S.nzval[i]`, and the term is then mutated by `sparser!`. 
@@ -167,8 +170,10 @@ The input `keep::Vector{Boolean}` must be of length `nnz(S)`.
     directly to a `sparse` returned by `assemble!`, `assemble!` can no longer be called for this matrix. 
 """
 function sparser!(T::SparseMatrixCSC,S::SparseMatrixCSC,keep::Function) 
-    # it is assumed that T has same memory-shape and matrix-shape as S.
+    # it is assumed that T has same matrix-shape as S.
     # works also with S===T
+    resize!(T.nzval ,length(S.nzval )) 
+    resize!(T.rowval,length(S.rowval))
     ndrop               = 0
     for icol  = 1:S.n
         colptr          = S.colptr[icol]
@@ -187,6 +192,7 @@ function sparser!(T::SparseMatrixCSC,S::SparseMatrixCSC,keep::Function)
     resize!(T.nzval ,nnz-ndrop) 
     resize!(T.rowval,nnz-ndrop)
 end
+
 sparser!(T::SparseMatrixCSC,S::SparseMatrixCSC,keep::Vector{Bool})  = sparser!(T,S,i->keep[i])
 function sparser!(T::SparseMatrixCSC,S::SparseMatrixCSC,rtol=1e-9) 
     atol  = rtol*maximum(abs,S)
@@ -201,7 +207,11 @@ function sparser!(S::AbstractVector{SMat},rtol=1e-9::𝕣) where{SMat<:SparseMat
     end
     return keep
 end
-
+# Undocumented, untested, unused
+function sparser(S::SparseMatrixCSC,args...)
+    T = copy(S)
+    sparser!(T,S,args...)
+end
 
 
 
