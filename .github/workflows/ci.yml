@@ -18,6 +18,7 @@ jobs:
       matrix:
         version:
           # - 'lts'
+          - '1.11'
           - '1.12'
           # - 'pre'
         os:
