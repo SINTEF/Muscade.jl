@@ -60,11 +60,8 @@ makedocs(sitename ="Muscade.jl",
                                                 "litterature.md"],
                         "LICENSE.md"],
                         source  = "src",
-                        build   = "build",
-                        checkdocs = :none
-                        # checkdocs = :all
-        )
-
+                        build   = "build"
+)
 
 deploydocs(repo = "github.com/SINTEF/Muscade.jl.git",devbranch="dev",   devurl="dev",   versions = ["stable" => "stable", "dev" => "dev"])
 deploydocs(repo = "github.com/SINTEF/Muscade.jl.git",devbranch="main",  devurl="stable",versions = ["stable" => "stable", "dev" => "dev"])
