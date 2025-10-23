@@ -67,12 +67,14 @@ function zero!(out::AssemblyDirect) # who calls this???
     end
 end
 
-
 function addin!{mission}(out::AssemblyDirect,asm,iele,scale,eleobj::Acost,A::SVector{Na},dbg) where{Na,mission} # addin Atarget element
-    A∂  = SVector{Na,∂ℝ{2,Na,∂ℝ{1,Na,𝕣}}}(∂²ℝ{1,Na}(A[idof],idof, scale.A[idof])   for idof=1:Na) # TODO
+    if     mission==:matrices     P=2
+    elseif mission==:vectors      P=1
+    end
+    A∂  = revariate{P}(A)
     ø   = nothing
     C,_ = lagrangian(eleobj,ø,ø,ø,A∂,ø,ø ,dbg)
-    ∇ₐC = ∂{2,Na}(C)
+    ∇ₐC = ∂{P,Na}(C)
     add_value!(out.L1[ind.A][1],asm[arrnum(ind.A)],iele,∇ₐC)
     if mission==:matrices
         add_∂!{1}(out.L2[ind.A,ind.A][1,1],asm[arrnum(ind.A,ind.A)],iele,∇ₐC)
@@ -89,6 +91,9 @@ function addin!{mission}(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::El
     @assert NDU==OU+1 @sprintf("got OU=%i and NDU=%i. Expected OU+1==NDU",OU,NDU)
     ndof   = (Nx, Nx, Nu, Na)
     nder   = (1,OX+1,OU+1,IA)
+    if     mission==:matrices     P=1
+    elseif mission==:vectors      P=0
+    end
     if IA == 1
         d    = revariate{1}((;X,U,A),(;X=scale.X,U=scale.U,A=scale.A))
         R,FB = residual(eleobj, d.X,d.U,d.A,t,SP,dbg)
@@ -115,11 +120,14 @@ function addin!{mission}(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::El
 end
 struct   DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,OX,OU,IA} end
 function DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,OX,OU,IA}(out,asm,L,iele) where{mission,Nx,Nu,Na,OX,OU,IA}
+    if     mission==:matrices     P=2
+    elseif mission==:vectors      P=1
+    end
     ndof         = (Nx, Nx, Nu, Na)
     nder         = (1,OX+1,OU+1,IA)
     Np           = Nx + Nx*(OX+1) + Nu*(OU+1) + Na*IA # number of partials
     λxua         = 1:4
-    ∇L           = ∂{2,Np}(L)
+    ∇L           = ∂{P,Np}(L)
     pα           = 0   # points into the partials, 1 entry before the start of relevant partial derivative in α,ider-loop
     for α∈λxua, i=1:nder[α]   # we must loop over all time derivatives to correctly point into the adiff-partials...
         iα       = pα.+(1:ndof[α])
@@ -149,12 +157,14 @@ function addin!{mission}(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::El
 
     @assert NDX==OX+1 @sprintf("got OX=%i and NDX=%i. Expected OX+1==NDX",OX,NDX)
     @assert NDU==OU+1 @sprintf("got OU=%i and NDU=%i. Expected OU+1==NDU",OU,NDU)
- 
+    if     mission==:matrices     P=2
+    elseif mission==:vectors      P=1
+    end
     if IA == 1
-        d    = revariate{2}((;Λ=Λ[1],X,U,A),(;Λ=scale.Λ,X=scale.X,U=scale.U,A=scale.A))
+        d    = revariate{P}((;Λ=Λ[1],X,U,A),(;Λ=scale.Λ,X=scale.X,U=scale.U,A=scale.A))
         L,FB = getlagrangian(eleobj, d.Λ,d.X,d.U,d.A,t,SP,dbg)
     else
-        d    = revariate{2}((;Λ=Λ[1],X,U),(;Λ=scale.Λ,X=scale.X,U=scale.U))
+        d    = revariate{P}((;Λ=Λ[1],X,U),(;Λ=scale.Λ,X=scale.X,U=scale.U))
         L,FB = getlagrangian(eleobj, d.Λ,d.X,d.U,A  ,t,SP,dbg)
     end
     DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,OX,OU,IA}(out,asm,L,iele)
@@ -174,17 +184,20 @@ function addin!{mission}(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::El
                                 A::           SVector{Na} ,t,SP,dbg) where{mission,OX,OU,IA,NDX,NDU,Nx,Nu,Na} 
     @assert NDX==OX+1 @sprintf("got OX=%i and NDX=%i. Expected OX+1==NDX",OX,NDX)
     @assert NDU==OU+1 @sprintf("got OU=%i and NDU=%i. Expected OU+1==NDU",OU,NDU)
-     if     IA == 1  # NB: compile-time condition
-        d           = revariate{1}((X=X,U=U,A=A),(;X=scale.X,U=scale.U,A=scale.A))
+    if     mission==:matrices     P=2
+    elseif mission==:vectors      P=1
+    end
+    if     IA == 1  # NB: compile-time condition
+        d           = revariate{P-1}((X=X,U=U,A=A),(;X=scale.X,U=scale.U,A=scale.A))
         R,FB,eleres = residual(eleobj.eleobj, d.X,d.U,d.A,t,SP,(dbg...,via=:ElementCostAccelerator),eleobj.req.eleres)  
     elseif IA == 0
-        d           = revariate{1}((X=X,U=U    ),(;X=scale.X,U=scale.U))
+        d           = revariate{P-1}((X=X,U=U    ),(;X=scale.X,U=scale.U))
         R,FB,eleres = residual(eleobj.eleobj, d.X,d.U,  A,t,SP,(dbg...,via=:ElementCostAccelerator),eleobj.req.eleres)  
     end
-    Releres         = revariate{2}(eleres)
+    Releres         = revariate{P}(eleres)
     
     Rcost           = eleobj.cost(Releres,t,eleobj.costargs...)
-    cost            = compose(Rcost,to_order{2}(eleres))
+    cost            = compose(Rcost,to_order{P}(eleres))
     L               = Λ[1] ∘₁ R + cost
     DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,OX,OU,IA}(out,asm,L,iele)
 end
@@ -203,21 +216,23 @@ function addin!{mission}(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::El
 # TODO Specialised code to accelerate constraints in DirectXUA, but... it does not set FB, and DIrectXUA/solve has no line search...                                
     @assert NDX==OX+1 @sprintf("got OX=%i and NDX=%i. Expected OX+1==NDX",OX,NDX)
     @assert NDU==OU+1 @sprintf("got OU=%i and NDU=%i. Expected OU+1==NDU",OU,NDU)
-
+    if     mission==:matrices     P=2
+    elseif mission==:vectors      P=1
+    end
     u               = getsomedofs(U,SVector{Nu}(1:Nu-1))
     λ               = ∂0(U)[Nu]
     γ               = default{:γ}(SP,0.)
     m               = eleobj.mode(t)
     if     IA == 1  # NB: compile-time condition
-        d           = revariate{1}((X=X,U=U,A=A),(;X=scale.X,U=scale.U,A=scale.A))
+        d           = revariate{P-1}((X=X,U=U,A=A),(;X=scale.X,U=scale.U,A=scale.A))
         R,FB,eleres = residual(eleobj.eleobj, d.X,d.U,d.A,t,SP,(dbg...,via=:ElementCoonstraintAccelerator),eleobj.req)  
     elseif IA == 0
-        d           = revariate{1}((X=X,U=U    ),(;X=scale.X,U=scale.U))
+        d           = revariate{P-1}((X=X,U=U    ),(;X=scale.X,U=scale.U))
         R,FB,eleres = residual(eleobj.eleobj, d.X,d.U,  A,t,SP,(dbg...,via=:ElementConstraintAccelerator),eleobj.req)  
     end
-    Releres         = revariate{2}(eleres)
+    Releres         = revariate{P}(eleres)
     Rgap            = eleobj.gap(eleres,t,eleobj.gargs...)
-    gap             = compose(Rgap,to_order{2}(eleres))
+    gap             = compose(Rgap,to_order{P}(eleres))
     L               = Λ[1] ∘₁ R +   if      m==:equal;    -gap*λ   
                                     elseif  m==:positive; -KKT(λ,gap,γ) 
                                     elseif  m==:off;      -0.5λ^2 
@@ -378,7 +393,6 @@ An analysis is carried out by a call with the following syntax:
 
 ```
 initialstate    = initialize!(model)
-stateXUA        = solve(DirectXUA{OX,OU,IA};initialstate=[initialstate],time=[0:1.:5])
 ```
 
 The solver does not yet support interior point methods. 
