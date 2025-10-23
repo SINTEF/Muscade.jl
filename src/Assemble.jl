@@ -534,38 +534,42 @@ function add_value!(out::Base.RefValue,a,ia::𝕫)  # # Lr, scalar in Newmakr-β
     out[] += VALUE(a[ia])
 end
 
-struct   add_∂!{P,T,M} end # to allow syntax with type-parameter P: precedence, T (transpose), M (minus)
-function add_∂!{P,T,M}(out::Array,asm,iele,a::SVector{Na,∂ℝ{P,Nda,R}},ia=1:Na,ida=1:Nda;iasm=idvec,idasm=idvec) where{P,Nda,R,Na,T,M}
+struct   add_∂!{P,S,T} end # to allow syntax with type-parameter P: precedence, S: :plus|:minus, T: :transpose|:notranspose
+function add_∂!{P,S,T}(out::Array,asm,iele,a::SVector{Na,∂ℝ{P,Nda,R}},ia=1:Na,ida=1:Nda;iasm=idvec,idasm=idvec) where{P,Nda,R,Na,S,T}
     for (i,iaᵢ) ∈ enumerate(ia), (j,idaⱼ) ∈ enumerate(ida)
-        k = if T==:transpose idasm[j]+length(ida)*( iasm[i]-1)   
-        else                  iasm[i]+length( ia)*(idasm[j]-1)  
+        k = if T==:transpose   idasm[j]+length(ida)*( iasm[i]-1)   
+        elseif T==:notranspose iasm[ i]+length( ia)*(idasm[j]-1)  
+        else   muscadeerror((;T=T),"Illegal value of parameter T")    
         end
         iout = asm[k,iele]
         if iout≠0
-            if     M==:plus   out[iout]+=a[iaᵢ].dx[idaⱼ]  
-            elseif M==:minus  out[iout]-=a[iaᵢ].dx[idaⱼ]  
+            if     S==:plus   out[iout]+=a[iaᵢ].dx[idaⱼ]  
+            elseif S==:minus  out[iout]-=a[iaᵢ].dx[idaⱼ]  
+            else   muscadeerror((;S=S),"Illegal value of parameter S")    
             end
         end
     end
 end  
-add_∂!{P    }(                                     args...;kwargs...) where{P         } = add_∂!{P,:notranspose,:plus}(args...;kwargs...) 
-add_∂!{P  ,M}(                                     args...;kwargs...) where{P       ,M} = add_∂!{P,:notranspose,M    }(args...;kwargs...) 
-add_∂!{P,T,M}(out::SparseMatrixCSC,                args...;kwargs...) where{P,     T,M} = add_∂!{P,T,M}(out.nzval, args...;kwargs...)
-add_∂!{P,T,M}(out::Array,asm,iele,a::SVector{Na,R},args...;kwargs...) where{P,Na,R,T,M} = nothing # if P does not match
+add_∂!{P    }(                                     args...;kwargs...) where{P         } = add_∂!{P,:plus             }(args...;kwargs...) 
+add_∂!{P  ,S}(                                     args...;kwargs...) where{P,S       } = add_∂!{P,S    ,:notranspose}(args...;kwargs...) 
+add_∂!{P,S,T}(out::SparseMatrixCSC,                args...;kwargs...) where{P,S,T     } = add_∂!{P,S    ,T           }(out.nzval, args...;kwargs...)
+add_∂!{P,S,T}(out::Array,asm,iele,a::SVector{Na,R},args...;kwargs...) where{P,S,T,Na,R} = nothing # if P does not match
 
-function add_∂!{P,T,M}(out::Vector,asm, iele, a::SVector{Na,∂ℝ{P,Nda,R}},ia,ida::𝕫) where{P,T,Nda,R,Na,M} # Lλr::Vector in Newmark-β context
+function add_∂!{P,S,T}(out::Vector,asm, iele, a::SVector{Na,∂ℝ{P,Nda,R}},ia,ida::𝕫) where{P,S,T,Nda,R,Na} # Lλr::Vector in Newmark-β context
     for (i,iaᵢ) ∈ enumerate(ia)
         iout = asm[i,iele]
         if iout≠0
-            if     M==:plus   out[iout]+=a[iaᵢ].dx[ida]  
-            elseif M==:minus  out[iout]-=a[iaᵢ].dx[ida]  
+            if     S==:plus   out[iout]+=a[iaᵢ].dx[ida]  
+            elseif S==:minus  out[iout]-=a[iaᵢ].dx[ida]  
+            else   muscadeerror((;S=S),"Illegal value of parameter S")    
             end
         end
     end
 end   
-function add_∂!{P,T,M}(out::Base.RefValue,a::SVector{Na,∂ℝ{P,Nda,R}},ia::𝕫,ida::𝕫) where{P,T,Nda,R,Na,M} # Lrr, scalar in Newmark-β context
-    if     M==:plus   out[]+=a[ia].dx[ida]  
-    elseif M==:minus  out[]-=a[ia].dx[ida]  
+function add_∂!{P,S,T}(out::Base.RefValue,a::SVector{Na,∂ℝ{P,Nda,R}},ia::𝕫,ida::𝕫) where{P,S,T,Nda,R,Na} # Lrr, scalar in Newmark-β context
+    if     S==:plus   out[]+=a[ia].dx[ida]  
+    elseif S==:minus  out[]-=a[ia].dx[ida]  
+    else   muscadeerror((;S=S),"Illegal value of parameter S")    
     end
 end
 
