@@ -32,7 +32,7 @@ X        = @SVector [0.,0.,0.]
 U        = @SVector 𝕣[]
 A        = @SVector [0.,0.]  # [Δseadrag,Δskydrag]
 #                             eleobj, Λ, X,  U,  A, t, SP,     dbg
-out   = Muscade.diffed_lagrangian(anchorline;Λ ,X=(X,),U=(U,),A)
+out   = Muscade.diffed_lagrangian{2}(anchorline;Λ ,X=(X,),U=(U,),A)
 @testset "anchorline1" begin
     @test out.∇L[1][1]              ≈ [-12.25628901693551, 0.2607721067433087, 24.51257803387102]
     @test out.∇L[2][1]            ≈ [-0.91509745608786, 0.14708204066349, 1.3086506986891027]

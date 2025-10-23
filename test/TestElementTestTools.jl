@@ -14,7 +14,7 @@ rload = DofLoad(model.nod;field=:Xdof,value=value)
 X = (SVector(0.1),)
 U = (SVector(0.3),)
 A = SVector{0,Float64}()
-out1 = Muscade.diffed_lagrangian(uload; Λ,X,U,A)
+out1 = Muscade.diffed_lagrangian{2}(uload; Λ,X,U,A)
 # @printf "\nU\n"
 # print_element_array(uload,:U,U[1])
 # @printf "∂L/∂U₀\n"

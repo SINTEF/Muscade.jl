@@ -171,7 +171,7 @@ function solve(SX::Type{SweepX{ORDER}},pstate,verbose,dbg;
                     maxLineIter::ℤ=50,sfac::𝕣=.5,γfac::𝕣=.5) where{ORDER}
     model,dis        = initialstate.model,initialstate.dis
     out,asm,Xdofgr   = prepare(AssemblySweepX{ORDER},model,dis)  
-    ndof             = getndof(Xdofgr)
+    nXdof            = getndof(Xdofgr)
     buffer           = ntuple(i->𝕣1(undef,nXdof), 6)  
     citer            = 0
     cΔx²,cLλ²        = maxΔx^2,maxLλ^2
@@ -185,7 +185,7 @@ function solve(SX::Type{SweepX{ORDER}},pstate,verbose,dbg;
         state.time   = t
         Δt           = t-oldt
         Δt ≤ 0 && ORDER>0 && muscadeerror(@sprintf("Time step length not strictly positive at step=%3d",step))
-        out.c        = Newmarkβcoefficients(order,Δt,β,γ)
+        out.c        = Newmarkβcoefficients(ORDER,Δt,β,γ)
         state.time   = t
         assemble!{:linesearch}(out,asm,dis,model,state,(dbg...,solver=:SweepX,phase=:preliminary,step=step))
         out.ming ≤ 0 && muscadeerror(@sprintf("Initial point is not strictly primal-feasible at step=%3d",step)) # This is going to suck

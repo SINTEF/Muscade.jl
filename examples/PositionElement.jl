@@ -56,6 +56,8 @@ end
 Muscade.doflist(::Type{<:Position3D}) = (inod  = (1  ,1  ,1  ,1  ,1  ,1  ), 
                                          class = (:X ,:X ,:X ,:X ,:X ,:X ), 
                                          field = (:t1,:t2,:t3,:r1,:r2,:r3) )
+Muscade.no_second_order(::Type{<:Position3D}) = Val(true)
+
 @espy function Muscade.residual(o::Position3D{Nsensor},   X,U,A,t,SP,dbg) where{Nsensor}
     P,ND   = constants(X),length(X)
     X_     = motion{P}(X)

@@ -130,7 +130,7 @@ end;
     vᵢ                  = intrinsicrotationrates(rₛₘ)
     ## compute all Jacobians of the above quantities with respect to X₀
     X₀                  = ∂0(X) # returns concrete type
-    TX₀                 = revariate{1}(X₀)  # returns ::Any
+    TX₀                 = revariate{P}(X₀)  # returns ::Any
     Tgp,Tε,Tvₛₘ,_,_,_,_  = kinematics{:compose}(o,TX₀) # the crux
     gp∂X₀,ε∂X₀,vₛₘ∂X₀    = composeJacobian{P}((Tgp,Tε,Tvₛₘ),X₀)
     ## Quadrature loop: compute resultants
@@ -147,7 +147,7 @@ end;
     return R,noFB  
 end;
 
-struct kinematics{Mode} end
+struct kinematics{Mode} end # Mode: 
 function kinematics{Mode}(o::EulerBeam3D,X₀)  where{Mode}
     cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp,L  = o.cₘ,o.rₘ,o.tgₘ,o.tgₑ,o.ζnod,o.ζgp,o.L   # As-meshed element coordinates and describing tangential vector
     vₛₘ,rₛₘ,uₗ₂,vₗ₂,cₛₘ  = corotated{Mode}(o,X₀)
@@ -166,11 +166,10 @@ vec3(v,ind) = SVector{3}(v[i] for i∈ind);
 struct corotated{Mode} end 
 function corotated{Mode}(o::EulerBeam3D,X₀)  where{Mode}
     cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp,L  = o.cₘ,o.rₘ,o.tgₘ,o.tgₑ,o.ζnod,o.ζgp,o.L   # As-meshed element coordinates and describing tangential vector
-    uᵧ₁,uᵧ₂,vᵧ                = vec3(X₀,1:3), vec3(X₀,7:9), SVector(X₀[4],X₀[5],X₀[6],X₀[10],X₀[11],X₀[12])
-    Δvᵧ,rₛₘ,vₛₘ                = apply{Mode}(vᵧ) do v
-        vᵧ₁,vᵧ₂               = vec3(v,1:3), vec3(v,4:6)
-        rₛ₁                   = apply{Mode}(Rodrigues,vᵧ₁)
-        rₛ₂                   = apply{Mode}(Rodrigues,vᵧ₂)
+    uᵧ₁,vᵧ₁,uᵧ₂,vᵧ₂           = vec3(X₀,1:3), vec3(X₀,4:6), vec3(X₀,7:9), vec3(X₀,10:12)
+    Δvᵧ,rₛₘ,vₛₘ                = apply{Mode}((vᵧ₁=vᵧ₁,vᵧ₂=vᵧ₂)) do v
+        rₛ₁                   = apply{Mode}(Rodrigues,v.vᵧ₁)
+        rₛ₂                   = apply{Mode}(Rodrigues,v.vᵧ₂)
         Δvᵧ_                 = 0.5*Rodrigues⁻¹(rₛ₂ ∘₁ rₛ₁')
         rₛₘ_                  = apply{Mode}(Rodrigues,Δvᵧ_) ∘₁ rₛ₁ ∘₁ o.rₘ  
         vₛₘ_                  = Rodrigues⁻¹(rₛₘ_)              
