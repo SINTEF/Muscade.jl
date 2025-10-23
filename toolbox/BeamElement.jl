@@ -56,6 +56,11 @@ yᵥ(ζ) =        ζ^2   - 1/4  # deflection due to differenttial rotation (bend
 κᵥ(ζ) =                2;   # curvature. κᵥ = yᵥ′′. Divide by L .
 
 # Data structure describing an EulerBeam3D element as meshed
+"""
+    EulerBeam3D
+
+An Euler beam element
+"""
 struct EulerBeam3D{Mat,Uforce} <: AbstractElement
     cₘ       :: SVector{3,𝕣}     # Position of the middle of the element, as meshed
     rₘ       :: Mat33{𝕣}         # Orientation of the element, as meshed, represented by a rotation matrix (from global to local)

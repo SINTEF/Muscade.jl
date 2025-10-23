@@ -1,5 +1,5 @@
 """
-    .Toolbox.StrainGaugeOnEulerBeam3D
+    StrainGaugeOnEulerBeam3D
 
 An element designed to wrap around an EulerBeam3D. The element makes no contribution 
 to residual or Lagrangian besides the contribution made by the element it wraps.

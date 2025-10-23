@@ -6,7 +6,7 @@ struct Position3D{Nsensor,Nel} <: AbstractElement
     D           :: SMatrix{3,Nsensor,𝕣,Nel}
 end
 """
-    .Toolbox.Position3D
+    Position3D
 
 An 3D single-node element, to be connected to a node with both translation and
 rotation dofs.  The element makes zero contribution to residual or Lagrangian.  It

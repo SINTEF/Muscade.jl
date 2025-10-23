@@ -1,7 +1,7 @@
 # # 3D rotations
 using LinearAlgebra, StaticArrays
 """
-    .Toolbox.sinc1(x)
+    sinc1(x)
 
 `sinc1(x) = sin(x)/x` - but  `sinc1(0.) = 1.`.  The function can be differentiated
 to the fourth order.
@@ -51,7 +51,7 @@ Muscade.@DiffRule1(sinc1‴,              sinc1⁗( a.x)                * a.dx )
 Muscade.@DiffRule1(sinc1⁗,              sinc1⁗′(a.x)                * a.dx )
 
 """
-    .Toolbox.scac(x)
+    scac(x)
 
 `scac(x) = sinc1(acos(x)),`  The function can be differentiated
 to the fourth order over ]-1,1] .
@@ -71,7 +71,7 @@ const Mat33{R}   = SMatrix{3,3,R,9}
 const Vec3{R}    = SVector{3,R}
 
 """
-    .Toolbox.spin(v::SVector{3})
+    spin(v::SVector{3})
 
 Transform a rotation vector `v` into the cross product matrix `M`, such that
 `M ∘₁ a = v × a`.
@@ -80,7 +80,7 @@ See also [`Toolbox.spin⁻¹`](@ref), [`Toolbox.Rodrigues`](@ref), [`Toolbox.Rod
 """
 spin(  v::Vec3 ) = SMatrix{3,3}(0,v[3],-v[2],-v[3],0,v[1],v[2],-v[1],0)
 """
-    .Toolbox.spin⁻¹(M::SMatrix{3,3})
+    spin⁻¹(M::SMatrix{3,3})
 
 Transform a cross product matrix `M` into the rotation vector `v`, such that
 `v × a = M ∘₁ a`.
@@ -89,13 +89,13 @@ See also [`Toolbox.spin`](@ref), [`Toolbox.Rodrigues`](@ref), [`Toolbox.Rodrigue
 """
 spin⁻¹(m::Mat33) = SVector{3}(m[3,2]-m[2,3],m[1,3]-m[3,1],m[2,1]-m[1,2])/2
 """
-    .Toolbox.trace(v::SMatrix{3,3})
+    trace(v::SMatrix{3,3})
 
 Computes the trace of a matrix.
 """
 trace( m::Mat33) = m[1,1]+m[2,2]+m[3,3] 
 """
-    .Toolbox.Rodrigues⁻¹(v::SVector{3})
+    Rodrigues⁻¹(v::SVector{3})
 
 Transform a rotation matrix `M` into the rotation vector `v`, such that
 `|v| < π`. Undefined for rotations of angle `π`
@@ -122,7 +122,7 @@ function spin²(S)
 end     
 
 """
-    .Toolbox.Rodrigues(v::SVector{3})
+    Rodrigues(v::SVector{3})
 
 Transform a rotation vector `v` into the rotation matrix `M`.
 
@@ -152,7 +152,7 @@ end
 #                         -A*b+B*ca,    A*a*B*bc, 1-B*(a²+b²))
 # end
 """
-    .Toolbox.adjust(u::SVector{3},v::SVector{3})
+    adjust(u::SVector{3},v::SVector{3})
 
 Compute the matrix of the rotation with smallest angle that transforms `u` into a vector colinear with v.  
 Fails if |u|=0, |v|=0 or if the angle of the rotation is π.
@@ -167,7 +167,7 @@ function adjust(u::Vec3{R},v::Vec3{R}) where{R}
     return w/sinc1(θ)
 end
 """
-    .Toolbox.intrinsicrotationrates(rₑ::NTuple{ND,SMatrix{3,3}}) where{ND}
+    intrinsicrotationrates(rₑ::NTuple{ND,SMatrix{3,3}}) where{ND}
 
 Transform a `NTuple` containing a rotation matrix and its extrinsic time derivatives,
 into a `NTuple` containing a (zero) rotation vector and its intrinsic time derivatives.
