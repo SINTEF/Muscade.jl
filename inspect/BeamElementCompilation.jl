@@ -19,7 +19,7 @@ strainbeam = StrainGaugeOnEulerBeam3D(elnod;
                                          ElementType   = EulerBeam3D{true},
                                          elementkwargs = (mat     = mat,
                                                           orient2 = SVector(0.,0.,1.)))
-@functor (σε=1.) cost(eleres,X,U,A,t) = sum((eleres.ε/σε).^2)/2
+@functor with(σε=1.) cost(eleres,X,U,A,t) = sum((eleres.ε/σε).^2)/2
 coststrainbeam = ElementCost(elnod;
                         req           = @request(ε),
                         cost          = cost,

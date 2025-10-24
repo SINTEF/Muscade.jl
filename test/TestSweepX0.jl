@@ -10,8 +10,8 @@ model           = Model(:TestModel)
 n1              = addnode!(model,𝕣[0,0,+100]) # turbine
 n2              = addnode!(model,𝕣[])  # Anod for turbine 
 n3              = addnode!(model,𝕣[])  # Anod for anchor
-@functor (;) sea(t,x)  = SVector(1.,0.)*t
-@functor (;) sky(t,x)  = SVector(0.,10.)
+@functor with() sea(t,x)  = SVector(1.,0.)*t
+@functor with() sky(t,x)  = SVector(0.,10.)
 α(i)            = SVector(cos(i*2π/3),sin(i*2π/3))
 e1              =  addelement!(model,Turbine   ,[n1,n2], seadrag=1e6, sea=sea, skydrag=1e5, sky=sky)
 e2              = [addelement!(model,AnchorLine,[n1,n3], Δxₘtop=vcat(5*α(i),[0.]), xₘbot=250*α(i), L=290., buoyancy=-5e3) for i∈0:2]

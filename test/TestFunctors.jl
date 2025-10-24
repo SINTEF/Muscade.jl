@@ -3,22 +3,23 @@ using Muscade
 using Test
 
 a = 3
-@functor (a,e=2)  g(x::Real)=a*x^e
-@functor (a,e=2) function f(x::Real)
+@functor with(a,e=2)  g(x::Real)=a*x^e
+@functor with(a,e=2) function f(x::Real)
     return a*x^e
 end
-@functor (;) h(x) = 2x
-@functor (;) fu(u,t) = u^2
+@functor with() h(x) = 2x
+@functor with() fu(u,t) = u^2
 fukwargs = (;) 
 a = :a
 
 a = 2 # changing a: test capture by value, not reference
 b = 1
-@functor ()        cost1(x) = x
-@functor (a)       cost2(x) = a*x
-@functor (a=2)     cost3(x) = a*x
-@functor (a,b=1)   cost4(x) = a*x+b
-@functor (a=2,b=1) cost5(x) = a*x+b
+@functor with()        cost1(x) = x
+@functor with(a)       cost2(x) = a*x
+@functor with(a=2)     cost3(x) = a*x
+@functor with(a,b=1)   cost4(x) = a*x+b
+@functor with(a=2,b=1) cost5(x) = a*x+b
+@functor with(a,b)     cost6(x) = a*x+b
 
 
 
@@ -38,8 +39,11 @@ b = 1
     @test @inferred cost3(3) == 6
     @test @inferred cost4(3) == 7
     @test @inferred cost5(3) == 7
+    @test @inferred cost6(3) == 7
 
 end
 
 end
 
+
+ 

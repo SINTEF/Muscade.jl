@@ -18,9 +18,9 @@ model           = Model(:TestModel)
 n1              = addnode!(model,[0.]) 
 n2              = addnode!(model,[1.])
 e1              = addelement!(model,Hold,[n1];field=:tx1)                       # Hold first node
-@functor (;) load(t) = 3t
+@functor with() load(t) = 3t
 e2              = addelement!(model,DofLoad,[n2];field=:tx1,value=load)        # Increase load on second node
-@functor (;) res(X,X′,X″,t)  = 12SVector(X[1]-X[2],X[2]-X[1])
+@functor with() res(X,X′,X″,t)  = 12SVector(X[1]-X[2],X[2]-X[1])
 e3              = addelement!(model,QuickFix,[n1,n2];inod=(1,2),field=(:tx1,:tx1),
                               res=res)  # Linear elastic spring with stiffness 12
 initialstate    = initialize!(model)

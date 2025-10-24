@@ -38,8 +38,8 @@ z               = zeros(nel+1)
 rng             = MersenneTwister(0)
 zfloor          = cumsum(0.1*randn(rng,nel+1))
 zfloor        .-= range(0,zfloor[end],nel+1) .- .01
-@functor (;) floorgap(z,t,zfloor)=z[1]-zfloor
-@functor (;) ceilgap(z,t,zceil)=zceil-z[1]
+@functor with() floorgap(z,t,zfloor)=z[1]-zfloor
+@functor with() ceilgap(z,t,zceil)=zceil-z[1]
 # zceil           = zfloor.+Δz
 # floorgap        = [(z,t)->z[1]-zfloor[i] for i=1:nel+1] # comment to avoid recompilation
 # ceilgap         = [(z,t)->zceil[i]-z[1]  for i=1:nel+1] # comment to avoid recompilation

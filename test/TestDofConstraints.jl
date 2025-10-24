@@ -161,11 +161,11 @@ end
 #---------------------------------------------------------
 
 
-@functor (;) g1(x,t)       = -0.1*sin(1.2*x[1])+.2x[1]+x[2]+1 
-@functor (;) g2(x,t)       = -.4x[1] + .3x[2]+.1
-@functor (;) f1(x)         = -(-0.1*sin(1.2*x)+.2x-1) 
-@functor (;) f2(x)         = (-1/.3)*(-.4x + .1)
-@functor (;) gravity(t)    = -2.
+@functor with() g1(x,t)       = -0.1*sin(1.2*x[1])+.2x[1]+x[2]+1 
+@functor with() g2(x,t)       = -.4x[1] + .3x[2]+.1
+@functor with() f1(x)         = -(-0.1*sin(1.2*x)+.2x-1) 
+@functor with() f2(x)         = (-1/.3)*(-.4x + .1)
+@functor with() gravity(t)    = -2.
 
 model           = Model(:TestModel)
 n1              = addnode!(model,𝕣[0,0]) 

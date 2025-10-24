@@ -28,7 +28,7 @@ eleid       = addelement!(model,EulerBeam3D,mesh;mat=mat,orient2=SVector(0.,1.,0
 [addelement!(model,Hold,[nodid[1]]  ;field) for field∈[:t1,:t2,:t3,:r1,:r2,:r3]]; # Clamp at one end
 
 # Define the loading procedure. First 300 N then 450  and 600 N
-@functor (;) function load(t)
+@functor with() function load(t)
     t<=1. ? load=t*300. : 
     t>1. && t<=2. ? load=300. +(t-1)*150. :
     load=450. +(t-2)*150. 

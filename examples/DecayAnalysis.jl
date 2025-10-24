@@ -91,23 +91,23 @@ n1        = addnode!(modelXUA,𝕣[0,0,0])
 e1        = addelement!(modelXUA,FloaterOnCalmWater,[n1]; K,C=Cguess,M=Mguess);
 # Assign costs to unknown forces
 Quu       = @SVector [0.05 ^-2 for i=1:3 ]  
-@functor (;Quu) cost1(u,t,i) = 0.5*Quu[i]*u^2
+@functor with(Quu) cost1(u,t,i) = 0.5*Quu[i]*u^2
 e2        = [addelement!(modelXUA,SingleDofCost     ,[n1]; class=:U,field=f           ,    cost=cost1,costargs=(i,))  for (i,f)∈enumerate(floatermotion)];
 # Assign costs to variations of model parameters (wrt guess).
 fac       = [256,128,64,32,16,8,4,2,1] 
 QCaa      = @SVector [.1 ^-2 for i=1:6 ]  
-@functor (;QCaa,T) cost2(a,i) = 0.5*QCaa[i]/length(T)*a^2
+@functor with(QCaa,T) cost2(a,i) = 0.5*QCaa[i]/length(T)*a^2
 e3        = [addelement!(modelXUA,SingleDecayAcost  ,[n1];          field=f,fac,           cost=cost2,costargs=(i,)) for (i,f)∈enumerate((:C11,:C12,:C16,:C22,:C26,:C66))] 
 QMaa      = @SVector [.1 ^-2 for i=1:6 ]  
-@functor (;QMaa,T) cost3(a,i) = 0.5*QMaa[i]/length(T)*a^2
+@functor with(QMaa,T) cost3(a,i) = 0.5*QMaa[i]/length(T)*a^2
 e4        = [addelement!(modelXUA,SingleDecayAcost  ,[n1];          field=f,fac,           cost=cost3,costargs=(i,)) for (i,f)∈enumerate((:M11,:M12,:M16,:M22,:M26,:M66))];
 # Assign costs to measurement errors
 surgeInt    = linear_interpolation(T, surgeMeas)
 swayInt     = linear_interpolation(T, swayMeas)
 yawInt      = linear_interpolation(T, yawMeas)
-@functor (;) devSurge(surge,t)     = 1e-1 ^-2 * (surge-surgeInt(t))^2
-@functor (;) devSway(sway,t)       = 1e-1 ^-2 * (sway-swayInt(t))^2
-@functor (;) devYaw(yaw,t)         = 1e-1 ^-2 * (yaw-yawInt(t))^2
+@functor with() devSurge(surge,t)     = 1e-1 ^-2 * (surge-surgeInt(t))^2
+@functor with() devSway(sway,t)       = 1e-1 ^-2 * (sway-swayInt(t))^2
+@functor with() devYaw(yaw,t)         = 1e-1 ^-2 * (yaw-yawInt(t))^2
 e5             = addelement!(modelXUA,SingleDofCost,[n1];class=:X,field=:surge,    cost=devSurge)
 e6             = addelement!(modelXUA,SingleDofCost,[n1];class=:X,field=:sway,     cost=devSway)
 e7             = addelement!(modelXUA,SingleDofCost,[n1];class=:X,field=:yaw,      cost=devYaw);

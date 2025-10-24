@@ -101,10 +101,11 @@ doflist(     ::Type{E}) where{E<:AbstractElement}  = muscadeerror(@sprintf("meth
 """
     no_second_order(::Type{E<:AbstractElement})
 
-Elements that define `residual` which would give excessive compilation and/or execution time if differentiated
-to the second order can implement a method after the below pattern to limit differentiation to first order:   
+Elements that define `residual` are normaly mostly differentiated only to the first order, to avoid
+excessive compilation and/or execution time.
+To allow differentiation to the second order (for elements with few dofs), implement a method after the below pattern:   
 
-    Muscade.no_second_order(     ::Type{<:MyElementType}) = Val(true)
+    Muscade.no_second_order(     ::Type{<:MyElementType}) = Val(false)
 """
 no_second_order(     ::Type{<:AbstractElement}) = Val(false)
 

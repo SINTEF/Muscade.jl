@@ -12,15 +12,15 @@ n3              = addnode!(model1,𝕣[ 0,10])  # anchor 2
 n4              = addnode!(model1,𝕣[     ])  # A-nod for springs
 e1              = addelement!(model1,Spring{2},[n1,n2,n4], EA=10) # springs share Adofs
 e2              = addelement!(model1,Spring{2},[n1,n3,n4], EA=10)
-@functor (;) load(t)  = 0.1*t
+@functor with() load(t)  = 0.1*t
 e3              = addelement!(model1,DofLoad,[n1], field=:tx1      ,value=load)
 e3b             = addelement!(model1,DofLoad,[n1], field=:tx2      ,value=load)
 e4              = addelement!(model1,Hold   ,[n2], field=:tx1)
 e5              = addelement!(model1,Hold   ,[n2], field=:tx2)
 e6              = addelement!(model1,Hold   ,[n3], field=:tx1)
 e7              = addelement!(model1,Hold   ,[n3], field=:tx2)
-@functor (;) positionMeas(x,t)   = 0.5*((x-0.12t)/0.01)^2
-@functor (;) acost(a)     = 0.5*(a/.1)^2
+@functor with() positionMeas(x,t)   = 0.5*((x-0.12t)/0.01)^2
+@functor with() acost(a)     = 0.5*(a/.1)^2
 e8              = addelement!(model1,SingleDofCost ,class=:X, field=:tx1,[n1]      ,cost=positionMeas)
 e9              = addelement!(model1,SingleDofCost ,class=:X, field=:tx2,[n1]      ,cost=positionMeas)
 e10             = addelement!(model1,SingleAcost   ,          field=:ΞL₀,[n4]      ,cost=acost)

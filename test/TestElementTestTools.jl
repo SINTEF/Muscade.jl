@@ -7,7 +7,7 @@ node1           = addnode!(model,𝕣[0,0,0])
 #elnod           = model.nod
 
 uload = SingleUdof(model.nod;Xfield=:Xdof,Ufield=:Udof,cost=(u,t)->.5*u^2)
-@functor (;) value(t) = cos(t)
+@functor with() value(t) = cos(t)
 rload = DofLoad(model.nod;field=:Xdof,value=value)
 
 Λ = SVector(0.)

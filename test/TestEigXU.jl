@@ -55,10 +55,10 @@ strainmesh  = mesh[istrain,:]
 accmesh     = reshape(Xnod[iacc],(length(iacc),1))
 addelement!(model,EulerBeam3D{hasU},nakedmesh;mat=mat,orient2=SVector(0.,0.,1.))
 
-@functor (σε) costStrain(eleres,t) = .5*sum((eleres.ε/σε).^2)
-@functor (σa) costAcc(eleres,t) =    .5*sum((eleres.a/σa).^2)
-@functor (σu) costU(u,t) =                 .5*(u/σu).^2
-@functor (σx) costX(x,t) =                 .5*(x/σx).^2
+@functor with(σε) costStrain(eleres,t) = .5*sum((eleres.ε/σε).^2)
+@functor with(σa) costAcc(eleres,t) =    .5*sum((eleres.a/σa).^2)
+@functor with(σu) costU(u,t) =                 .5*(u/σu).^2
+@functor with(σx) costX(x,t) =                 .5*(x/σx).^2
 
 addelement!(model,ElementCost,strainmesh;
                         req           = @request(ε),

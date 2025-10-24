@@ -22,7 +22,7 @@ For once-off costs on A-dofs, see [`Acost`](@ref).
 
 # Example
 ```
-@functor (;) xcost(X,U,A,t;X0) = (X[1]-X0)^2
+@functor with() xcost(X,U,A,t;X0) = (X[1]-X0)^2
 ele1 = addelement!(model,DofCost,[nod1],xinod=(1,),xfield=(:tx1,),
        cost=xcost,costargs=(;X0=0.27)
 ```
@@ -67,7 +67,7 @@ For costs per unit of time on A-dofs (not recommended), see [`DofCost`](@ref).
 
 # Example
 ```
-@functor (;) acost(A;A0)=(A[1]-A0)^2
+@functor with() acost(A;A0)=(A[1]-A0)^2
 ele1 = addelement!(model,Acost,[nod1],inod=(1,),field=(:EI,),
        cost=acost,costargs=(;A0=0.27)
 ```
@@ -104,7 +104,7 @@ as input to the `ElementCost` constructor.
 
 # Example
 ```
-@functor (;) cost(eleres,X,U,A,t;Fh0) = (eleres.Fh-Fh0)^2
+@functor with() cost(eleres,X,U,A,t;Fh0) = (eleres.Fh-Fh0)^2
 ele1 = addelement!(model,ElementCost,[nod1];req=@request(Fh),
                    cost=cost,
                    costargs = (;Fh0=0.27),
@@ -153,7 +153,7 @@ An element with a single node, for adding a once-off cost to a single A-dof.
 using Muscade
 model = Model(:TestModel)
 node  = addnode!(model,𝕣[0,0])
-@functor (;) acost(a,three)=(a/three)^2
+@functor with() acost(a,three)=(a/three)^2
 e     = addelement!(model,SingleAcost,[node];field=:EI,
                     costargs=(3.,),cost=acost)
 ```    
@@ -187,7 +187,7 @@ An element with a single node, for adding a cost to a given dof.
 using Muscade
 model = Model(:TestModel)
 node  = addnode!(model,𝕣[0,0])
-@functor (;) xcost(x,t,three)=(x/three)^2
+@functor with() xcost(x,t,three)=(x/three)^2
 e     = addelement!(model,SingleDofCost,[node];class=:X,field=:tx,
                     costargs=(3.,),cost=xcost)
 ```    
@@ -228,7 +228,7 @@ The value of the Udof is applied as a load to a Xdof on the same node.
 using Muscade
 model = Model(:TestModel)
 node  = addnode!(model,𝕣[0,0])
-@functor (;) ucost(u,t,three)->(u/three)^2
+@functor with() ucost(u,t,three)->(u/three)^2
 e     = addelement!(model,SingleUdof,[node];Xfield=:tx,Ufield=:utx,
                     costargs=(3.,),cost=ucost)
 ```    
@@ -306,7 +306,7 @@ end
 
 #-------------------------------------------------
 
-@functor (;) off(t)     = :off
+@functor with() off(t)     = :off
 """
     off(t) → :off
 
@@ -317,7 +317,7 @@ a `Model`.
 See also: [`DofConstraint`](@ref), [`ElementConstraint`](@ref), [`equal`](@ref), [`positive`](@ref)
 """
 off
-@functor (;) equal(t)   = :equal
+@functor with() equal(t)   = :equal
 """
     equal(t) → :equal
 
@@ -328,7 +328,7 @@ a `Model`.
 See also: [`DofConstraint`](@ref), [`ElementConstraint`](@ref), [`off`](@ref), [`positive`](@ref)
 """
 equal
-@functor (;) positive(t) = :positive
+@functor with() positive(t) = :positive
 """
     positive(t) → :positive
 
@@ -380,8 +380,8 @@ This element can generate three classes of constraints, depending on the input a
 using Muscade
 model           = Model(:TestModel)
 n1              = addnode!(model,𝕣[0]) 
-@functor (;) gap(x,t)=x[1]+.1
-@functor (;) res(x,u,a,t)=0.4x.+.08+.5x.^2)
+@functor with() gap(x,t)=x[1]+.1
+@functor with() res(x,u,a,t)=0.4x.+.08+.5x.^2)
 e1              = addelement!(model,DofConstraint,[n1],xinod=(1,),xfield=(:t1,),
                               λinod=1, λclass=:X, λfield=:λ1,gap=gap,
                               mode=positive)
@@ -532,7 +532,7 @@ the analysis, request results from `ElementConstraint`
 # Example
 
 ```
-@functor (;) gap(eleres,t) = eleres.Fh^2
+@functor with() gap(eleres,t) = eleres.Fh^2
 ele1 = addelement!(model,ElementCoonstraint,[nod1];req=@request(Fh),
                    gap,λinod=1,λfield=:λ,mode=equal, 
                    ElementType=AnchorLine,
@@ -600,7 +600,7 @@ using Muscade
 model = Model(:TestModel)
 node1  = addnode!(model,𝕣[0])
 node2  = addnode!(model,𝕣[1])
-@functor (;) res(x,u,a,t)=0.4x.+.08+.5x.^2) 
+@functor with() res(x,u,a,t)=0.4x.+.08+.5x.^2) 
 e = addelement!(model,QuickFix,[node1,node2];inod=(1,2),field=(:tx1,:tx1),res=res)
 
 # output
