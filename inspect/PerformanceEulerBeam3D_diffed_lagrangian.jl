@@ -8,7 +8,7 @@ using StaticArrays
 
 module TmpModule
 export BeamCrossSection, EulerBeam3D
-include("../examples/BeamElement.jl")
+include("../toolbox/BeamElement.jl")
 include("../examples/StrainGaugeOnBeamElement.jl")
 end
 

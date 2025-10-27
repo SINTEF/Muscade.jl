@@ -5,7 +5,7 @@ using BenchmarkTools
 using Muscade
 using StaticArrays
 
-include("../examples/BeamElement.jl")
+include("../toolbox/BeamElement.jl")
 #include("../examples/StrainGaugeOnBeamElement.jl")
 
 

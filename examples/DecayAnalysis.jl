@@ -86,7 +86,7 @@ Mguess         = fold(SVector{6}([1.0,    1.0,     1.0,     1.0,    1.0,     1.0
 #src Cguess = C .* fold(devToModelC[@SVector [i for i∈1:6 ]])
 
 # Create XUA model
-modelXUA     = Model(:MooredFloater)
+modelXUA  = Model(:MooredFloater)
 n1        = addnode!(modelXUA,𝕣[0,0,0])  
 e1        = addelement!(modelXUA,FloaterOnCalmWater,[n1]; K,C=Cguess,M=Mguess);
 # Assign costs to unknown forces
@@ -105,12 +105,15 @@ e4        = [addelement!(modelXUA,SingleDecayAcost  ,[n1];          field=f,fac,
 surgeInt    = linear_interpolation(T, surgeMeas)
 swayInt     = linear_interpolation(T, swayMeas)
 yawInt      = linear_interpolation(T, yawMeas)
-@functor with() devSurge(surge,t)     = 1e-1 ^-2 * (surge-surgeInt(t))^2
-@functor with() devSway(sway,t)       = 1e-1 ^-2 * (sway-swayInt(t))^2
-@functor with() devYaw(yaw,t)         = 1e-1 ^-2 * (yaw-yawInt(t))^2
+@functor with(surgeInt) devSurge(surge,t)     = 1e-1 ^-2 * (surge-surgeInt(t))^2
+@functor with(swayInt ) devSway(sway,t)       = 1e-1 ^-2 * (sway-swayInt(t))^2
+@functor with(yawInt  ) devYaw(yaw,t)         = 1e-1 ^-2 * (yaw-yawInt(t))^2
 e5             = addelement!(modelXUA,SingleDofCost,[n1];class=:X,field=:surge,    cost=devSurge)
 e6             = addelement!(modelXUA,SingleDofCost,[n1];class=:X,field=:sway,     cost=devSway)
 e7             = addelement!(modelXUA,SingleDofCost,[n1];class=:X,field=:yaw,      cost=devYaw);
+
+
+
 
 #src Setting scale to improve convergence
 #src myScaling = (   X=(surge=1.,    sway=1.,    yaw=1.),

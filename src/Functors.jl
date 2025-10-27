@@ -51,7 +51,8 @@ while avoiding several of the issues associated with defining a function (and in
 a closure) in a script:    
 
 - A closure captures a variable "by reference", while `@functor` captures it by value, which might be more intuitive. 
-- To ensure type stability, the variables captured by a closure would have to be declared `const` - forbidding to update the input value without restarting Julia.
+- To ensure type stability, the variables captured by a closure would have to be declared `const` - forbidding to update 
+  the input value in a script without restarting Julia.
 - If the code of the function is not changed, the function is not parsed and compiled again, accelerating the re-analysis.
 
 It is not possible to associate multiple methods to a functor.
@@ -102,7 +103,7 @@ macro functor(capture,foo)
         ex isa Symbol && ex∈capargname ? :(o.captured.$ex) : ex # prefix captured args with `o.captured.` in method body
     end    
     fooname            = foodict[:name]                           # :foo
-    functortype        = Expr(:curly,:Functor,QuoteNode(fooname))#:(Functor{$fooname})                     # Functor{:foo}
+    functortype        = Expr(:curly,:Functor,QuoteNode(fooname)) # :(Functor{$fooname})                     # Functor{:foo}
 
     foodict[:name]     = Expr(:(::),:o,functortype)             # (o::Functor{:foo}), name of the method that implements foo(x)
     foo                = combinedef(foodict)                    # code of said method

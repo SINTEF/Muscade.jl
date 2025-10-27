@@ -3,7 +3,7 @@ using SnoopCompileCore, SnoopCompile, AbstractTrees, ProfileView
 using Profile
 using BenchmarkTools
 
-include("../examples/BeamElement.jl")
+include("../toolbox/BeamElement.jl")
 include("../examples/StrainGaugeOnBeamElement.jl")
 
 model        = Model(:TestModel)

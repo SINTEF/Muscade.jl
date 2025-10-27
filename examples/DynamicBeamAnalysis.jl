@@ -28,7 +28,7 @@ eleid       = addelement!(model,EulerBeam3D,mesh;mat=mat,orient2=SVector(0.,1.,0
 [addelement!(model,Hold,[nodid[1]]  ;field) for field∈[:t1,:t2,:t3,:r1]]                                # Simply supported end 1
 [addelement!(model,Hold,[nodid[end]];field) for field∈[:t1,:t2,:t3,:r1]]                                # Simply supported end 2
 [addelement!(model,Hold,[nodid[nodeidx]];field=:t3) for nodeidx∈2:Nnod-1]                               # Enforce beam motions in one dimension to obtain planar modeshapes
-@functor (;q,L,Nnod) val(t) = sin(t)*q*L/Nnod
+@functor with(q,L,Nnod) val(t) = sin(t)*q*L/Nnod
 [addelement!(model,DofLoad,[nodid[nodeidx]];field=:t2,value=val) for nodeidx=1:Nnod];    # Distributed vertical load q
 
 # Static analysis
