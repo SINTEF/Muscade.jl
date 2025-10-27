@@ -86,6 +86,5 @@ module Runtest
         @testset "TestPositionElement" begin
             include("TestPositionElement.jl")
         end
-        # doctest(Muscade) # we do not use doctest, we run Literate.jl on mydemo.jl files that are included in a unit test file
     end
 end

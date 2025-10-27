@@ -1,5 +1,4 @@
-include("Rotations.jl")
-using StaticArrays, LinearAlgebra, Muscade
+using StaticArrays, LinearAlgebra, Muscade, Muscade.Toolbox
 
 struct Position3D{Nsensor,Nel} <: AbstractElement
     xₘ          :: SVector{3,𝕣}     # As-meshed position
