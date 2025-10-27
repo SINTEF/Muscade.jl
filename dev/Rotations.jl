@@ -1,14 +1,14 @@
 # # 3D rotations
 using LinearAlgebra, StaticArrays
 """
-    BeamElement.sinc1(x)
+    sinc1(x)
 
-`BeamElement.sinc1(x) = sin(x)/x` - but  `BeamElement.sinc1(0.) = 1.`.  The function can be differentiated
+`sinc1(x) = sin(x)/x` - but  `sinc1(0.) = 1.`.  The function can be differentiated
 to the fourth order.
 
 This differs from Julia's `sinc(x) = sin(π*x)/(π*x)`.
 
-See also [`scac`](@ref)
+See also [`Toolbox.scac`](@ref)
 """
 sinc1(x) = sinc(x/π) 
 function sinc1′(x)
@@ -51,12 +51,12 @@ Muscade.@DiffRule1(sinc1‴,              sinc1⁗( a.x)                * a.dx )
 Muscade.@DiffRule1(sinc1⁗,              sinc1⁗′(a.x)                * a.dx )
 
 """
-    BeamElement.scac(x)
+    scac(x)
 
-`BeamElement.scac(x) = BeamElement.sinc1(acos(x)),`  The function can be differentiated
+`scac(x) = sinc1(acos(x)),`  The function can be differentiated
 to the fourth order over ]-1,1] .
 
-See also [`sinc1`](@ref)
+See also [`Toolbox.sinc1`](@ref)
 """
 function scac(x)
     dx = x-1  
@@ -71,36 +71,36 @@ const Mat33{R}   = SMatrix{3,3,R,9}
 const Vec3{R}    = SVector{3,R}
 
 """
-    M = BeamElement.spin(v::SVector{3})
+    spin(v::SVector{3})
 
 Transform a rotation vector `v` into the cross product matrix `M`, such that
 `M ∘₁ a = v × a`.
 
-See also [`spin⁻¹`](@ref), [`Rodrigues`](@ref), [`Rodrigues⁻¹`](@ref).
+See also [`Toolbox.spin⁻¹`](@ref), [`Toolbox.Rodrigues`](@ref), [`Toolbox.Rodrigues⁻¹`](@ref).
 """
 spin(  v::Vec3 ) = SMatrix{3,3}(0,v[3],-v[2],-v[3],0,v[1],v[2],-v[1],0)
 """
-    v = BeamElement.spin⁻¹(M::SMatrix{3,3})
+    spin⁻¹(M::SMatrix{3,3})
 
 Transform a cross product matrix `M` into the rotation vector `v`, such that
 `v × a = M ∘₁ a`.
 
-See also [`spin`](@ref), [`Rodrigues`](@ref), [`Rodrigues⁻¹`](@ref).
+See also [`Toolbox.spin`](@ref), [`Toolbox.Rodrigues`](@ref), [`Toolbox.Rodrigues⁻¹`](@ref).
 """
 spin⁻¹(m::Mat33) = SVector{3}(m[3,2]-m[2,3],m[1,3]-m[3,1],m[2,1]-m[1,2])/2
 """
-    t = BeamElement.trace(v::SMatrix{3,3})
+    trace(v::SMatrix{3,3})
 
 Computes the trace of a matrix.
 """
 trace( m::Mat33) = m[1,1]+m[2,2]+m[3,3] 
 """
-    M = BeamElement.Rodrigues⁻¹(v::SVector{3})
+    Rodrigues⁻¹(v::SVector{3})
 
 Transform a rotation matrix `M` into the rotation vector `v`, such that
 `|v| < π`. Undefined for rotations of angle `π`
 
-See also [`spin`](@ref), [`spin⁻¹`](@ref), [`Rodrigues`](@ref), [`adjust`](@ref).
+See also [`Toolbox.spin`](@ref), [`Toolbox.spin⁻¹`](@ref), [`Toolbox.Rodrigues`](@ref), [`Toolbox.adjust`](@ref).
 """
 Rodrigues⁻¹(m)   = spin⁻¹(m)/scac((trace(m)-1)/2)   # NB: is necessarily singular for π turn
 function norm3(v::SVector{3})  # executes faster, COMPILES MUCH FASTER , and adiffs poorly at origin
@@ -122,11 +122,11 @@ function spin²(S)
 end     
 
 """
-    M = BeamElement.Rodrigues(v::SVector{3})
+    Rodrigues(v::SVector{3})
 
 Transform a rotation vector `v` into the rotation matrix `M`.
 
-See also [`spin`](@ref), [`spin⁻¹`](@ref), [`Rodrigues⁻¹`](@ref), [`adjust`](@ref).
+See also [`Toolbox.spin`](@ref), [`Toolbox.spin⁻¹`](@ref), [`Toolbox.Rodrigues⁻¹`](@ref), [`Toolbox.adjust`](@ref).
 """
 function Rodrigues(v::Vec3) 
     S = spin(v)
@@ -152,12 +152,12 @@ end
 #                         -A*b+B*ca,    A*a*B*bc, 1-B*(a²+b²))
 # end
 """
-    M = BeamElement.adjust(u::SVector{3},v::SVector{3})
+    adjust(u::SVector{3},v::SVector{3})
 
 Compute the matrix of the rotation with smallest angle that transforms `u` into a vector colinear with v.  
 Fails if |u|=0, |v|=0 or if the angle of the rotation is π.
 
-See also [`spin`](@ref), [`spin⁻¹`](@ref), [`Rodrigues`](@ref), [`Rodrigues⁻¹`](@ref).
+See also [`Toolbox.spin`](@ref), [`Toolbox.spin⁻¹`](@ref), [`Toolbox.Rodrigues`](@ref), [`Toolbox.Rodrigues⁻¹`](@ref).
 """
 function adjust(u::Vec3{R},v::Vec3{R}) where{R}
     u,v = normalize.((u,v))
@@ -167,12 +167,12 @@ function adjust(u::Vec3{R},v::Vec3{R}) where{R}
     return w/sinc1(θ)
 end
 """
-    M = BeamElement.intrinsicrotationrates(rₑ::NTuple{ND,SMatrix{3,3}}) where{ND}
+    intrinsicrotationrates(rₑ::NTuple{ND,SMatrix{3,3}}) where{ND}
 
 Transform a `NTuple` containing a rotation matrix and its extrinsic time derivatives,
 into a `NTuple` containing a (zero) rotation vector and its intrinsic time derivatives.
 
-See also [`spin`](@ref), [`spin⁻¹`](@ref), [`Rodrigues`](@ref), [`Rodrigues⁻¹`](@ref).
+See also [`Toolbox.spin`](@ref), [`Toolbox.spin⁻¹`](@ref), [`Toolbox.Rodrigues`](@ref), [`Toolbox.Rodrigues⁻¹`](@ref).
 """
 function intrinsicrotationrates(rₑ::NTuple{ND,SMatrix{3,3}}) where{ND}
     vᵢ₀ =              (SVector{3,𝕣}(0,0,0),                                                                           )
