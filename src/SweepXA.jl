@@ -76,15 +76,14 @@ REPRISE
 function addin!{:newmark}(out::AssemblySweepXA,asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A::SVector{Na},t,SP,dbg) where{Nxder,Nx,Na}
     a₁,a₂,a₃,b₁,b₂,b₃ = out.c.a₁,out.c.a₂,out.c.a₃,out.c.b₁,out.c.b₂,out.c.b₃
     x,x′,x″           = ∂0(X),∂1(X),∂2(X)
+    δΛ,δX,δA,δr       = reδ{2}((;Λ,X=x,A,r),(;Λ=scale.Λ,X=scale.X,A=scale.A,r=1.)) 
     a                 = a₂*x′ + a₃*x″
     b                 = b₂*x′ + b₃*x″
-    r                 = SVector(0.)
-    d                 = revariate{2}((;X=x,U,A,r),(;X=scale.X,U=scale.U,A=scale.A,r=1.)) # I need the values in d to be zero.  Extent revariate. varincrement{2}
-    vx                = x     +    d.X
-    vx′               = x′    + a₁*d.X + a*d.r 
-    vx″               = x″    + b₁*d.X + b*d.r 
-    vλ                = ∂0(Λ) + d.Λ
-    L,FB              = getlagrangian(eleobj,vλ,(vx,vx′,vx″),U,A+d.A,t,SP,dbg)
+    vx                = x     +    δX
+    vx′               = x′    + a₁*δX + a*δr  
+    vx″               = x″    + b₁*δX + b*δr 
+    vλ                = ∂0(Λ) + δΛ
+    L,FB              = getlagrangian(eleobj,vλ,(vx,vx′,vx″),U,A+δA,t,SP,dbg)
     ∇L                = ∂{2,Nz+1}(L)
     add_value!(      out.Lλ , asm[ 1], iele, ∇L, iΛ    )  # Lλ  = R    
     add_∂!{1,:minus}(out.Lλ , asm[ 1], iele, ∇L, iΛ, ir)  # Lλ -=   C⋅a + M⋅b   
@@ -102,37 +101,30 @@ function addin!{:newmark}(out::AssemblySweepXA,asm,iele,scale,eleobj,Λ,X::NTupl
 end
 function addin!{:iter}(out::AssemblySweepXA{ORDER},asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A::SVector{Na},t,SP,dbg) where{ORDER,Nxder,Nx,Na}
     a₁,b₁             = out.c.a₁,out.c.b₁₃
-    Nz                = 2Nx+Na
-    iΛ                = SVector{Nx ,𝕫}(    1: Nx  )
-    iX                = SVector{Nx ,𝕫}( Nx+1:2Nx  )
-    iA                = SVector{Na ,𝕫}(2Nx+1: Nz  )
-    s                 = SVector{Nzr,𝕣}(scale.Λ...,scale.X...,scale.A...)
-    δZ                = δ{1,Nz,𝕣}(s) + δ{2,Nz,𝕣}(s)      
-    δΛ                = δZ[iΛ]        
-    δX                = δZ[iX]        
-    δA                = δZ[iA]        
-    if     ORDER==0  L,FB = getlagrangian(eleobj,Λ+δΛ²,(∂0(X)+δX,                         ),U,A+δA,t,SP,dbg)
-    elseif ORDER==1  L,FB = getlagrangian(eleobj,Λ+δΛ²,(∂0(X)+δX, ∂1(X)+a₁*δX             ),U,A+δA,t,SP,dbg)
-    elseif ORDER==2  L,FB = getlagrangian(eleobj,Λ+δΛ²,(∂0(X)+δX, ∂1(X)+a₁*δX, ∂2(X)+b₁*δX),U,A+δA,t,SP,dbg)
+    δΛ,δX,δA          = reδ{2}((;Λ,X=x,A),(;Λ=scale.Λ,X=scale.X,A=scale.A)) 
+    if     ORDER==0  L,FB = getlagrangian(eleobj,Λ+δΛ,(∂0(X)+δX,                         ),U,A+δA,t,SP,dbg)
+    elseif ORDER==1  L,FB = getlagrangian(eleobj,Λ+δΛ,(∂0(X)+δX, ∂1(X)+a₁*δX             ),U,A+δA,t,SP,dbg)
+    elseif ORDER==2  L,FB = getlagrangian(eleobj,Λ+δΛ,(∂0(X)+δX, ∂1(X)+a₁*δX, ∂2(X)+b₁*δX),U,A+δA,t,SP,dbg)
     end
-    ∇L²              = ∂{2,Nz}(L)
-    add_value!(out.Lλ , asm[ 1], iele, ∇L², iΛ    )  # Lλ  = R    
-    add_value!(out.Lx , asm[ 2], iele, ∇L², iX    )  # Lx         
-    add_value!(out.La , asm[ 3], iele, ∇L², iA    )             
-    add_∂!{1 }(out.Lλx, asm[ 4], iele, ∇L², iΛ ,iX)  # Lλx = K + a₁C + b₁M - there is no Lλr
-    add_∂!{1 }(out.Lλa, asm[ 5], iele, ∇L², iΛ ,iA)    
-    add_∂!{1 }(out.Lxx, asm[ 6], iele, ∇L², iX ,iX)  
-    add_∂!{1 }(out.Lax, asm[ 8], iele, ∇L², iA ,iX)  
-    add_∂!{1 }(out.Laa, asm[10], iele, ∇L², iA ,iA)  
+    ∇L               = ∂{2,Nz}(L)
+    add_value!(out.Lλ , asm[ 1], iele, ∇L, iΛ    )  # Lλ  = R    
+    add_value!(out.Lx , asm[ 2], iele, ∇L, iX    )  # Lx         
+    add_value!(out.La , asm[ 3], iele, ∇L, iA    )             
+    add_∂!{1 }(out.Lλx, asm[ 4], iele, ∇L, iΛ ,iX)  # Lλx = K + a₁C + b₁M - there is no Lλr
+    add_∂!{1 }(out.Lλa, asm[ 5], iele, ∇L, iΛ ,iA)    
+    add_∂!{1 }(out.Lxx, asm[ 6], iele, ∇L, iX ,iX)  
+    add_∂!{1 }(out.Lax, asm[ 8], iele, ∇L, iA ,iX)  
+    add_∂!{1 }(out.Laa, asm[10], iele, ∇L, iA ,iA)  
 end
 function addin!{mission}(out::AssemblySweepXA,asm,iele,scale,eleobj::Acost,A::SVector{Na},dbg) where{Na,mission} # addin Atarget element
-    A∂  = SVector{Na,∂ℝ{2,Na,∂ℝ{1,Na,𝕣}}}(∂²ℝ{1,Na}(A[idof],idof, scale.A[idof])   for idof=1:Na)
+    ∂A  = SVector{Na,∂ℝ{2,Na,∂ℝ{1,Na,𝕣}}}(∂²ℝ{1,Na}(A[idof],idof, scale.A[idof])   for idof=1:Na)
+
     ø   = nothing
-    C,_ = lagrangian(eleobj,ø,ø,ø,A∂,ø,ø ,dbg)
+    C,_ = lagrangian(eleobj,ø,ø,ø,∂A,ø,ø ,dbg)
     ∇ₐC = ∂{2,Na}(C)
-    add_value!(out.La,asm[arrnum(ind.A)],iele,∇ₐC)
+    add_value!(out.La,asm[arrnum(inδA)],iele,∇ₐC)
     if mission==:matrices
-        add_∂!{1}(out.Laa,asm[arrnum(ind.A,ind.A)],iele,∇ₐC)
+        add_∂!{1}(out.Laa,asm[arrnum(inδA,inδA)],iele,∇ₐC)
     end
 end
 addin!{:linesearch}(args...) = nothing
@@ -142,7 +134,7 @@ addin!{:linesearch}(args...) = nothing
 	SweepXA{ORDER}
 
 A non-linear, time domain solver, that solves the problem time-step by time-step.
-Only the `X`-dofs of the model are solved for, while `U`-dofs and `A`-dofs are unchanged.
+Only the `X`-dofs of the model are solved for, while `U`-dofs and `A`-dofs are unchangeδ
 
 - `SweepXA{0}` is Newton-Raphson, with feasibility line-search, to handle inequality constraints. 
 - `SweepXA{1}` is implicit Euler, with feasibility line-search. 
@@ -171,7 +163,7 @@ states           = solve(SweepXA{2};initialstate=initialstate,time=0:10)
 - `maxΔx=1e-5`        convergence criteria: norm of `X`. 
 - `maxLλ=∞`           convergence criteria: norm of the residual. 
 - `saveiter=false`    set to true so that output `states` contains the state
-                      at the iteration of the last step analysed.  Useful to study
+                      at the iteration of the last step analyseδ  Useful to study
                       a step that fails to converge. 
 - `maxLineIter=50`    Maximum number of iteration in the feasibility line search.
                       set to 0 to skip the line search (not recommended for models

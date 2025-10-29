@@ -71,9 +71,9 @@ function addin!{mission}(out::AssemblyDirect,asm,iele,scale,eleobj::Acost,A::SVe
     if     mission==:matrices     P=2
     elseif mission==:vectors      P=1
     end
-    A∂  = revariate{P}(A)
+    ∂A  = revariate{P}(A)
     ø   = nothing
-    C,_ = lagrangian(eleobj,ø,ø,ø,A∂,ø,ø ,dbg)
+    C,_ = lagrangian(eleobj,ø,ø,ø,∂A,ø,ø ,dbg)
     ∇ₐC = ∂{P,Na}(C)
     add_value!(out.L1[ind.A][1],asm[arrnum(ind.A)],iele,∇ₐC)
     if mission==:matrices
@@ -95,11 +95,11 @@ function addin!{mission}(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::El
     elseif mission==:vectors      P=0
     end
     if IA == 1
-        d    = revariate{1}((;X,U,A),(;X=scale.X,U=scale.U,A=scale.A))
-        R,FB = residual(eleobj, d.X,d.U,d.A,t,SP,dbg)
+        ∂X,∂U,∂A = revariate{1}((;X,U,A),(;X=scale.X,U=scale.U,A=scale.A))
+        R,FB     = residual(eleobj, ∂X,∂U,∂A,t,SP,dbg)
     else
-        d    = revariate{1}((;X,U  ),(;X=scale.X,U=scale.U))
-        R,FB = residual(eleobj, d.X,d.U,  A,t,SP,dbg)
+        ∂X,∂U    = revariate{1}((;X,U  ),(;X=scale.X,U=scale.U))
+        R,FB     = residual(eleobj, ∂X,∂U,  A,t,SP,dbg)
     end        
     iλ   = 1:ndof[ind.Λ]
     Lλ   = out.L1[ind.Λ]
@@ -160,12 +160,12 @@ function addin!{mission}(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::El
     if     mission==:matrices     P=2
     elseif mission==:vectors      P=1
     end
-    if IA == 1
-        d    = revariate{P}((;Λ=Λ[1],X,U,A),(;Λ=scale.Λ,X=scale.X,U=scale.U,A=scale.A))
-        L,FB = getlagrangian(eleobj, d.Λ,d.X,d.U,d.A,t,SP,dbg)
+    if IA == 1   
+        ∂Λ,∂X,∂U,∂A = revariate{P}((;Λ=Λ[1],X,U,A),(;Λ=scale.Λ,X=scale.X,U=scale.U,A=scale.A))
+        L,FB        = getlagrangian(eleobj, ∂Λ,∂X,∂U,∂A,t,SP,dbg)
     else
-        d    = revariate{P}((;Λ=Λ[1],X,U),(;Λ=scale.Λ,X=scale.X,U=scale.U))
-        L,FB = getlagrangian(eleobj, d.Λ,d.X,d.U,A  ,t,SP,dbg)
+        ∂Λ,∂X,∂U    = revariate{P}((;Λ=Λ[1],X,U),(;Λ=scale.Λ,X=scale.X,U=scale.U))
+        L,FB        = getlagrangian(eleobj, ∂Λ,∂X,∂U,A  ,t,SP,dbg)
     end
     DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,OX,OU,IA}(out,asm,L,iele)
 end
@@ -188,11 +188,11 @@ function addin!{mission}(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::El
     elseif mission==:vectors      P=1
     end
     if     IA == 1  # NB: compile-time condition
-        d           = revariate{P-1}((X=X,U=U,A=A),(;X=scale.X,U=scale.U,A=scale.A))
-        R,FB,eleres = residual(eleobj.eleobj, d.X,d.U,d.A,t,SP,(dbg...,via=:ElementCostAccelerator),eleobj.req.eleres)  
+        ∂X,∂U,∂A    = revariate{P-1}((;X,U,A),(;X=scale.X,U=scale.U,A=scale.A))
+        R,FB,eleres = residual(eleobj.eleobj, ∂X,∂U,∂A,t,SP,(dbg...,via=:ElementCostAccelerator),eleobj.req.eleres)  
     elseif IA == 0
-        d           = revariate{P-1}((X=X,U=U    ),(;X=scale.X,U=scale.U))
-        R,FB,eleres = residual(eleobj.eleobj, d.X,d.U,  A,t,SP,(dbg...,via=:ElementCostAccelerator),eleobj.req.eleres)  
+        ∂X,∂U       = revariate{P-1}((;X,U ),(;X=scale.X,U=scale.U))
+        R,FB,eleres = residual(eleobj.eleobj, ∂X,∂U,  A,t,SP,(dbg...,via=:ElementCostAccelerator),eleobj.req.eleres)  
     end
     Releres         = revariate{P}(eleres)
     
@@ -224,11 +224,11 @@ function addin!{mission}(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::El
     γ               = default{:γ}(SP,0.)
     m               = eleobj.mode(t)
     if     IA == 1  # NB: compile-time condition
-        d           = revariate{P-1}((X=X,U=U,A=A),(;X=scale.X,U=scale.U,A=scale.A))
-        R,FB,eleres = residual(eleobj.eleobj, d.X,d.U,d.A,t,SP,(dbg...,via=:ElementCoonstraintAccelerator),eleobj.req)  
+        ∂X,∂U,∂A    = revariate{P-1}((X=X,U=U,A=A),(;X=scale.X,U=scale.U,A=scale.A))
+        R,FB,eleres = residual(eleobj.eleobj, ∂X,∂U,∂A,t,SP,(dbg...,via=:ElementCoonstraintAccelerator),eleobj.req)  
     elseif IA == 0
-        d           = revariate{P-1}((X=X,U=U    ),(;X=scale.X,U=scale.U))
-        R,FB,eleres = residual(eleobj.eleobj, d.X,d.U,  A,t,SP,(dbg...,via=:ElementConstraintAccelerator),eleobj.req)  
+        ∂X,∂U       = revariate{P-1}((X=X,U=U    ),(;X=scale.X,U=scale.U))
+        R,FB,eleres = residual(eleobj.eleobj, ∂X,∂U,  A,t,SP,(dbg...,via=:ElementConstraintAccelerator),eleobj.req)  
     end
     Releres         = revariate{P}(eleres)
     Rgap            = eleobj.gap(eleres,t,eleobj.gargs...)
