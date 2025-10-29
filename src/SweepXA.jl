@@ -34,7 +34,6 @@ function prepare(::Type{AssemblySweepXA{ORDER}},model,dis) where{ORDER}
     asm                = Matrix{𝕫2}(undef,narray,neletyp)  # asm[iarray,ieletyp][ieledof,iele]
     Lλ                 = asmvec!(view(asm, 1,:),Λdofgr,dis)
     Lx                 = asmvec!(view(asm, 2,:),Xdofgr,dis)
-#    Lr                 = Ref(0.)
     Lr                 = zeros()
     La                 = asmvec!(view(asm, 3,:),Adofgr,dis)
     Lλx                = asmmat!(view(asm, 4,:),view(asm,1,:),view(asm,2,:),nXdof,nXdof)
@@ -42,7 +41,6 @@ function prepare(::Type{AssemblySweepXA{ORDER}},model,dis) where{ORDER}
     Lxx                = asmmat!(view(asm, 6,:),view(asm,2,:),view(asm,2,:),nXdof,nXdof)
     Lxr                = asmvec!(view(asm, 7,:),Xdofgr,dis) 
     Lrr                = zeros()
-#    Lrr                = Ref(0.)
     Lax                = asmmat!(view(asm, 8,:),view(asm,3,:),view(asm,2,:),nAdof,nXdof)
     Lar                = asmvec!(view(asm, 9,:),Adofgr,dis)  
     Laa                = asmmat!(view(asm,10,:),view(asm,3,:),view(asm,3,:),nAdof,nAdof)
@@ -68,44 +66,25 @@ function zero!(out::AssemblySweepXA) # TODO
     out.Σλg  = 0.
     out.npos = 0    
 end
-# @inline function lineFB!(out,FB)
-#     if hasfield(typeof(FB),:mode) && FB.mode==:positive
-#         out.ming   = min(out.ming,VALUE(FB.g))
-#         out.minλ   = min(out.minλ,VALUE(FB.λ))
-#         out.Σλg   += VALUE(FB.g)*VALUE(FB.λ)
-#         out.npos  += 1
-#     end
-# end
 
 #=
 REPRISE
 2) solver
-3) this way of adiffing is more readable than DirectXUA/addin!.  
-   Is there a performance penalty to SweepXA's style? Make DirectXUA (and other solvers' addin!) more readable?
-4) It seems that DirectXUA/addin! uses adiff to the second order also when only vectors are required.  This would be very significant for FreqXU.
+3) use revariate, and write specific addiff for ElementCost++
 =#
 
 function addin!{:newmark}(out::AssemblySweepXA,asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A::SVector{Na},t,SP,dbg) where{Nxder,Nx,Na}
     a₁,a₂,a₃,b₁,b₂,b₃ = out.c.a₁,out.c.a₂,out.c.a₃,out.c.b₁,out.c.b₂,out.c.b₃
-    Nz                = 2Nx+Na
-    iΛ                = SVector{Nx  ,𝕫}(    1: Nx  )
-    iX                = SVector{Nx  ,𝕫}( Nx+1:2Nx  )
-    iA                = SVector{Na  ,𝕫}(2Nx+1: Nz  )
-    ir                =                        Nz+1
-    s                 = SVector{Nz+1,𝕣}(scale.Λ...,scale.X...,1.,scale.A...)
-    δZ                = δ{1,Nz+1,𝕣}(s) + δ{2,Nz+1,𝕣}(s)      
-    δΛ                = δZ[iΛ]        
-    δX                = δZ[iX]        
-    δA                = δZ[iA]        
-    δr                = δZ[ir]     # Newmark-β special: we need C⋅a and M⋅b
     x,x′,x″           = ∂0(X),∂1(X),∂2(X)
     a                 = a₂*x′ + a₃*x″
     b                 = b₂*x′ + b₃*x″
-    vx                = x     +    δX
-    vx′               = x′    + a₁*δX + a*δr 
-    vx″               = x″    + b₁*δX + b*δr
-    vλ                = ∂0(Λ) + δΛ
-    L,FB              = getlagrangian(eleobj,vλ,(vx,vx′,vx″),U,A+δA,t,SP,dbg)
+    r                 = SVector(0.)
+    d                 = revariate{2}((;X=x,U,A,r),(;X=scale.X,U=scale.U,A=scale.A,r=1.)) # I need the values in d to be zero.  Extent revariate. varincrement{2}
+    vx                = x     +    d.X
+    vx′               = x′    + a₁*d.X + a*d.r 
+    vx″               = x″    + b₁*d.X + b*d.r 
+    vλ                = ∂0(Λ) + d.Λ
+    L,FB              = getlagrangian(eleobj,vλ,(vx,vx′,vx″),U,A+d.A,t,SP,dbg)
     ∇L                = ∂{2,Nz+1}(L)
     add_value!(      out.Lλ , asm[ 1], iele, ∇L, iΛ    )  # Lλ  = R    
     add_∂!{1,:minus}(out.Lλ , asm[ 1], iele, ∇L, iΛ, ir)  # Lλ -=   C⋅a + M⋅b   
@@ -145,10 +124,6 @@ function addin!{:iter}(out::AssemblySweepXA{ORDER},asm,iele,scale,eleobj,Λ,X::N
     add_∂!{1 }(out.Lxx, asm[ 6], iele, ∇L², iX ,iX)  
     add_∂!{1 }(out.Lax, asm[ 8], iele, ∇L², iA ,iX)  
     add_∂!{1 }(out.Laa, asm[10], iele, ∇L², iA ,iA)  
-end
-function addin!{:linesearch}(out::AssemblySweepXA,asm,iele,scale,eleobj,Λ,X,U,A,t,SP,dbg) 
-    _,FB             = getlagrangian(eleobj,Λ,X,U,A,t,SP,dbg)
-    lineFB!(out,FB)
 end
 function addin!{mission}(out::AssemblySweepXA,asm,iele,scale,eleobj::Acost,A::SVector{Na},dbg) where{Na,mission} # addin Atarget element
     A∂  = SVector{Na,∂ℝ{2,Na,∂ℝ{1,Na,𝕣}}}(∂²ℝ{1,Na}(A[idof],idof, scale.A[idof])   for idof=1:Na)

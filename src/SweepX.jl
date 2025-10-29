@@ -43,11 +43,8 @@ addin!{:iter      }(out::AssemblySweepX,asm,iele,scale,eleobj,Λ,X::NTuple{Nxder
 addin!{:linesearch}(out::AssemblySweepX,asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{0}},U,A,t,SP,dbg) where{Nxder} = return
 function addin!{:newmark}(out::AssemblySweepX,asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A,t,SP,dbg) where{Nxder,Nx}
     a₁,a₂,a₃,b₁,b₂,b₃ = out.c.a₁,out.c.a₂,out.c.a₃,out.c.b₁,out.c.b₂,out.c.b₃
-    i          = SVector{Nx,𝕫}(1:Nx)
-    δXr        = δ{1,Nx+1,𝕣}(SVector{Nx+1,𝕣}(scale.X...,1.))      
-    δX         = δXr[i]        
-    δr         = δXr[Nx+1]     # Newmark-β special: we need C⋅a and M⋅b
     x,x′,x″    = ∂0(X),∂1(X),∂2(X)
+    δX,δr      = reδ{1}((;X=x,r=0.),(;X=scale.X,r=1.))
     a          = a₂*x′ + a₃*x″
     b          = b₂*x′ + b₃*x″
     vx         = x  +    δX

@@ -9,7 +9,7 @@ Compute the exterior product of two arrays, so that `cᵢⱼ=aᵢ bⱼ` where `i
 See also: [`∘₁`](@ref),[`∘₂`](@ref)
 """     
 ⊗(a,b) = dots(a,b,Val(0))
-∘₀(a,b) = dots(a,b,Val(0))
+∘₀(a,b) = dots(a,b,Val(0)) 
 
 """
     c = a∘₁b
@@ -63,6 +63,12 @@ See also: [`∘₁`](@ref),[`⊗`](@ref)
     end
 end
 
+# Accelerators (won't work on views, transpose etc.)
+dots(a::Matrix{Ta},b::Matrix{Tb},::Val{1}) where {Ta<:Number,Tb<:Number      } = a*b
+dots(a::Vector{Ta},b::Matrix{Tb},::Val{1}) where {Ta<:Number,Tb<:Number      } = b'*a
+dots(a::Matrix{Ta},b::Vector{Tb},::Val{1}) where {Ta<:Number,Tb<:Number      } = a*b
+dots(a::Vector{Ta},b::Vector{Tb},::Val{0}) where {Ta<:Number,Tb<:Number      } = a*b'
+
 # StaticArrays
 @generated function dots(a::StaticArray,b::StaticArray,::Val{ndots}) where{ndots}
     sa,sb       = size(a),size(b)
@@ -78,11 +84,6 @@ end
     end
 end
 
-# Accelerators (won't work on views, transpose etc.)
-dots(a::Matrix{Ta},b::Matrix{Tb},::Val{1}) where {Ta<:Number,Tb<:Number      } = a*b
-dots(a::Vector{Ta},b::Matrix{Tb},::Val{1}) where {Ta<:Number,Tb<:Number      } = b'*a
-dots(a::Matrix{Ta},b::Vector{Tb},::Val{1}) where {Ta<:Number,Tb<:Number      } = a*b
-dots(a::Vector{Ta},b::Vector{Tb},::Val{0}) where {Ta<:Number,Tb<:Number      } = a*b'
 
 # Scalar times array (it's a taste)
 dots(a::              Ta    ,b::AbstractArray{Tb,Nb},::Val{0}) where {Ta<:Number,Tb<:Number   ,Nb} = a*b
