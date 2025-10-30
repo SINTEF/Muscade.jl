@@ -530,7 +530,7 @@ function add_value!(out::𝕣1,asm,iele,a::SVector{Na,<:ℝ},ia=1:Na;iasm=idvec)
         end
     end
 end   
-function add_value!(out::Base.RefValue,a,ia::𝕫)  # # Lr, scalar in Newmakr-β context
+function add_value!(out::𝕣0,a,ia::𝕫)  # # Lr, scalar in Newmakr-β context
     out[] += VALUE(a[ia])
 end
 
@@ -566,7 +566,7 @@ function add_∂!{P,S,T}(out::Vector,asm, iele, a::SVector{Na,∂ℝ{P,Nda,R}},i
         end
     end
 end   
-function add_∂!{P,S,T}(out::Base.RefValue,a::SVector{Na,∂ℝ{P,Nda,R}},ia::𝕫,ida::𝕫) where{P,S,T,Nda,R,Na} # Lrr, scalar in Newmark-β context
+function add_∂!{P,S,T}(out::𝕣0,a::SVector{Na,∂ℝ{P,Nda,R}},ia::𝕫,ida::𝕫) where{P,S,T,Nda,R,Na} # Lrr, scalar in Newmark-β context
     if     S==:plus   out[]+=a[ia].dx[ida]  
     elseif S==:minus  out[]-=a[ia].dx[ida]  
     else   muscadeerror((;S=S),"Illegal value of parameter S")    

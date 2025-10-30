@@ -128,11 +128,15 @@ for T in (:𝔹,:ℕ,:ℤ,:ℝ,:ℂ)
 end
 for T in (:𝕓,:𝕟,:𝕫,:𝕣,:𝕔)
     #@eval export $T
-    for N in (:0,:1,:2,:3,:4)
+    for N in (:1,:2,:3,:4)
         TN = Symbol(T,N)
         @eval const  $TN = Array{$T,$N}
         #@eval export $TN
     end
+end
+for T in (:𝕓,:𝕟,:𝕫,:𝕣,:𝕔)
+    T0 = Symbol(T,:0)
+    @eval const  $T0 = Ref{$T}
 end
 const ℝ11      = AbstractVector{A} where {A<:ℝ1}
 const ℤ11      = AbstractVector{A} where {A<:ℤ1}
@@ -197,17 +201,16 @@ function showtime(t)
     end
 end
 
-# if a function f is given the argument pointer= Ref{SomeType}()
-# the function can then do e.g. vec=allocate(pointer,Vector...) and write to vec.
-# and the caller retrievs the data with vec = pointer[] 
+# if a function f is given the argument ref= Ref{SomeType}()
+# the function can then do e.g. vec=allocate(ref,Vector...) and write to vec.
+# and the caller retrievs the data with vec = ref[] 
 # advantage over "return vec" is if f throws, then vec still contains some data.
 
-const Pointer = Base.RefValue
-#function allocate(pointer::Pointer{T},target::T) where{T}
-function allocate(pointer::Pointer,target) # TODO use line above
-    pointer[]=target
+function allocate(ref::Ref{R},target::T) where{R,T<:R}
+    ref[]=target
     return target
 end
+
 
 copies(n,a::T) where{T} = NTuple{n,T}(deepcopy(a) for i∈1:n)
 

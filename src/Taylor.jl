@@ -169,6 +169,45 @@ struct reδ{P} end
 reδ{P}(a  ) where{P} = revariate{P,flat_length(a),:δ}(a,1  )
 reδ{P}(a,s) where{P} = revariate{P,flat_length(a),:δ}(a,1,s)
 
+# works with revariate{P}(a,s) and returns a structure of indices into the partials
+revariate_indices( args...)      = (revariate_indices_(args,0)...,flat_length(args))
+revariate_indices_(a::Tuple  ,i) = (revariate_indices_(first(a),i),revariate_indices_(Base.tail(a),i+flat_length(first(a)))...)
+revariate_indices_(a::Tuple{},i) = ()
+revariate_indices_(a::SArray ,i) = i+1:i+flat_length(a)
+revariate_indices_(a::𝕣,i)       = i+1
+
+"""
+    to_order{P}(V)
+
+Decrease (lossy) or increase (pad partials with zeros) the order of differentiation of `V`.
+`V` is a nested structure of `NamedTuple`, `Tuple`, `SArray`, and the components
+of `V` must be of type `∂ℝ` (otherwise, the number of partials would be undefined).
+"""
+struct to_order{P,N} end
+to_order{P,N}(a::NamedTuple   ) where{P,N} = NamedTuple{keys(a)}(to_order{P,N}(values(a)))
+to_order{P,N}(a::Tuple        ) where{P,N} = (to_order{P,N}(first(a)),to_order{P,N}(Base.tail(a))...)
+to_order{P,N}(a::Tuple{}      ) where{P,N} = ()
+to_order{P,N}(a::AbstractArray) where{P,N} = to_order{P,N}.(a)
+function to_order{P,N}(a::Ra)   where{Ra<:∂ℝ{Pa,N},P} where{Pa,N}
+    if     Pa==P
+        a
+    elseif Pa> P   
+        to_order{P,N}(value{Pa}(a))
+    elseif Pa< P
+        ap  = to_order{P-1,N}(a) 
+        ∂ℝ{P,N}(ap, SVector{N}(∂ℝ{P-1,N}(ap.dx[i]) for i=1:N) )
+    end
+end
+function to_order{P,N}(a::𝕣) where{P,N} 
+    P==0 ? a : ∂ℝ{P,N}(to_order{P-1,N}(a))
+end
+to_order{Pa}(a) where{Pa}= to_order{Pa,npartial(a)}(a)
+ 
+
+
+
+#########################
+
 """
     McLaurin(Ty,x)
 
@@ -283,30 +322,4 @@ composeJacobian{P}(Ty::NamedTuple,X₀) where{P} = NamedTuple{keys(Ty)}(composeJ
 composeJacobian{P}(Ty::Tuple     ,X₀) where{P} = (composeJacobian{P}(first(Ty),X₀),composeJacobian{P}(Base.tail(Ty),X₀)...)
 composeJacobian{P}(Ty::Tuple{}   ,X₀) where{P} = ()
 
-"""
-    to_order{P}(V)
 
-Decrease (lossy) or increase (pad partials with zeros) the order of differentiation of `V`.
-`V` is a nested structure of `NamedTuple`, `Tuple`, `SArray`, and the components
-of `V` must be of type `∂ℝ` (otherwise, the number of partials would be undefined).
-"""
-struct to_order{P,N} end
-to_order{P,N}(a::NamedTuple   ) where{P,N} = NamedTuple{keys(a)}(to_order{P,N}(values(a)))
-to_order{P,N}(a::Tuple        ) where{P,N} = (to_order{P,N}(first(a)),to_order{P,N}(Base.tail(a))...)
-to_order{P,N}(a::Tuple{}      ) where{P,N} = ()
-to_order{P,N}(a::AbstractArray) where{P,N} = to_order{P,N}.(a)
-function to_order{P,N}(a::Ra)  where{Ra<:∂ℝ{Pa,N},P} where{Pa,N}
-    if     Pa==P
-        a
-    elseif Pa> P   
-        to_order{P,N}(value{Pa}(a))
-    elseif Pa< P
-        ap  = to_order{P-1,N}(a) 
-        ∂ℝ{P,N}(ap, SVector{N}(∂ℝ{P-1,N}(ap.dx[i]) for i=1:N) )
-    end
-end
-function to_order{P,N}(a::𝕣) where{P,N} 
-    P==0 ? a : ∂ℝ{P,N}(to_order{P-1,N}(a))
-end
-to_order{Pa}(a) where{Pa}= to_order{Pa,npartial(a)}(a)
- 
