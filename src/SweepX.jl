@@ -174,10 +174,8 @@ function solve(SX::Type{SweepX{ORDER}},pstate,verbose,dbg;
     citer            = 0
     cΔx²,cLλ²        = maxΔx^2,maxLλ^2
     state            = State{1,ORDER+1,1}(copy(initialstate,SP=(γ=0.,))) 
-
-
     states           = allocate(pstate,Vector{typeof(state)}(undef,saveiter ? maxiter : length(time))) # states is not a return argument of this function.  Hence it is not lost in case of exception
-    local facLλx 
+    local Lλx # declare Lλx to scope the function, without having to actualy initialize the variable
     for (step,t)     ∈ enumerate(time)
         oldt         = state.time
         state.time   = t
@@ -195,10 +193,10 @@ function solve(SX::Type{SweepX{ORDER}},pstate,verbose,dbg;
             if ORDER==2 && firstiter  assemble!{:newmark}(out,asm,dis,model,state,(dbg...,solver=:SweepX,step=step,iiter=iiter))
             else                      assemble!{:iter   }(out,asm,dis,model,state,(dbg...,solver=:SweepX,step=step,iiter=iiter))
             end
-            try if step==1 && firstiter  facLλx = lu(out.Lλx) 
-            else                         lu!(facLλx, out.Lλx) 
+            try if step==1 && firstiter  Lλx = lu(out.Lλx) # here we do not write "local Lλx", so we refer to the variable defined ouside the loops (we do not shadow Lλx)
+            else                         lu!(Lλx, out.Lλx) 
             end catch;                   muscadeerror(@sprintf("matrix factorization failed at step=%i, iiter=%i",step,iiter)) end
-            Δx       = facLλx\out.Lλ
+            Δx       = Lλx\out.Lλ
             Δx²,Lλ²  = sum(Δx.^2),sum(out.Lλ.^2)
             Newmarkβdecrement!{ORDER}(state,Δx ,Xdofgr,out.c,firstiter,buffer...)
 
@@ -209,7 +207,7 @@ function solve(SX::Type{SweepX{ORDER}},pstate,verbose,dbg;
                 iline==maxLineIter && muscadeerror(@sprintf("Line search failed at step=%3d, iiter=%3d, iline=%3d, s=%7.1e",step,iiter,iline,s))
                 Δs    = s*(sfac-1)
                 s    += Δs
-                Newmarkβdecrement!{ORDER}(state,Δs*Δx ,Xdofgr,out.c,firstiter,buffer...)
+                Newmarkβdecrement!{ORDER}(state,Δs*-Δx ,Xdofgr,out.c,firstiter,buffer...)
             end
 
             verbose && saveiter && @printf("        iteration %3d, γ= %7.1e\n",iiter,γ)

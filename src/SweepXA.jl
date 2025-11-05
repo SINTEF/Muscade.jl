@@ -70,7 +70,7 @@ end
 #=
 REPRISE
 2) solver
-3) use revariate, and write specific addiff for ElementCost++
+3)  write specific addiff for ElementCost++
 =#
 
 function addin!{:newmark}(out::AssemblySweepXA,asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A::SVector{Na},t,SP,dbg) where{Nxder,Nx,Na}
@@ -118,7 +118,7 @@ function addin!{:iter}(out::AssemblySweepXA{ORDER},asm,iele,scale,eleobj,Λ,X::N
     add_∂!{1 }(out.Lax, asm[ 8], iele, ∇L, iA ,iX)  
     add_∂!{1 }(out.Laa, asm[10], iele, ∇L, iA ,iA)  
 end
-function addin!{mission}(out::AssemblySweepXA,asm,iele,scale,eleobj::Acost,A::SVector{Na},dbg) where{Na,mission} # addin Atarget element
+function addin!{Amission}(out::AssemblySweepXA,asm,iele,scale,eleobj::Acost,A::SVector{Na},dbg) where{Na,Amission} # addin Atarget element
     d      = revariate{2}((;A),(;A=scale.A)) # careful: revariate returns a NamedTuple
     ø      = nothing
     C,_    = lagrangian(eleobj,ø,ø,ø,d.A,ø,ø ,dbg)
@@ -199,29 +199,26 @@ function solve(SX::Type{SweepXA{ORDER}},pstate,verbose,dbg;
     cXiter           = 0
     cAiter           = 0
 
-    state            = OffsetVector{State{1,ORDER+1,1}}(0,nstep)
+    state            = OffsetVector{State{ORDER+1,ORDER+1,1}}(0,nstep+1)
     pstate[]         = state 
-    state[0] = s     = State{1,ORDER+1,1}(copy(initialstate)) 
-    for istep        = 1:nstep # share A (and U, which won't be touched)
-        state[istep] = State{1,ORDER+1,1}(time[istep],deepcopy(s.Λ),deepcopy(s.X),s.U,s.A,s.SP,s.model,s.dis)
+
+    state[0] = s     = State{ORDER+1,ORDER+1,1}(copy(initialstate)) 
+    tfinal           = time[nstep] + time[1] - state[0].time
+    for istep        = 1:nstep # share A (and U, which won't be touched), and set any time derivatives to zero
+        state[istep] = State{ORDER+1,ORDER+1,1}(time[istep],(deepcopy(s.Λ[1]),),(deepcopy(s.X[1]),),s.U,s.A,s.SP,s.model,s.dis)
     end 
-    
+    state[nstep+1]   = State{ORDER+1,ORDER+1,1}(tfinal     ,(deepcopy(s.Λ[1]),),(deepcopy(s.X[1]),),s.U,s.A,s.SP,s.model,s.dis)
     buffer           = ntuple(i->𝕣1(undef,nXdof), 6)  
-    if ORDER≥1    x′ = 𝕣1(undef,nXdof       ) end 
-    if ORDER≥2    x″ = 𝕣1(undef,nXdof       ) end 
-    Lλx              = Vector{LU𝕣     }(undef,nstep)
-    Lxx              = Vector{Sparse𝕣2}(undef,nstep)
-    Lx               = [𝕣1(undef,nXdof      ) for istep=1:nstep]    
-    Lax              = [𝕣2(undef,nAdof,nXdof) for istep=1:nstep]   
-    Δxₐ              = [𝕣2(undef,nXdof,nAdof) for istep=1:nstep]     
-    Δx               = [𝕣1(undef,nXdof      ) for istep=1:nstep]    
-    LxxΔx            = [𝕣1(undef,nXdof      ) for istep=1:nstep] 
+    ΔXₐ              = [𝕣2(undef,nXdof,nAdof) for istep=1:nstep]     
+    ΔX               = [𝕣1(undef,nXdof      ) for istep=1:nstep]    
+    δX               = [𝕣1(undef,nXdof      ) for istep=1:nstep]    
     La♯              =  𝕣1(undef,nAdof      )
     Laa♯             =  𝕣2(undef,nAdof,nAdof)
     Lx♯              =  𝕣1(undef,nXdof      ) 
-    δx               =  𝕣1(undef,nXdof      )
     ΔΛ               =  𝕣1(undef,nXdof      )
     ΔA               =  𝕣1(undef,nAdof      )
+    δXᵃ              =  𝕣1(undef,nXdof      )
+    LxxΔx            =  𝕣1(undef,nXdof      )
     LxxΔxₐ           =  𝕣2(undef,nXdof,nAdof)
     LxΔxₐ            =  𝕣1(undef,nAdof      )
     LaxΔxₐ           =  𝕣2(undef,nAdof,nAdof)
@@ -229,85 +226,110 @@ function solve(SX::Type{SweepXA{ORDER}},pstate,verbose,dbg;
     ΔxₐLxxΔx         =  𝕣1(undef,nAdof      )
     ΔxₐLxxΔxₐ        =  𝕣2(undef,nAdof,nAdof)
 
+    local Lλx # Lλx scopes the function, although it's going to be initialised in a nested scope
     for iAiter = 1:maxAiter
         assembleA!{:ok}(outXA,asmXA,dis,model,state[0],(dbg...,solver=:SweepXA,phase=:Acost,iAiter=iAiter))
-        La♯ .= outXA.La   # Lₐ*  in the theory
-        Laa♯.= outXA.Laa  # Lₐₐ* in the theory
+        La♯             .= outXA.La   
+        Laa♯            .= outXA.Laa  
 
         # forward sweep
         for istep        = 1:nstep
-            t            = state[istep  ].time
-            oldt         = state[istep-1].time
-            Δt           = t-oldt
-            Δt≤0 && ORDER>0 && muscadeerror(@sprintf("Time step length not strictly positive at istep=%3d",istep))
-            outX.c        = Newmarkβcoefficients(ORDER,Δt,β,γ)
+            Δt⁻          = state[istep  ].time-state[istep-1].time
+            Δt⁻≤0 && ORDER>0 && muscadeerror(@sprintf("Time step length not strictly positive at istep=%3d",istep))
+            c⁻           = Newmarkβcoefficients(ORDER,Δt⁻,β,γ)
+            outX.c       = c⁻  
 
-            for ider ∈ eachindex(state[istep-1].X)
+            for ider ∈ 1:ORDER+1
                 state[istep].X[ider] .= state[istep-1].X[ider]   
             end
-            Δx[istep]   .= 0.
+            ΔX[istep]   .= 0.
 
             # std Newmark-β
             for iXiter   = 1:maxXiter
-                firstiter = iXiter==1
-                if ORDER==2 && firstiter  assemble!{:newmark}(outX,asmX,dis,model,state[istep],(dbg...,solver=:SweepX,step=step,iXiter=iXiter))
-                else                      assemble!{:iter   }(outX,asmX,dis,model,state[istep],(dbg...,solver=:SweepX,step=step,iXiter=iXiter))
+                firstXiter = iXiter==1 
+                if ORDER==2 && firstXiter assemble!{:newmark}(outX,asmX,dis,model,state[istep],(dbg...,solver=:SweepXA,phase=:forward,iAiter=iAiter,step=step,iXiter=iXiter))
+                else                      assemble!{:iter   }(outX,asmX,dis,model,state[istep],(dbg...,solver=:SweepXA,phase=:forward,iAiter=iAiter,step=step,iXiter=iXiter))
                 end
-                try if iAiter==1 && firstiter  Lλx[istep] = lu(outX.Lλx) 
-                else                           lu!(Lλx[istep], outX.Lλx) 
+                try if iAiter==1 && firstXiter Lλx = lu(outX.Lλx) 
+                else                           lu!(Lλx, outX.Lλx) 
                 end catch;                     muscadeerror(@sprintf("Lλx matrix factorization failed at iAiter=%3d, istep=%i, iXiter=%i",iAiter,istep,iXiter)) end
-                δx         .= Lλx[istep]\outX.Lλ
-                Δx[istep] .+= δx
-                Newmarkβdecrement!{ORDER}(state[istep],δx ,Xdofgr,outX.c,firstiter,buffer...) 
-                δx²,Lλ²     = sum(δx.^2),sum(outX.Lλ.^2)
+                δX[1]      .= Lλx\outX.Lλ
+                ΔX[istep] .+= δX[1]
+                Newmarkβdecrement!{ORDER}(state[istep],δX[1] ,Xdofgr,outX.c,firstXiter,buffer...) 
+                δx²,Lλ²     = sum(δX[1].^2),sum(outX.Lλ.^2)
                 cXiter     += 1
                 if δx²≤cΔx² && Lλ²≤cLλ² 
-                    verbose && @printf "    In A-iteration %3d, step %3d converged in %3d X-iterations. |Δx|=%7.1e |Lλ|=%7.1e\n" iAiter istep iXiter √(δx²) √(Lλ²)
+                    verbose && @printf "    In A-iteration %3d, step %3d converged in %3d X-iterations. |ΔX|=%7.1e |Lλ|=%7.1e\n" iAiter istep iXiter √(δx²) √(Lλ²)
                     break#out of the iXiter loop
                 end
-                iXiter==maxXiter && muscadeerror(@sprintf("no X-convergence at iAiter=%3d, istep=%3d after %3d X-iterations |Δx|=%g / %g, |Lλ|=%g / %g",iAiter,istep,iXiter,√(δx²),maxΔx,√(Lλ²)^2,maxLλ))
+                iXiter==maxXiter && muscadeerror(@sprintf("no X-convergence at iAiter=%3d, istep=%3d after %3d X-iterations |ΔX|=%g / %g, |Lλ|=%g / %g",iAiter,istep,iXiter,√(δx²),maxΔx,√(Lλ²)^2,maxLλ))
             end
 
+
+
             # sensitivity
-            assemble!{:iter}(outXA,asmXA,dis,model,state[istep],(dbg...,solver=:SweepXA,iAiter=iAiter,istep=istep))
-            Lx[ istep] .= outXA.Lx        # TODO instead of copying, why not let 'outXA' point to the correct memory?
-            Lxx[istep]  = copy(outXA.Lxx) # because Lxx is sparse
-            Lax[istep] .= outXA.Lax
+            outXA.c = Newmarkβcoefficients(ORDER,Δt⁻,β,γ)
 
-            try lu!(Lλx[istep], outXA.Lλx) catch; muscadeerror(@sprintf("Lλx matrix factorization failed at Aiter=%3d, istep=%i, sensitivity",iAiter,istep)) end
-            Δxₐ[istep] .= Lλx[istep]\outXA.Lλa 
-            δx         .= Lλx[istep]\outXA.Lλ  
-            Δx[ istep].+= δx
-            Newmarkβdecrement!{ORDER}(state[istep],δx ,Xdofgr,outXA.c,false   ,buffer...) 
+            assemble!{:iter}(outXA,asmXA,dis,model,state[istep],(dbg...,solver=:SweepXA,phase=:sensitivity,iAiter=iAiter,step=step))
+            try lu!(Lλx, outXA.Lλx) catch; muscadeerror(@sprintf("Lλx matrix factorization failed at Aiter=%3d, istep=%i, sensitivity",iAiter,istep)) end
+            # if ORDER==2 assemble!{:newmark}(outXA,asmXA,dis,model,state[istep],(dbg...,solver=:SweepXA,phase=:sensitivity,iAiter=iAiter,step=step))
+            # else        assemble!{:iter   }(outXA,asmXA,dis,model,state[istep],(dbg...,solver=:SweepXA,phase=:sensitivity,iAiter=iAiter,step=step))
+            # end
+            # try if iAiter==1  Lλx = lu(outX.Lλx) 
+            # else              lu!(Lλx, outX.Lλx) 
+            # end catch;        muscadeerror(@sprintf("Lλx matrix factorization failed at iAiter=%3d, istep=%i, iXiter=%i",iAiter,istep,iXiter)) end
 
+            ΔXₐ[istep] .= Lλx\outXA.Lλa 
+            δX[ istep] .= Lλx\outXA.Lλ  # increment since after the X-iterations
+            ΔX[ istep].+= δX[ istep]    # increment in this A-iteration         
+ 
             # TODO causing allocations here?
-            LxxΔx[istep] .= Lxx[istep]  ∘₁ Δx[   istep]                              .+ outXA.Lr   # x
-            LxxΔxₐ       .= Lxx[istep]  ∘₁ Δxₐ[  istep]                              .+ outXA.Lxr  # xa
-            LxΔxₐ        .= Lx[ istep]  ∘₁ Δxₐ[  istep]                              .+ outXA.Lr   # a
-            LaxΔxₐ       .= Lax[istep]  ∘₁ Δxₐ[  istep]                              .+ outXA.Lar  # aa 
-            LaxΔx        .= Lax[istep]  ∘₁ Δx[   istep]                               + outXA.Lar  # a
-            ΔxₐLxxΔx     .= Δxₐ[istep]' ∘₁ LxxΔx[istep]  .+ outXA.Lxr' ∘₁ Δx[ istep] .+ outXA.Lrr  # a
-            ΔxₐLxxΔxₐ    .= Δxₐ[istep]' ∘₁ LxxΔxₐ        .+ outXA.Lxr' ∘₁ Δxₐ[istep] .+ outXA.Lrr  # aa  # TODO test symmetry
-            La♯         .+= ΔxₐLxxΔx  .- LaxΔx  .- LxΔxₐ                                          # a
-            Laa♯        .+= ΔxₐLxxΔxₐ .- LaxΔxₐ .- LaxΔxₐ'                                        # aa   
+            LxxΔx        .=                          outXA.Lxx  ∘₁ ΔX[ istep] .+ outXA.Lr   # x
+            LxxΔxₐ       .=                          outXA.Lxx  ∘₁ ΔXₐ[istep] .+ outXA.Lxr  # xa
+            LxΔxₐ        .=                          outXA.Lx   ∘₁ ΔXₐ[istep] .+ outXA.Lr   # a
+            LaxΔxₐ       .=                          outXA.Lax  ∘₁ ΔXₐ[istep] .+ outXA.Lar  # aa 
+            LaxΔx        .=                          outXA.Lax  ∘₁ ΔX[ istep] .+ outXA.Lar  # a
+            ΔxₐLxxΔx     .= ΔXₐ[istep]' ∘₁ LxxΔx  .+ outXA.Lxr' ∘₁ ΔX[ istep] .+ outXA.Lrr  # a
+            ΔxₐLxxΔxₐ    .= ΔXₐ[istep]' ∘₁ LxxΔxₐ .+ outXA.Lxr' ∘₁ ΔXₐ[istep] .+ outXA.Lrr  # aa  # is symmetric
+            La♯         .+= ΔxₐLxxΔx  .- LaxΔx  .- LxΔxₐ                                    # a
+            Laa♯        .+= ΔxₐLxxΔxₐ .- LaxΔxₐ .- LaxΔxₐ'                                  # aa   
         
         end # istep
-
         # update A
-        ΔA .= Laa♯\La♯
-        decrement!(state[1],1,ΔA,Adofgr) # all states share same A
+        ΔA      .= Laa♯\La♯
         ΔA²,La²  = sum(ΔA.^2),sum(La♯.^2)
+        verbose && @printf "    In A-iteration %3d, |ΔA|=%7.1e |La♯|=%7.1e\n" iAiter √(ΔA²) √(La²)
 
         # backward sweep 
-        # TODO check this.  Should not Λ be stored with derivatives, using Newmarkβdecrement! ?
         for istep = nstep:-1:1
-            δx        .= Δxₐ[istep] ∘₁ ΔA
-            Newmarkβdecrement!{ORDER}(state[istep],δx ,Xdofgr,outXA.c,false,buffer...)
-            Δx[istep].+= δx
-            Lx♯       .= Lx[istep] - LxxΔx[istep] - Lax[istep]' ∘₁ ΔA 
-            ΔΛ        .= Lλx[istep]'\Lx♯  
-            decrement!(state[istep],1,ΔΛ ,Λdofgr) 
+            Δt⁻          = state[istep  ].time-state[istep-1].time
+            Δt⁺          = state[istep+1].time-state[istep  ].time
+            c⁻           = Newmarkβcoefficients(ORDER,Δt⁻,β,γ)    
+            c⁺           = Newmarkβcoefficients(ORDER,Δt⁺,β,γ)
+            outXA.c      = c⁺  # TODO optimize: outXA is overkill, but I need Lax
+            if ORDER==2  assemble!{:newmark}(outXA,asmXA,dis,model,state[istep],(dbg...,solver=:SweepXA,phase=:backward,iAiter=iAiter,step=step))
+            else         assemble!{:iter   }(outXA,asmXA,dis,model,state[istep],(dbg...,solver=:SweepXA,phase=:backward,iAiter=iAiter,step=step))
+            end
+
+            δXᵃ         .= ΔXₐ[istep] ∘₁ ΔA # double sign swap here!!!
+            δX[istep]  .-= δXᵃ     # increment since after the X-iterations  (in which state was incremented)
+            ΔX[istep]  .-= δXᵃ     # increment in this A-iteration (for algebra purpose)        
+            LxxΔx       .=                    outXA.Lxx  ∘₁ ΔX[istep] .+ outXA.Lr   
+            Lx♯         .= outXA.Lx - LxxΔx - outXA.Lax' ∘₁ ΔA 
+            ΔΛ          .= outXA.Lλx'\Lx♯  
+
+            Newmarkβdecrement!{ORDER}(state[istep],δX[istep],Xdofgr,c⁻,false,buffer...) 
+            for ider ∈ 1:ORDER+1
+                state[istep].Λ[ider] .= state[istep+1].Λ[ider]   
+            end
+            Newmarkβdecrement!{ORDER}(state[istep],ΔΛ       ,Λdofgr,c⁺,false,buffer...) 
         end
+        decrement!(state[1],1,ΔA,Adofgr) # state[i].A === state[j].A
+
+        a = state[1].A
+        x = [state[istep].X[1][1] for istep=1:nstep]
+        λ = [state[istep].Λ[1][1] for istep=1:nstep]
+        @show a,x,λ 
 
         # Aiter convergence
         if ΔA²≤cΔa² && La²≤cLa² 
@@ -315,7 +337,7 @@ function solve(SX::Type{SweepXA{ORDER}},pstate,verbose,dbg;
             cAiter = iAiter
             break#out of the iAiter loop
         end
-        iAiter==maxAiter && muscadeerror(@sprintf("no convergence of SweepXA after %3d A-iterations |ΔA|=%g / %g, |La|=%g / %g",istep,iAiter,√(ΔA²),maxΔa,√(La²)^2,maxLa))
+        iAiter==maxAiter && muscadeerror(@sprintf("no convergence of SweepXA after %3d A-iterations |ΔA|=%g / %g, |La|=%g / %g",iAiter,√(ΔA²),maxΔa,√(La²)^2,maxLa))
 
     end 
     verbose && @printf "\n    nel=%d, nXdof=%d, nstep=%d, nAiter=%d, ΣnXiter=%d, mean(nXiter)=%d\n" getnele(model) getndof(Xdofgr) length(time) cAiter cXiter cXiter/length(time)

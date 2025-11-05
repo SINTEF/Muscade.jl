@@ -266,7 +266,8 @@ An element to apply a loading term to a single X-dof.
 using Muscade
 model = Model(:TestModel)
 node  = addnode!(model,𝕣[0,0])
-e     = addelement!(model,DofLoad,[node];field=:tx,value=t->3t-1)
+@functor with(a=3,b=-1) load(t)=a*t+b
+e     = addelement!(model,DofLoad,[node];field=:tx,value=load)
 ```    
 
 See also: [`Hold`](@ref), [`DofCost`](@ref)  
