@@ -25,7 +25,7 @@ x,x′,x″         = 0.,1.,0.
 initialstate    = setdof!(initialstate,[x′];field=:tx1,nodID=[node],order=1)  # initial speed
 
 t               = 2.:2.
-state           = solve(SweepXA{0};  initialstate,time= t,verbose=true,catcherror=true,maxAiter=10)
+state           = solve(SweepXA{0};  initialstate,time= t,verbose=true,catcherror=true,maxAiter=2)
 
 
 ;
