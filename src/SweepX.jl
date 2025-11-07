@@ -29,19 +29,22 @@ function zero!(out::AssemblySweepX)
     out.Σλg  = 0.
     out.npos = 0    
 end
-@inline function lineFB!(out,FB)
+@inline function lineFB!(out,FB,Δt)
     if hasfield(typeof(FB),:mode) && FB.mode==:positive
-        out.ming   = min(out.ming,VALUE(FB.g))
-        out.minλ   = min(out.minλ,VALUE(FB.λ))
-        out.Σλg   += VALUE(FB.g)*VALUE(FB.λ)
+        @show Δt
+        g = VALUE(FB.g)*Δt
+        λ = VALUE(FB.λ)*Δt
+        out.ming   = min(out.ming,g)
+        out.minλ   = min(out.minλ,λ)
+        out.Σλg   += g*λ
         out.npos  += 1
     end
 end
 # jump over elements without Xdofs in a SweepX analysis
-addin!{:newmark   }(out::AssemblySweepX,asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{0}},U,A,t,SP,dbg) where{Nxder} = return
-addin!{:iter      }(out::AssemblySweepX,asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{0}},U,A,t,SP,dbg) where{Nxder} = return
-addin!{:linesearch}(out::AssemblySweepX,asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{0}},U,A,t,SP,dbg) where{Nxder} = return
-function addin!{:newmark}(out::AssemblySweepX,asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A,t,SP,dbg) where{Nxder,Nx}
+addin!{:newmark   }(out::AssemblySweepX,asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{0}},U,A,t,Δt,SP,dbg) where{Nxder} = return
+addin!{:iter      }(out::AssemblySweepX,asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{0}},U,A,t,Δt,SP,dbg) where{Nxder} = return
+addin!{:linesearch}(out::AssemblySweepX,asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{0}},U,A,t,Δt,SP,dbg) where{Nxder} = return
+function addin!{:newmark}(out::AssemblySweepX,asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A,t,Δt,SP,dbg) where{Nxder,Nx}
     a₁,a₂,a₃,b₁,b₂,b₃ = out.c.a₁,out.c.a₂,out.c.a₃,out.c.b₁,out.c.b₂,out.c.b₃
     x,x′,x″    = ∂0(X),∂1(X),∂2(X)
     δX,δr      = reδ{1}((;X=x,r=0.),(;X=scale.X,r=1.))
@@ -52,11 +55,11 @@ function addin!{:newmark}(out::AssemblySweepX,asm,iele,scale,eleobj,Λ,X::NTuple
     vx″        = x″ + b₁*δX + b*δr
     Lλ,FB      = getresidual(eleobj,(vx,vx′,vx″),U,A,t,SP,dbg)
     Lλ         = Lλ .* scale.X
-    add_value!(       out.Lλ ,asm[1],iele,Lλ             )  # rhs  = R    
-    add_∂!{1,:minus}( out.Lλ ,asm[1],iele,Lλ,1:Nx,(Nx+1,))  # rhs +=  -C⋅a -M⋅b 
-    add_∂!{1       }( out.Lλx,asm[2],iele,Lλ,1:Nx,1:Nx   )  # Mat  =  K + a₁C + b₁M
+    add_value!(       out.Lλ ,asm[1],iele,Lλ             ;Δt)  # rhs  = R    
+    add_∂!{1,:minus}( out.Lλ ,asm[1],iele,Lλ,1:Nx,(Nx+1,);Δt)  # rhs +=  -C⋅a -M⋅b 
+    add_∂!{1       }( out.Lλx,asm[2],iele,Lλ,1:Nx,1:Nx   ;Δt)  # Mat  =  K + a₁C + b₁M
 end
-function addin!{:iter}(out::AssemblySweepX{ORDER},asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A,t,SP,dbg) where{ORDER,Nxder,Nx} 
+function addin!{:iter}(out::AssemblySweepX{ORDER},asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A,t,Δt,SP,dbg) where{ORDER,Nxder,Nx} 
     a₁,b₁      = out.c.a₁,out.c.b₁
     δX         = δ{1,Nx,𝕣}(scale.X)
     if     ORDER==0  Lλ,FB = getresidual(eleobj,(∂0(X)+δX,                         ),U,A,t,SP,dbg)
@@ -64,12 +67,12 @@ function addin!{:iter}(out::AssemblySweepX{ORDER},asm,iele,scale,eleobj,Λ,X::NT
     elseif ORDER==2  Lλ,FB = getresidual(eleobj,(∂0(X)+δX, ∂1(X)+a₁*δX, ∂2(X)+b₁*δX),U,A,t,SP,dbg)
     end
     Lλ         = Lλ .* scale.X
-    add_value!(out.Lλ ,asm[1],iele,Lλ)
-    add_∂!{1}( out.Lλx,asm[2],iele,Lλ)
+    add_value!(out.Lλ ,asm[1],iele,Lλ;Δt)
+    add_∂!{1}( out.Lλx,asm[2],iele,Lλ;Δt)
 end
-function addin!{:linesearch}(out::AssemblySweepX,asm,iele,scale,eleobj,Λ,X,U,A,t,SP,dbg) 
+function addin!{:linesearch}(out::AssemblySweepX,asm,iele,scale,eleobj,Λ,X,U,A,t,Δt,SP,dbg) 
     _,FB      = getresidual(eleobj,X,U,A,t,SP,dbg)
-    lineFB!(out,FB)
+    lineFB!(out,FB,Δt)
 end
 struct   Newmarkβdecrement!{ORDER} end
 function Newmarkβdecrement!{2}(state,Δx ,Xdofgr,c,firstiter, a,b,x′,x″,Δx′,Δx″) # x′, x″ are just mutable memory, neither input nor output.
@@ -183,15 +186,15 @@ function solve(SX::Type{SweepX{ORDER}},pstate,verbose,dbg;
         Δt ≤ 0 && ORDER>0 && muscadeerror(@sprintf("Time step length not strictly positive at step=%3d",step))
         out.c        = Newmarkβcoefficients(ORDER,Δt,β,γ)
         state.time   = t
-        assemble!{:linesearch}(out,asm,dis,model,state,(dbg...,solver=:SweepX,phase=:preliminary,step=step))
+        assemble!{:linesearch}(out,asm,dis,model,state,idmult,(dbg...,solver=:SweepX,phase=:preliminary,step=step))
         out.ming ≤ 0 && muscadeerror(@sprintf("Initial point is not strictly primal-feasible at step=%3d",step)) # This is going to suck
         out.minλ ≤ 0 && muscadeerror(@sprintf("Initial point is not strictly dual-feasible at step=%3d"  ,step)) # This is going to suck
         state.SP     = (γ=out.Σλg/out.npos * γfac,)   # γ, is in interior point, g(X)*λ=γ
         for iiter    = 1:maxiter
             citer   += 1
             firstiter = iiter==1
-            if ORDER==2 && firstiter  assemble!{:newmark}(out,asm,dis,model,state,(dbg...,solver=:SweepX,step=step,iiter=iiter))
-            else                      assemble!{:iter   }(out,asm,dis,model,state,(dbg...,solver=:SweepX,step=step,iiter=iiter))
+            if ORDER==2 && firstiter  assemble!{:newmark}(out,asm,dis,model,state,idmult,(dbg...,solver=:SweepX,step=step,iiter=iiter))
+            else                      assemble!{:iter   }(out,asm,dis,model,state,idmult,(dbg...,solver=:SweepX,step=step,iiter=iiter))
             end
             try if step==1 && firstiter  Lλx = lu(out.Lλx) # here we do not write "local Lλx", so we refer to the variable defined ouside the loops (we do not shadow Lλx)
             else                         lu!(Lλx, out.Lλx) 
@@ -202,7 +205,8 @@ function solve(SX::Type{SweepX{ORDER}},pstate,verbose,dbg;
 
             s = 1.    
             for iline = 1:maxLineIter
-                assemble!{:linesearch}(out,asm,dis,model,state,(dbg...,solver=:SweepX,phase=:linesearch,step=step,iiter=iiter,iline=iline))
+                assemble!{:linesearch}(out,asm,dis,model,state,idmult,(dbg...,solver=:SweepX,phase=:linesearch,step=step,iiter=iiter,iline=iline))
+                @show out.minλ,out.ming
                 out.minλ > 0 && out.ming > 0 &&  break
                 iline==maxLineIter && muscadeerror(@sprintf("Line search failed at step=%3d, iiter=%3d, iline=%3d, s=%7.1e",step,iiter,iline,s))
                 Δs    = s*(sfac-1)

@@ -35,13 +35,13 @@ function assemblebigmat!(L2::Vector{Sparse𝕣2},L2bigasm::SparseMatrixCSC,asm,m
         end
     end
 end
-function assemblebigvec!(L1,L1bigasm::𝕫1,asm,model,dis,out::AssemblyDirect{OX,OU,0},state,dbg) where{OX,OU}
+function assemblebigvec!(L1,L1bigasm::𝕫1,asm,model,dis,out::AssemblyDirect{OX,OU,0},state,Δt,dbg) where{OX,OU}
     zero!.(L1)
-    assemble!{:vectors}(out,asm,dis,model,state,(dbg...,asm=:assemblebigvec!)) # first assemble model vectors
+    assemble!{:vectors}(out,asm,dis,model,state,Δt,(dbg...,asm=:assemblebigvec!)) # first assemble model vectors
     for β ∈ λxu                                                                # then collate them into
         Lβ = out.L1[β]
         for βder = 1:size(Lβ,1)
-            addin!(L1bigasm,L1[βder],Lβ[βder],β,1) 
+            addin!(L1bigasm,L1[βder],Lβ[βder],β,idmult) 
         end
     end
 end
@@ -120,7 +120,7 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
     out,asm,dofgr         = prepare(AssemblyDirect{OX,OU,IA},model,dis)   # model assembler for all arrays   
 
     verbose && @printf("    Computing matrices\n")
-    assemble!{:matrices}(out,asm,dis,model,state₀,(dbg...,solver=:EigXU,phase=:matrices))            # assemble all model matrices - in class-blocks
+    assemble!{:matrices}(out,asm,dis,model,state₀,idmult,(dbg...,solver=:EigXU,phase=:matrices))            # assemble all model matrices - in class-blocks
     pattern               = make_λxu_sparsepattern(out)
     L2                    = Vector{Sparse𝕣2}(undef,5)
     L2[1],L2bigasm,L1bigasm,Ldis  = prepare(pattern)  

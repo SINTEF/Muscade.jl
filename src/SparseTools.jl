@@ -98,7 +98,7 @@ end
 Add a sparse `block` into a large `out` sparse matrix, at block-row and -column `ibr` and `ibc`.  
    Use [`prepare`](@ref) to allocate memory for `global` and build the assembler `asm`.
 """ 
-function addin!(asm::SparseMatrixCSC{𝕫1,𝕫},out::SparseMatrixCSC{Tv,Ti},block::SparseMatrixCSC{Tv,Ti},ibr::𝕫,ibc::𝕫,factor::ℝ=1.) where{Tv,Ti<:Integer}
+function addin!(asm::SparseMatrixCSC{𝕫1,𝕫},out::SparseMatrixCSC{Tv,Ti},block::SparseMatrixCSC{Tv,Ti},ibr::𝕫,ibc::𝕫,factor=idmult) where{Tv,Ti<:Integer}
     # dichotomy to find ibv (index into asm.nzval)
     lo   = asm.colptr[ibc]         
     hi   = asm.colptr[ibc+1]-1
@@ -130,7 +130,7 @@ Use [`prepare`](@ref) to create `asm`.
 
 See also: [`prepare`](@ref)
 """ 
-function addin!(pgr::𝕫1,out::AbstractVector{Tv},block::Vector{Tv},ibr::𝕫,factor::ℝ=1.) where{Tv}
+function addin!(pgr::𝕫1,out::AbstractVector{Tv},block::Vector{Tv},ibr::𝕫,factor=idmult) where{Tv}
     for (ilv,igv)∈enumerate(pgr[ibr]:pgr[ibr+1]-1) 
         out[igv] += block[ilv] * factor
     end

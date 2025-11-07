@@ -455,25 +455,24 @@ struct assemble_!{mission} end
 struct assembleA!{mission} end
 struct assembleA_!{mission} end
 struct addin!{mission} end
-function assemble!{mission}(out::Assembly,asm,dis,model,state,dbg) where{mission}
+function assemble!{mission}(out::Assembly,asm,dis,model,state,Δt,dbg) where{mission}
     zero!(out)
     for ieletyp = 1:lastindex(model.eleobj)
         eleobj  = model.eleobj[ieletyp]
-        assemble_!{mission}(out,view(asm,:,ieletyp),dis.dis[ieletyp],eleobj,state,state.time,state.SP,(dbg...,ieletyp=ieletyp))
+        assemble_!{mission}(out,view(asm,:,ieletyp),dis.dis[ieletyp],eleobj,state,state.time,Δt,state.SP,(dbg...,ieletyp=ieletyp))
     end
 end
-assemble_!{mission}(out::Assembly,asm,dis,eleobj::Acost,state,t,SP,dbg) where{mission} = nothing
-function assemble_!{mission}(out::Assembly,asm,dis,eleobj,state::State{nΛder,nXder,nUder},t,SP,dbg) where{mission,nΛder,nXder,nUder}
+assemble_!{mission}(out::Assembly,asm,dis,eleobj::Acost,state,t,Δt,SP,dbg) where{mission} = nothing
+function assemble_!{mission}(out::Assembly,asm,dis,eleobj,state::State{nΛder,nXder,nUder},t,Δt,SP,dbg) where{mission,nΛder,nXder,nUder}
     for iele  = 1:lastindex(eleobj)
         index = dis.index[iele]
         Λe    = NTuple{nΛder}(λ[index.X] for λ∈state.Λ)
         Xe    = NTuple{nXder}(x[index.X] for x∈state.X)
         Ue    = NTuple{nUder}(u[index.U] for u∈state.U)
         Ae    = state.A[index.A]
-        addin!{mission}(out,asm,iele,dis.scale,eleobj[iele],Λe,Xe,Ue,Ae, t,SP,(dbg...,iele=iele)) # defined by solver.  Called for each element. But the asm that is passed
+        addin!{mission}(out,asm,iele,dis.scale,eleobj[iele],Λe,Xe,Ue,Ae, t,Δt,SP,(dbg...,iele=iele)) # defined by solver.  Called for each element. But the asm that is passed
     end                                                                              # is of the form asm[iarray][i,iele], because addin! will add to all arrays in one pass
 end
-
 
 function assembleA!{mission}(out::Assembly,asm,dis,model,state,dbg) where{mission}
     zero!(out)
@@ -522,20 +521,20 @@ end
 # out[asm[iasm,iele]] += a      # pick: 'a' is only a part of the element vector (FreqXU)   
 # out[asm[:,   iele]] += a[ia]  # split: parts of 'a' are assembled (DirectXUA)   
 # out[asm[iasm,iele]] += a[ia]  # not used
-function add_value!(out::𝕣1,asm,iele,a::SVector{Na,<:ℝ},ia=1:Na;iasm=idvec) where{Na}
+function add_value!(out::𝕣1,asm,iele,a::SVector{Na,<:ℝ},ia=1:Na;iasm=idvec,Δt=idmult) where{Na}
     for (i,iaᵢ) ∈ enumerate(ia)
         iout = asm[iasm[i],iele]
         if iout≠0 
-            out[iout]+=VALUE(a[iaᵢ]) 
+            out[iout]+=VALUE(a[iaᵢ])*Δt 
         end
     end
 end   
-function add_value!(out::𝕣0,a,ia::𝕫)  # # Lr, scalar in Newmakr-β context
-    out[] += VALUE(a[ia])
+function add_value!(out::𝕣0,a,ia::𝕫;Δt=idmult)  # # Lr, scalar in Newmakr-β context
+    out[] += VALUE(a[ia])*Δt
 end
 
 struct   add_∂!{P,S,T} end # to allow syntax with type-parameter P: precedence, S: :plus|:minus, T: :transpose|:notranspose
-function add_∂!{P,S,T}(out::Array,asm,iele,a::SVector{Na,∂ℝ{P,Nda,R}},ia=1:Na,ida=1:Nda;iasm=idvec,idasm=idvec) where{P,Nda,R,Na,S,T}
+function add_∂!{P,S,T}(out::Array,asm,iele,a::SVector{Na,∂ℝ{P,Nda,R}},ia=1:Na,ida=1:Nda;iasm=idvec,idasm=idvec,Δt=idmult) where{P,Nda,R,Na,S,T}
     for (i,iaᵢ) ∈ enumerate(ia), (j,idaⱼ) ∈ enumerate(ida)
         k = if T==:transpose   idasm[j]+length(ida)*( iasm[i]-1)   
         elseif T==:notranspose iasm[ i]+length( ia)*(idasm[j]-1)  
@@ -543,8 +542,8 @@ function add_∂!{P,S,T}(out::Array,asm,iele,a::SVector{Na,∂ℝ{P,Nda,R}},ia=1
         end
         iout = asm[k,iele]
         if iout≠0
-            if     S==:plus   out[iout]+=a[iaᵢ].dx[idaⱼ]  
-            elseif S==:minus  out[iout]-=a[iaᵢ].dx[idaⱼ]  
+            if     S==:plus   out[iout]+=a[iaᵢ].dx[idaⱼ]*Δt  
+            elseif S==:minus  out[iout]-=a[iaᵢ].dx[idaⱼ]*Δt  
             else   muscadeerror((;S=S),"Illegal value of parameter S")    
             end
         end
@@ -555,20 +554,20 @@ add_∂!{P  ,S}(                                     args...;kwargs...) where{P,
 add_∂!{P,S,T}(out::SparseMatrixCSC,                args...;kwargs...) where{P,S,T     } = add_∂!{P,S    ,T           }(out.nzval, args...;kwargs...)
 add_∂!{P,S,T}(out::Array,asm,iele,a::SVector{Na,R},args...;kwargs...) where{P,S,T,Na,R} = nothing # if P does not match
 
-function add_∂!{P,S,T}(out::Vector,asm, iele, a::SVector{Na,∂ℝ{P,Nda,R}},ia,ida::𝕫) where{P,S,T,Nda,R,Na} # Lλr::Vector in Newmark-β context
+function add_∂!{P,S,T}(out::Vector,asm, iele, a::SVector{Na,∂ℝ{P,Nda,R}},ia,ida::𝕫,Δt=idmult) where{P,S,T,Nda,R,Na} # Lλr::Vector in Newmark-β context
     for (i,iaᵢ) ∈ enumerate(ia)
         iout = asm[i,iele]
         if iout≠0
-            if     S==:plus   out[iout]+=a[iaᵢ].dx[ida]  
-            elseif S==:minus  out[iout]-=a[iaᵢ].dx[ida]  
+            if     S==:plus   out[iout]+=a[iaᵢ].dx[ida]*Δt  
+            elseif S==:minus  out[iout]-=a[iaᵢ].dx[ida]*Δt  
             else   muscadeerror((;S=S),"Illegal value of parameter S")    
             end
         end
     end
 end   
-function add_∂!{P,S,T}(out::𝕣0,a::SVector{Na,∂ℝ{P,Nda,R}},ia::𝕫,ida::𝕫) where{P,S,T,Nda,R,Na} # Lrr, scalar in Newmark-β context
-    if     S==:plus   out[]+=a[ia].dx[ida]  
-    elseif S==:minus  out[]-=a[ia].dx[ida]  
+function add_∂!{P,S,T}(out::𝕣0,a::SVector{Na,∂ℝ{P,Nda,R}},ia::𝕫,ida::𝕫,Δt=idmult) where{P,S,T,Nda,R,Na} # Lrr, scalar in Newmark-β context
+    if     S==:plus   out[]+=a[ia].dx[ida]*Δt  
+    elseif S==:minus  out[]-=a[ia].dx[ida]*Δt  
     else   muscadeerror((;S=S),"Illegal value of parameter S")    
     end
 end

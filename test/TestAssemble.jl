@@ -150,7 +150,7 @@ Muscade.makevecfromfields!(vec,dofgr,(;X=(tx1=1.,tx2=2.,rx3=3.)))
 end
 
 state = Muscade.State{1,1,1}(model,dis)
-Muscade.assemble!{:iter}(out,asm,dis,model,state,(someunittest=true,))
+Muscade.assemble!{:iter}(out,asm,dis,model,state,Muscade.idmult,(someunittest=true,))
 
 @testset "assemble" begin
     @test  out.Lλ  ≈ [-152130.71199858442, -3.0, 0.0]

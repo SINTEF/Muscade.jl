@@ -77,7 +77,7 @@ function solve(::Type{FreqXU{OX,OU}},pstate,verbose::𝕓,dbg;
     out,asm,dofgr         = prepare(AssemblyDirect{OX,OU,IA},model,dis;kwargs...)   # model assembler for all arrays   
 
     verbose && @printf("    Computing matrices\n")
-    assemble!{:matrices}(out,asm,dis,model,stateᵣ,(dbg...,solver=:FreqXU,phase=:matrices))            # assemble all model matrices - in class-blocks
+    assemble!{:matrices}(out,asm,dis,model,stateᵣ,Δt,(dbg...,solver=:FreqXU,phase=:matrices))            # assemble all model matrices - in class-blocks
     pattern               = make_λxu_sparsepattern(out)
     L2                    = Vector{Sparse𝕣2}(undef,5)
     L2[1],L2bigasm,L1bigasm,Ldis  = prepare(pattern)  
@@ -91,7 +91,6 @@ function solve(::Type{FreqXU{OX,OU}},pstate,verbose::𝕓,dbg;
     keep = sparser!(L2,droptol)
     verbose && @printf("from %i to %i nz terms\n",length(keep),sum(keep))    
 
-
     verbose && @printf("    Computing rhs\n")
     ndof                  = size(L2[1],1)
     L1𝕔                   = ntuple(ider->𝕔2(undef,nω,ndof)       ,3)
@@ -100,7 +99,7 @@ function solve(::Type{FreqXU{OX,OU}},pstate,verbose::𝕓,dbg;
     for (step,timeᵢ)      = enumerate(time)
         L1ᵢ               = ntuple(ider->view(L1𝕣[ider],step,:),3)
         state[step]       = State(timeᵢ,deepcopy(stateᵣ.Λ),deepcopy(stateᵣ.X),deepcopy(stateᵣ.U),stateᵣ.A,nothing,stateᵣ.model,stateᵣ.dis)
-        assemblebigvec!(L1ᵢ,L1bigasm,asm,model,dis,out,state[step],dbg)
+        assemblebigvec!(L1ᵢ,L1bigasm,asm,model,dis,out,state[step],Δt,dbg)
     end
   
     verbose && @printf("    Fourier transform of rhs\n")

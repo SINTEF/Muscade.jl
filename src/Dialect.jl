@@ -244,6 +244,18 @@ const idvec = IdVec()
 @inline Base.getindex(::IdVec,i) = i
 
 """
+a*idmult == idmult*a = a
+and this should compile as a no-op.
+"""
+
+struct IdMult end
+const  idmult = IdMult()
+@inline Base.:(*)(::IdMult,a) = a
+@inline Base.:(*)(a,::IdMult) = a
+
+
+
+"""
     mod_onebased(i,n) = mod(i-1,n)+1
 
 For `i::ℤ`, returns a value in `{1,...n}`.  This differs
