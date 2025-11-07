@@ -268,8 +268,8 @@ function solve(SX::Type{SweepXA{ORDER}},pstate,verbose,dbg;
     ΔxₐLxxΔxₐ        =  𝕣2(undef,nAdof,nAdof)
 
     local Lλx # Lλx scopes the function, although it's going to be initialised in a nested scope
-    @printf "As received"
-    showstates(state)
+    # @printf "As received"
+    # showstates(state)
     # warming up
     for istep        = 1:nstep
         Δt⁻          = state[istep  ].time-state[istep-1].time
@@ -302,18 +302,18 @@ function solve(SX::Type{SweepXA{ORDER}},pstate,verbose,dbg;
         end
     end
 
-    @printf "After warmup"
-    showstates(state)
+    # @printf "After warmup"
+    # showstates(state)
 
     for iAiter = 1:maxAiter
-        @printf("--- iAiter = %i ---\n",iAiter)
+        # @printf("--- iAiter = %i ---\n",iAiter)
         assembleA!{:ok}(outXA,asmXA,dis,model,state[0],(dbg...,solver=:SweepXA,phase=:Acost,iAiter=iAiter))
         La♯             .= outXA.La   
         Laa♯            .= outXA.Laa  
 
         # forward sweep
         for istep        = 1:nstep
-        @printf("-- istep = %i --\n",istep)
+        # @printf("-- istep = %i --\n",istep)
             Δt⁻          = state[istep  ].time-state[istep-1].time
             Δt⁻≤0 && ORDER>0 && muscadeerror(@sprintf("Time step length not strictly positive at istep=%3d",istep))
             c⁻           = Newmarkβcoefficients(ORDER,Δt⁻,β,γ)
@@ -341,8 +341,8 @@ function solve(SX::Type{SweepXA{ORDER}},pstate,verbose,dbg;
             LaxΔx        .=                          outXA.Lax  ∘₁ ΔX[ istep] .+ outXA.Lar  # a
             ΔxₐLxxΔx     .= ΔXₐ[istep]' ∘₁ LxxΔx  .+ outXA.Lxr' ∘₁ ΔX[ istep] .+ outXA.Lrr  # a
             ΔxₐLxxΔxₐ    .= ΔXₐ[istep]' ∘₁ LxxΔxₐ .+ outXA.Lxr' ∘₁ ΔXₐ[istep] .+ outXA.Lrr  # aa  # is symmetric
-            La♯         .+= ΔxₐLxxΔx  .+ LaxΔx  .+ LxΔxₐ                                    # a
-            Laa♯        .+= ΔxₐLxxΔxₐ .+ LaxΔxₐ .+ LaxΔxₐ'                                  # aa   
+            La♯         .+= ΔxₐLxxΔx  .+ LaxΔx  .+ LxΔxₐ     + outXA.La                     # a
+            Laa♯        .+= ΔxₐLxxΔxₐ .+ LaxΔxₐ .+ LaxΔxₐ'   + outXA.Laa                    # aa   
         end # istep
 
         # update A
@@ -371,11 +371,11 @@ function solve(SX::Type{SweepXA{ORDER}},pstate,verbose,dbg;
             ΔΛ          .= outXA.Lλx'\-Lx♯  
 
             Newmarkβincrement!{ORDER}(state[istep],ΔX[istep],Xdofgr,c⁻,false,buffer...) 
-           # Newmarkβincrement!{ORDER}(state[istep],ΔΛ       ,Λdofgr,c⁺,false,buffer...) 
+            Newmarkβincrement!{ORDER}(state[istep],ΔΛ       ,Λdofgr,c⁺,false,buffer...) 
         end
         increment!(state[1],1,ΔA,Adofgr) # state[i].A === state[j].A
 
-        showstates(state)
+#        showstates(state)
 
         # Aiter convergence
         if ΔA²≤cΔa² && La²≤cLa² 
