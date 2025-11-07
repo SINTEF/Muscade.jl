@@ -4,10 +4,6 @@ mutable struct AssemblySweepX{ORDER,Tλ,Tλx} <: Assembly
     # up
     Lλ        :: Tλ                
     Lλx       :: Tλx
-    ming      :: 𝕣
-    minλ      :: 𝕣
-    Σλg       :: 𝕣
-    npos      :: 𝕫
     # down
     c         :: @NamedTuple{a₁::𝕣, a₂::𝕣, a₃::𝕣, b₁::𝕣, b₂::𝕣, b₃::𝕣}
 end   
@@ -18,32 +14,16 @@ function prepare(::Type{AssemblySweepX{ORDER}},model,dis) where{ORDER}
     asm                = Matrix{𝕫2}(undef,narray,neletyp)  # asm[iarray,ieletyp][ieledof,iele]
     Lλ                 = asmvec!(view(asm,1,:),Xdofgr,dis) 
     Lλx                = asmmat!(view(asm,2,:),view(asm,1,:),view(asm,1,:),ndof,ndof) 
-    out                = AssemblySweepX{ORDER,typeof(Lλ),typeof(Lλx)}(Lλ,Lλx,∞,∞,0.,0,(a₁=0.,a₂=0.,a₃=0.,b₁=0.,b₂=0.,b₃=0.)) 
+    out                = AssemblySweepX{ORDER,typeof(Lλ),typeof(Lλx)}(Lλ,Lλx,(a₁=0.,a₂=0.,a₃=0.,b₁=0.,b₂=0.,b₃=0.)) 
     return out,asm,Xdofgr
 end
 function zero!(out::AssemblySweepX) 
     zero!(out.Lλ)
     zero!(out.Lλx)
-    out.ming = ∞    
-    out.minλ = ∞
-    out.Σλg  = 0.
-    out.npos = 0    
-end
-@inline function lineFB!(out,FB,Δt)
-    if hasfield(typeof(FB),:mode) && FB.mode==:positive
-        @show Δt
-        g = VALUE(FB.g)*Δt
-        λ = VALUE(FB.λ)*Δt
-        out.ming   = min(out.ming,g)
-        out.minλ   = min(out.minλ,λ)
-        out.Σλg   += g*λ
-        out.npos  += 1
-    end
 end
 # jump over elements without Xdofs in a SweepX analysis
 addin!{:newmark   }(out::AssemblySweepX,asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{0}},U,A,t,Δt,SP,dbg) where{Nxder} = return
 addin!{:iter      }(out::AssemblySweepX,asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{0}},U,A,t,Δt,SP,dbg) where{Nxder} = return
-addin!{:linesearch}(out::AssemblySweepX,asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{0}},U,A,t,Δt,SP,dbg) where{Nxder} = return
 function addin!{:newmark}(out::AssemblySweepX,asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A,t,Δt,SP,dbg) where{Nxder,Nx}
     a₁,a₂,a₃,b₁,b₂,b₃ = out.c.a₁,out.c.a₂,out.c.a₃,out.c.b₁,out.c.b₂,out.c.b₃
     x,x′,x″    = ∂0(X),∂1(X),∂2(X)
@@ -69,10 +49,6 @@ function addin!{:iter}(out::AssemblySweepX{ORDER},asm,iele,scale,eleobj,Λ,X::NT
     Lλ         = Lλ .* scale.X
     add_value!(out.Lλ ,asm[1],iele,Lλ;Δt)
     add_∂!{1}( out.Lλx,asm[2],iele,Lλ;Δt)
-end
-function addin!{:linesearch}(out::AssemblySweepX,asm,iele,scale,eleobj,Λ,X,U,A,t,Δt,SP,dbg) 
-    _,FB      = getresidual(eleobj,X,U,A,t,SP,dbg)
-    lineFB!(out,FB,Δt)
 end
 struct   Newmarkβdecrement!{ORDER} end
 function Newmarkβdecrement!{2}(state,Δx ,Xdofgr,c,firstiter, a,b,x′,x″,Δx′,Δx″) # x′, x″ are just mutable memory, neither input nor output.
@@ -144,16 +120,6 @@ states           = solve(SweepX{2};initialstate=initialstate,time=0:10)
 - `saveiter=false`    set to true so that output `states` contains the state
                       at the iteration of the last step analysed.  Useful to study
                       a step that fails to converge. 
-- `maxLineIter=50`    Maximum number of iteration in the feasibility line search.
-                      set to 0 to skip the line search (not recommended for models
-                      with inequality constraints).
-- `sfac=0.5`          Parameter in the line search for a feasible point. If a 
-                      tentative result is not feasible, backtrack by a factor `sfac`.
-                      If still not feasible, backtrack what is left by a factor `sfac`,
-                      and so forth, up to `maxLineIter` times.
-- `γfac=0.5`          Parameter for feasibility. For an inequality constraint `g(X)`
-                      with reaction force `λ`, require `g(X)*λ==γ`, and multiply
-                      `γ *= γfac` at each iteration.                            
 
 # Output
 
@@ -167,8 +133,7 @@ function solve(SX::Type{SweepX{ORDER}},pstate,verbose,dbg;
                     initialstate::State,
                     β::𝕣=1/4,γ::𝕣=1/2,
                     maxiter::ℤ=50,maxΔx::ℝ=1e-5,maxLλ::ℝ=∞,
-                    saveiter::𝔹=false,
-                    maxLineIter::ℤ=50,sfac::𝕣=.5,γfac::𝕣=.5) where{ORDER}
+                    saveiter::𝔹=false) where{ORDER}
                     
     model,dis        = initialstate.model,initialstate.dis
     out,asm,Xdofgr   = prepare(AssemblySweepX{ORDER},model,dis)  
@@ -176,7 +141,7 @@ function solve(SX::Type{SweepX{ORDER}},pstate,verbose,dbg;
     buffer           = ntuple(i->𝕣1(undef,nXdof), 6)  
     citer            = 0
     cΔx²,cLλ²        = maxΔx^2,maxLλ^2
-    state            = State{1,ORDER+1,1}(copy(initialstate,SP=(γ=0.,))) 
+    state            = State{1,ORDER+1,1}(copy(initialstate)) 
     states           = allocate(pstate,Vector{typeof(state)}(undef,saveiter ? maxiter : length(time))) # states is not a return argument of this function.  Hence it is not lost in case of exception
     local Lλx # declare Lλx to scope the function, without having to actualy initialize the variable
     for (step,t)     ∈ enumerate(time)
@@ -186,10 +151,6 @@ function solve(SX::Type{SweepX{ORDER}},pstate,verbose,dbg;
         Δt ≤ 0 && ORDER>0 && muscadeerror(@sprintf("Time step length not strictly positive at step=%3d",step))
         out.c        = Newmarkβcoefficients(ORDER,Δt,β,γ)
         state.time   = t
-        assemble!{:linesearch}(out,asm,dis,model,state,idmult,(dbg...,solver=:SweepX,phase=:preliminary,step=step))
-        out.ming ≤ 0 && muscadeerror(@sprintf("Initial point is not strictly primal-feasible at step=%3d",step)) # This is going to suck
-        out.minλ ≤ 0 && muscadeerror(@sprintf("Initial point is not strictly dual-feasible at step=%3d"  ,step)) # This is going to suck
-        state.SP     = (γ=out.Σλg/out.npos * γfac,)   # γ, is in interior point, g(X)*λ=γ
         for iiter    = 1:maxiter
             citer   += 1
             firstiter = iiter==1
@@ -202,18 +163,7 @@ function solve(SX::Type{SweepX{ORDER}},pstate,verbose,dbg;
             Δx       = Lλx\out.Lλ
             Δx²,Lλ²  = sum(Δx.^2),sum(out.Lλ.^2)
             Newmarkβdecrement!{ORDER}(state,Δx ,Xdofgr,out.c,firstiter,buffer...)
-
-            s = 1.    
-            for iline = 1:maxLineIter
-                assemble!{:linesearch}(out,asm,dis,model,state,idmult,(dbg...,solver=:SweepX,phase=:linesearch,step=step,iiter=iiter,iline=iline))
-                @show out.minλ,out.ming
-                out.minλ > 0 && out.ming > 0 &&  break
-                iline==maxLineIter && muscadeerror(@sprintf("Line search failed at step=%3d, iiter=%3d, iline=%3d, s=%7.1e",step,iiter,iline,s))
-                Δs    = s*(sfac-1)
-                s    += Δs
-                Newmarkβdecrement!{ORDER}(state,Δs*-Δx ,Xdofgr,out.c,firstiter,buffer...)
-            end
-
+ 
             verbose && saveiter && @printf("        iteration %3d, γ= %7.1e\n",iiter,γ)
             saveiter && (states[iiter]=State(state.time,state.Λ,deepcopy(state.X),state.U,state.A,state.SP,model,dis))
             if Δx²≤cΔx² && Lλ²≤cLλ² 
@@ -222,7 +172,6 @@ function solve(SX::Type{SweepX{ORDER}},pstate,verbose,dbg;
                 break#out of the iiter loop
             end
             iiter==maxiter && muscadeerror(@sprintf("no convergence of step %3d after %3d iterations |Δx|=%g / %g, |Lλ|=%g / %g",step,iiter,√(Δx²),maxΔx,√(Lλ²)^2,maxLλ))
-            state.SP     = (γ=state.SP.γ*γfac,)
         end
     end
     verbose && @printf "\n    nel=%d, ndof=%d, nstep=%d, niter=%d, niter/nstep=%5.2f\n" getnele(model) getndof(Xdofgr) length(time) citer citer/length(time)
