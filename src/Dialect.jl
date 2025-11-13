@@ -252,6 +252,7 @@ struct IdMult end
 const  idmult = IdMult()
 @inline Base.:(*)(::IdMult,a) = a
 @inline Base.:(*)(a,::IdMult) = a
+@inline Base.:(/)(a,::IdMult) = a
 
 
 

@@ -120,7 +120,7 @@ order `P`.
 
 revariates to the order `precedence(V)`.  
 
-`revariate`, in conjunction with `compose` can be used to improve performance when the length of 
+`revariate`, in conjunction with `chainrule` can be used to improve performance when the length of 
 `V` is smaller than the length of its partials.
 
 Be extremely careful never to mix any variable that is a function of `V` with any other variables
@@ -138,7 +138,7 @@ have the same structure, with the important exception that `Tuple`s in `V` must 
 a variable of type `T` in `V`. Put simply: the same scale `scale.X` will be applied
 to `∂0[X]`, `∂1[X]` and `∂2[X]`. 
 
-See also: [`compose`](@ref)
+See also: [`chainrule`](@ref)
 """
 struct revariate{P,N,Z}   end
 revariate(a)                                               = revariate{precedence(a)}(a)
@@ -218,9 +218,9 @@ as if `Ty` had been computed at 0.
 `McLaurin` handles nested structures of `Tuple`s and `SVector`s of `∂ℝ`, applying the
 expansion to each element.
 
-`McLaurin` is a utility function behind [`compose`](@ref) and [`Taylor`](@ref)
+`McLaurin` is a utility function behind [`chainrule`](@ref) and [`Taylor`](@ref)
 
-See also: [`compose`](@ref), [`Taylor`](@ref), [`revariate`](@ref), [`fast`](@ref)    
+See also: [`chainrule`](@ref), [`Taylor`](@ref), [`revariate`](@ref), [`fast`](@ref)    
 """
 McLaurin(y::Tuple,Δx)                          = tuple(McLaurin(first(y),Δx),McLaurin(Base.tail(y),Δx)...) 
 McLaurin( ::Tuple{},Δx)                        = tuple() 
@@ -251,24 +251,24 @@ partials define a Taylor expansion, which `Taylor` evaluates at value `x`
 `Taylor` handles nested structures of `Tuple`s and `SVector`s of `∂ℝ`, applying the
 expansion to each element.
 
-See also: [`compose`](@ref), [`McLaurin`](@ref), [`revariate`](@ref), [`fast`](@ref)    
+See also: [`chainrule`](@ref), [`McLaurin`](@ref), [`revariate`](@ref), [`fast`](@ref)    
 """
 Taylor(y::Tuple,x₀,x) = McLaurin(y,x-x₀)
 
 """
-    compose(Ty,x)
+    chainrule(Ty,x)
 
-Compose automatic differentiation.  For example 
+Apply a chain rule in automatic differentiation.  For example 
     Tx = revariate(x)
     Ty = f(Tx)
-    y  = compose(Ty,x)    
+    y  = chainrule(Ty,x)    
 is faster than
     y  = f(x)
 if the length of `x` is smaller than the length of its partials.
 
 See also: [`revariate`](@ref), [`fast`](@ref)    
 """
-function compose(Ty,x) 
+function chainrule(Ty,x) 
     fx = flatten(x)
     McLaurin(Ty,fx.-VALUE(fx))
 end
@@ -286,12 +286,12 @@ Be extremely careful with closures, making sure that `f` does not capture variab
 
 Wrapper function of [`revariate`](@ref) and [`McLaurin`](@ref)      
 """
-fast(      f,x) = apply{:compose}(f,x)    
+fast(      f,x) = apply{:chainrule}(f,x)    
 justinvoke(f,x) = apply{:direct}( f,x)    
 
 
 struct apply{Mode} end
-apply{:compose}(f,x) = compose(f(revariate(x)),x)
+apply{:chainrule}(f,x) = chainrule(f(revariate(x)),x)
 apply{:direct}( f,x) = f(x)
 
 """
@@ -303,7 +303,7 @@ of length `ND` and `P=constants(X)`, compute `y`, a tuple of length `ND` of `Abs
 See also [`revariate`](@ref), [`motion`](@ref), [`motion⁻¹`](@ref), [`composeJacobian`](@ref)  
 """
 struct composevalue{P,ND} end
-composevalue{P,ND}(Ty            ,X_) where{P,ND} = motion⁻¹{P,ND}(compose(value{P}(Ty),X_))
+composevalue{P,ND}(Ty            ,X_) where{P,ND} = motion⁻¹{P,ND}(chainrule(value{P}(Ty),X_))
 composevalue{P,ND}(Ty::NamedTuple,X_) where{P,ND} = NamedTuple{keys(Ty)}(composevalue{P,ND}(values(Ty),X_))
 composevalue{P,ND}(Ty::Tuple     ,X_) where{P,ND} = (composevalue{P,ND}(first(Ty),X_),composevalue{P,ND}(Base.tail(Ty),X_)...)
 composevalue{P,ND}(Ty::Tuple{}   ,X_) where{P,ND} = ()
@@ -317,7 +317,7 @@ and `y∂X₀`, the Jacobian of `∂0(y)` with respect to `∂0(X)`.
 See also [`revariate`](@ref), [`motion`](@ref), [`motion⁻¹`](@ref), [`composevalue`](@ref)   
 """
 struct composeJacobian{P} end
-composeJacobian{P}(Ty            ,X₀) where{P} = compose(∂{P,npartial(Ty)}(Ty),X₀) # y∂X₀
+composeJacobian{P}(Ty            ,X₀) where{P} = chainrule(∂{P,npartial(Ty)}(Ty),X₀) # y∂X₀
 composeJacobian{P}(Ty::NamedTuple,X₀) where{P} = NamedTuple{keys(Ty)}(composeJacobian{P}(values(Ty),X₀))
 composeJacobian{P}(Ty::Tuple     ,X₀) where{P} = (composeJacobian{P}(first(Ty),X₀),composeJacobian{P}(Base.tail(Ty),X₀)...)
 composeJacobian{P}(Ty::Tuple{}   ,X₀) where{P} = ()

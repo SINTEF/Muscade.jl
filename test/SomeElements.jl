@@ -216,8 +216,6 @@ end
 AdjustableSdofOscillator(nod::Vector{Node};K=1.::𝕣,C=0.::𝕣,M=0.::𝕣) = AdjustableSdofOscillator(K,C,M)
 @espy function Muscade.residual(o::AdjustableSdofOscillator, X,U,A, t,SP,dbg) 
     x,x′,x″,u = ∂0(X)[1], ∂1(X)[1], ∂2(X)[1], ∂0(U)[1]
-    # ☼K        = o.K *exp10(A[1]) 
-    # ☼C        = o.C *exp10(A[2]) 
     ☼K        = o.K *exp10(A[1]) 
     R         = SVector(-u +K*x +o.C*x′ +o.M*x″)
     return R,noFB

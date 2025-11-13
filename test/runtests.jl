@@ -29,6 +29,9 @@ module Runtest
         @testset "TestSweepX2" begin
             include("TestSweepX2.jl")
         end
+        @testset "TestSweepX1" begin
+            include("TestSweepX1.jl")
+        end
         @testset "TestSweepX0" begin
             include("TestSweepX0.jl")
         end

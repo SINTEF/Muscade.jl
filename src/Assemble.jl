@@ -565,7 +565,7 @@ function add_∂!{P,S,T}(out::Vector,asm, iele, a::SVector{Na,∂ℝ{P,Nda,R}},i
         end
     end
 end   
-function add_∂!{P,S,T}(out::𝕣0,a::SVector{Na,∂ℝ{P,Nda,R}},ia::𝕫,ida::𝕫,Δt=idmult) where{P,S,T,Nda,R,Na} # Lrr, scalar in Newmark-β context
+function add_∂!{P,S,T}(out::𝕣0,a::SVector{Na,∂ℝ{P,Nda,R}},ia::𝕫,ida::𝕫;Δt=idmult) where{P,S,T,Nda,R,Na} # Lrr, scalar in Newmark-β context
     if     S==:plus   out[]+=a[ia].dx[ida]*Δt  
     elseif S==:minus  out[]-=a[ia].dx[ida]*Δt  
     else   muscadeerror((;S=S),"Illegal value of parameter S")    

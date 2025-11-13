@@ -17,7 +17,7 @@ The recommended approach is to always do things right the first time.  For those
 When developing a new element, it is advisable to test the constructor, and `residual` or `lagrangian` in a direct call (outside of any Muscade solver), and examine the returned outputs.
 
 [`Muscade.diffed_residual`](@ref) and [`Muscade.diffed_lagrangian`](@ref) can be used to test the element's automatic differentiation.
-Generaly, automatic differentiation is unproblematic, but when advanced tools are used (e.g. [`revariate`](@ref) and [`compose`](@ref)), then the derivatives should be inspected.  
+Generaly, automatic differentiation is unproblematic, but when advanced tools are used (e.g. [`revariate`](@ref) and [`chainrule`](@ref)), then the derivatives should be inspected.  
 
 [`Muscade.@typeof`](@ref) allows to determine the type of the return variable of a function, as inferred by the compiler.  Usefull to study type stability.
 

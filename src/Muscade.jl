@@ -26,7 +26,7 @@ module Muscade
     export  constants,precedence,npartial,norm
 
     include("Taylor.jl")
-    export  motion,motion⁻¹,revariate,compose,fast,apply,justinvoke,composevalue,composeJacobian 
+    export  motion,motion⁻¹,revariate,chainrule,fast,apply,justinvoke,composevalue,composeJacobian 
 
     include("Functors.jl")
     export Functor, @functor

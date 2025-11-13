@@ -98,7 +98,7 @@ end
 
 
 
-#### Compose with NamedTuple
+#### chainrule with NamedTuple
 
 x      = SVector(1.,2.,2.5,3.)
 X      = variate{1,4}(x)
@@ -126,10 +126,10 @@ end
 # 10: Neleres
 Releres  = Muscade.revariate{2}(eleres)
 Rq       = cost(Releres)
-q        = Muscade.compose(Rq,Muscade.to_order{2}(eleres))   # TODO this hangs. verify the output of to_order{2}(eleres) carefully.  There are empty partials.
+q        = Muscade.chainrule(Rq,Muscade.to_order{2}(eleres))   # TODO this hangs. verify the output of to_order{2}(eleres) carefully.  There are empty partials.
 q2       = cost(Muscade.to_order{2}(eleres))
 
-@testset "compose NamedTuple" begin
+@testset "chainrule NamedTuple" begin
     @test Muscade.flat_eltype(Muscade.revariate{2}(eleres))             == ∂ℝ{2, 10, ∂ℝ{1, 10, 𝕣}}
     @test Muscade.flat_eltype(Rq)                                       == ∂ℝ{2, 10, ∂ℝ{1, 10, 𝕣}}
     @test Muscade.flat_eltype(q)                                        == ∂ℝ{2, 4 , ∂ℝ{1, 4 , 𝕣}} 
@@ -141,7 +141,7 @@ end
 @testset "inferred" begin
     @inferred Muscade.revariate{2}(eleres)
     @inferred Muscade.to_order{2}(Muscade.flatten(eleres))
-    @inferred Muscade.compose(Rq,Muscade.to_order{2}(Muscade.flatten(eleres)))
+    @inferred Muscade.chainrule(Rq,Muscade.to_order{2}(Muscade.flatten(eleres)))
 end
 
 X     = (SVector(1.,2.),SVector(3.,4.))

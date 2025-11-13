@@ -1,4 +1,4 @@
-module TestNewmarkX
+module TestSweepX2
 using Test
 using Muscade
 
@@ -17,7 +17,6 @@ state           = solve(SweepX{2};  initialstate,time= T,verbose=false,catcherro
 X  = getdof(state;field=:tx1,nodID=[node],order=0)
 X′ = getdof(state;field=:tx1,nodID=[node],order=1)
 X″ = getdof(state;field=:tx1,nodID=[node],order=2)
-
 @testset "SDof oscillator output" begin
     @test X[ 1:10:end] ≈ [0.3653456491624315, 0.039495394592936224, -0.9800856952523974, 0.0204208015740059, 0.10202734361080085, -0.08876358375431506, 0.020279004568508258, 0.009410960025011333, -0.01164572216979256, 0.0044937076208295505]
     @test X′[1:10:end] ≈ [0.8267282458121575, -0.5543584424772612, 0.1761431693326722, 0.17142199935793515, -0.07990836783415763, 0.009615311853025504, 0.01797222270368847, -0.012951778973228531, 0.0032459856194525815, 0.0015257230558188115]
@@ -27,11 +26,11 @@ end
 # using GLMakie
 # fig      = Figure(size = (2000,1500))
 # axe      = Axis(fig[1,1],title="Test",xlabel="time",ylabel="x")
-# oedge    = lines!(  axe,T,X , linewidth = 1)
-# oedge    = lines!(  axe,T,X′, linewidth = 1)
-# oedge    = lines!(  axe,T,X″, linewidth = 1)
-#save("C:\\Users\\philippem\\.julia\\dev\\Muscade\\test\\testDynamic.jpg",fig)
-
+# oedge    = lines!(  axe,T,X[1,:] , linewidth = 1)
+# oedge    = lines!(  axe,T,X′[1,:], linewidth = 1)
+# oedge    = lines!(  axe,T,X″[1,:], linewidth = 1)
+# #save("C:\\Users\\philippem\\.julia\\dev\\Muscade\\test\\testDynamic.jpg",fig)
+# display(fig)
 #######
 
 model           = Model(:TestModel)
