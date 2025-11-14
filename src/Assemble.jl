@@ -473,6 +473,24 @@ function assemble_!{mission}(out::Assembly,asm,dis,eleobj,state::State{nΛder,nX
         addin!{mission}(out,asm,iele,dis.scale,eleobj[iele],Λe,Xe,Ue,Ae, t,Δt,SP,(dbg...,iele=iele)) # defined by solver.  Called for each element. But the asm that is passed
     end                                                                              # is of the form asm[iarray][i,iele], because addin! will add to all arrays in one pass
 end
+function assemble!{mission}(out::Assembly,asm,dis,model,Λ,X,U,A,t,Δt,dbg) where{mission}
+    zero!(out)
+    for ieletyp = 1:lastindex(model.eleobj)
+        eleobj  = model.eleobj[ieletyp]
+        assemble_!{mission}(out,view(asm,:,ieletyp),dis.dis[ieletyp],eleobj,Λ,X,U,A,t,Δt,nothing,(dbg...,ieletyp=ieletyp))
+    end
+end
+assemble_!{mission}(out::Assembly,asm,dis,eleobj::Acost,Λ,X,U,A,t,Δt,SP,dbg) where{mission} = nothing
+function assemble_!{mission}(out::Assembly,asm,dis,eleobj,Λ::NTuple{nΛder},X::NTuple{nXder},U::NTuple{nUder},A,t,Δt,SP,dbg) where{mission,nΛder,nXder,nUder}
+    for iele  = 1:lastindex(eleobj)
+        index = dis.index[iele]
+        Λe    = NTuple{nΛder}(λ[index.X] for λ∈Λ)
+        Xe    = NTuple{nXder}(x[index.X] for x∈X)
+        Ue    = NTuple{nUder}(u[index.U] for u∈U)
+        Ae    = A[index.A]
+        addin!{mission}(out,asm,iele,dis.scale,eleobj[iele],Λe,Xe,Ue,Ae, t,Δt,SP,(dbg...,iele=iele)) # defined by solver.  Called for each element. But the asm that is passed
+    end                                                                              # is of the form asm[iarray][i,iele], because addin! will add to all arrays in one pass
+end
 
 function assembleA!{mission}(out::Assembly,asm,dis,model,state,dbg) where{mission}
     zero!(out)
@@ -516,7 +534,12 @@ function zero!(out::AbstractSparseArray)
 end
 
 #### extract value or derivatives from a SVector 'a' of adiffs, and add it directly into vector, full matrix or nzval of sparse matrix 'out'.
-
+# given a vector a
+# ia:    where in the vector to pick data
+# ida:   where in the partials to pick data
+# iasm:  where in first dim of out to put data      (if transpose: second)
+# idasm: where in the second dim of out to put data (if transpose: first)
+#
 # out[asm[:   ,iele]] += a
 # out[asm[iasm,iele]] += a      # pick: 'a' is only a part of the element vector (FreqXU)   
 # out[asm[:,   iele]] += a[ia]  # split: parts of 'a' are assembled (DirectXUA)   

@@ -7,16 +7,15 @@ include("SomeElements.jl")
 include("../examples/DryFriction.jl")
 
 
-K,C,M           = .3,1.,1.
+K,C,M           = 1.,.4,.3
 
 model           = Model(:TestModel)
 node            = addnode!(model,𝕣[])
 osc             = addelement!(model,AdjustableSdofOscillator,[node]; K,C,M)
 
-@functor with(     ) acost(a,σ)=(a/σ)^2
+@functor with(    ) acost(a,σ)=(a/σ)^2
 @functor with(σ=.1) xcost(x,t)=(x/σ)^2
-cC              = addelement!(model,SingleAcost  ,[node];field=:ΞK,costargs=(.2,),cost=acost)
-cM              = addelement!(model,SingleAcost  ,[node];field=:ΞC,costargs=(.1,),cost=acost)
+cK              = addelement!(model,SingleAcost  ,[node];field=:ΞK,costargs=(.2,),cost=acost)
 cX              = addelement!(model,SingleDofCost,[node];class=:X ,field=:tx1    ,cost=xcost)
 
 initialstate    = initialize!(model;time=0.)
@@ -51,8 +50,9 @@ initialstate    = setdof!(initialstate,[x′];field=:tx1,nodID=[node],order=1)  
 #     @test out.Laa   ≈ [50. 0.;0. 200.]
 # end
 
-t               = 2.:1:21
-state           = solve(SweepXA{2};  initialstate,time= t,verbose=false,catcherror=true)
+Δt    = 0.1
+t     = Δt:Δt:100*Δt
+state = solve(SweepXA{2};  initialstate,time= t,verbose=true,catcherror=true,maxAiter=1)
 
 
 ;

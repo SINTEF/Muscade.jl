@@ -1,6 +1,6 @@
 ### Assembler
 
-struct Newmarkβcoefficients{ORDER}
+struct Newmarkβcoefficients{OX}
     a₁::𝕣
     a₂::𝕣 
     a₃::𝕣
@@ -14,21 +14,21 @@ Newmarkβcoefficients{1}(Δt,_,γ)          = Newmarkβcoefficients{1}(1/(γ*Δt
 Newmarkβcoefficients{2}(Δt,β,γ)          = Newmarkβcoefficients{2}(γ/(β*Δt),γ/β ,(γ/2β-1)*Δt,1/(β*Δt^2),1/(β*Δt),1/2β,Δt)
 Newmarkβcoefficients{O}(      ) where{O} = Newmarkβcoefficients{O}(0.      ,0.  ,0.         ,0.        ,0.      ,0.  ,0.)
 
-mutable struct AssemblySweepX{ORDER,Tλ,Tλx} <: Assembly
+mutable struct AssemblySweepX{OX,Tλ,Tλx} <: Assembly
     # up
     Lλ        :: Tλ                
     Lλx       :: Tλx
     # down
-    c         :: Newmarkβcoefficients{ORDER}
+    c         :: Newmarkβcoefficients{OX}
 end   
-function prepare(::Type{AssemblySweepX{ORDER}},model,dis) where{ORDER}
+function prepare(::Type{AssemblySweepX{OX}},model,dis) where{OX}
     Xdofgr             = allXdofs(model,dis)  # dis: the model's disassembler
     ndof               = getndof(Xdofgr)
     narray,neletyp     = 2,getneletyp(model)
     asm                = Matrix{𝕫2}(undef,narray,neletyp)  # asm[iarray,ieletyp][ieledof,iele]
     Lλ                 = asmvec!(view(asm,1,:),Xdofgr,dis) 
     Lλx                = asmmat!(view(asm,2,:),view(asm,1,:),view(asm,1,:),ndof,ndof) 
-    out                = AssemblySweepX{ORDER,typeof(Lλ),typeof(Lλx)}(Lλ,Lλx,Newmarkβcoefficients{ORDER}()) 
+    out                = AssemblySweepX{OX,typeof(Lλ),typeof(Lλx)}(Lλ,Lλx,Newmarkβcoefficients{OX}()) 
     return out,asm,Xdofgr
 end
 function zero!(out::AssemblySweepX) 
@@ -70,8 +70,8 @@ function addin!{:step}(out::AssemblySweepX{1},asm,iele,scale,eleobj,Λ,X::NTuple
     x,x′       = ∂0(X),∂1(X)
     δX,δr      = reδ{1}((;X=x,r=0.),(;X=scale.X,r=1.))
     a          = a₂*x′
-    vx          = x  +    δX   
-    vx′         = x′ + a₁*δX + a*δr  
+    vx         = x  +    δX   
+    vx′        = x′ + a₁*δX + a*δr  
     Lλ,FB      = getresidual(eleobj,(vx,vx′),U,A,t,SP,dbg)
     Lλ         = Lλ .* scale.X
     add_value!(out.Lλ ,asm[1],iele,Lλ                    )  # rhs  = R    
@@ -95,7 +95,7 @@ function addin!{Both}(out::AssemblySweepX{0},asm,iele,scale,eleobj,Λ,X::NTuple{
     add_∂!{1}( out.Lλx,asm[2],iele,Lλ)
 end
 
-struct   Newmarkβdecrement!{ORDER} end
+struct   Newmarkβdecrement!{OX} end
 function Newmarkβdecrement!{2}(state,Δx ,Xdofgr,c,firstiter, a,b,x′,x″,Δx′,Δx″) # x′, x″ are just mutable memory, neither input nor output.
     a₁,a₂,a₃,b₁,b₂,b₃ = c.a₁,c.a₂,c.a₃,c.b₁,c.b₂,c.b₃
 
@@ -132,7 +132,7 @@ function Newmarkβdecrement!{0}(state,Δx ,Xdofgr,args...)
 end
 
 """
-	SweepX{ORDER}
+	SweepX{OX}
 
 A non-linear, time domain solver, that solves the problem time-step by time-step.
 Only the `X`-dofs of the model are solved for, while `U`-dofs and `A`-dofs are unchanged.
@@ -144,7 +144,7 @@ Only the `X`-dofs of the model are solved for, while `U`-dofs and `A`-dofs are u
 IMPORTANT NOTE: Muscade does not allow elements to have state variables, for example, plastic strain,
 or shear-free position for dry friction.  Where the element implements such physics, this 
 is implemented by introducing the state as a degree of freedom of the element, and solving
-for its evolution, *even in a quasi-static problem*, requires the use of `ORDER≥1`.
+for its evolution, *even in a quasi-static problem*, requires the use of `OX≥1`.
 
 An analysis is carried out by a call with the following syntax:
 
@@ -160,8 +160,8 @@ states           = solve(SweepX{2};initialstate=initialstate,time=0:10)
 - `initialstate`      a `State`, obtain from `ìnitialize!` or `SweepX`.
 - `time`              maximum number of Newton-Raphson iterations 
 - `β=1/4`,`γ=1/2`     parameters to the Newmark-β algorithm. 
-                      `β` is dummy if `ORDER<2`.
-                      `γ` is dummy if `ORDER<1`.
+                      `β` is dummy if `OX<2`.
+                      `γ` is dummy if `OX<1`.
 - `maxiter=50`        maximum number of equilibrium iterations at each step.
 - `maxΔx=1e-5`        convergence criteria: norm of `X`. 
 - `maxLλ=∞`           convergence criteria: norm of the residual. 
@@ -175,29 +175,29 @@ A vector of length equal to that of the named input argument `time` containing t
 
 See also: [`solve`](@ref), [`initialize!`](@ref), [`findlastassigned`](@ref), [`study_singular`](@ref), [`DirectXUA`](@ref), [`FreqXU`](@ref)  
 """
-struct        SweepX{ORDER} <: AbstractSolver end
-function solve(SX::Type{SweepX{ORDER}},pstate,verbose,dbg;
+struct        SweepX{OX} <: AbstractSolver end
+function solve(SX::Type{SweepX{OX}},pstate,verbose,dbg;
                     time::AbstractVector{𝕣},
                     initialstate::State,
                     β::𝕣=1/4,γ::𝕣=1/2,
                     maxiter::ℤ=50,maxΔx::ℝ=1e-5,maxLλ::ℝ=∞,
-                    saveiter::𝔹=false) where{ORDER}
+                    saveiter::𝔹=false) where{OX}
                     
     model,dis        = initialstate.model,initialstate.dis
-    out,asm,Xdofgr   = prepare(AssemblySweepX{ORDER},model,dis)  
+    out,asm,Xdofgr   = prepare(AssemblySweepX{OX},model,dis)  
     nXdof            = getndof(Xdofgr)
     buffer           = ntuple(i->𝕣1(undef,nXdof), 6)  
     citer            = 0
     cΔx²,cLλ²        = maxΔx^2,maxLλ^2
-    state            = State{1,ORDER+1,1}(copy(initialstate)) 
+    state            = State{1,OX+1,1}(copy(initialstate)) 
     states           = allocate(pstate,Vector{typeof(state)}(undef,saveiter ? maxiter : length(time))) # states is not a return argument of this function.  Hence it is not lost in case of exception
     local Lλx # declare Lλx to scope the function, without having to actualy initialize the variable
     for (step,t)     ∈ enumerate(time)
         oldt         = state.time
         state.time   = t
         Δt           = t-oldt
-        Δt ≤ 0 && ORDER>0 && muscadeerror(@sprintf("Time step length not strictly positive at step=%3d",step))
-        out.c        = Newmarkβcoefficients{ORDER}(Δt,β,γ)
+        Δt ≤ 0 && OX>0 && muscadeerror(@sprintf("Time step length not strictly positive at step=%3d",step))
+        out.c        = Newmarkβcoefficients{OX}(Δt,β,γ)
         state.time   = t
         for iiter    = 1:maxiter
             citer   += 1
@@ -210,7 +210,7 @@ function solve(SX::Type{SweepX{ORDER}},pstate,verbose,dbg;
             end catch;    muscadeerror(@sprintf("matrix factorization failed at step=%i, iiter=%i",step,iiter)) end
             Δx       = Lλx\out.Lλ
             Δx²,Lλ²  = sum(Δx.^2),sum(out.Lλ.^2)
-            Newmarkβdecrement!{ORDER}(state,Δx ,Xdofgr,out.c,firstiter,buffer...)
+            Newmarkβdecrement!{OX}(state,Δx ,Xdofgr,out.c,firstiter,buffer...)
  
             verbose && saveiter && @printf("        iteration %3d, γ= %7.1e\n",iiter,γ)
             saveiter && (states[iiter]=State(state.time,state.Λ,deepcopy(state.X),state.U,state.A,state.SP,model,dis))
