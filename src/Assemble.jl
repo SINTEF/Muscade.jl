@@ -142,7 +142,19 @@ function State{nΛder,nXder,nUder}(time,Λ,X,U,A,SP::TSP,model,dis) where{nΛder
     state.dis   = dis
     return state
 end
-
+# the same but from components
+function State{nΛder,nXder,nUder}(state;time=state.time,Λ=state.Λ,X=state.X,U=state.U,A=state.A,SP::TSP=state.SP,model=state.model,dis=state.dis) where{nΛder,nXder,nUder,TSP}
+    state       = State{nΛder,nXder,nUder,TSP}()
+    state.time  = time
+    state.Λ     = ntuple(i->∂n(Λ,i-1),nΛder)
+    state.X     = ntuple(i->∂n(X,i-1),nXder)
+    state.U     = ntuple(i->∂n(U,i-1),nUder)
+    state.A     = A
+    state.SP    = SP
+    state.model = model
+    state.dis   = dis
+    return state
+end
 # A deep copy - except for SP,model and dis
 Base.copy(s::State;time=s.time,SP=s.SP) = State(time,deepcopy(s.Λ),deepcopy(s.X),deepcopy(s.U),deepcopy(s.A),SP,s.model,s.dis) 
 
@@ -203,7 +215,7 @@ function increment!(s::State,ider::𝕫,y::AbstractVector{𝕣},gr::DofGroup)
     if ider≤length(s.U) for i ∈ eachindex(gr.iU); s.U[ider][gr.iU[i]] += y[gr.jU[i]] * gr.scaleU[i]; end end
     if ider==1          for i ∈ eachindex(gr.iA); s.A[      gr.iA[i]] += y[gr.jA[i]] * gr.scaleA[i]; end end
 end
-function set!(s::State,ier::𝕫,y::AbstractVector{𝕣},gr::DofGroup) 
+function set!(s::State,ider::𝕫,y::AbstractVector{𝕣},gr::DofGroup) 
     s.Λ[ider+1] .= 0
     s.X[ider+1] .= 0
     s.U[ider+1] .= 0

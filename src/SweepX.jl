@@ -198,14 +198,13 @@ function solve(SX::Type{SweepX{OX}},pstate,verbose,dbg;
         Δt           = t-oldt
         Δt ≤ 0 && OX>0 && muscadeerror(@sprintf("Time step length not strictly positive at step=%3d",step))
         out.c        = Newmarkβcoefficients{OX}(Δt,β,γ)
-        state.time   = t
         for iiter    = 1:maxiter
             citer   += 1
             firstiter = iiter==1
             if   firstiter assemble!{:step}(out,asm,dis,model,state,Δt,(dbg...,solver=:SweepX,step=step,iiter=iiter))
             else           assemble!{:iter}(out,asm,dis,model,state,Δt,(dbg...,solver=:SweepX,step=step,iiter=iiter))
             end
-            try if step==1  && firstiter  Lλx = lu(out.Lλx) # here we do not write "local Lλx", so we refer to the variable defined ouside the loops (we do not shadow Lλx)
+            try if step==1  && firstiter  Lλx = lu(out.Lλx) # here we do not write "local Lλx", so we refer to the variable defined outside the loops (we do not shadow Lλx)
             else                          lu!(Lλx, out.Lλx) 
             end catch;    muscadeerror(@sprintf("matrix factorization failed at step=%i, iiter=%i",step,iiter)) end
             Δx       = Lλx\out.Lλ
