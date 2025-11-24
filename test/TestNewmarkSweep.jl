@@ -1,4 +1,4 @@
-module TestNewmarkSweep
+#module TestNewmarkSweep
 using Muscade,Test,StaticArrays
 
 K  = 1.
@@ -7,12 +7,12 @@ M  = .3
 Re = 0.
 f(x,x′,x″) = K*x+C*x′+M*x″ -Re
 
-Δt  = 0.1
+Δt  = 0.01
 β,γ = 1/4,1/2
 a₁,a₂,a₃,b₁,b₂,b₃ = γ/(β*Δt),γ/β ,(γ/2β-1)*Δt,1/(β*Δt^2),1/(β*Δt),1/2β
 
-n  = 3
-#n  = 100
+#n  = 3
+n  = 1000
 x  = randn(n) # randomness gets overwriten
 x′ = randn(n)
 x″ = randn(n)
@@ -52,7 +52,7 @@ end
 # Newmark-β sweep 
 for i = 2:n
     i⁻         = i-1
-    @show y[i], y′[i], y″[i], y[i⁻], y′[i⁻], y″[i⁻]
+    #@show y[i], y′[i], y″[i], y[i⁻], y′[i⁻], y″[i⁻]
     δX         = Muscade.∂ℝ{1,2,𝕣}(0.,SVector(1.,0.))
     δr         = Muscade.∂ℝ{1,2,𝕣}(0.,SVector(0.,1.))
     a          = a₁*(y[i⁻].-y[i]) + (a₂-1)*y′[i⁻] +     a₃*y″[i⁻] + y′[i]      
@@ -65,7 +65,7 @@ for i = 2:n
     B          = r - ∂{1,2}(vr)[2]
     A          = ∂{1,2}(vr)[1] 
     dy         = -A\B
-    @show A,B
+    #@show A,B
     dy′        = a₁*dy - a
     dy″        = b₁*dy - b
     y[i]       = y[i]  + dy    
@@ -79,14 +79,14 @@ end
     @test x″ ≈ y″
 end
 
-# using GLMakie
-# fig      = Figure(size = (1000,750))
-# axe      = Axis(fig[1,1],title="Test",xlabel="time",ylabel="x")
-# display(fig)
-# lines!(  axe,Δt*(1:n),x , linewidth = 1)
-# lines!(  axe,Δt*(1:n),y , linewidth = 1)
+using GLMakie
+fig      = Figure(size = (1000,750))
+axe      = Axis(fig[1,1],title="Test",xlabel="time",ylabel="x")
+display(fig)
+lines!(  axe,Δt*(1:n),x , linewidth = 1,color=:black)
+lines!(  axe,Δt*(1:n),y , linewidth = 1,color=:red  )
 
-end
+#end
 
 
 

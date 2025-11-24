@@ -203,21 +203,21 @@ function increment!(s::State,ider::𝕫,y::AbstractVector{𝕣},gr::DofGroup)
     if ider≤length(s.U) for i ∈ eachindex(gr.iU); s.U[ider][gr.iU[i]] += y[gr.jU[i]] * gr.scaleU[i]; end end
     if ider==1          for i ∈ eachindex(gr.iA); s.A[      gr.iA[i]] += y[gr.jA[i]] * gr.scaleA[i]; end end
 end
-function set!(s::State,der::𝕫,y::AbstractVector{𝕣},gr::DofGroup) 
-    s.Λ[der+1] .= 0
-    s.X[der+1] .= 0
-    s.U[der+1] .= 0
-    s.A        .= 0
-    for i ∈ eachindex(gr.iΛ); s.Λ[der+1][gr.iΛ[i]] = y[gr.jΛ[i]] * gr.scaleΛ[i]; end
-    for i ∈ eachindex(gr.iX); s.X[der+1][gr.iX[i]] = y[gr.jX[i]] * gr.scaleX[i]; end
-    for i ∈ eachindex(gr.iU); s.U[der+1][gr.iU[i]] = y[gr.jU[i]] * gr.scaleU[i]; end
-    for i ∈ eachindex(gr.iA); s.A[       gr.iA[i]] = y[gr.jA[i]] * gr.scaleA[i]; end
+function set!(s::State,ier::𝕫,y::AbstractVector{𝕣},gr::DofGroup) 
+    s.Λ[ider+1] .= 0
+    s.X[ider+1] .= 0
+    s.U[ider+1] .= 0
+    s.A         .= 0
+    for i ∈ eachindex(gr.iΛ); s.Λ[ider+1][gr.iΛ[i]] = y[gr.jΛ[i]] * gr.scaleΛ[i]; end
+    for i ∈ eachindex(gr.iX); s.X[ider+1][gr.iX[i]] = y[gr.jX[i]] * gr.scaleX[i]; end
+    for i ∈ eachindex(gr.iU); s.U[ider+1][gr.iU[i]] = y[gr.jU[i]] * gr.scaleU[i]; end
+    for i ∈ eachindex(gr.iA); s.A[        gr.iA[i]] = y[gr.jA[i]] * gr.scaleA[i]; end
 end
-function getdof!(s::State,der::𝕫,y::AbstractVector{𝕣},gr::DofGroup) 
-    for i ∈ eachindex(gr.iΛ); y[gr.jΛ[i]] = s.Λ[der+1][gr.iΛ[i]] / gr.scaleΛ[i]; end
-    for i ∈ eachindex(gr.iX); y[gr.jX[i]] = s.X[der+1][gr.iX[i]] / gr.scaleX[i]; end
-    for i ∈ eachindex(gr.iU); y[gr.jU[i]] = s.U[der+1][gr.iU[i]] / gr.scaleU[i]; end
-    for i ∈ eachindex(gr.iA); y[gr.jA[i]] = s.A[       gr.iA[i]] / gr.scaleA[i]; end
+function getdof!(s::State,ider::𝕫,y::AbstractVector{𝕣},gr::DofGroup) 
+    for i ∈ eachindex(gr.iΛ); y[gr.jΛ[i]] = s.Λ[ider+1][gr.iΛ[i]] / gr.scaleΛ[i]; end
+    for i ∈ eachindex(gr.iX); y[gr.jX[i]] = s.X[ider+1][gr.iX[i]] / gr.scaleX[i]; end
+    for i ∈ eachindex(gr.iU); y[gr.jU[i]] = s.U[ider+1][gr.iU[i]] / gr.scaleU[i]; end
+    for i ∈ eachindex(gr.iA); y[gr.jA[i]] = s.A[        gr.iA[i]] / gr.scaleA[i]; end
 end
 # create a tuple (Λ,X,U,A) of indices into the dofgroup - with zeros for modeldofs not in dofgroup
 # so the model's iλ-th Λdof is found in y[Λ[iλ]]
