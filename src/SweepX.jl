@@ -105,8 +105,8 @@ function Newmarkβdecrement!{2}(state,Δx ,Xdofgr,c,firstiter, a,b,x′,x″,Δx
     a₁,a₂,a₃,b₁,b₂,b₃ = c.a₁,c.a₂,c.a₃,c.b₁,c.b₂,c.b₃
 
     if firstiter
-        getdof!(state,1,x′,Xdofgr) 
-        getdof!(state,2,x″,Xdofgr) 
+        getdof!(state,2,x′,Xdofgr) 
+        getdof!(state,3,x″,Xdofgr) 
         a       .= a₂*x′.+ a₃*x″ 
         b       .= b₂*x′.+ b₃*x″
         Δx′     .= a₁*Δx .+ a
@@ -123,7 +123,7 @@ function Newmarkβdecrement!{1}(state,Δx ,Xdofgr,c,firstiter, a,x′,Δx′,arg
     a₁,a₂ = c.a₁,c.a₂
 
     if firstiter
-        getdof!(state,1,x′,Xdofgr) 
+        getdof!(state,2,x′,Xdofgr) 
         a       .= a₂*x′
         Δx′     .= a₁*Δx .+ a
     else

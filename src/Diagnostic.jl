@@ -399,7 +399,7 @@ function study_scale(state::State;SP=nothing,verbose::𝕓=true,dbg=(;))
     assemble!{:ok}(out,asm,dis,model,state,idmult,(dbg...,solver=:study_scale))
     state.SP           = tmp
     Z                  = zeros(getndof(dofgr))
-    getdof!(state,0,Z,dofgr) 
+    getdof!(state,1,Z,dofgr) 
     type,types         = listdoftypes(dis)
     matfrob            = ∞norm(out.Lzz,type,types)
     vecfrob            = ∞norm(out.Lz ,type,types)
@@ -572,7 +572,7 @@ function study_singular(state::State;SP,iclasses=(Λ,:X,:U,:A),jclasses=iclasses
     end    
     for iker = 1:nker
         @printf("\n\nBase vector #%i of the null-space:\n\n",iker)
-        set!(mech[iker],0,view(kernel,:,iker),jdofgr)
+        set!(mech[iker],1,view(kernel,:,iker),jdofgr)
         describe(mech[iker])
     end
     return out.Lij
