@@ -225,7 +225,7 @@ function set!(s::State,ider::𝕫,y::AbstractVector{𝕣},gr::DofGroup)
     if ider≤length(s.U) for i ∈ eachindex(gr.iU); s.U[ider][gr.iU[i]] = y[gr.jU[i]] * gr.scaleU[i]; end end
     if ider==1          for i ∈ eachindex(gr.iA); s.A[      gr.iA[i]] = y[gr.jA[i]] * gr.scaleA[i]; end end
 end
-function getdof!(s::State,ider::𝕫,y::AbstractVector{𝕣},gr::DofGroup) 
+function get!(s::State,ider::𝕫,y::AbstractVector{𝕣},gr::DofGroup) 
     if ider≤length(s.Λ)for i ∈ eachindex(gr.iΛ); y[gr.jΛ[i]] = s.Λ[ider][gr.iΛ[i]] / gr.scaleΛ[i]; end end
     if ider≤length(s.X)for i ∈ eachindex(gr.iX); y[gr.jX[i]] = s.X[ider][gr.iX[i]] / gr.scaleX[i]; end end
     if ider≤length(s.U)for i ∈ eachindex(gr.iU); y[gr.jU[i]] = s.U[ider][gr.iU[i]] / gr.scaleU[i]; end end

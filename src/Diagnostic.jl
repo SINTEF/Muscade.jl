@@ -399,7 +399,7 @@ function study_scale(state::State;SP=nothing,verbose::𝕓=true,dbg=(;))
     assemble!{:ok}(out,asm,dis,model,state,idmult,(dbg...,solver=:study_scale))
     state.SP           = tmp
     Z                  = zeros(getndof(dofgr))
-    getdof!(state,1,Z,dofgr) 
+    get!(state,1,Z,dofgr) 
     type,types         = listdoftypes(dis)
     matfrob            = ∞norm(out.Lzz,type,types)
     vecfrob            = ∞norm(out.Lz ,type,types)
