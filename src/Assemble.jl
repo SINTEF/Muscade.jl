@@ -621,15 +621,12 @@ function add_∂!{P,S}(out::Vector,asm, iele, a::SVector{Na,∂ℝ{P,Nda,R}},ia,
         end
     end
 end   
-
-
-
-# function add_∂!{P,S,T}(out::𝕣0,a::SVector{Na,∂ℝ{P,Nda,R}},ia::𝕫,ida::𝕫;Δt=idmult) where{P,S,T,Nda,R,Na} # Lrr, scalar in Newmark-β context
-#     if     S==:plus   out[]+=a[ia].dx[ida]*Δt  
-#     elseif S==:minus  out[]-=a[ia].dx[ida]*Δt  
-#     else   muscadeerror((;S=S),"Illegal value of parameter S")    
-#     end
-# end
+function add_∂!{P,S,T}(out::𝕣0,a::SVector{Na,∂ℝ{P,Nda,R}},ia::𝕫,ida::𝕫;Δt=idmult) where{P,S,T,Nda,R,Na} # Lrr, scalar in Newmark-β context
+    if     S==:plus   out[]+=a[ia].dx[ida]*Δt  
+    elseif S==:minus  out[]-=a[ia].dx[ida]*Δt  
+    else   muscadeerror((;S=S),"Illegal value of parameter S")    
+    end
+end
 
 ####### called by addin!, and by nested elements to "get a Lagrangian" and "get a residual"
 # 1) comprehensive check of the types of arguments, to help catch bugs in solvers and elements at compile time

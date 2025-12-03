@@ -2,34 +2,62 @@
 
 mutable struct AssemblySweepXA{OX,NDX} <: Assembly
     # up
+    Lλ        :: 𝕣1  
+    Lx        :: 𝕣1  
+    Lr        :: 𝕣0   
     La        :: 𝕣1  
+    Lλx       :: Sparse𝕣2 
     Lλa       :: 𝕣2 
+    Lxx       :: Sparse𝕣2 
+    Lxr       :: 𝕣1 
+    Lrr       :: 𝕣0 
+    Lax       :: 𝕣2 
+    Lar       :: 𝕣1 
     Laa       :: 𝕣2 
     # down
     c         :: Newmarkβcoefficients{OX}
 end   
 
 function prepare(::Type{AssemblySweepXA{OX}},model,dis) where{OX}
+    Λdofgr             = allΛdofs(model,dis)
     Xdofgr             = allXdofs(model,dis) 
     Adofgr             = allAdofs(model,dis)
-    nXdof  = nΛdof     = getndof(Xdofgr)
+    nΛdof              = getndof(Λdofgr)
+    nXdof              = getndof(Xdofgr)
     nAdof              = getndof(Adofgr)
-    narray,neletyp     = 3,getneletyp(model)
+    narray,neletyp     = 10,getneletyp(model)
     asm                = Matrix{𝕫2}(undef,narray,neletyp)  # asm[iarray,ieletyp][ieledof,iele]
-    asmx               = Vector{𝕫2}(undef       ,neletyp)  # asmx[ieletyp][ieledof,iele]
-    Lx                 = asmvec!(asmx          ,Xdofgr,dis)
-    La                 = asmvec!(view(asm, 1,:),Adofgr,dis)
-    Lλa                = asmfullmat!(view(asm, 2,:),asmx,view(asm,1,:),nΛdof,nAdof)  
-    Laa                = asmfullmat!(view(asm, 3,:),view(asm,1,:),view(asm,1,:),nAdof,nAdof)
+    Lλ                 = asmvec!(view(asm, 1,:),Λdofgr,dis)
+    Lx                 = asmvec!(view(asm, 2,:),Xdofgr,dis)
+    Lr                 = 𝕣0()
+    La                 = asmvec!(view(asm, 3,:),Adofgr,dis)
+    Lλx                = asmmat!(view(asm, 4,:),view(asm,1,:),view(asm,2,:),nXdof,nXdof)
+    Lλa                = asmfullmat!(view(asm, 5,:),view(asm,1,:),view(asm,3,:),nXdof,nAdof)  
+    Lxx                = asmmat!(view(asm, 6,:),view(asm,2,:),view(asm,2,:),nXdof,nXdof)
+    Lxr                = asmvec!(view(asm, 7,:),Xdofgr,dis) 
+    Lrr                = 𝕣0()
+    Lax                = asmfullmat!(view(asm, 8,:),view(asm,3,:),view(asm,2,:),nAdof,nXdof)  
+    Lar                = asmvec!(view(asm, 9,:),Adofgr,dis)  
+    Laa                = asmfullmat!(view(asm,10,:),view(asm,3,:),view(asm,3,:),nAdof,nAdof)
 
-    out                = AssemblySweepXA{OX,OX+1}(La,Lλa,Laa, Newmarkβcoefficients{OX}()) 
+    out                = AssemblySweepXA{OX,OX+1}(Lλ,Lx,Lr,La,Lλx,Lλa,Lxx,Lxr,Lrr,Lax,Lar,Laa, Newmarkβcoefficients{OX}()) 
     return out,asm,Xdofgr,Adofgr
 end
-function zero!(out::AssemblySweepXA) 
+function zero!(out::AssemblySweepXA) # TODO
+    zero!(out.Lλ )
+    zero!(out.Lx )
+    zero!(out.Lr )
     zero!(out.La )
+    zero!(out.Lλx)
     zero!(out.Lλa)
+    zero!(out.Lxx)
+    zero!(out.Lxr)
+    zero!(out.Lrr)
+    zero!(out.Lax)
+    zero!(out.Lar)
     zero!(out.Laa)
 end
+
 
 #=        TODO
 solver
@@ -101,7 +129,7 @@ function addin!{MissionXₐ}(out::AssemblySweepXA{OX},asm,iele,scale,eleobj,Λ,X
     vX                = ntuple(ider->X[ider] + Xₐ[ider] ∘₁ δA, NXder)
     vA                =              A       +             δA
     R,FB              = getresidual(eleobj,vX,U,vA,t,SP,dbg) 
-    add_∂!{1}( out.Lλa ,asm[2],iele,R)  
+    add_∂!{1}( out.Lλa ,asm[5],iele,R)  
 end
 function addin!{MissionQₐ♯}(out::AssemblySweepXA{OX},asm,iele,scale,eleobj,Λ,X::NTuple{NXder,<:SVector{Nx}},U,A::SVector{Na},Xₐ::NTuple{NXder,<:SMatrix{Nx,Na}},t,Δt,SP,dbg) where{OX,NXder,Nx,Na}
     @assert NXder == OX+1
@@ -112,8 +140,8 @@ function addin!{MissionQₐ♯}(out::AssemblySweepXA{OX},asm,iele,scale,eleobj,�
     L,FB              = getlagrangian(eleobj,λ,vX,U,vA,t,SP,dbg) # TODO jump over elements with residual.  "getcost"
     # REPRISE L is a pack of zeros. inputs vX, vA are good
     ∇L                = ∂{2,Na}(L)
-    add_value!(out.La , asm[1], iele, ∇L ; Δt)             
-    add_∂!{1 }(out.Laa, asm[3], iele, ∇L ; Δt)  
+    add_value!(out.La , asm[ 3], iele, ∇L ; Δt)             
+    add_∂!{1 }(out.Laa, asm[10], iele, ∇L ; Δt)  
     if dbg.istep==10 && dbg.ieletyp==1
         @show dbg
         @show typeof(eleobj)
@@ -129,8 +157,8 @@ function addin!{:Acost}(out::AssemblySweepXA,asm,iele,scale,eleobj::Acost,A::SVe
     ø      = nothing
     C,_    = lagrangian(eleobj,ø,ø,ø,d.A,ø,ø ,dbg)
     ∇ₐC    = ∂{2,Na}(C)
-    add_value!(out.La ,asm[1],iele,∇ₐC)
-    add_∂!{1 }(out.Laa,asm[3],iele,∇ₐC)
+    add_value!(out.La ,asm[ 3],iele,∇ₐC)
+    add_∂!{1 }(out.Laa,asm[10],iele,∇ₐC)
 end
 # special assembly, passing and disassembling Xₐ
 function assemble!{mission}(out::Assembly,asm,dis,model,state,Δt,Xₐ,dbg) where{mission <: WithXₐ }
