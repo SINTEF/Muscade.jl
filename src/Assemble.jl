@@ -165,7 +165,7 @@ Base.copy(s::State;time=s.time,SP=s.SP) = State(time,deepcopy(s.Λ),deepcopy(s.X
 # of the dofs of the model.
 
 struct DofGroup 
-    nX     :: 𝕫 # of the _model
+    nX     :: 𝕫 # of the _model_
     nU     :: 𝕫
     nA     :: 𝕫
 
@@ -467,6 +467,9 @@ struct assemble_!{mission} end
 struct assembleA!{mission} end
 struct assembleA_!{mission} end
 struct addin!{mission} end
+
+# standard assembler, everything except time-independant A-cost
+# Assemble a state using the values of variables in the state.
 function assemble!{mission}(out::Assembly,asm,dis,model,state,Δt,dbg) where{mission}
     zero!(out)
     for ieletyp = 1:lastindex(model.eleobj)
@@ -474,36 +477,41 @@ function assemble!{mission}(out::Assembly,asm,dis,model,state,Δt,dbg) where{mis
         assemble_!{mission}(out,view(asm,:,ieletyp),dis.dis[ieletyp],eleobj,state,state.time,Δt,state.SP,(dbg...,ieletyp=ieletyp))
     end
 end
-assemble_!{mission}(out::Assembly,asm,dis,eleobj::Acost,state,t,Δt,SP,dbg) where{mission} = nothing
-function assemble_!{mission}(out::Assembly,asm,dis,eleobj,state::State{nΛder,nXder,nUder},t,Δt,SP,dbg) where{mission,nΛder,nXder,nUder}
+assemble_!{         mission}(out::Assembly,asm,dis,eleobj::Vector{<:Acost},state::State{nΛder,nXder,nUder},t,Δt,SP,dbg) where{mission,nΛder,nXder,nUder} = nothing
+function assemble_!{mission}(out::Assembly,asm,dis,eleobj                 ,state::State{nΛder,nXder,nUder},t,Δt,SP,dbg) where{mission,nΛder,nXder,nUder}
     for iele  = 1:lastindex(eleobj)
         index = dis.index[iele]
         Λe    = NTuple{nΛder}(λ[index.X] for λ∈state.Λ)
         Xe    = NTuple{nXder}(x[index.X] for x∈state.X)
         Ue    = NTuple{nUder}(u[index.U] for u∈state.U)
-        Ae    = state.A[index.A]
-        addin!{mission}(out,asm,iele,dis.scale,eleobj[iele],Λe,Xe,Ue,Ae, t,Δt,SP,(dbg...,iele=iele)) # defined by solver.  Called for each element. But the asm that is passed
-    end                                                                              # is of the form asm[iarray][i,iele], because addin! will add to all arrays in one pass
-end
-function assemble!{mission}(out::Assembly,asm,dis,model,Λ,X,U,A,t,Δt,dbg) where{mission}
-    zero!(out)
-    for ieletyp = 1:lastindex(model.eleobj)
-        eleobj  = model.eleobj[ieletyp]
-        assemble_!{mission}(out,view(asm,:,ieletyp),dis.dis[ieletyp],eleobj,Λ,X,U,A,t,Δt,nothing,(dbg...,ieletyp=ieletyp))
-    end
-end
-assemble_!{mission}(out::Assembly,asm,dis,eleobj::Acost,Λ,X,U,A,t,Δt,SP,dbg) where{mission} = nothing
-function assemble_!{mission}(out::Assembly,asm,dis,eleobj,Λ::NTuple{nΛder},X::NTuple{nXder},U::NTuple{nUder},A,t,Δt,SP,dbg) where{mission,nΛder,nXder,nUder}
-    for iele  = 1:lastindex(eleobj)
-        index = dis.index[iele]
-        Λe    = NTuple{nΛder}(λ[index.X] for λ∈Λ)
-        Xe    = NTuple{nXder}(x[index.X] for x∈X)
-        Ue    = NTuple{nUder}(u[index.U] for u∈U)
-        Ae    = A[index.A]
+        Ae    =         state.A[index.A]
         addin!{mission}(out,asm,iele,dis.scale,eleobj[iele],Λe,Xe,Ue,Ae, t,Δt,SP,(dbg...,iele=iele)) # defined by solver.  Called for each element. But the asm that is passed
     end                                                                              # is of the form asm[iarray][i,iele], because addin! will add to all arrays in one pass
 end
 
+# TODO stateless assembler.  Who uses this??? 
+# if we keep this: make standard assemble! above call the assemble_! below
+#
+# function assemble!{mission}(out::Assembly,asm,dis,model,Λ,X,U,A,t,Δt,dbg) where{mission}
+#     zero!(out)
+#     for ieletyp = 1:lastindex(model.eleobj)
+#         eleobj  = model.eleobj[ieletyp]
+#         assemble_!{mission}(out,view(asm,:,ieletyp),dis.dis[ieletyp],eleobj,Λ,X,U,A,t,Δt,nothing,(dbg...,ieletyp=ieletyp))
+#     end
+# end
+# assemble_!{mission}(out::Assembly,asm,dis,eleobj::Acost,Λ,X,U,A,t,Δt,SP,dbg) where{mission} = nothing
+# function assemble_!{mission}(out::Assembly,asm,dis,eleobj,Λ::NTuple{nΛder},X::NTuple{nXder},U::NTuple{nUder},A,t,Δt,SP,dbg) where{mission,nΛder,nXder,nUder}
+#     for iele  = 1:lastindex(eleobj)
+#         index = dis.index[iele]
+#         Λe    = NTuple{nΛder}(λ[index.X] for λ∈Λ)
+#         Xe    = NTuple{nXder}(x[index.X] for x∈X)
+#         Ue    = NTuple{nUder}(u[index.U] for u∈U)
+#         Ae    = A[index.A]
+#         addin!{mission}(out,asm,iele,dis.scale,eleobj[iele],Λe,Xe,Ue,Ae, t,Δt,SP,(dbg...,iele=iele)) # defined by solver.  Called for each element. But the asm that is passed
+#     end                                                                              # is of the form asm[iarray][i,iele], because addin! will add to all arrays in one pass
+# end
+
+# assemble the time-independant A-cost
 function assembleA!{mission}(out::Assembly,asm,dis,model,state,dbg) where{mission}
     zero!(out)
     for ieletyp = 1:lastindex(model.eleobj)
@@ -544,6 +552,11 @@ function zero!(out::AbstractSparseArray)
         out.nzval[i] = 0
     end
 end
+function zero!(out::Tuple)
+    for oᵢ ∈ out
+        zero(oᵢ)
+    end
+end
 
 #### extract value or derivatives from a SVector 'a' of adiffs, and add it directly into vector, full matrix or nzval of sparse matrix 'out'.
 # given a vector a
@@ -553,10 +566,10 @@ end
 # idasm: where in the second dim of out to put data (if transpose: first)
 #
 # out[asm[:   ,iele]] += a
-# out[asm[iasm,iele]] += a      # pick: 'a' is only a part of the element vector (FreqXU)   
+# out[asm[iasm,iele]] += a      # build: 'a' is only a part of the element vector (FreqXU)   
 # out[asm[:,   iele]] += a[ia]  # split: parts of 'a' are assembled (DirectXUA)   
 # out[asm[iasm,iele]] += a[ia]  # not used
-function add_value!(out::𝕣1,asm,iele,a::SVector{Na,<:ℝ},ia=1:Na;iasm=idvec,Δt=idmult) where{Na}
+function add_value!(out::𝕣1,asm,iele,a::SVector{Na,<:ℝ},ia=1:Na ; iasm=idvec,Δt=idmult) where{Na}
     for (i,iaᵢ) ∈ enumerate(ia)
         iout = asm[iasm[i],iele]
         if iout≠0 
@@ -564,12 +577,20 @@ function add_value!(out::𝕣1,asm,iele,a::SVector{Na,<:ℝ},ia=1:Na;iasm=idvec,
         end
     end
 end   
-function add_value!(out::𝕣0,a,ia::𝕫;Δt=idmult)  # # Lr, scalar in Newmakr-β context
-    out[] += VALUE(a[ia])*Δt
-end
+
 
 struct   add_∂!{P,S,T} end # to allow syntax with type-parameter P: precedence, S: :plus|:minus, T: :transpose|:notranspose
-function add_∂!{P,S,T}(out::Array,asm,iele,a::SVector{Na,∂ℝ{P,Nda,R}},ia=1:Na,ida=1:Nda;iasm=idvec,idasm=idvec,Δt=idmult) where{P,Nda,R,Na,S,T}
+#### derivatives from a SVector 'a' of adiffs, and add it directly into full matrix or nzval of sparse matrix 'out'.
+# given a vector a
+# ia:    where in the vector to pick data
+# ida:   where in the partials to pick data
+# iasm:  where in first dim of out to put data      (if transpose: second)
+# idasm: where in the second dim of out to put data (if transpose: first)
+#
+# ∀ i,j out[asm[iasm[i]+length(ia)*idasm[j]-1,iele]] += a[ia[i]].dx[ida[j]]  
+#
+# out::Array is deliberately vague, encompassing 𝕣2 and sparse.nzval
+function add_∂!{P,S,T}(out::Array,asm,iele,a::SVector{Na,∂ℝ{P,Nda,R}},ia=1:Na,ida=1:Nda ; iasm=idvec,idasm=idvec,Δt=idmult) where{P,Nda,R,Na,S,T}
     for (i,iaᵢ) ∈ enumerate(ia), (j,idaⱼ) ∈ enumerate(ida)
         k = if T==:transpose   idasm[j]+length(ida)*( iasm[i]-1)   
         elseif T==:notranspose iasm[ i]+length( ia)*(idasm[j]-1)  
@@ -585,11 +606,11 @@ function add_∂!{P,S,T}(out::Array,asm,iele,a::SVector{Na,∂ℝ{P,Nda,R}},ia=1
     end
 end  
 add_∂!{P    }(                                     args...;kwargs...) where{P         } = add_∂!{P,:plus             }(args...;kwargs...) 
-add_∂!{P  ,S}(                                     args...;kwargs...) where{P,S       } = add_∂!{P,S    ,:notranspose}(args...;kwargs...) 
+add_∂!{P,S  }(                                     args...;kwargs...) where{P,S       } = add_∂!{P,S    ,:notranspose}(args...;kwargs...) 
 add_∂!{P,S,T}(out::SparseMatrixCSC,                args...;kwargs...) where{P,S,T     } = add_∂!{P,S    ,T           }(out.nzval, args...;kwargs...)
 add_∂!{P,S,T}(out::Array,asm,iele,a::SVector{Na,R},args...;kwargs...) where{P,S,T,Na,R} = nothing # if P does not match
 
-function add_∂!{P,S,T}(out::Vector,asm, iele, a::SVector{Na,∂ℝ{P,Nda,R}},ia,ida::𝕫,Δt=idmult) where{P,S,T,Nda,R,Na} # Lλr::Vector in Newmark-β context
+function add_∂!{P,S}(out::Vector,asm, iele, a::SVector{Na,∂ℝ{P,Nda,R}},ia,ida::𝕫 ; Δt=idmult) where{P,S,Nda,R,Na} # Lλr::Vector in Newmark-β context
     for (i,iaᵢ) ∈ enumerate(ia)
         iout = asm[i,iele]
         if iout≠0
@@ -600,12 +621,15 @@ function add_∂!{P,S,T}(out::Vector,asm, iele, a::SVector{Na,∂ℝ{P,Nda,R}},i
         end
     end
 end   
-function add_∂!{P,S,T}(out::𝕣0,a::SVector{Na,∂ℝ{P,Nda,R}},ia::𝕫,ida::𝕫;Δt=idmult) where{P,S,T,Nda,R,Na} # Lrr, scalar in Newmark-β context
-    if     S==:plus   out[]+=a[ia].dx[ida]*Δt  
-    elseif S==:minus  out[]-=a[ia].dx[ida]*Δt  
-    else   muscadeerror((;S=S),"Illegal value of parameter S")    
-    end
-end
+
+
+
+# function add_∂!{P,S,T}(out::𝕣0,a::SVector{Na,∂ℝ{P,Nda,R}},ia::𝕫,ida::𝕫;Δt=idmult) where{P,S,T,Nda,R,Na} # Lrr, scalar in Newmark-β context
+#     if     S==:plus   out[]+=a[ia].dx[ida]*Δt  
+#     elseif S==:minus  out[]-=a[ia].dx[ida]*Δt  
+#     else   muscadeerror((;S=S),"Illegal value of parameter S")    
+#     end
+# end
 
 ####### called by addin!, and by nested elements to "get a Lagrangian" and "get a residual"
 # 1) comprehensive check of the types of arguments, to help catch bugs in solvers and elements at compile time

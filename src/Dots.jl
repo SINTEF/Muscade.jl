@@ -75,11 +75,13 @@ dots(a::Vector{Ta},b::Vector{Tb},::Val{0}) where {Ta<:Number,Tb<:Number      } =
     ha,ta,hb,tb = sa[1:end-ndots], sa[end-ndots+1:end], sb[1:ndots], sb[ndots+1:end]
     lha,lta,ltb = prod(ha), prod(ta), prod(tb)
     so          = Tuple{ha...,tb...}
+    zlo         = ntuple(i->0,lha*ltb)
     @assert length(sa)≥ndots
     @assert length(sb)≥ndots
     @assert ta==hb
     return if ndots==0                             quote SArray{$so}(SVector{$lha}(a)*SVector{$ltb}(b)')            end # external product
     elseif length(sa)==ndots && length(sb)==ndots  quote transpose(SVector{$lta}(a))*SVector{$lta}(b)               end # scalar product
+    elseif lta==0                                  quote SArray{$so}($(zlo...))                                     end # sum over zero terms
     else                                           quote SArray{$so}(SMatrix{$lha,$lta}(a)*SMatrix{$lta,$ltb}(b))   end # general product with summation and array output
     end
 end

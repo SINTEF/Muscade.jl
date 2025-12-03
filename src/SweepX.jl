@@ -44,58 +44,63 @@ addin!{:step}(out::AssemblySweepX{2},asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:
 addin!{:iter}(out::AssemblySweepX{2},asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{0}},U,A,t,Δt,SP,dbg) where{Nxder} = return
 function addin!{:step}(out::AssemblySweepX{2},asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A,t,Δt,SP,dbg) where{Nxder,Nx}
     a₁,a₂,a₃,b₁,b₂,b₃ = out.c.a₁,out.c.a₂,out.c.a₃,out.c.b₁,out.c.b₂,out.c.b₃
-    x,x′,x″    = ∂0(X),∂1(X),∂2(X)
+    x,x′,x″    = X
     δX,δr      = reδ{1}((;X=x,r=0.),(;X=scale.X,r=1.))
+    iX,ir,_    = revariate_indices(x,0.) 
     a          = a₂*x′ + a₃*x″
     b          = b₂*x′ + b₃*x″
     vx         = x  +    δX
-    vx′        = x′ + a₁*δX + a*δr 
-    vx″        = x″ + b₁*δX + b*δr
+    vx′        = x′ + a₁*δX - a*δr 
+    vx″        = x″ + b₁*δX - b*δr
     Lλ,FB      = getresidual(eleobj,(vx,vx′,vx″),U,A,t,SP,dbg)
     Lλ         = Lλ .* scale.X
-    add_value!(       out.Lλ ,asm[1],iele,Lλ             )  # rhs  = R    
-    add_∂!{1,:minus}( out.Lλ ,asm[1],iele,Lλ,1:Nx,(Nx+1,))  # rhs +=  -C⋅a -M⋅b 
-    add_∂!{1       }( out.Lλx,asm[2],iele,Lλ,1:Nx,1:Nx   )  # Mat  =  K + a₁C + b₁M
+    add_value!(out.Lλ ,asm[1],iele,Lλ         )  # rhs  = R    
+    add_∂!{1}( out.Lλ ,asm[1],iele,Lλ,iX,(ir,))  # rhs +=  -C⋅a -M⋅b 
+    add_∂!{1}( out.Lλx,asm[2],iele,Lλ,iX,iX   )  # Mat  =  K + a₁C + b₁M
 end
 function addin!{:iter}(out::AssemblySweepX{2},asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A,t,Δt,SP,dbg) where{Nxder,Nx} 
     a₁,b₁      = out.c.a₁,out.c.b₁
+    x,x′,x″    = X
     δX         = δ{1,Nx,𝕣}(scale.X)
-    Lλ,FB      = getresidual(eleobj,(∂0(X)+δX, ∂1(X)+a₁*δX, ∂2(X)+b₁*δX),U,A,t,SP,dbg)
+    Lλ,FB      = getresidual(eleobj,(x+δX, x′+a₁*δX, x″+b₁*δX),U,A,t,SP,dbg)
     Lλ         = Lλ .* scale.X
     add_value!(out.Lλ ,asm[1],iele,Lλ          )
     add_∂!{1}( out.Lλx,asm[2],iele,Lλ,1:Nx,1:Nx)
 end
 function addin!{:step}(out::AssemblySweepX{1},asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A,t,Δt,SP,dbg) where{Nxder,Nx}
     a₁,a₂      = out.c.a₁,out.c.a₂
-    x,x′       = ∂0(X),∂1(X)
+    x,x′       = X
     δX,δr      = reδ{1}((;X=x,r=0.),(;X=scale.X,r=1.))
     a          = a₂*x′
     vx         = x  +    δX   
-    vx′        = x′ + a₁*δX + a*δr  
+    vx′        = x′ + a₁*δX - a*δr  
     Lλ,FB      = getresidual(eleobj,(vx,vx′),U,A,t,SP,dbg)
     Lλ         = Lλ .* scale.X
-    add_value!(out.Lλ ,asm[1],iele,Lλ                    )  # rhs  = R    
-    add_∂!{1,:minus}( out.Lλ ,asm[1],iele,Lλ,1:Nx,(Nx+1,))  # rhs +=  -C⋅a 
-    add_∂!{1}( out.Lλx,asm[2],iele,Lλ,1:Nx,1:Nx          )  # Mat  = K + C/Δt 
+    add_value!(out.Lλ ,asm[1],iele,Lλ             )  # rhs  = R    
+    add_∂!{1}( out.Lλ ,asm[1],iele,Lλ,1:Nx,(Nx+1,))  # rhs +=  -C⋅a 
+    add_∂!{1}( out.Lλx,asm[2],iele,Lλ,1:Nx,1:Nx   )  # Mat  = K + C/Δt 
 end
 function addin!{:iter}(out::AssemblySweepX{1},asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A,t,Δt,SP,dbg) where{Nxder,Nx}
     a₁         = out.c.a₁
+    x,x′       = X
     δX         = δ{1,Nx,𝕣}(scale.X)
-    Lλ,FB      = getresidual(eleobj,(∂0(X)+δX, ∂1(X)+a₁*δX),U,A,t,SP,dbg)
+    Lλ,FB      = getresidual(eleobj,(x+δX, x′+a₁*δX),U,A,t,SP,dbg)
     Lλ         = Lλ .* scale.X
     add_value!(out.Lλ ,asm[1],iele,Lλ           )  # rhs  = R    
     add_∂!{1}( out.Lλx,asm[2],iele,Lλ,1:Nx,1:Nx )  # Mat  = K + C/Δt 
 end
 
 function addin!{Both}(out::AssemblySweepX{0},asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A,t,Δt,SP,dbg) where{Both,Nxder,Nx} 
+    x,         = X
     δX         = δ{1,Nx,𝕣}(scale.X)
-    Lλ,FB      = getresidual(eleobj,(∂0(X)+δX,),U,A,t,SP,dbg)
+    Lλ,FB      = getresidual(eleobj,(x+δX,),U,A,t,SP,dbg)
     Lλ         = Lλ .* scale.X
     add_value!(out.Lλ ,asm[1],iele,Lλ)
     add_∂!{1}( out.Lλx,asm[2],iele,Lλ)
 end
 
 struct   Newmarkβdecrement!{OX} end
+
 function Newmarkβdecrement!{2}(state,Δx ,Xdofgr,c,firstiter, a,b,x′,x″,Δx′,Δx″,args...) # x′, x″ are just mutable memory, neither input nor output.
     a₁,a₂,a₃,b₁,b₂,b₃ = c.a₁,c.a₂,c.a₃,c.b₁,c.b₂,c.b₃
 

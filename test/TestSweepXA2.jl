@@ -25,19 +25,19 @@ initialstate    = setdof!(initialstate,[x′];field=:tx1,nodID=[node],order=1)  
 
 Δt    = 0.1
 t     = Δt:Δt:100*Δt
-state0 = solve(SweepX{2};  initialstate,time= t,verbose=true,catcherror=true)
-state = solve(SweepXA{2};  initialstate,time= t,verbose=true,catcherror=true,maxAiter=20,maxΔa=1e-10)
+state0 = solve(SweepX{ 2};  initialstate,time= t,verbose=false,catcherror=true)
+state  = solve(SweepXA{2};  initialstate,time= t,verbose=true,catcherror=true,maxAiter=20,maxΔa=1e-10)
 
 @show state[1].A[1]
 
-using GLMakie
-fig      = Figure(size = (1000,800))
-axeX      = Axis(fig[1,1])
-x0 = [s.X[1][1] for s∈state0]
-x = [s.X[1][1] for s∈state]
-lines!(axeX,t,x,color=:black)
-lines!(axeX,t,x0,color=:red)
-display(fig)
+# using GLMakie
+# fig      = Figure(size = (1000,800))
+# axeX      = Axis(fig[1,1])
+# x0 = [s.X[1][1] for s∈state0]
+# x = [s.X[1][1] for s∈state]
+# lines!(axeX,t,x,color=:black)
+# lines!(axeX,t,x0,color=:red)
+# display(fig)
 
 
 
