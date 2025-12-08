@@ -31,12 +31,15 @@ BeamCrossSection(;EA,EI₂=EI₂,EI₃=EI₃,GJ=GJ,μ=μ,ι₁=ι₁,w=0.,Ca₁=
     xᵧ₀,xᵧ₁,xᵧ₂ = ∂0(xᵧ),∂1(xᵧ),∂2(xᵧ)
     xₗ₁          = xᵧ₁ ∘₁ r₀
     xₗ₂          = xᵧ₂ ∘₁ r₀
-    ## Compute drag force (example) and added-mass force (example)
-    ## fa = ρ * Ca .* xₗ₂
-    ## fd = .5 * ρ * A .* Cd .* xₗ₁ #.* abs.(xₗ₁)
+    ## Weight
+    fw =  SVector(0,0,o.w)
     ## Compute translational inertia force 
     fi = o.μ * xᵧ₂ 
-    ☼fₑ = fi + SVector(0,0,o.w)# external forces at Gauss point.
+    ## Compute added mass force 
+    faₗ = SVector(o.Ca₁ .* xₗ₂[1], o.Ca₂ .* xₗ₂[2], o.Ca₃ .* xₗ₂[3])
+    faᵧ = r₀ ∘₁ faₗ
+    # fd = .5 * ρ * A .* Cd .* xₗ₁ #.* abs.(xₗ₁)
+    ☼fₑ = fi + faᵧ + fw # external forces at Gauss point.
     ## Compute roll inertia moment 
     m₁ₗ = o.ι₁*vᵢ₂[1] #local 
     mᵧ = ∂0(rₛₘ)[:,1] * m₁ₗ #global

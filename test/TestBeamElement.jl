@@ -240,7 +240,7 @@ end
 ;
 
 ## Testing weight
-## Simply supported beam, bent upwards, with uniform weight (along negative t3)  
+## Beam bent upwards with uniform weight (along negative t3)  
 w = 10
 model           = Model(:TestModel)
 node1           = addnode!(model,𝕣[0,0,0])
@@ -248,13 +248,43 @@ node2           = addnode!(model,𝕣[L,0,0])
 elnod           = [model.nod[n.inod] for n∈[node1,node2]]
 mat             = BeamCrossSection(EA=EA,EI₂=EI₂,EI₃=EI₃,GJ=GJ,μ=μ,ι₁=ι₁,   w=w)
 beam            = EulerBeam3D(elnod;mat,orient2=SVector(0.,1.,0.))
-[addelement!(model,Hold,[node1]  ;field) for field∈[:t1,:t2,:t3]]; # Simply supported at end 1 
-[addelement!(model,Hold,[node2]  ;field) for field∈[:t1,:t2,:t3]]; # Simply supported at end 2
 x = SVector(0.,     0.,     0.,     0.,     w*L^3/(24*EI₂),     0.,            0.,    0.0,    0.,     0.,     -w*L^3/(24*EI₂),     0.); X = (x,)
 R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg) 
 @testset "residual weight" begin
-
     @test R        ≈  [ 0.0, 0.0, w*L/2, 0.0, 0.0, 0.0, 0.0, 0.0, w*L/2, 0.0, 0.0, 0.0 ]
+end
+
+## Testing added mass
+Ca₁ = 1.
+Ca₂ = 2.
+Ca₃ = 3.
+μ = 1. 
+a1,a2,a3 = 4.0,3.0,2.0;
+model           = Model(:TestModel)
+node1           = addnode!(model,𝕣[0,0,0])
+node2           = addnode!(model,𝕣[L,0,0])
+elnod           = [model.nod[n.inod] for n∈[node1,node2]]
+mat             = BeamCrossSection(EA=EA ,EI₂=EI₂,EI₃=EI₃,GJ=GJ,μ=μ,ι₁=ι₁,   Ca₁=Ca₁, Ca₂=Ca₂,Ca₃=Ca₃)
+beam            = EulerBeam3D(elnod;mat,orient2=SVector(0.,1.,0.))
+velocity        =  SVector(0.,0.,0.,0.,0.,0.,  0.,0.,0.,0.,0.,0.); 
+
+@testset "residual addded mass" begin
+    displacement    =  SVector(0.,0.,0.,0.,0.,0.,  0.,0.,0.,0.,0.,0.); 
+    acceleration =  SVector(a1,0.,0.,0.,0.,0.,  a1,0.,0.,0.,0.,0.); 
+    X = (displacement,velocity,acceleration); out = Muscade.diffed_residual(beam; X,U,A,t,SP); R = out.R
+    @test R        ≈  [ (μ+Ca₁)*a1*L/2, 0., 0.,    0.0, 0.0, 0.0,  (μ+Ca₁)*a1*L/2, 0., 0.,  0.0, 0.0, 0.0 ]
+
+
+    displacement =  SVector(0.,     0.,     0.,     0.,     (μ+Ca₃)*a3*L^3/(24*EI₂),     0.,     0.,    0.,    0.,     0.,      -(μ+Ca₃)*a3*L^3/(24*EI₂),      0.)
+    acceleration =  SVector(0.,0.,a3,0.,0.,0.,  0.,0.,a3,0.,0.,0.); 
+    X = (displacement,velocity,acceleration); out = Muscade.diffed_residual(beam; X,U,A,t,SP); R = out.R
+    @test R        ≈  [ 0., 0., (μ+Ca₃)*a3*L/2,    0.0, 0.0, 0.0,  0., 0., (μ+Ca₃)*a3*L/2,  0.0, 0.0, 0.0 ]
+
+    displacement =  SVector(0.,     0.,     0.,     0.,     0.,     -(μ+Ca₂)*a2*L^3/(24*EI₃),     0.,    0.,    0.,     0.,      0.,      (μ+Ca₂)*a2*L^3/(24*EI₃))
+    acceleration =  SVector(0.,a2,0.,0.,0.,0.,  0.,a2,0.,0.,0.,0.); 
+    X = (displacement,velocity,acceleration); out = Muscade.diffed_residual(beam; X,U,A,t,SP); R = out.R
+    @test R        ≈  [ 0., (μ+Ca₂)*a2*L/2, 0.,    0.0, 0.0, 0.0,  0., (μ+Ca₂)*a2*L/2, 0.,  0.0, 0.0, 0.0 ]
+
 end
 
 end
