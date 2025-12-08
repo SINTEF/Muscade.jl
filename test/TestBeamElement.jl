@@ -3,31 +3,6 @@ module TestBeamElement
 using Test, Muscade, StaticArrays, LinearAlgebra
 using Muscade.Toolbox
 
-a = SA[1,0,0]
-b = SA[0,1,1]
-r = adjust(a,b)
-R = Rodrigues(r)
-u = R*a
-
-# v1      = variate{1,3}(SA[.1,.2,.3])
-# M1      = Rodrigues(v1)
-# w1,w∂v1 = value_∂{1,3}(Rodrigues⁻¹(M1))
-
-# v2      = variate{1,3}(SA[1e-7,2e-7,1e-8])
-# M2      = Rodrigues(v2)
-# w2,w∂v2 = value_∂{1,3}(Rodrigues⁻¹(M2))
-
-
-# @testset "rotations" begin
-#     @test r ≈ [0.0, -1.1107207345395913, 1.1107207345395913]
-#     @test u ≈ [2.220446049250313e-16, 0.7071067811865476, 0.7071067811865476]
-#     @test v1 ≈ w1
-#     @test w∂v1 ≈ LinearAlgebra.I#[1 0 0;0 1 0;0 0 1]
-#     @test v2 ≈ w2
-#     @test w∂v2 ≈ LinearAlgebra.I#[1 0 0;0 1 0;0 0 1]
-# end
-
-###
 L               = 5
 model           = Model(:TestModel)
 node1           = addnode!(model,𝕣[0,0,0])
@@ -40,19 +15,19 @@ beam            = EulerBeam3D(elnod;mat,orient2=SVector(0.,1.,0.))
 @testset "constructor" begin
     @test beam.cₘ    ≈ [2.0, 1.5, 0.0]
     @test beam.rₘ    ≈ [0.8 -0.6 0.0; 0.6 0.8 -0.0; 0.0 0.0 1.0]
-    # @test beam.ζgp   ≈ [-0.2886751345948129, 0.2886751345948129]
+    @test beam.ζgp   ≈ [-0.4305681557970263, -0.16999052179242816, 0.16999052179242816, 0.4305681557970263]
     @test beam.ζnod  ≈ [-0.5, 0.5]
     @test beam.tgₘ   ≈ [4.0, 3.0, 0.0]
     @test beam.tgₑ   ≈ [5.0, 0.0, 0.0]
 
-    # @test beam.yₐ    ≈ [-1/√3,1/√3]
-    # @test beam.yᵤ    ≈ [-0.7698003589195012,0.7698003589195012]
-    # @test beam.yᵥ    ≈ [-1/6,-1/6]
-    # @test beam.κₐ    ≈ [2/L,2/L]
-    # @test beam.κᵤ    ≈ [0.2771281292110204,-0.2771281292110204]
-    # @test beam.κᵥ    ≈ [2/L,2/L]
+    @test beam.yₐ    ≈ [ -0.8611363115940526, -0.3399810435848563,   0.3399810435848563,   0.8611363115940526]
+    @test beam.yᵤ    ≈ [ -0.972414176921822,  -0.49032285223640754,  0.49032285223640754,  0.972414176921822]
+    @test beam.yᵥ    ≈ [ -0.0646110632135477, -0.221103222500738,   -0.221103222500738,  -0.0646110632135477]*L
+    @test beam.κₐ    ≈ [2.0,2.0,2.0,2.0]/L
+    @test beam.κᵤ    ≈ [  10.333635739128631,   4.079772523018276,   -4.079772523018276,  -10.333635739128631]/L^2
+    @test beam.κᵥ    ≈ [2.0,2.0,2.0,2.0]/L
 
-    # @test beam.dL    ≈ [2.5, 2.5]
+    @test beam.dL    ≈ [ 0.17392742256872692, 0.3260725774312731,  0.3260725774312731,  0.17392742256872692]*L
 end
 
 
@@ -263,6 +238,27 @@ end
     @test norm(M[12,[1,3,4,5,7,9,10,11]])       ≈ 0.
 end
 ;
+
+## Testing weight
+## Simply supported beam, bent upwards, with uniform weight (along negative t3)  
+w = 10
+model           = Model(:TestModel)
+node1           = addnode!(model,𝕣[0,0,0])
+node2           = addnode!(model,𝕣[L,0,0])
+elnod           = [model.nod[n.inod] for n∈[node1,node2]]
+mat             = BeamCrossSection(EA=EA,EI₂=EI₂,EI₃=EI₃,GJ=GJ,μ=μ,ι₁=ι₁,   w=w)
+beam            = EulerBeam3D(elnod;mat,orient2=SVector(0.,1.,0.))
+[addelement!(model,Hold,[node1]  ;field) for field∈[:t1,:t2,:t3]]; # Simply supported at end 1 
+[addelement!(model,Hold,[node2]  ;field) for field∈[:t1,:t2,:t3]]; # Simply supported at end 2
+x = SVector(0.,     0.,     0.,     0.,     w*L^3/(24*EI₂),     0.,            0.,    0.0,    0.,     0.,     -w*L^3/(24*EI₂),     0.); X = (x,)
+R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg) 
+@testset "residual weight" begin
+
+    @test R        ≈  [ 0.0, 0.0, w*L/2, 0.0, 0.0, 0.0, 0.0, 0.0, w*L/2, 0.0, 0.0, 0.0 ]
+end
+
+end
+
 # # using Profile,ProfileView,BenchmarkTools
 # # mission = :profile
 # # if  mission == :time
@@ -277,4 +273,3 @@ end
 # #     # code_warntype for the call represented by that bar.
 # # end
 # ;
-end

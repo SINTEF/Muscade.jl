@@ -36,7 +36,7 @@ BeamCrossSection(;EA,EI₂=EI₂,EI₃=EI₃,GJ=GJ,μ=μ,ι₁=ι₁,w=0.,Ca₁=
     ## fd = .5 * ρ * A .* Cd .* xₗ₁ #.* abs.(xₗ₁)
     ## Compute translational inertia force 
     fi = o.μ * xᵧ₂ 
-    ☼fₑ = fi # external forces at Gauss point.
+    ☼fₑ = fi + SVector(0,0,o.w)# external forces at Gauss point.
     ## Compute roll inertia moment 
     m₁ₗ = o.ι₁*vᵢ₂[1] #local 
     mᵧ = ∂0(rₛₘ)[:,1] * m₁ₗ #global
@@ -80,7 +80,7 @@ struct EulerBeam3D{Mat,Uforce} <: AbstractElement
     tgₑ      :: SVector{ndim,𝕣}  # Vector connecting the nodes of the element in the local coordinate system
     yₐ       :: SVector{ngp,𝕣}   # Value at gp of shape function for differential axial displacement or roll field
     yᵤ       :: SVector{ngp,𝕣}   # Value at gp of shape function for deflection due to differential nodal transverse translation
-    yᵥ       :: SVector{ngp,𝕣}   # Value at gp of shape function for deflection due to differenttial rotation (bending, not torsion)
+    yᵥ       :: SVector{ngp,𝕣}   # Value at gp of shape function for deflection due to differenttial rotation (bending, not torsion). Multiplied by L .
     κₐ       :: SVector{ngp,𝕣}   # Value at gp of shape function for torsion  . κₐ = yₐ′ . Divided by L .    
     κᵤ       :: SVector{ngp,𝕣}   # Value at gp of shape function for curvature. κᵤ = yᵤ′′. Divided by L².
     κᵥ       :: SVector{ngp,𝕣}   # Value at gp of shape function for curvature. κᵥ = yᵥ′′. Divided by L .
