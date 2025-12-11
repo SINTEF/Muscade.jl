@@ -271,20 +271,58 @@ velocity        =  SVector(0.,0.,0.,0.,0.,0.,  0.,0.,0.,0.,0.,0.);
 @testset "residual addded mass" begin
     displacement    =  SVector(0.,0.,0.,0.,0.,0.,  0.,0.,0.,0.,0.,0.); 
     acceleration =  SVector(a1,0.,0.,0.,0.,0.,  a1,0.,0.,0.,0.,0.); 
-    X = (displacement,velocity,acceleration); out = Muscade.diffed_residual(beam; X,U,A,t,SP); R = out.R
+    X = (displacement,velocity,acceleration); 
+    R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg)     
     @test R        ≈  [ (μ+Ca₁)*a1*L/2, 0., 0.,    0.0, 0.0, 0.0,  (μ+Ca₁)*a1*L/2, 0., 0.,  0.0, 0.0, 0.0 ]
-
-
-    displacement =  SVector(0.,     0.,     0.,     0.,     (μ+Ca₃)*a3*L^3/(24*EI₂),     0.,     0.,    0.,    0.,     0.,      -(μ+Ca₃)*a3*L^3/(24*EI₂),      0.)
-    acceleration =  SVector(0.,0.,a3,0.,0.,0.,  0.,0.,a3,0.,0.,0.); 
-    X = (displacement,velocity,acceleration); out = Muscade.diffed_residual(beam; X,U,A,t,SP); R = out.R
-    @test R        ≈  [ 0., 0., (μ+Ca₃)*a3*L/2,    0.0, 0.0, 0.0,  0., 0., (μ+Ca₃)*a3*L/2,  0.0, 0.0, 0.0 ]
 
     displacement =  SVector(0.,     0.,     0.,     0.,     0.,     -(μ+Ca₂)*a2*L^3/(24*EI₃),     0.,    0.,    0.,     0.,      0.,      (μ+Ca₂)*a2*L^3/(24*EI₃))
     acceleration =  SVector(0.,a2,0.,0.,0.,0.,  0.,a2,0.,0.,0.,0.); 
-    X = (displacement,velocity,acceleration); out = Muscade.diffed_residual(beam; X,U,A,t,SP); R = out.R
+    X = (displacement,velocity,acceleration); 
+    R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg) 
     @test R        ≈  [ 0., (μ+Ca₂)*a2*L/2, 0.,    0.0, 0.0, 0.0,  0., (μ+Ca₂)*a2*L/2, 0.,  0.0, 0.0, 0.0 ]
 
+    displacement =  SVector(0.,     0.,     0.,     0.,     (μ+Ca₃)*a3*L^3/(24*EI₂),     0.,     0.,    0.,    0.,     0.,      -(μ+Ca₃)*a3*L^3/(24*EI₂),      0.)
+    acceleration =  SVector(0.,0.,a3,0.,0.,0.,  0.,0.,a3,0.,0.,0.); 
+    X = (displacement,velocity,acceleration); 
+    R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg) 
+    @test R        ≈  [ 0., 0., (μ+Ca₃)*a3*L/2,    0.0, 0.0, 0.0,  0., 0., (μ+Ca₃)*a3*L/2,  0.0, 0.0, 0.0 ]
+
+end
+
+## Testing damping
+Cl₁ = 1.
+Cl₂ = 2.
+Cl₃ = 3.
+Cq₁ = .1
+Cq₂ = .2
+Cq₃ = .3
+μ = 1. 
+v1,v2,v3 = 1.0,1.1,0.1;
+model           = Model(:TestModel)
+node1           = addnode!(model,𝕣[0,0,0])
+node2           = addnode!(model,𝕣[L,0,0])
+elnod           = [model.nod[n.inod] for n∈[node1,node2]]
+mat             = BeamCrossSection(EA=EA ,EI₂=EI₂,EI₃=EI₃,GJ=GJ,μ=μ,ι₁=ι₁,   Cl₁=Cl₁, Cl₂=Cl₂,Cl₃=Cl₃, Cq₁=Cq₁, Cq₂=Cq₂,Cq₃=Cq₃)
+beam            = EulerBeam3D(elnod;mat,orient2=SVector(0.,1.,0.))
+acceleration =  SVector(0,0.,0.,0.,0.,0.,  0.,0.,0.,0.,0.,0.); 
+@testset "residual damping" begin
+    displacement    =  SVector(0.,0.,0.,0.,0.,0.,  0.,0.,0.,0.,0.,0.); 
+    velocity        =  SVector(v1,0.,0.,0.,0.,0.,  v1,0.,0.,0.,0.,0.); 
+    X = (displacement,velocity,acceleration); 
+    R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg) 
+    @test R        ≈  [ (Cl₁+Cq₁*abs(v1))*v1*L/2, 0., 0.,    0.0, 0.0, 0.0,  (Cl₁+Cq₁*abs(v1))*v1*L/2, 0., 0.,  0.0, 0.0, 0.0 ]
+
+    displacement =  SVector(0.,     0.,     0.,     0.,     0.,     -(Cl₂+Cq₂*abs(v2))*v2*L^3/(24*EI₃),     0.,    0.,    0.,     0.,      0.,      (Cl₂+Cq₂*abs(v2))*v2*L^3/(24*EI₃))
+    velocity =      SVector(0.,v2,0.,0.,0.,0.,  0.,v2,0.,0.,0.,0.); 
+    X = (displacement,velocity,acceleration); 
+    R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg) 
+    @test R        ≈  [ 0., (Cl₂+Cq₂*abs(v2))*v2*L/2, 0.,    0.0, 0.0, 0.0,  0., (Cl₂+Cq₂*abs(v2))*v2*L/2, 0.,  0.0, 0.0, 0.0 ]
+
+    displacement =  SVector(0.,     0.,     0.,     0.,     (Cl₃+Cq₃*abs(v3))*v3*L^3/(24*EI₂),     0.,     0.,    0.,    0.,     0.,      -(Cl₃+Cq₃*abs(v3))*v3*L^3/(24*EI₂),      0.)
+    velocity =      SVector(0.,0.,v3,0.,0.,0.,  0.,0.,v3,0.,0.,0.); 
+    X = (displacement,velocity,acceleration); 
+    R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg)
+    @test R        ≈  [ 0., 0., (Cl₃+Cq₃*abs(v3))*v3*L/2,    0.0, 0.0, 0.0,  0., 0., (Cl₃+Cq₃*abs(v3))*v3*L/2,  0.0, 0.0, 0.0 ]
 end
 
 end

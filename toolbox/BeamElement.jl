@@ -36,10 +36,19 @@ BeamCrossSection(;EA,EI₂=EI₂,EI₃=EI₃,GJ=GJ,μ=μ,ι₁=ι₁,w=0.,Ca₁=
     ## Compute translational inertia force 
     fi = o.μ * xᵧ₂ 
     ## Compute added mass force 
-    faₗ = SVector(o.Ca₁ .* xₗ₂[1], o.Ca₂ .* xₗ₂[2], o.Ca₃ .* xₗ₂[3])
+    faₗ = SVector(o.Ca₁ * xₗ₂[1], o.Ca₂ * xₗ₂[2], o.Ca₃ * xₗ₂[3])
     faᵧ = r₀ ∘₁ faₗ
-    # fd = .5 * ρ * A .* Cd .* xₗ₁ #.* abs.(xₗ₁)
-    ☼fₑ = fi + faᵧ + fw # external forces at Gauss point.
+    ## Compute linear damping force 
+    flₗ = SVector(   o.Cl₁ * xₗ₁[1], o.Cl₂ * xₗ₁[2], o.Cl₃ * xₗ₁[3])
+    flᵧ = r₀ ∘₁ flₗ
+    ## Compute quadratic damping force
+    fq1ₗ = o.Cq₁ * xₗ₁[1]^2; if xₗ₁[1] < 0; fq1ₗ = -fq1ₗ end
+    fq2ₗ = o.Cq₂ * xₗ₁[2]^2; if xₗ₁[2] < 0; fq2ₗ = -fq2ₗ end
+    fq3ₗ = o.Cq₃ * xₗ₁[3]^2; if xₗ₁[3] < 0; fq3ₗ = -fq3ₗ end
+    fqₗ = SVector(fq1ₗ,fq2ₗ,fq3ₗ)
+    fqᵧ = r₀ ∘₁ fqₗ
+    # Summing up forces
+    ☼fₑ = fi + faᵧ + flᵧ + fqᵧ + fw # external forces at Gauss point.
     ## Compute roll inertia moment 
     m₁ₗ = o.ι₁*vᵢ₂[1] #local 
     mᵧ = ∂0(rₛₘ)[:,1] * m₁ₗ #global
