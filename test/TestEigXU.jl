@@ -20,11 +20,6 @@ xn         = 1.
 λn         = 1e3
 un         = 1e3
 
-## beam in space
-# include("../toolbox/BeamElement.jl")
-# include("../examples/StrainGaugeOnBeamElement.jl")
-# include("../examples/PositionElement.jl")
-
 L    = 1;    # Beam length [m]
 q    = 0.0;  # Uniform lateral load [N/m]
 EI₂  = 1;    # Bending stiffness [Nm²]
@@ -145,14 +140,14 @@ eigincXU          = solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=true,v
 
 
 
-# nα                = 32
-# α                 = 2π*(1:nα)/nα
-# circle            = 0.05*[cos.(α) sin.(α)]'
-# GUI(initialstate,eigincXU;shadow = (;EulerBeam3D              = (;style=:shape,line_color=:grey,Udof=false),
-#                                     StrainGaugeOnEulerBeam3D  = (;gauge_color=:transparent)         ),
-#                           model  = (;EulerBeam3D              = (;style=:solid,section=circle),
-#                                      StrainGaugeOnEulerBeam3D = (;L=0.03),
-#                                      Position3D               = (;L=.03)) ) 
+nα                = 32
+α                 = 2π*(1:nα)/nα
+circle            = 0.05*[cos.(α) sin.(α)]'
+GUI(initialstate,eigincXU;shadow = (;EulerBeam3D              = (;style=:shape,line_color=:grey,Udof=false),
+                                    StrainGaugeOnEulerBeam3D  = (;gauge_color=:transparent)         ),
+                          model  = (;EulerBeam3D              = (;style=:solid,section=circle),
+                                     StrainGaugeOnEulerBeam3D = (;L=0.03),
+                                     Position3D               = (;L=.03)) ) 
 
 
 # using SnoopCompileCore, SnoopCompile, AbstractTrees, ProfileView
