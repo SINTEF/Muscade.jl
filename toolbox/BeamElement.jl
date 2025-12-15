@@ -10,7 +10,7 @@ struct BeamCrossSection
     GJ  :: 𝕣 # Torsional stiffness [Nm/(rad/m)] about longitudinal axis
     μ   :: 𝕣 # Mass per unit length [kg/m]
     ι₁  :: 𝕣 # (Mass) moment of inertia about longitudial axis per unit length [kgm²/m]
-    w   :: 𝕣 # Weight per unit length (N/m)
+    w   :: 𝕣 # Weight per unit length [N/m]
     Ca₁ :: 𝕣 # Tangential added mass per unit length [kg/m]
     Cl₁ :: 𝕣 # Tangential linear damping coefficient per unit length [N/m/(m/s)]
     Cq₁ :: 𝕣 # Tangential quadratic damping coefficient per unit length [N/m/(m/s)^2], for example from drag
@@ -20,6 +20,7 @@ struct BeamCrossSection
     Ca₃ :: 𝕣 # Tranvserse added mass per unit length [kg/m] for motions along third axis
     Cl₃ :: 𝕣 # Transverse linear damping coefficient per unit length [N/m/(m/s)] for motions along third axis
     Cq₃ :: 𝕣 # Transverse quadratic damping coefficient per unit length [N/m/(m/s)^2], for motions along third axis
+    # TODO: add gravity field to beam properties (time dependent), and use it to compute the weight. This to enable static analyses. 
 end
 BeamCrossSection(;EA,EI₂=EI₂,EI₃=EI₃,GJ=GJ,μ=μ,ι₁=ι₁,w=0.,Ca₁=0.,Cl₁=0.,Cq₁=0.,Ca₂=0.,Cl₂=0.,Cq₂=0.,Ca₃=0.,Cl₃=0.,Cq₃=0.) = BeamCrossSection(EA,EI₂,EI₃,GJ,μ,ι₁,w,Ca₁,Cl₁,Cq₁,Ca₂,Cl₂,Cq₂,Ca₃,Cl₃,Cq₃);
 
