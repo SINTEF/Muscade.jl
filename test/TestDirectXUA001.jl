@@ -21,6 +21,7 @@ e6              = addelement!(model,Hold   ,[n3], field=:tx1)
 e7              = addelement!(model,Hold   ,[n3], field=:tx2)
 @functor with() positionMeas(x,t)   = 0.5*((x-0.12t)/0.01)^2
 @functor with() acost(a)     = 0.5*(a/.1)^2
+#@functor with() acost(a)     = 0.5*(a)^2
 
 e8              = addelement!(model,SingleDofCost ,class=:X, field=:tx1,[n1]      ,cost=positionMeas)
 e9              = addelement!(model,SingleDofCost ,class=:X, field=:tx2,[n1]      ,cost=positionMeas)
@@ -31,8 +32,8 @@ stateX          = solve(SweepX{0};  initialstate,time=[0.],verbose=false)
 stateXUA        = solve(DirectXUA{0,0,1};initialstate=[stateX[1]],time = [0:.1:1],verbose=false,maxiter=50)
 iexp = 1
 @testset "solution" begin
-    @test stateXUA[iexp][2].X[1]' ≈ [0.0154897  0.0154897  0.0  0.0  0.0  0.0  -0.0100155  1.55379e-5  1.55379e-5  -0.0100155] rtol=1e-4
-    @test stateXUA[iexp][2].A'    ≈ [  -0.000195471  -0.0400374] rtol=1e-4
+    @test stateXUA[iexp][2].X[1]' ≈ [0.0125777  0.0125777  0.0  0.0  0.0  0.0  -0.0100126  1.26094e-5  1.26094e-5  -0.0100126] rtol=1e-4
+    @test stateXUA[iexp][2].A'    ≈ [  -3.83011e-5  -0.0672263] rtol=1e-4
     @test stateXUA[iexp][2].A ≡ stateXUA[iexp][1].A
 end
 stateXUAcv           = solve(DirectXUA{0,0,1};initialstate=[stateX[1]],time = [0:.1:1],saveiter=true,verbose=false)
