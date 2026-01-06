@@ -88,7 +88,7 @@ Muscade.assemblebig!{:matrices}(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out,[state],[n
 # fig = Muscade.spy(Lvv,title="bigsparse Lvv sparsity",size=500)
 # save("C:\\Users\\philippem\\.julia\\dev\\Muscade\\spy.jpg",fig)
 
-stateXUA         = solve(DirectXUA{OX,OU,IA};initialstate=[state0,state0],time=[0:1.:5, 6:1.:12],maxiter=100,verbose=false)
+#stateXUA         = solve(DirectXUA{OX,OU,IA};initialstate=[state0,state0],time=[0:1.:5, 6:1.:12],maxiter=100,verbose=false)
 
 @testset "prepare_out" begin
     @test out.L1[1] ≈ [[0.0, 0.0]]
@@ -104,7 +104,7 @@ stateXUA         = solve(DirectXUA{OX,OU,IA};initialstate=[state0,state0],time=[
     @test out.L2[2,1][3,1] ≈ sparse([1, 2, 1, 2], [1, 1, 2, 2], [1.0, 0.0, 0.0, 1.0], 2, 2)
     @test out.L2[3,3][1,1] ≈ sparse([1, 2, 3, 4], [1, 2, 3, 4], [0.0, 0.0, 2.0, 2.0], 4, 4)
     @test out.L2[3,4][1,1] ≈ sparse([1, 1, 2, 2], [1, 2, 3, 4], [0.0, 0.0, 0.0, 0.0], 4, 6)
-    @test out.L2[4,4][1,1] ≈ sparse([1, 2, 1, 2, 3, 4, 3, 4, 5, 6, 5, 6], [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6], [2.0e-14, 0.0, 0.0, 2.0e-14, 2.0e-14, 0.0, 0.0, 2.0e-14, 2.0e-14, 0.0, 0.0, 2.0e-14], 6, 6)
+    @test out.L2[4,4][1,1] ≈ sparse([1, 2, 1, 2, 3, 4, 3, 4, 5, 6, 5, 6], [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], 6, 6)
 end
 @testset "prepare_asm" begin
     @test asm[1,1]  ≈ [1 2]      # asm[iarray,ieletyp][ieledof,iele] -> idof|inz

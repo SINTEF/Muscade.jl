@@ -101,7 +101,7 @@ end
 
 struct   Newmarkβdecrement!{OX} end
 
-function Newmarkβdecrement!{2}(state,Δx ,Xdofgr,c,firstiter, a,b,x′,x″,Δx′,Δx″,args...) # x′, x″ are just mutable memory, neither input nor output.
+function Newmarkβdecrement!{2}(state::State,Δx ,Xdofgr,c,firstiter, a,b,x′,x″,Δx′,Δx″,args...) # x′, x″ are just mutable memory, neither input nor output.
     a₁,a₂,a₃,b₁,b₂,b₃ = c.a₁,c.a₂,c.a₃,c.b₁,c.b₂,c.b₃
 
     if firstiter
@@ -119,7 +119,7 @@ function Newmarkβdecrement!{2}(state,Δx ,Xdofgr,c,firstiter, a,b,x′,x″,Δx
     decrement!(state,2,Δx′,Xdofgr)
     decrement!(state,3,Δx″,Xdofgr)
 end
-function Newmarkβdecrement!{1}(state,Δx ,Xdofgr,c,firstiter, a,x′,Δx′,args...)
+function Newmarkβdecrement!{1}(state::State,Δx ,Xdofgr,c,firstiter, a,x′,Δx′,args...)
     a₁,a₂ = c.a₁,c.a₂
 
     if firstiter
@@ -132,7 +132,7 @@ function Newmarkβdecrement!{1}(state,Δx ,Xdofgr,c,firstiter, a,x′,Δx′,arg
     decrement!(state,1,Δx ,Xdofgr)
     decrement!(state,2,Δx′,Xdofgr)
 end
-function Newmarkβdecrement!{0}(state,Δx ,Xdofgr,args...)
+function Newmarkβdecrement!{0}(state::State,Δx ,Xdofgr,args...)
     decrement!(state,1,Δx ,Xdofgr)
 end
 

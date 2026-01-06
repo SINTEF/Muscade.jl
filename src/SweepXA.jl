@@ -1,71 +1,135 @@
-### Assembler
+### Rₐ assembler
 
-mutable struct AssemblySweepXA{OX,NDX} <: Assembly
+mutable struct AssemblySweepXA_Rₐ{OX} 
     # up
-    Lλ        :: 𝕣1  
-    Lx        :: 𝕣1  
-    Lr        :: 𝕣0   
-    La        :: 𝕣1  
-    Lλx       :: Sparse𝕣2 
     Lλa       :: 𝕣2 
+    # down
+    c         :: Newmarkβcoefficients{OX}
+end   
+function prepare(::Type{AssemblySweepXA_Rₐ{OX}},model,dis) where{OX}
+    Xdofgr             = allXdofs(model,dis) 
+    Adofgr             = allAdofs(model,dis)
+    nXdof  = nΛdof     = getndof(Xdofgr)
+    nAdof              = getndof(Adofgr)
+    narray,neletyp     = 3,getneletyp(model)
+    asm                = Matrix{𝕫2}(undef,narray,neletyp)  # asm[iarray,ieletyp][ieledof,iele]
+    asmx               = Vector{𝕫2}(undef       ,neletyp)  # asmx[ieletyp][ieledof,iele]
+    asma               = Vector{𝕫2}(undef       ,neletyp)  # asmx[ieletyp][ieledof,iele]
+    Lx                 = asmvec!(asmx          ,Xdofgr,dis)
+    La                 = asmvec!(asma          ,Adofgr,dis)
+    Lλa                = asmfullmat!(view(asm, 1,:),asmx,asma,nΛdof,nAdof)  
+
+    out                = AssemblySweepXA_Rₐ{OX}(Lλa, Newmarkβcoefficients{OX}()) 
+    return out,asm,Xdofgr,Adofgr
+end
+function zero!(out::AssemblySweepXA_Rₐ) 
+    zero!(out.Lλa)
+end
+function assemble!{:Rₐ}(out::AssemblySweepXA_Rₐ,asm,dis,model,state,Δt,Xₐ,dbg) 
+    zero!(out)
+    for ieletyp = 1:lastindex(model.eleobj)
+        eleobj  = model.eleobj[ieletyp]
+        assemble_!{:Rₐ}(out,view(asm,:,ieletyp),dis.dis[ieletyp],eleobj,state,state.time,Δt,state.SP,Xₐ,(dbg...,ieletyp=ieletyp))
+    end
+end
+assemble_!{         :Rₐ}(out::AssemblySweepXA_Rₐ,asm,dis,eleobj::Vector{<:Acost},state::State{nΛder,nXder,nUder},t,Δt,SP,Xₐ,dbg) where{nΛder,nXder,nUder} = nothing
+function assemble_!{:Rₐ}(out::AssemblySweepXA_Rₐ,asm,dis,eleobj                 ,state::State{nΛder,nXder,nUder},t,Δt,SP,Xₐ,dbg) where{nΛder,nXder,nUder}
+    for iele  = 1:lastindex(eleobj)
+        index = dis.index[iele]
+        Λe    = NTuple{nΛder}(λ[index.X] for λ∈state.Λ)
+        Xe    = NTuple{nXder}(x[index.X] for x∈state.X)
+        Ue    = NTuple{nUder}(u[index.U] for u∈state.U)
+        Ae    = state.A[index.A]
+        Xₐe   = NTuple{nXder}(xₐ[index.X,index.A] for xₐ∈Xₐ)
+        addin!{:Rₐ}(out,asm,iele,dis.scale,eleobj[iele],Λe,Xe,Ue,Ae,Xₐe, t,Δt,SP,(dbg...,iele=iele)) # defined by solver.  Called for each element. But the asm that is passed
+    end                                                                              # is of the form asm[iarray][i,iele], because addin! will add to all arrays in one pass
+end
+function addin!{:Rₐ}(out::AssemblySweepXA_Rₐ{OX},asm,iele,scale,eleobj,Λ,X::NTuple{NXder,<:SVector{Nx}},U,A::SVector{Na},Xₐ::NTuple{NXder,<:SMatrix{Nx,Na}},t,Δt,SP,dbg) where{OX,NXder,Nx,Na}
+    @assert NXder == OX+1                                                    
+    δA        = δ{1,Na,𝕣}(scale.A)
+    vX        = ntuple(ider->X[ider] + Xₐ[ider] ∘₁ δA, NXder)
+    vA        =              A       +             δA
+    R,FB      = getresidual(eleobj,vX,U,vA,t,SP,dbg) 
+    add_∂!{1}( out.Lλa ,asm[1],iele,R)  
+end
+
+struct   propagate!{OX} end
+function propagate!{OX}(Xₐ,c)
+    a₁,a₂,a₃,b₁,b₂,b₃ = c.a₁,c.a₂,c.a₃,c.b₁,c.b₂,c.b₃
+    if OX≥2 b₂♯,b₃♯   = b₂/(1-a₂), a₃/(1-a₂)+b₃       end
+    if OX≥1 Xₐ[2]   .-= a₂  .* Xₐ[2] .+ a₃ .* Xₐ[3]   end #         xₐ′-= aₐ
+    if OX≥2 Xₐ[3]   .-= b₂♯ .* Xₐ[2] .+ b₃♯ .*Xₐ[3]   end # same as xₐ″-= bₐ but in place
+    return nothing
+end
+
+### Q♯ₐ assembler
+
+# TODO Lx[ider], etc.
+
+mutable struct AssemblySweepXA_Q♯ₐ{OX,OSX1,OSX2} 
+    # up
+    Lx        :: 𝕣1  
+    La        :: 𝕣1  
     Lxx       :: Sparse𝕣2 
-    Lxr       :: 𝕣1 
-    Lrr       :: 𝕣0 
     Lax       :: 𝕣2 
-    Lar       :: 𝕣1 
     Laa       :: 𝕣2 
     # down
     c         :: Newmarkβcoefficients{OX}
 end   
-
-function prepare(::Type{AssemblySweepXA{OX}},model,dis) where{OX}
-    Λdofgr             = allΛdofs(model,dis)
+function prepare(::Type{AssemblySweepXA_Q♯ₐ{OX,OSX1,OSX2}},model,dis) where{OX,OSX1,OSX2}
     Xdofgr             = allXdofs(model,dis) 
     Adofgr             = allAdofs(model,dis)
-    nΛdof              = getndof(Λdofgr)
     nXdof              = getndof(Xdofgr)
     nAdof              = getndof(Adofgr)
     narray,neletyp     = 10,getneletyp(model)
     asm                = Matrix{𝕫2}(undef,narray,neletyp)  # asm[iarray,ieletyp][ieledof,iele]
-    Lλ                 = asmvec!(view(asm, 1,:),Λdofgr,dis)
-    Lx                 = asmvec!(view(asm, 2,:),Xdofgr,dis)
-    Lr                 = 𝕣0()
-    La                 = asmvec!(view(asm, 3,:),Adofgr,dis)
-    Lλx                = asmmat!(view(asm, 4,:),view(asm,1,:),view(asm,2,:),nXdof,nXdof)
-    Lλa                = asmfullmat!(view(asm, 5,:),view(asm,1,:),view(asm,3,:),nXdof,nAdof)  
-    Lxx                = asmmat!(view(asm, 6,:),view(asm,2,:),view(asm,2,:),nXdof,nXdof)
-    Lxr                = asmvec!(view(asm, 7,:),Xdofgr,dis) 
-    Lrr                = 𝕣0()
-    Lax                = asmfullmat!(view(asm, 8,:),view(asm,3,:),view(asm,2,:),nAdof,nXdof)  
-    Lar                = asmvec!(view(asm, 9,:),Adofgr,dis)  
-    Laa                = asmfullmat!(view(asm,10,:),view(asm,3,:),view(asm,3,:),nAdof,nAdof)
-
-    out                = AssemblySweepXA{OX,OX+1}(Lλ,Lx,Lr,La,Lλx,Lλa,Lxx,Lxr,Lrr,Lax,Lar,Laa, Newmarkβcoefficients{OX}()) 
+    Lx                 = asmvec!(    view(asm, 1,:),Xdofgr,dis)
+    La                 = asmvec!(    view(asm, 2,:),Adofgr,dis)
+    Lxx                = asmmat!(    view(asm, 3,:),view(asm,1,:),view(asm,1,:),nXdof,nXdof)
+    Lax                = asmfullmat!(view(asm, 4,:),view(asm,2,:),view(asm,1,:),nAdof,nXdof)  
+    Laa                = asmfullmat!(view(asm, 5,:),view(asm,2,:),view(asm,2,:),nAdof,nAdof)
+    out                = AssemblySweepXA{OX,OSX1,OSX2}(Lx,La,Lxx,Lax,Laa, Newmarkβcoefficients{OX}()) 
     return out,asm,Xdofgr,Adofgr
 end
-function zero!(out::AssemblySweepXA) # TODO
-    zero!(out.Lλ )
+function zero!(out::AssemblySweepXA_Q♯ₐ) 
     zero!(out.Lx )
-    zero!(out.Lr )
     zero!(out.La )
-    zero!(out.Lλx)
-    zero!(out.Lλa)
     zero!(out.Lxx)
-    zero!(out.Lxr)
-    zero!(out.Lrr)
     zero!(out.Lax)
-    zero!(out.Lar)
     zero!(out.Laa)
 end
+function addin!{:Q♯ₐ}(out::AssemblySweepXA_Q♯ₐ{2,OSX1,OSX2},asm,iele,scale,eleobj,Λ,X::NTuple{3,<:SVector{Nx}},U,A::SVector{Na},t,Δt,SP,dbg) where{Nx,Na,OSX1,OSX2}
+    # TODO for now, ignoring OSX1, OSX2
+    # TODO OX=0, OX=1
+    a₁,a₂,a₃,b₁,b₂,b₃ = out.c.a₁,out.c.a₂,out.c.a₃,out.c.b₁,out.c.b₂,out.c.b₃
+    x ,x′ ,x″         = X
+    λ                 = ∂0(Λ)
+    (δX,δX′,δX″,δA)   = reδ{2}((;X=,A),(;X=scale.X,A=scale.A)) 
+    iX,iX′,iX″,iA,Nz  = revariate_indices(x,x′,x″,A) 
+    vx                = x  + δX 
+    vx′               = x′ + δX′ 
+    vx″               = x″ + δX″ 
+    vA                = A  + δA
+    L,FB              = getlagrangian(eleobj,λ,(vx,vx′,vx″),U,vA,t,SP,dbg) # TODO jump over elements with residual.  "getcost"
+    ∇L                = ∂{2,Na}(L)
+    add_value!(out.Lx , asm[1], iele, ∇L, iX     ; Δt)
+    add_value!(out.La , asm[2], iele, ∇L, iA     ; Δt)
+    add_∂!{1 }(out.Lxx, asm[3], iele, ∇L, iX, iX ; Δt)  
+    add_∂!{1 }(out.Lax, asm[4], iele, ∇L, iA, iX ; Δt)  
+    add_∂!{1 }(out.Laa, asm[5], iele, ∇L, iA, iA ; Δt)
+end
+function addin!{:Acost}(out::AssemblySweepXA_Q♯ₐ,asm,iele,scale,eleobj::Acost,A::SVector{Na},dbg) where{Na} 
+    d      = revariate{2}((;A),(;A=scale.A)) # careful: revariate returns a NamedTuple
+    ø      = nothing
+    C,_    = lagrangian(eleobj,ø,ø,ø,d.A,ø,ø ,dbg)
+    ∇ₐC    = ∂{2,Na}(C)
+    add_value!(out.La ,asm[2],iele,∇ₐC)
+    add_∂!{1 }(out.Laa,asm[5],iele,∇ₐC)
+end
 
+### add and decrement
 
-#=        TODO
-solver
-write specific adiff for ElementCost
-SweepXA for order 0 and 1
-Multi load cases        
-=#
-function Newmarkβdecrement!{OX}(Xₐ,ΔXₐ,Xgr,Agr,c) where{OX}
+function Newmarkβdecrement!{OX}(Xₐ::NTuple{NDX,𝕣2},ΔXₐ,Xgr,Agr,c) where{OX,NDX}
     # xₐ    -=    Δxₐ
     # xₐ′   -= a₁*Δxₐ
     # xₐ″   -= b₁*Δxₐ
@@ -81,117 +145,44 @@ function Newmarkβdecrement!{OX}(Xₐ,ΔXₐ,Xgr,Agr,c) where{OX}
         end 
     end
 end
+# function add_value!(out::𝕣2,asm,iele,a::SMatrix ; Δt=idmult) 
+#     for i ∈ eachindex(a)
+#         iout = asm[i,iele]
+#         if iout≠0 
+#             out[iout]+=VALUE(a[i])*Δt 
+#         end
+#     end
+# end   
+# add_∂!{         P,S,T}(out::𝕣2,asm, iele, a::SMatrix{Na,Ma,R        } ; Δt=idmult) where{P,S,T,Na,Ma,R} = nothing # if a is 𝕣2 or P does not match a
+# function add_∂!{P,S,T}(out::𝕣2,asm, iele, a::SMatrix{Na,Ma,∂ℝ{P,1,R}} ; Δt=idmult) where{P,S,T,R,Na,Ma} 
+#     for i ∈ eachindex(a)
+#         iout = asm[i,iele]
+#         if iout≠0
+#             if     S==:plus   out[iout]+=a[i].dx[1]*Δt  
+#             elseif S==:minus  out[iout]-=a[i].dx[1]*Δt  
+#             else   muscadeerror((;S=S),"Illegal value of parameter S")    
+#             end
+#         end
+#     end
+# end   
 
-
-# # Ignore no_second_order - we will only use it with length(δr)==1, promise.
-# function getresidual_with_higher_order(eleobj::Eleobj,X,U,A,t,SP,dbg,req) where{Eleobj} 
-#     R,FB,eleres = getresidual(eleobj,hasresidual(eleobj),haslagrangian(eleobj),Val(false),X,U,A,t,SP,dbg,req) 
-#     hasnan(R,FB) && muscadeerror((dbg...,t=t,SP=SP ),@sprintf("residual(%s,...) returned NaN in R, FB or derivatives",Eleobj))  
-#     return R,FB,eleres
-# end
-# function getresidual_with_higher_order(eleobj::Eleobj,X,U,A,t,SP,dbg,req...) where{Eleobj} 
-#     R,FB     = getresidual(eleobj,hasresidual(eleobj),haslagrangian(eleobj),Val(false),X,U,A,t,SP,dbg    ) 
-#     hasnan(R,FB) && muscadeerror((dbg...,t=t,SP=SP ),@sprintf("residual(%s,...) returned NaN in R, FB or derivatives",Eleobj))  
-#     return R,FB
-# end
-
-#### special case for the computation of Rₐ in SweepXA, add a SMatrix into a Matrix.  No 'build' or 'split'.
-# function add_value!(out::𝕣0,a,ia::𝕫;Δt=idmult)  # Lr, scalar in Newmark-β context
-#     out[] += VALUE(a[ia])*Δt
-# end
-function add_value!(out::𝕣2,asm,iele,a::SMatrix ; Δt=idmult) 
-    for i ∈ eachindex(a)
-        iout = asm[i,iele]
-        if iout≠0 
-            out[iout]+=VALUE(a[i])*Δt 
-        end
-    end
-end   
-add_∂!{         P,S,T}(out::𝕣2,asm, iele, a::SMatrix{Na,Ma,R        } ; Δt=idmult) where{P,S,T,Na,Ma,R} = nothing # if a is 𝕣2 or P does not match a
-function add_∂!{P,S,T}(out::𝕣2,asm, iele, a::SMatrix{Na,Ma,∂ℝ{P,1,R}} ; Δt=idmult) where{P,S,T,R,Na,Ma} 
-    for i ∈ eachindex(a)
-        iout = asm[i,iele]
-        if iout≠0
-            if     S==:plus   out[iout]+=a[i].dx[1]*Δt  
-            elseif S==:minus  out[iout]-=a[i].dx[1]*Δt  
-            else   muscadeerror((;S=S),"Illegal value of parameter S")    
-            end
-        end
-    end
-end   
-
-abstract type WithXₐ               end
-abstract type MissionQₐ♯ <: WithXₐ end
-abstract type MissionXₐ  <: WithXₐ end
-function addin!{MissionXₐ}(out::AssemblySweepXA{OX},asm,iele,scale,eleobj,Λ,X::NTuple{NXder,<:SVector{Nx}},U,A::SVector{Na},Xₐ::NTuple{NXder,<:SMatrix{Nx,Na}},t,Δt,SP,dbg) where{OX,NXder,Nx,Na}
-    @assert NXder == OX+1                                                    
-    δA                = δ{1,Na,𝕣}(scale.A)
-    vX                = ntuple(ider->X[ider] + Xₐ[ider] ∘₁ δA, NXder)
-    vA                =              A       +             δA
-    R,FB              = getresidual(eleobj,vX,U,vA,t,SP,dbg) 
-    add_∂!{1}( out.Lλa ,asm[5],iele,R)  
-end
-function addin!{MissionQₐ♯}(out::AssemblySweepXA{OX},asm,iele,scale,eleobj,Λ,X::NTuple{NXder,<:SVector{Nx}},U,A::SVector{Na},Xₐ::NTuple{NXder,<:SMatrix{Nx,Na}},t,Δt,SP,dbg) where{OX,NXder,Nx,Na}
-    @assert NXder == OX+1
-    λ                 = ∂0(Λ)
-    (δA,)             = reδ{2}((;A),(;A=scale.A)) 
-    vX                = ntuple(ider->X[ider] + Xₐ[ider] ∘₁ δA, NXder)
-    vA                =              A       +             δA
-    L,FB              = getlagrangian(eleobj,λ,vX,U,vA,t,SP,dbg) # TODO jump over elements with residual.  "getcost"
-    # REPRISE L is a pack of zeros. inputs vX, vA are good
-    ∇L                = ∂{2,Na}(L)
-    add_value!(out.La , asm[ 3], iele, ∇L ; Δt)             
-    add_∂!{1 }(out.Laa, asm[10], iele, ∇L ; Δt)  
-    if dbg.istep==10 && dbg.ieletyp==1
-        @show dbg
-        @show typeof(eleobj)
-        @show Xₐ
-        @show vX
-        @show vA
-        @show L
-    end
-end
-
-function addin!{:Acost}(out::AssemblySweepXA,asm,iele,scale,eleobj::Acost,A::SVector{Na},dbg) where{Na} 
-    d      = revariate{2}((;A),(;A=scale.A)) # careful: revariate returns a NamedTuple
-    ø      = nothing
-    C,_    = lagrangian(eleobj,ø,ø,ø,d.A,ø,ø ,dbg)
-    ∇ₐC    = ∂{2,Na}(C)
-    add_value!(out.La ,asm[ 3],iele,∇ₐC)
-    add_∂!{1 }(out.Laa,asm[10],iele,∇ₐC)
-end
-# special assembly, passing and disassembling Xₐ
-function assemble!{mission}(out::Assembly,asm,dis,model,state,Δt,Xₐ,dbg) where{mission <: WithXₐ }
-    zero!(out)
-    for ieletyp = 1:lastindex(model.eleobj)
-        eleobj  = model.eleobj[ieletyp]
-        assemble_!{mission}(out,view(asm,:,ieletyp),dis.dis[ieletyp],eleobj,state,state.time,Δt,state.SP,Xₐ,(dbg...,ieletyp=ieletyp))
-    end
-end
-assemble_!{         mission}(out::Assembly,asm,dis,eleobj::Vector{<:Acost},state::State{nΛder,nXder,nUder},t,Δt,SP,Xₐ,dbg) where{mission <: WithXₐ,nΛder,nXder,nUder} = nothing
-function assemble_!{mission}(out::Assembly,asm,dis,eleobj                 ,state::State{nΛder,nXder,nUder},t,Δt,SP,Xₐ,dbg) where{mission <: WithXₐ,nΛder,nXder,nUder}
-    for iele  = 1:lastindex(eleobj)
-        index = dis.index[iele]
-        Λe    = NTuple{nΛder}(λ[index.X] for λ∈state.Λ)
-        Xe    = NTuple{nXder}(x[index.X] for x∈state.X)
-        Ue    = NTuple{nUder}(u[index.U] for u∈state.U)
-        Ae    = state.A[index.A]
-        Xₐe   = NTuple{nXder}(xₐ[index.X,index.A] for xₐ∈Xₐ)
-        addin!{mission}(out,asm,iele,dis.scale,eleobj[iele],Λe,Xe,Ue,Ae,Xₐe, t,Δt,SP,(dbg...,iele=iele)) # defined by solver.  Called for each element. But the asm that is passed
-    end                                                                              # is of the form asm[iarray][i,iele], because addin! will add to all arrays in one pass
-end
-
+### The solver
 
 
 """
-	SweepXA{OX}
+	SweepXA{OX,OSX1,OSX2}
 
 A non-linear, time domain solver, that solves the problem time-step by time-step.
 Only the `X`-dofs of the model are solved for, while `U`-dofs and `A`-dofs are unchangeδ
 
-- `SweepXA{0}` is Newton-Raphson, with feasibility line-search, to handle inequality constraints. 
-- `SweepXA{1}` is implicit Euler, with feasibility line-search. 
-- `SweepXA{2}` is Newmark-β, with Newton-Raphson iterations and feasibility line search
+- `SweepXA{0,OSX1,OSX2}` is Newton-Raphson, with feasibility line-search, to handle inequality constraints. 
+- `SweepXA{1,OSX1,OSX2}` is implicit Euler, with feasibility line-search. 
+- `SweepXA{2,OSX1,OSX2}` is Newmark-β, with Newton-Raphson iterations and feasibility line search
+
+`OSX1` and `OSX2` refer to the order of time derivatives of `X` actualy used in the evaluation of `X`-costs.
+For example, a dynamic problem can have strain-measurement only, allowing to use `OXS1=OSX2=0`.
+`Qa♯` is computed using `OSX1`, while `Qaa♯` uses `OSX2`, so `OSX1>OSX2` introduces a pseudo-Newton step
+in the update of `A`. This accelerates each iteration, but makes convergence slover.  
 
 IMPORTANT NOTE: Muscade does not allow elements to have state variables, for example, plastic strain,
 or shear-free position for dry friction.  Where the element implements such physics, this 
@@ -232,20 +223,21 @@ A vector of length equal to that of the named input argument `time` containing t
 
 See also: [`solve`](@ref), [`initialize!`](@ref), [`findlastassigned`](@ref), [`study_singular`](@ref), [`DirectXUA`](@ref), [`FreqXU`](@ref)  
 """
-struct        SweepXA{OX} <: AbstractSolver end
-function solve(SX::Type{SweepXA{OX}},pstate,verbose,dbg;
+struct        SweepXA{OX,OSX1,OSX2} <: AbstractSolver end
+function solve(SX::Type{SweepXA{OX,OSX1,OSX2}},pstate,verbose,dbg;
                     time::AbstractVector{𝕣},
                     initialstate::State,
                     β::𝕣=1/4,γ::𝕣=1/2,
                     maxXiter::ℤ=50,maxΔx::ℝ=1e-5,maxLλ::ℝ=∞,
-                    maxAiter::ℤ=50,maxΔa::ℝ=1e-5,maxLa::ℝ=∞) where{OX}
+                    maxAiter::ℤ=50,maxΔa::ℝ=1e-5,maxLa::ℝ=∞) where{OX,OSX1,OSX2}
 
     model,dis        = initialstate.model,initialstate.dis
-    outX ,asmX ,Xdofgr          = prepare(AssemblySweepX{ OX},model,dis)  
-    outXA,asmXA,Xdofgr,Adofgr   = prepare(AssemblySweepXA{OX},model,dis)  
+    outX  ,asmX  ,Xdofgr         = prepare(AssemblySweepX{     OX          },model,dis) # assembler for std forward analysis
+    outRₐ ,asmRₐ ,Xdofgr,Adofgr  = prepare(AssemblySweepXA_Rₐ{ OX          },model,dis) # assembler for the sensitivity analysis
+    outQ♯ₐ,asmQ♯ₐ,Xdofgr,Adofgr  = prepare(AssemblySweepXA_Q♯ₐ{OX,OSX1,OSX2},model,dis) # assembler for A-update 
     nXdof            = getndof(Xdofgr)
     nAdof            = getndof(Adofgr)
-    buffer           = ntuple(i->𝕣1(undef,nXdof), 6)  
+    buffer           = ntuple(i->𝕣1(undef,nXdof), 6)  # TODO 6?
     cΔX²,cLλ²        = maxΔx^2,maxLλ^2
     cΔA²,cLa²        = maxΔa^2,maxLa^2
     cXiter           = 0
@@ -270,17 +262,18 @@ function solve(SX::Type{SweepXA{OX}},pstate,verbose,dbg;
     for iAiter = 1:maxAiter
 
         # time independant Acost
-        assembleA!{:Acost}(outXA,asmXA,dis,model,state,(dbg...,solver=:SweepXA,phase=:Acost,iAiter=iAiter))
-        La♯              .= outXA.La   
-        Laa♯             .= outXA.Laa  
-        zero!(Xₐ)
+        assembleA!{:Acost}(outQ♯ₐ,asmQ♯ₐ,dis,model,state,(dbg...,solver=:SweepXA,phase=:Acost,iAiter=iAiter))
+        La♯              .= outQ♯ₐ.La   
+        Laa♯             .= outQ♯ₐ.Laa  
+        zero!(Xₐ )
+        #zero!(Vₐ⁻)  # TODO needed?  Allocated?
 
         for (istep,t)    ∈ enumerate(time)
             oldt         = state.time
             state.time   = t
             Δt           = t-oldt
             Δt ≤ 0 && OX>0 && muscadeerror(@sprintf("Time step length not strictly positive at step=%3d",istep))
-            outX.c = outXA.c = Newmarkβcoefficients{OX}(Δt,β,γ)
+            outX.c = outQ♯ₐ.c = c = Newmarkβcoefficients{OX}(Δt,β,γ)
 
             # step and iterations
 
@@ -312,22 +305,31 @@ function solve(SX::Type{SweepXA{OX}},pstate,verbose,dbg;
 
             # sensitivity
 
-            a₁,a₂,a₃,b₁,b₂,b₃ = outXA.c.a₁,outXA.c.a₂,outXA.c.a₃,outXA.c.b₁,outXA.c.b₂,outXA.c.b₃
-            if OX≥2 b₂♯,b₃♯   = b₂/(1-a₂), a₃/(1-a₂)+b₃       end
-            if OX≥1 Xₐ[2]   .-= a₂  .* Xₐ[2] .+ a₃ .* Xₐ[3]   end #         xₐ′-= aₐ
-            if OX≥2 Xₐ[3]   .-= b₂♯ .* Xₐ[2] .+ b₃♯ .*Xₐ[3]   end # same as xₐ″-= bₐ but in place
-            assemble!{MissionXₐ}(outXA,asmXA,dis,model,state,Δt,Xₐ,(dbg...,solver=:SweepXA,mission=:Xₐ,iAiter=iAiter,istep=istep))
-            ΔXₐ       = Lλx\outXA.Lλa 
-            Newmarkβdecrement!{OX}(Xₐ,ΔXₐ ,Xdofgr,Adofgr,outXA.c)
+            # a₁,a₂,a₃,b₁,b₂,b₃ = outQ♯ₐ.c.a₁,outQ♯ₐ.c.a₂,outQ♯ₐ.c.a₃,outQ♯ₐ.c.b₁,outQ♯ₐ.c.b₂,outQ♯ₐ.c.b₃
+            # if OX≥2 b₂♯,b₃♯   = b₂/(1-a₂), a₃/(1-a₂)+b₃       end
+            # if OX≥1 Xₐ[2]   .-= a₂  .* Xₐ[2] .+ a₃ .* Xₐ[3]   end #         xₐ′-= aₐ
+            # if OX≥2 Xₐ[3]   .-= b₂♯ .* Xₐ[2] .+ b₃♯ .*Xₐ[3]   end # same as xₐ″-= bₐ but in place
+            propagate!{OX}(Xₐ,outQ♯ₐ.c)
+            assemble!{:Rₐ}(outQ♯ₐ,asmQ♯ₐ,dis,model,state,Δt,Xₐ,(dbg...,solver=:SweepXA,mission=:Xₐ,iAiter=iAiter,istep=istep))
+            ΔXₐ       = Lλx\outQ♯ₐ.Lλa 
+            Newmarkβdecrement!{OX}(Xₐ,ΔXₐ ,Xdofgr,Adofgr,outQ♯ₐ.c)
 
-            Ra[istep] = outXA.Lλa[1,1]  ### dbg   
+            Ra[istep] = outQ♯ₐ.Lλa[1,1]  ### dbg   
 
-            assemble!{MissionQₐ♯}(outXA,asmXA,dis,model,state,Δt,Xₐ,(dbg...,solver=:SweepXA,mission=:Qₐ♯,iAiter=iAiter,istep=istep))
-            La♯         .+= outXA.La    
-            Laa♯        .+= outXA.Laa 
+            # ΔA, accumulate costs over steps
+
+            assemble!{:Qₐ♯}(outQ♯ₐ,asmQ♯ₐ,dis,model,state,Δt,(dbg...,solver=:SweepXA,mission=:Qₐ♯,iAiter=iAiter,istep=istep))
+            La♯         .+= outQ♯ₐ.La 
+            Laa♯        .+= outQ♯ₐ.Laa 
+            for io = 0:OSX1
+                La♯     .+=            outQ♯ₐ.Lx[ io+1] ∘₁ Xₐ[io+1]
+                Laa♯    .+= symmetric!(outQ♯ₐ.Lax[io+1] ∘₁ Xₐ[io+1])
+                for jo = 0:OSX2
+                    Laa♯  .+= Xₐ[io+1]' ∘₁ outQ♯ₐ.Lxx[io+1,jo+1] ∘₁ Xₐ[jo+1] 
+                end
+            end
+
             
-
-             
             deltaXa[istep] = -ΔXₐ[1,1]  ### dbg   
             Xa[istep] = Xₐ[1][1]  ### dbg   
             Va[istep] = Xₐ[2][1]  ### dbg   

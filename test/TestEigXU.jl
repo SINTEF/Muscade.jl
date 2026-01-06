@@ -99,7 +99,7 @@ OX,OU                 = 2,0
 
 ## EigXU analysis
 Δω                = 2^-6 
-p                 = 2#11
+p                 = 11
 nmod              = 5
 
 
@@ -145,14 +145,14 @@ eigincXU          = solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=true,v
 
 
 
-# nα                = 32
-# α                 = 2π*(1:nα)/nα
-# circle            = 0.05*[cos.(α) sin.(α)]'
-# GUI(initialstate,eigincXU;shadow = (;EulerBeam3D              = (;style=:shape,line_color=:grey,Udof=false),
-#                                     StrainGaugeOnEulerBeam3D  = (;gauge_color=:transparent)         ),
-#                           model  = (;EulerBeam3D              = (;style=:solid,section=circle),
-#                                      StrainGaugeOnEulerBeam3D = (;L=0.03),
-#                                      Position3D               = (;L=.03)) ) 
+nα                = 32
+α                 = 2π*(1:nα)/nα
+circle            = 0.05*[cos.(α) sin.(α)]'
+GUI(initialstate,eigincXU;shadow = (;EulerBeam3D              = (;style=:shape,line_color=:grey,Udof=false),
+                                    StrainGaugeOnEulerBeam3D  = (;gauge_color=:transparent)         ),
+                          model  = (;EulerBeam3D              = (;style=:solid,section=circle),
+                                     StrainGaugeOnEulerBeam3D = (;L=0.03),
+                                     Position3D               = (;L=.03)) ) 
 
 
 # using SnoopCompileCore, SnoopCompile, AbstractTrees, ProfileView
