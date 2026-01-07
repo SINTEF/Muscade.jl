@@ -103,7 +103,7 @@ function addin!{mission}(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::El
     end        
     iλ   = 1:ndof[ind.Λ]
     Lλ   = out.L1[ind.Λ]
-    add_value!(Lλ[1] ,asm[arrnum(ind.Λ)],iele,R,iλ;Δt)   
+    isassigned(Lλ,1) && add_value!(Lλ[1] ,asm[arrnum(ind.Λ)],iele,R,iλ;Δt)   
     if mission==:matrices
         pβ       = 0
         for β∈xua, j=1:nder[β]
@@ -111,10 +111,8 @@ function addin!{mission}(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::El
             pβ  += ndof[β]
             Lλβ  = out.L2[ind.Λ,β]
             Lβλ  = out.L2[β,ind.Λ]
-            if j≤size(Lλβ,2) # ...but only add into existing matrices of L2, for better sparsity
-                add_∂!{1                 }(Lλβ[1,j],asm[arrnum(ind.Λ,β)],iele,R,iλ,iβ;Δt)
-                add_∂!{1,:plus,:transpose}(Lβλ[j,1],asm[arrnum(β,ind.Λ)],iele,R,iλ,iβ;Δt)
-            end
+            isassigned(Lλβ,1,j) && add_∂!{1                 }(Lλβ[1,j],asm[arrnum(ind.Λ,β)],iele,R,iλ,iβ;Δt)
+            isassigned(Lλβ,j,1) && add_∂!{1,:plus,:transpose}(Lβλ[j,1],asm[arrnum(β,ind.Λ)],iele,R,iλ,iβ;Δt)
         end
     end 
 end
@@ -133,18 +131,14 @@ function DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,OX,OU,IA}(out,asm,L,iel
         iα       = pα.+(1:ndof[α])
         pα      += ndof[α]
         Lα       = out.L1[α]
-        if i≤size(Lα,1)  # ...but only add into existing vectors of L1, for speed
-            add_value!(Lα[i] ,asm[arrnum(α)],iele,∇L,iα;Δt)
-        end
+        isassigned(Lα,i) && add_value!(Lα[i] ,asm[arrnum(α)],iele,∇L,iα;Δt)
         if mission==:matrices
             pβ       = 0
             for β∈λxua, j=1:nder[β]
                 iβ   = pβ.+(1:ndof[β])
                 pβ  += ndof[β]
                 Lαβ = out.L2[α,β]
-                if i≤size(Lαβ,1) && j≤size(Lαβ,2) # ...but only add into existing matrices of L2, for better sparsity
-                    add_∂!{1}(Lαβ[i,j],asm[arrnum(α,β)],iele,∇L,iα,iβ;Δt)
-                end
+                isassigned(Lαβ,i,j) && add_∂!{1}(Lαβ[i,j],asm[arrnum(α,β)],iele,∇L,iα,iβ;Δt)
             end
         end
     end
@@ -258,12 +252,14 @@ function makepattern(IA,nstep,out)
                     Lαβ = out.L2[α,β]
                     for     αder = 1:size(Lαβ,1)
                         for βder = 1:size(Lαβ,2)
-                            for     iα ∈ finitediff(αder-1,nstep[iexp],istep)
-                                for iβ ∈ finitediff(βder-1,nstep[iexp],istep)
-                                    nblock += 1   
-                                    αblk[nblock]=cumblk+3*(istep+iα.Δs-1)+α
-                                    βblk[nblock]=cumblk+3*(istep+iβ.Δs-1)+β
-                                    nz[  nblock]=Lαβ[1,1]  
+                            if isassigned(Lαβ,αder,βder)
+                                for     iα ∈ finitediff(αder-1,nstep[iexp],istep)
+                                    for iβ ∈ finitediff(βder-1,nstep[iexp],istep)
+                                        nblock += 1   
+                                        αblk[nblock]=cumblk+3*(istep+iα.Δs-1)+α
+                                        βblk[nblock]=cumblk+3*(istep+iβ.Δs-1)+β
+                                        nz[  nblock]=Lαβ[1,1]  
+                                    end
                                 end
                             end
                         end 
@@ -286,7 +282,8 @@ function makepattern(IA,nstep,out)
                 for α∈λxu 
                     # loop over derivatives and finitediff is optimized out, as time derivatives will only 
                     # be added into superbloc already reached by non-derivatives. No, it's not a bug...
-                    if size(out.L2[ind.A,α],1)>0
+                    Laα = out.L2[ind.A,α]
+                    if size(Laα,1)>0 && isassigned(Laα,1)
                         nblock += 1
                         αblk[nblock] = Ablk                
                         βblk[nblock] = cumblk+3*(istep-1)+α          
@@ -321,8 +318,9 @@ function assemblebig!{mission}(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out::AssemblyDi
     if IA==1
         Ablk = 3sum(nstep)+1  
         assembleA!{mission}(out,asm,dis,model,state[1][1],(dbg...,asm=:assemblebig!)) 
-        addin!(Lvasm ,Lv ,out.L1[ind.A      ][1  ],Ablk     )  
-        addin!(Lvvasm,Lvv,out.L2[ind.A,ind.A][1,1],Ablk,Ablk)
+        La, Laa = out.L1[ind.A], out.L2[ind.A,ind.A]
+        isassigned(La ,1  ) && addin!(Lvasm ,Lv ,out.L1[ind.A      ][1  ],Ablk     )  
+        isassigned(Laa,1,1) && addin!(Lvvasm,Lvv,out.L2[ind.A,ind.A][1,1],Ablk,Ablk)
     end    
     class = IA==1 ? λxua : λxu
     for iexp = 1:length(nstep)
@@ -332,21 +330,25 @@ function assemblebig!{mission}(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out::AssemblyDi
             for β∈class
                 Lβ = out.L1[β]
                 for βder = 1:size(Lβ,1)
-                    s    = Δt[iexp]^(1-βder)
-                    for iβ ∈ finitediff(βder-1,nstep[iexp],istep)  # TODO transpose or not? Potential BUG to be revealed when cost on time derivative of X or U
-                        βblk = β==ind.A ? Ablk : cumblk+3*(istep+iβ.Δs-1)+β
-                        addin!(Lvasm,Lv ,Lβ[βder],βblk,iβ.w*s) 
+                    if isassigned(Lβ,βder)
+                        s    = Δt[iexp]^(1-βder)
+                        for iβ ∈ finitediff(βder-1,nstep[iexp],istep)  # TODO transpose or not? Potential BUG to be revealed when cost on time derivative of X or U
+                            βblk = β==ind.A ? Ablk : cumblk+3*(istep+iβ.Δs-1)+β
+                            addin!(Lvasm,Lv ,Lβ[βder],βblk,iβ.w*s) 
+                        end
                     end
                 end
             end
             for α∈class, β∈class
                 Lαβ = out.L2[α,β]
                 for αder=1:size(Lαβ,1), βder=1:size(Lαβ,2)
-                    s    = Δt[iexp]^(2-αder-βder)
-                    for iα∈finitediff(αder-1,nstep[iexp],istep), iβ∈finitediff(βder-1,nstep[iexp],istep) # No transposition here, that's thoroughly checked against decay.
-                        αblk = α==ind.A ? Ablk : cumblk+3*(istep+iα.Δs-1)+α
-                        βblk = β==ind.A ? Ablk : cumblk+3*(istep+iβ.Δs-1)+β
-                        addin!(Lvvasm,Lvv,Lαβ[αder,βder],αblk,βblk,iα.w*iβ.w*s) 
+                    if isassigned(Lαβ,αder,βder)
+                        s    = Δt[iexp]^(2-αder-βder)
+                        for iα∈finitediff(αder-1,nstep[iexp],istep), iβ∈finitediff(βder-1,nstep[iexp],istep) # No transposition here, that's thoroughly checked against decay.
+                            αblk = α==ind.A ? Ablk : cumblk+3*(istep+iα.Δs-1)+α
+                            βblk = β==ind.A ? Ablk : cumblk+3*(istep+iβ.Δs-1)+β
+                            addin!(Lvvasm,Lvv,Lαβ[αder,βder],αblk,βblk,iα.w*iβ.w*s) 
+                        end
                     end
                 end
             end
