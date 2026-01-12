@@ -28,8 +28,10 @@ function assemblebigmat!(L2::Vector{Sparse𝕣2},L2bigasm::SparseMatrixCSC,asm,m
             for     αder = 1:size(Lαβ,1)
                 for βder = 1:size(Lαβ,2)
                     ider =  αder+βder-1   
-                    sgn  = isodd(αder) ? +1 : -1 # TODO Antisymmetry for odd derivatives? conjugation? Check theory.  See also DirectXUA
-                    addin!(L2bigasm,L2[ider],Lαβ[αder,βder],α,β,sgn) 
+                    if isassigned(Lαβ,αder,βder)
+                        sgn  = isodd(αder) ? +1 : -1 # TODO Antisymmetry for odd derivatives? conjugation? Check theory.  See also DirectXUA
+                        addin!(L2bigasm,L2[ider],Lαβ[αder,βder],α,β,sgn) 
+                    end
                 end
             end
         end

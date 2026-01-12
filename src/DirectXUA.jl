@@ -19,7 +19,7 @@ mutable struct AssemblyDirect{OX,OU,IA}  <:Assembly
     L1 :: Vector{Vector{𝕣1      }}    # L1[α  ][αder     ]  α∈ λ,x,u,a
     L2 :: Matrix{Matrix{Sparse𝕣2}}    # L2[α,β][αder,βder]
 end  
-function prepare(::Type{AssemblyDirect{OX,OU,IA}},model,dis;Xwhite=false,XUindep=false,UAindep=false,XAindep=false) where{OX,OU,IA}
+function prepare(::Type{AssemblyDirect{OX,OU,IA}},model,dis,wantedhessiancomponents) where{OX,OU,IA}
     dofgr    = (allΛdofs(model,dis),allXdofs(model,dis),allUdofs(model,dis),allAdofs(model,dis))
     ndof     = getndof.(dofgr)
     neletyp  = getneletyp(model)
@@ -36,33 +36,29 @@ function prepare(::Type{AssemblyDirect{OX,OU,IA}},model,dis;Xwhite=false,XUindep
     end
     L2    = Matrix{Matrix{Sparse𝕣2}}(undef,4,4)
     for α∈λxua, β∈λxua
-        am = asmmat!(view(asm,arrnum(α,β),:),view(asm,arrnum(α),:),view(asm,arrnum(β),:),ndof[α],ndof[β])
+        am    = asmmat!(view(asm,arrnum(α,β),:),view(asm,arrnum(α),:),view(asm,arrnum(β),:),ndof[α],ndof[β])
         nα,nβ = nder[α], nder[β]
-        if            α==β==ind.Λ          nα,nβ=0,0 end   # Lλλ is always zero
-        if Xwhite  && α==β==ind.X          nα,nβ=1,1 end   # X-measurement error is white noise process
-        if XUindep && α==ind.X && β==ind.U nα,nβ=0,0 end   # X-measurements indep of U
-        if XUindep && α==ind.U && β==ind.X nα,nβ=0,0 end   # X-measurements indep of U
-        if XAindep && α==ind.X && β==ind.A nα,nβ=0,0 end   # X-measurements indep of A
-        if XAindep && α==ind.A && β==ind.X nα,nβ=0,0 end   # X-measurements indep of A
-        if UAindep && α==ind.U && β==ind.A nα,nβ=0,0 end   # U-load indep of A
-        if UAindep && α==ind.A && β==ind.U nα,nβ=0,0 end   # U-load indep of A
         L2[α,β] = Matrix{Sparse𝕣2}(undef,nα,nβ)
         for αder=1:nα,βder=1:nβ
-            L2[α,β][αder,βder] = copy(am)
+            if wantedhessiancomponents[α,β][αder,βder] 
+                L2[α,β][αder,βder] = copy(am)
+            end
         end
     end
     out      = AssemblyDirect{OX,OU,IA}(L1,L2)
     return out,asm,dofgr
 end
-function zero!(out::AssemblyDirect) # who calls this???
+function zero!(out::AssemblyDirect) 
     for L1∈out.L1 
         for ℓ1∈L1
             zero!(ℓ1)
         end
     end
     for L2∈out.L2 
-        for ℓ2∈L2
-            zero!(ℓ2)
+        for i ∈ eachindex(L2)
+            if isassigned(L2,i)
+                zero!(L2[i])
+            end
         end
     end
 end
@@ -106,13 +102,13 @@ function addin!{mission}(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::El
     isassigned(Lλ,1) && add_value!(Lλ[1] ,asm[arrnum(ind.Λ)],iele,R,iλ;Δt)   
     if mission==:matrices
         pβ       = 0
-        for β∈xua, j=1:nder[β]
+        for β∈xua, βder=1:nder[β]
             iβ   = pβ.+(1:ndof[β])
             pβ  += ndof[β]
             Lλβ  = out.L2[ind.Λ,β]
             Lβλ  = out.L2[β,ind.Λ]
-            isassigned(Lλβ,1,j) && add_∂!{1                 }(Lλβ[1,j],asm[arrnum(ind.Λ,β)],iele,R,iλ,iβ;Δt)
-            isassigned(Lλβ,j,1) && add_∂!{1,:plus,:transpose}(Lβλ[j,1],asm[arrnum(β,ind.Λ)],iele,R,iλ,iβ;Δt)
+            isassigned(Lλβ,1,βder) && add_∂!{1                 }(Lλβ[1,βder],asm[arrnum(ind.Λ,β)],iele,R,iλ,iβ;Δt)
+            isassigned(Lλβ,βder,1) && add_∂!{1,:plus,:transpose}(Lβλ[βder,1],asm[arrnum(β,ind.Λ)],iele,R,iλ,iβ;Δt)
         end
     end 
 end
@@ -127,18 +123,18 @@ function DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,OX,OU,IA}(out,asm,L,iel
     λxua         = 1:4
     ∇L           = ∂{P,Np}(L)
     pα           = 0   # points into the partials, 1 entry before the start of relevant partial derivative in α,ider-loop
-    for α∈λxua, i=1:nder[α]   # we must loop over all time derivatives to correctly point into the adiff-partials...
+    for α∈λxua, αder=1:nder[α]   # we must loop over all time derivatives to correctly point into the adiff-partials...
         iα       = pα.+(1:ndof[α])
         pα      += ndof[α]
         Lα       = out.L1[α]
-        isassigned(Lα,i) && add_value!(Lα[i] ,asm[arrnum(α)],iele,∇L,iα;Δt)
+        isassigned(Lα,αder) && add_value!(Lα[αder] ,asm[arrnum(α)],iele,∇L,iα;Δt)
         if mission==:matrices
             pβ       = 0
-            for β∈λxua, j=1:nder[β]
+            for β∈λxua, βder=1:nder[β]
                 iβ   = pβ.+(1:ndof[β])
                 pβ  += ndof[β]
                 Lαβ = out.L2[α,β]
-                isassigned(Lαβ,i,j) && add_∂!{1}(Lαβ[i,j],asm[arrnum(α,β)],iele,∇L,iα,iβ;Δt)
+                isassigned(Lαβ,αder,βder) && add_∂!{1}(Lαβ[αder,βder],asm[arrnum(α,β)],iele,∇L,iα,iβ;Δt)
             end
         end
     end
@@ -244,7 +240,7 @@ function makepattern(IA,nstep,out)
     βblk     = 𝕫1(undef,maxblock)
     nz       = Vector{Sparse𝕣2}(undef,maxblock)
     nblock   = 0
-    cumblk      = 0
+    cumblk   = 0
     for iexp = 1:length(nstep)
         for istep = 1:nstep[iexp]
             for     α∈λxu 
@@ -384,7 +380,17 @@ function decrementbig!(state,Δ²,Lvasm,dofgr,Δv,nder,Δt,nstep)
     end
 end
 
+# Mutable default: all Hessians of all derivatives of all classes are wanted
+# wahc[α,β][iαder,iβder]
+function want_all_hessians(NΛ,NX,NU,NA) 
+    nder = (NΛ,NX,NU,NA)
+    # wahc = Matrix{𝕓2}(undef,4,4)
+    # for α∈λxua, β∈λxua
+    #     wahc[α,β] = [~(α==β==ind.Λ) for i=1:nder[α],j=1:nder[β]]
+    # end
+    return [ [~(α==β==ind.Λ) for i=1:nder[α],j=1:nder[β]] for α∈λxua, β∈λxua]
 
+end
 
 """
 	DirectXUA{OX,OU,IA}
@@ -443,7 +449,7 @@ function solve(::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
     maxiter::ℤ=50,
     maxΔλ::ℝ=1e-5,maxΔx::ℝ=1e-5,maxΔu::ℝ=1e-5,maxΔa::ℝ=1e-5,
     saveiter::𝔹=false,
-    kwargs...) where{OX,OU,IA,AR<:AbstractRange{𝕣},STATE<:State}
+    wantedhessiancomponents::Matrix{𝕓2}=want_all_hessians(1,OX+1,OU+1,IA)) where{OX,OU,IA,AR<:AbstractRange{𝕣},STATE<:State}
 
     #  Mostly constants
     local LU
@@ -475,7 +481,7 @@ function solve(::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
 
     # Prepare assembler
     verbose && @printf("\n    Preparing assembler\n")
-    out,asm,dofgr         = prepare(AssemblyDirect{OX,OU,IA},model,dis;kwargs...)          # mem and assembler for system at any given step
+    out,asm,dofgr         = prepare(AssemblyDirect{OX,OU,IA},model,dis,wantedhessiancomponents)          # mem and assembler for system at any given step
     assemble!{:matrices}(out,asm,dis,model,state[1][1],idmult,(dbg...,solver=:DirectXUA,phase=:sparsity))    # create a sample "out" for preparebig
     Lvv,Lv,Lvvasm,Lvasm,Lvdis = preparebig(IA,nstep,out)                                   # mem and assembler for big system
     cLvv                  = copy(Lvv)

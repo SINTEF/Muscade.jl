@@ -55,8 +55,9 @@ FAST             = true
 Δt = 1.
 
 dis             = state0.dis
+wanted          = Muscade.want_all_hessians(1,OX+1,OU+1,IA)
 
-out,asm,dofgr = Muscade.prepare(Muscade.AssemblyDirect{OX,OU,IA},model,dis)#;Uwhite=true,Xwhite=true,XUindep=true,UAindep=true,XAindep=true)
+out,asm,dofgr = Muscade.prepare(Muscade.AssemblyDirect{OX,OU,IA},model,dis,wanted)#;Uwhite=true,Xwhite=true,XUindep=true,UAindep=true,XAindep=true)
 zero!(out)
 state           = [Muscade.State{1,OX+1,OU+1}(copy(state0,SP=(γ=0.,iter=1))) for i = 1:nstep]
 for i=1:nstep
@@ -64,14 +65,15 @@ for i=1:nstep
 end
 
 Muscade.assembleA!{:matrices}(out,asm,dis,model,state[1],(;))
+
 @testset "prepareA_out" begin
     @test all(all(v.==0) for  v∈out.L1[1])
     @test all(all(v.==0) for  v∈out.L1[2])
     @test all(all(v.==0) for  v∈out.L1[3])
     @test all(all(v.==0) for  v∈out.L1[4])
-    @test all(all(m.==0) for  m∈out.L2[1])
-    @test all(all(m.==0) for  m∈out.L2[2])
-    @test all(all(m.==0) for  m∈out.L2[3])
+    @test all(out.L2[1,2][1,1].==0.)
+    @test all(out.L2[2,2][1,1].==0.)
+    @test all(out.L2[3,3][1,1].==0.)
     @test out.L2[4,4][1,1] ≈ sparse([1, 2, 1, 2, 3, 4, 3, 4, 5, 6, 5, 6], [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6], [2.0e-14, 0.0, 0.0, 2.0e-14, 2.0e-14, 0.0, 0.0, 2.0e-14, 2.0e-14, 0.0, 0.0, 2.0e-14], 6, 6)
 end
 #Muscade.assemble!(out,asm,dis,model,state[1],(;))
@@ -95,7 +97,7 @@ Muscade.assemblebig!{:matrices}(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out,[state],[n
     @test out.L1[2] ≈ [[0.055883099639785175, -0.1920340573300732], [0.0, 0.0], [0.0, 0.0]]
     @test out.L1[3] ≈ [[0.0, 0.0, 0.0, 0.0]]
     @test out.L1[4] ≈ [[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]]
-    @test size(out.L2[1,1]) == (0,0)
+    @test size(out.L2[1,1]) == (1,1)
     @test out.L2[2,2][1,1] ≈ sparse([1, 2, 1, 2], [1, 1, 2, 2], [2.0, 0.0, 0.0, 2.0], 2, 2)  
     @test out.L2[2,2][1,2] ≈ sparse([1, 2, 1, 2], [1, 1, 2, 2], [0.0, 0.0, 0.0, 0.0], 2, 2)  
     @test out.L2[2,2][1,3] ≈ sparse([1, 2, 1, 2], [1, 1, 2, 2], [0.0, 0.0, 0.0, 0.0], 2, 2)
