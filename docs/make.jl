@@ -4,13 +4,15 @@ docs        = @__DIR__
 muscade     = normpath(joinpath(docs,".."))
 docsrc      = joinpath(docs,"src")
 examplesrc(ex) = normpath(joinpath(docs,"..","examples",ex))
-examples    = ["StaticBeamAnalysis","DynamicBeamAnalysis","DecayAnalysis","DryFriction"]
+examples    = ["StaticBeamAnalysis","ModalBeamAnalysis","DynamicBeamAnalysis","DecayAnalysis","DryFriction"]
 
-requiredIncludeFiles = ["BeamElement.jl","Rotations.jl"]
- for includeFile ∈ requiredIncludeFiles
-        cp(joinpath(muscade,"toolbox",includeFile),joinpath(muscade,"docs","src",includeFile),force=true)             
+requiredIncludeFiles = ["toolbox" "BeamElement.jl"; 
+                        "toolbox" "Rotations.jl";  
+                        "examples" "SCR.csv"] 
+ for idx ∈ 1:size(requiredIncludeFiles,1)
+        cp(     joinpath(muscade,requiredIncludeFiles[idx,1],requiredIncludeFiles[idx,2]),
+                joinpath(muscade,"docs","src",requiredIncludeFiles[idx,2]),force=true)             
  end
-
 
 using Pkg
 Pkg.activate(docs)

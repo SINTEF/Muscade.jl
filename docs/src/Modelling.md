@@ -47,7 +47,7 @@ The definition of a model is done in three phases:
 
 Note that two `Function`s, `load` and `res` are defined in the script, and then passed as argument to element constructors. Elements require that the function has been defined by using the macro [`@functor`](@ref).  The first argument is a list of parameters captured by the function. The macro ensures that the *values* of the parameters are captured. The second argument is the function definition.  The macro prevents the function to be re-parsed if unchanged, which in turn prevents unnecessary recompilations of Muscade when the script is runned multiple times in a session. 
 
-The model - either finitialized or under construction, can be examined using [`describe`](@ref) and [`getndof`](@ref).  
+The model - either finitialized or under construction, can be examined using [`Muscade.describe`](@ref) and [`getndof`](@ref).  
 
 Optionaly, one can also use [`setscale!`](@ref) (with the help of [`Muscade.study_scale`](@ref)) to scale the variables and thus improve the conditioning of the problem. 
 
@@ -103,7 +103,7 @@ When using `xxxCost` elements to introduce measured time series, consider using 
 
 [`solve`](@ref) is then called with the name of the solver to be used (here [`SweepX{0}`](@ref)), and any named parameters required by the solver. The return value `state` can have different structures, depending on the solver.  For [`SweepX{0}`](@ref), `state` is a vector (over the time steps) of `State`s.
 
-[`describe`](@ref) can also be used to inspect `State`s.
+[`Muscade.describe`](@ref) can also be used to inspect `State`s.
 
 Analyses may fail due to singular matrix.  The source of the singularity can be challenging to diagnose. [`Muscade.study_singular`](@ref) can help determine the null-space of an incremental matrix, for small problems.
 
