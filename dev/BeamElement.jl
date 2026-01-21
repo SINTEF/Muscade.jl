@@ -4,14 +4,25 @@ using StaticArrays, LinearAlgebra, Muscade
 
 # Data structure containing the cross section material properties
 struct BeamCrossSection
-    EA  :: 𝕣  # axial stiffness 
-    EI₂ :: 𝕣 # bending stiffness about second axis
-    EI₃ :: 𝕣 # bending stiffness about third axis
-    GJ  :: 𝕣 # torsional stiffness (about longitudinal axis)
-    μ   :: 𝕣 # mass per unit length
-    ι₁  :: 𝕣 # (mass) moment of inertia for rotation about the element longitudinal axis per unit length
+    EA  :: 𝕣 # Axial stiffness [N]
+    EI₂ :: 𝕣 # Bending stiffness [Nm/(1/m)] about second axis
+    EI₃ :: 𝕣 # Bending stiffness [Nm/(1/m)] about third axis
+    GJ  :: 𝕣 # Torsional stiffness [Nm/(rad/m)] about longitudinal axis
+    μ   :: 𝕣 # Mass per unit length [kg/m]
+    ι₁  :: 𝕣 # (Mass) moment of inertia about longitudial axis per unit length [kgm²/m]
+    w   :: 𝕣 # Weight per unit length [N/m]
+    Ca₁ :: 𝕣 # Tangential added mass per unit length [kg/m]
+    Cl₁ :: 𝕣 # Tangential linear damping coefficient per unit length [N/m/(m/s)]
+    Cq₁ :: 𝕣 # Tangential quadratic damping coefficient per unit length [N/m/(m/s)^2], for example from drag
+    Ca₂ :: 𝕣 # Tranvserse added mass per unit length [kg/m] for motions along second axis
+    Cl₂ :: 𝕣 # Transverse linear damping coefficient per unit length [N/m/(m/s)] for motions along second axis
+    Cq₂ :: 𝕣 # Transverse quadratic damping coefficient per unit length [N/m/(m/s)^2], for motions along second axis
+    Ca₃ :: 𝕣 # Tranvserse added mass per unit length [kg/m] for motions along third axis
+    Cl₃ :: 𝕣 # Transverse linear damping coefficient per unit length [N/m/(m/s)] for motions along third axis
+    Cq₃ :: 𝕣 # Transverse quadratic damping coefficient per unit length [N/m/(m/s)^2], for motions along third axis
+    # TODO: add gravity field to beam properties (time dependent), and use it to compute the weight. This to enable static analyses. 
 end
-BeamCrossSection(;EA=EA,EI₂=EI₂,EI₃=EI₃,GJ=GJ,μ=μ,ι₁=ι₁) = BeamCrossSection(EA,EI₂,EI₃,GJ,μ,ι₁);
+BeamCrossSection(;EA,EI₂=EI₂,EI₃=EI₃,GJ=GJ,μ=μ,ι₁=ι₁,w=0.,Ca₁=0.,Cl₁=0.,Cq₁=0.,Ca₂=0.,Cl₂=0.,Cq₂=0.,Ca₃=0.,Cl₃=0.,Cq₃=0.) = BeamCrossSection(EA,EI₂,EI₃,GJ,μ,ι₁,w,Ca₁,Cl₁,Cq₁,Ca₂,Cl₂,Cq₂,Ca₃,Cl₃,Cq₃);
 
 # Resultant function that computes the internal loads from the strains and curvatures, and external loads on the element. 
 @espy function resultants(o::BeamCrossSection,ε,κ,xᵧ,rₛₘ,vᵢ) 
@@ -21,12 +32,24 @@ BeamCrossSection(;EA=EA,EI₂=EI₂,EI₃=EI₃,GJ=GJ,μ=μ,ι₁=ι₁) = BeamC
     xᵧ₀,xᵧ₁,xᵧ₂ = ∂0(xᵧ),∂1(xᵧ),∂2(xᵧ)
     xₗ₁          = xᵧ₁ ∘₁ r₀
     xₗ₂          = xᵧ₂ ∘₁ r₀
-    ## Compute drag force (example) and added-mass force (example)
-    ## fa = ρ * Ca .* xₗ₂
-    ## fd = .5 * ρ * A .* Cd .* xₗ₁ #.* abs.(xₗ₁)
+    ## Weight
+    fw =  SVector(0,0,o.w)
     ## Compute translational inertia force 
     fi = o.μ * xᵧ₂ 
-    ☼fₑ = fi # external forces at Gauss point.
+    ## Compute added mass force 
+    faₗ = SVector(o.Ca₁ * xₗ₂[1], o.Ca₂ * xₗ₂[2], o.Ca₃ * xₗ₂[3])
+    faᵧ = r₀ ∘₁ faₗ
+    ## Compute linear damping force 
+    flₗ = SVector(   o.Cl₁ * xₗ₁[1], o.Cl₂ * xₗ₁[2], o.Cl₃ * xₗ₁[3])
+    flᵧ = r₀ ∘₁ flₗ
+    ## Compute quadratic damping force
+    fq1ₗ = o.Cq₁ * xₗ₁[1]^2; if xₗ₁[1] < 0; fq1ₗ = -fq1ₗ end
+    fq2ₗ = o.Cq₂ * xₗ₁[2]^2; if xₗ₁[2] < 0; fq2ₗ = -fq2ₗ end
+    fq3ₗ = o.Cq₃ * xₗ₁[3]^2; if xₗ₁[3] < 0; fq3ₗ = -fq3ₗ end
+    fqₗ = SVector(fq1ₗ,fq2ₗ,fq3ₗ)
+    fqᵧ = r₀ ∘₁ fqₗ
+    # Summing up forces
+    ☼fₑ = fi + faᵧ + flᵧ + fqᵧ + fw # external forces at Gauss point.
     ## Compute roll inertia moment 
     m₁ₗ = o.ι₁*vᵢ₂[1] #local 
     mᵧ = ∂0(rₛₘ)[:,1] * m₁ₗ #global
@@ -70,7 +93,7 @@ struct EulerBeam3D{Mat,Uforce} <: AbstractElement
     tgₑ      :: SVector{ndim,𝕣}  # Vector connecting the nodes of the element in the local coordinate system
     yₐ       :: SVector{ngp,𝕣}   # Value at gp of shape function for differential axial displacement or roll field
     yᵤ       :: SVector{ngp,𝕣}   # Value at gp of shape function for deflection due to differential nodal transverse translation
-    yᵥ       :: SVector{ngp,𝕣}   # Value at gp of shape function for deflection due to differenttial rotation (bending, not torsion)
+    yᵥ       :: SVector{ngp,𝕣}   # Value at gp of shape function for deflection due to differenttial rotation (bending, not torsion). Multiplied by L .
     κₐ       :: SVector{ngp,𝕣}   # Value at gp of shape function for torsion  . κₐ = yₐ′ . Divided by L .    
     κᵤ       :: SVector{ngp,𝕣}   # Value at gp of shape function for curvature. κᵤ = yᵤ′′. Divided by L².
     κᵥ       :: SVector{ngp,𝕣}   # Value at gp of shape function for curvature. κᵥ = yᵥ′′. Divided by L .
@@ -134,7 +157,7 @@ end;
     ## compute all Jacobians of the above quantities with respect to X₀
     X₀                  = ∂0(X) # returns concrete type
     TX₀                 = revariate{P}(X₀)  # returns ::Any
-    Tgp,Tε,Tvₛₘ,_,_,_,_  = kinematics{:compose}(o,TX₀) # the crux
+    Tgp,Tε,Tvₛₘ,_,_,_,_  = kinematics{:chainrule}(o,TX₀) # the crux
     gp∂X₀,ε∂X₀,vₛₘ∂X₀    = composeJacobian{P}((Tgp,Tε,Tvₛₘ),X₀)
     ## Quadrature loop: compute resultants
     gp                  = ntuple(ngp) do igp

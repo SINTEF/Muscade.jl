@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Modal analysis of a beam · Muscade.jl</title><meta name="title" content="Modal analysis of a beam · Muscade.jl"/><meta property="og:title" content="Modal analysis of a beam · Muscade.jl"/><meta property="twitter:title" content="Modal analysis of a beam · Muscade.jl"/><meta name="description" content="Documentation for Muscade.jl."/><meta property="og:description" content="Documentation for Muscade.jl."/><meta property="twitter:description" content="Documentation for Muscade.jl."/><script data-outdated-warner src="assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="assets/documenter.js"></script><script src="search_index.js"></script><script src="siteinfo.js"></script><script src="../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="index.html"><img src="assets/logo.png" alt="Muscade.jl logo"/></a><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="index.html">Introduction</a></li><li><a class="tocitem" href="Theory.html">Theory</a></li><li><span class="tocitem">User manual</span><ul><li><a class="tocitem" href="Modelling.html">Creating a model</a></li><li><a class="tocitem" href="Solvers.html">Solvers</a></li><li><a class="tocitem" href="Elements.html">Implementing new elements</a></li></ul></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="StaticBeamAnalysis.html">Static analysis of a beam</a></li><li class="is-active"><a class="tocitem" href="ModalBeamAnalysis.html">Modal analysis of a beam</a></li><li><a class="tocitem" href="DynamicBeamAnalysis.html">Dynamic analysis of a beam</a></li><li><a class="tocitem" href="DecayAnalysis.html">Estimating model parameters</a></li><li><a class="tocitem" href="DryFriction.html">DryFriction</a></li></ul></li><li><a class="tocitem" href="Diagnostic.html">Diagnostic</a></li><li><a class="tocitem" href="reference.html">Reference</a></li><li><span class="tocitem">Appendix</span><ul><li><a class="tocitem" href="TypeStable.html">Type-stability</a></li><li><a class="tocitem" href="Memory.html">Memory management</a></li><li><a class="tocitem" href="Adiff.html">Automatic differentiation</a></li><li><a class="tocitem" href="litterature.html">Literature</a></li></ul></li><li><a class="tocitem" href="LICENSE.html">MIT License</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href="ModalBeamAnalysis.html">Modal analysis of a beam</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href="ModalBeamAnalysis.html">Modal analysis of a beam</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/SINTEF/Muscade.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/SINTEF/Muscade.jl/blob/main/examples/ModalBeamAnalysis.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Modal-analysis-of-a-beam"><a class="docs-heading-anchor" href="#Modal-analysis-of-a-beam">Modal analysis of a beam</a><a id="Modal-analysis-of-a-beam-1"></a><a class="docs-heading-anchor-permalink" href="#Modal-analysis-of-a-beam" title="Permalink"></a></h1><p>Beam simply supported at both ends</p><pre><code class="language-julia hljs">using Muscade, StaticArrays, GLMakie
+using Muscade.Toolbox
+
+L = 1;  # Beam length [m]
+q = 0.0;  # Uniform lateral load [N/m]
+EI₂ = 1;  # Bending stiffness [Nm²]
+EI₃ = 1;  # Bending stiffness [Nm²]
+EA = 1e6;  # Axial stiffness [N]
+GJ = 1e6;  # Torsional stiffness [Nm²]
+μ = 1;
+ι₁= 1;</code></pre><p>Create model</p><pre><code class="language-julia hljs">nel         = 50
+Nnod        = nel+1
+nodeCoord   = hcat((0:L/nel:L),zeros(Float64,Nnod,2))
+mat         = BeamCrossSection(EA=EA,EI₂=EI₂,EI₃=EI₃,GJ=GJ,μ=μ,ι₁=ι₁)
+model       = Model(:TestModel)
+nodid       = addnode!(model,nodeCoord)
+mesh        = hcat(nodid[1:Nnod-1],nodid[2:Nnod])
+eleid       = addelement!(model,EulerBeam3D,mesh;mat=mat,orient2=SVector(0.,1.,0.));</code></pre><p>Set boundary conditions and constraints</p><pre><code class="language-julia hljs">[addelement!(model,Hold,[nodid[1]]  ;field) for field∈[:t1,:t2,:t3,:r1]]                                # Simply supported end 1
+[addelement!(model,Hold,[nodid[end]];field) for field∈[:t1,:t2,:t3,:r1]]                                # Simply supported end 2
+[addelement!(model,Hold,[nodid[nodeidx]];field=:t3) for nodeidx∈2:Nnod-1]                               # Enforce beam motions in one dimension to obtain planar modeshapes
+@functor with(q,L,Nnod) val(t) = sin(t)*q*L/Nnod
+[addelement!(model,DofLoad,[nodid[nodeidx]];field=:t2,value=val) for nodeidx=1:Nnod];    # Distributed vertical load q</code></pre><p>Static analysis</p><pre><code class="language-julia hljs">initialstate    = initialize!(model);
+state           = solve(SweepX{0};initialstate,time=[0.]);</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
+
+
+<span class="sgr36"><span class="sgr1">Muscade:</span> SweepX{0} solver</span>
+
+    step   1 converged in   1 iterations. |Δx|=0.0e+00 |Lλ|=0.0e+00
+
+    nel=158, ndof=363, nstep=1, niter=1, niter/nstep= 1.00
+    SweepX{0} time:   88 [ms]
+<span class="sgr36"><span class="sgr1">Muscade done.</span></span></code></pre><p>Solve eigenvalue problem</p><pre><code class="language-julia hljs">nmod            = 15
+res             = solve(EigX{ℝ};state=state[1],nmod);</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
+
+
+<span class="sgr36"><span class="sgr1">Muscade:</span> EigX{Real} solver</span>
+
+
+    Assembling
+    Solving Eigenvalues
+
+
+    EigX{Real} time:   16 [s]
+<span class="sgr36"><span class="sgr1">Muscade done.</span></span></code></pre><p>Analytical solutions for the natural frequency of a simply supported beam See e.g. https://roymech.org/Useful<em>Tables/Vibrations/Natural</em>Vibrations_derivation.html</p><pre><code class="language-julia hljs">fₙ(k) = √(EI₂/μ)*(k^2*π)/(2*L^2)
+Φₙ(k,x) = sin.(k*π/L.*x);</code></pre><p>Display solution and comparison against analytical solution</p><pre><code class="language-julia hljs">fig      = Figure(size = (2000,1000))
+axes = [Axis(fig[idxLine,1], yminorgridvisible = false,xminorgridvisible = false ) for idxLine=1:3]
+axes[1].title = &quot;Modeshapes of a simply supported beam. Muscade (&quot; *string(nel)*&quot; elements): markers. Analytical solution: lines. &quot;
+for idxMod=1:nmod
+    eigres  = increment(state[1],res,[idxMod],[1]);
+    t2_eig  = getdof(eigres;field=:t2,nodID=nodid[1:Nnod])
+    δ       = sign(Φₙ(idxMod,0:L/nel:L)&#39;*t2_eig) * maximum(t2_eig)
+    selectAxis = axes[mod(idxMod-1,3)+1]
+    labelStr= &quot;Mode &quot;*string(idxMod)*&quot;, Muscade: &quot;*string(round(res.ω[idxMod]/(2π),digits=3))*&quot; Hz, Analytical: &quot; *string(round(fₙ(idxMod),digits=3))* &quot; Hz&quot;
+    scatter!(selectAxis,(0:L/nel:L),  t2_eig[:]/δ,          label=labelStr  );
+    lines!(  selectAxis,(0:L/nel:L),  Φₙ(idxMod,0:L/nel:L)                  );
+end
+for ax∈axes;
+    xlims!(ax,0,1); ylims!(ax, -2,2); axislegend(ax)
+end
+
+currentDir = @__DIR__
+if occursin(&quot;build&quot;, currentDir)
+    save(normpath(joinpath(currentDir,&quot;..&quot;,&quot;src&quot;,&quot;assets&quot;,&quot;beamModes.png&quot;)),fig)
+elseif occursin(&quot;examples&quot;, currentDir)
+    save(normpath(joinpath(currentDir,&quot;beamModes.png&quot;)),fig)
+end</code></pre><p><img src="assets/beamModes.png" alt="Result"/></p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="StaticBeamAnalysis.html">« Static analysis of a beam</a><a class="docs-footer-nextpage" href="DynamicBeamAnalysis.html">Dynamic analysis of a beam »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Wednesday 21 January 2026 08:50">Wednesday 21 January 2026</span>. Using Julia version 1.11.8.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
