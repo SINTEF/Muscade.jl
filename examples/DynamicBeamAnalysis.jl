@@ -159,7 +159,7 @@ end
 initialstate    = initialize!(model);
 staticLoadSteps = (-10:.2:0)*1.
 nStaticLoadSteps = length(staticLoadSteps)
-staticStates           = solve(SweepX{0};initialstate,time=staticLoadSteps,verbose=false,maxΔx=1e-6,maxiter=100);
+staticStates           = solve(SweepX{0};initialstate,time=staticLoadSteps,verbose=true,maxΔx=1e-6,maxiter=100);
 
 # Plot the static analysis sequence
 fig      = Figure(size = (1000,1000))

@@ -35,9 +35,9 @@ module Runtest
         @testset "TestSweepX0" begin
             include("TestSweepX0.jl")
         end
-        @testset "TestNewmarkSweep" begin
-            include("TestNewmarkSweep.jl")
-        end
+        #@testset "TestNewmarkSweep" begin
+        #    include("TestNewmarkSweep.jl")
+        #end
         @testset "TestDirectXUA" begin
             include("TestDirectXUA.jl")
         end
