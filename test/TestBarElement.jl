@@ -22,27 +22,27 @@ end
 
 ## Testing residual
 EA = 10.
-L =  2.
+L₀ =  2.
 μ = 1. 
 model           = Model(:TestModel)
 node1           = addnode!(model,𝕣[0,0,0])
-node2           = addnode!(model,𝕣[L,0,0])
+node2           = addnode!(model,𝕣[L₀,0,0])
 elnod           = [model.nod[n.inod] for n∈[node1,node2]]
 mat             = BarCrossSection(EA=EA,μ=μ)
 bar            = Bar3D(elnod;mat)
 t,SP,dbg  = 0.,(;),(status=:testing,)
 U = (SVector{0,𝕣}(),)
 A = SVector{0,𝕣}()
+Δx = .1
 
-t1n2 = 0.1;
-x = SVector(0.,0.,0., t1n2,0.0,0.0); X = (x,)
+x = SVector(0.,0.,0., Δx,0.0,0.0); X = (x,)
 R,FB=Muscade.residual(bar,   X,U,A,t,SP,dbg) 
 @testset "residual tension" begin
-    @test R        ≈  [ -EA/L*t1n2, 0.0, 0.0, EA/L*t1n2, 0.0, 0.0 ]
+    @test R        ≈  [ -EA/L₀*Δx, 0.0, 0.0, EA/L₀*Δx, 0.0, 0.0 ]
     @test FB === nothing
 end
 
-displacement =  SVector(0.,0.,0.,  0.,0.,0.); 
+displacement =  SVector(0.,0.,0.,  Δx,0.,0.); 
 velocity     =  SVector(0.,0.,0.,  0.,0.,0.); 
 acceleration =  SVector(0.,0.,0.,  0.,0.,0.); 
 X            = (displacement,velocity,acceleration)
@@ -65,18 +65,30 @@ H = out.∇R[iu][1]
 # # @printf "\nM=∂R/∂X₂\n"
 # # print_element_array(bar,:X,out.∇R[2][3])  # M
 
+
 @testset "axial stiffness" begin
-    # axial force induced by inline displacement of same node
-    @test K[1,1]        ≈  EA/L 
-    @test K[4,4]        ≈  EA/L 
-    # axial force induced by inline displacement of opposite node
-    @test K[1,4]        ≈ -EA/L 
-    @test K[4,1]        ≈ -EA/L 
+    @test K[1,1]        ≈  EA/L₀ 
+    @test K[4,4]        ≈  EA/L₀ 
+    @test K[1,4]        ≈ -EA/L₀ 
+    @test K[4,1]        ≈ -EA/L₀ 
+end
+@testset "transverse stiffness" begin
+    L = L₀+Δx
+    kₜ = (EA/L₀)*Δx/L
+    @test K[2,2]        ≈  kₜ
+    @test K[3,3]        ≈  kₜ
+    @test K[5,5]        ≈  kₜ
+    @test K[6,6]        ≈  kₜ
+    @test K[2,5]        ≈ -kₜ
+    @test K[5,2]        ≈ -kₜ 
+    @test K[3,6]        ≈ -kₜ
+    @test K[6,3]        ≈ -kₜ
 end
 @testset "spurious stiffness" begin
     # no axial force from anything else than displacements about element axis
-    @test norm(K[1, [2,3,5,6]])  ≈ 0.
-    @test norm(K[4, [2,3,5,6]])  ≈ 0.
+    @test norm(K[[1,4], [2,3,5,6]])  ≈ 0.
+    @test norm(K[[2 5], [1,3,4,6]])  ≈ 0.
+    @test norm(K[[3 6], [1,2,4,5]])  ≈ 0.
 end
 
 
