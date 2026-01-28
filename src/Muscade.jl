@@ -106,6 +106,8 @@ module Muscade
     module Toolbox
         include("../toolbox/Rotations.jl")
         export Rodrigues, Rodrigues⁻¹, adjust, scac, sinc1, sinc1′,sinc1″, sinc1‴, sinc1⁗, intrinsicrotationrates
+        include("../toolbox/BarElement.jl")
+        export Bar3D, BarCrossSection
         include("../toolbox/BeamElement.jl")
         export EulerBeam3D, BeamCrossSection
         include("../toolbox/StrainGaugeOnBeamElement.jl")

@@ -77,6 +77,9 @@ module Runtest
         @testset "TestElementTestTools" begin
             include("TestElementTestTools.jl")
         end
+        @testset "TestBarElement" begin
+            include("TestBarElement.jl")
+        end
         @testset "TestBeamElement" begin
             include("TestBeamElement.jl")
         end
