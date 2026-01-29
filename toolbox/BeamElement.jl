@@ -63,7 +63,7 @@ BeamCrossSection(;EA,EI₂=EI₂,EI₃=EI₃,GJ=GJ,μ=μ,ι₁=ι₁,w=0.,Ca₁=
     return fᵢ,mᵢ,fₑ,mₑ
 end;
 
-## Static Euler beam element, with two nodes, two Gauss points and 12 degrees of freedom. 
+## Static Euler beam element, with two nodes, four Gauss points and 12 degrees of freedom. 
 const ngp        = 4
 const ndim       = 3
 const nXdof      = 12
@@ -98,7 +98,7 @@ struct EulerBeam3D{Mat,Uforce} <: AbstractElement
     κᵤ       :: SVector{ngp,𝕣}   # Value at gp of shape function for curvature. κᵤ = yᵤ′′. Divided by L².
     κᵥ       :: SVector{ngp,𝕣}   # Value at gp of shape function for curvature. κᵥ = yᵥ′′. Divided by L .
     L        :: 𝕣                # as meshed length of the element
-    dL       :: SVector{ngp,𝕣}   # length associated to each Gauss point
+    dL       :: SVector{ngp,𝕣}   # weight associated to each Gauss point
     mat      :: Mat              # used to store material properties (BeamCrossSection, for example)
 end;
 
