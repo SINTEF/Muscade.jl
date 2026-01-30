@@ -88,20 +88,27 @@ end
 
 
 @testset "inertia" begin
-    @test M[1,1]        ≈  μ*L₀/2   
-    @test M[2,2]        ≈  μ*L₀/2   
-    @test M[3,3]        ≈  μ*L₀/2   
-    @test M[4,4]        ≈  μ*L₀/2   
-    @test M[5,5]        ≈  μ*L₀/2   
-    @test M[6,6]        ≈  μ*L₀/2   
+    @test M[1,1]        ≈  μ*L₀/3   
+    @test M[2,2]        ≈  μ*L₀/3   
+    @test M[3,3]        ≈  μ*L₀/3   
+    @test M[4,4]        ≈  μ*L₀/3   
+    @test M[5,5]        ≈  μ*L₀/3   
+    @test M[6,6]        ≈  μ*L₀/3   
+
+    @test M[1,4]        ≈  μ*L₀/6   
+    @test M[2,5]        ≈  μ*L₀/6   
+    @test M[3,6]        ≈  μ*L₀/6   
+    @test M[4,1]        ≈  μ*L₀/6   
+    @test M[5,2]        ≈  μ*L₀/6   
+    @test M[6,3]        ≈  μ*L₀/6   
 end
 @testset "spurious inertia" begin
-    @test norm(M[1, [2,3,5,6]])  ≈ 0.
-    @test norm(M[4, [2,3,5,6]])  ≈ 0.
-    @test norm(M[2, [1,3,4,6]])  ≈ 0.
-    @test norm(M[5, [1,3,4,6]])  ≈ 0.
-    @test norm(M[3, [1,2,4,5]])  ≈ 0.
-    @test norm(M[6, [1,2,4,5]])  ≈ 0.
+    @test norm(M[1, [2,3,5,6]])  ≈ 0. 
+    @test norm(M[4, [2,3,5,6]])  ≈ 0. 
+    @test norm(M[2, [1,3,4,6]])  ≈ 0. 
+    @test norm(M[5, [1,3,4,6]])  ≈ 0. 
+    @test norm(M[3, [1,2,4,5]])  ≈ 0. 
+    @test norm(M[6, [1,2,4,5]])  ≈ 0. 
 end
 ;
 
@@ -121,8 +128,8 @@ end
 # end
 
 ## Testing inertia and added mass resultants
-Ca₁ = 0.
-Ca₂ = 0.
+Ca₁ = 2.
+Ca₂ = 3.
 a1,a2,a3 = 4.0,3.0,2.0;
 model           = Model(:TestModel)
 node1           = addnode!(model,𝕣[0,0,0])
@@ -137,17 +144,17 @@ velocity        =  SVector(0.,0.,0.,  0.,0.,0.);
     acceleration =  SVector(a1,0.,0.,  a1,0.,0.); 
     X = (displacement,velocity,acceleration); 
     R,FB=Muscade.residual(bar,   X,U,A,t,SP,dbg)     
-    @test R        ≈  [ (μ+Ca₁)*a1*L₀/2, 0., 0.,    (μ+Ca₁)*a1*L₀/2, 0., 0.  ]
+    @test R        ≈  [ (μ+Ca₁)*a1*L₀/2, 0., 0.,    (μ+Ca₁)*a1*L₀/2, 0., 0.  ] 
 
     acceleration =  SVector(0.,a2,0.,  0.,a2,0.); 
     X = (displacement,velocity,acceleration); 
     R,FB=Muscade.residual(bar,   X,U,A,t,SP,dbg) 
-    @test R        ≈  [ 0., (μ+Ca₂)*a2*L₀/2, 0.,    0., (μ+Ca₂)*a2*L₀/2, 0.]
+    @test R        ≈  [ 0., (μ+Ca₂)*a2*L₀/2, 0.,    0., (μ+Ca₂)*a2*L₀/2, 0.] 
 
     acceleration =  SVector(0.,0.,a3,  0.,0.,a3); 
     X = (displacement,velocity,acceleration); 
     R,FB=Muscade.residual(bar,   X,U,A,t,SP,dbg) 
-    @test R        ≈  [ 0., 0., (μ+Ca₂)*a3*L₀/2,    0., 0., (μ+Ca₂)*a3*L₀/2]
+    @test R        ≈  [ 0., 0., (μ+Ca₂)*a3*L₀/2,    0., 0., (μ+Ca₂)*a3*L₀/2] 
 
 end
 

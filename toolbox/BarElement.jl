@@ -17,6 +17,17 @@ struct AxisymmetricBarCrossSection
 end
 AxisymmetricBarCrossSection(;EA,μ=μ,w=0.,Ca₁=0.,Cl₁=0.,Cq₁=0.,Ca₂=0.,Cl₂=0.,Cq₂=0.) = AxisymmetricBarCrossSection(EA,μ,w,Ca₁,Cl₁,Cq₁,Ca₂,Cl₂,Cq₂);
 
+
+
+
+const ngp        = 4
+const ndim       = 3
+const nXdof      = 6
+const nUdof      = 3
+const nXnod      = 2;
+ψ₁(ζ) = -ζ + 1/2          
+ψ₂(ζ) =  ζ + 1/2         
+
 # Data structure describing an Bar3D element as meshed
 """
     Bar3D
@@ -25,7 +36,7 @@ An Euler bar element
 """
 struct Bar3D{Mat,Uforce} <: AbstractElement
     cₘ       :: SVector{3,𝕣}     # Position of the middle of the element, as meshed
-    tgₘ      :: SVector{3,𝕣}  # Vector connecting the nodes of the element in the global coordinate system
+    tgₘ      :: SVector{3,𝕣}     # Vector connecting the nodes of the element in the global coordinate system
     L₀       :: 𝕣                # As-meshed length of the element
     mat      :: Mat              # Used to store material properties (AxisymmetricBarCrossSection, for example)
     wgp      :: SVector{ngp,𝕣}   # weight associated to each Gauss point
@@ -37,14 +48,7 @@ end;
 
 # For performance, `residual` will only accept differentiation to first order
 Muscade.no_second_order(::Type{<:Bar3D}) = Val(true)
-
-const ngp        = 4
-const ndim       = 3
-const nXdof      = 6
-const nUdof      = 3
-const nXnod      = 2;
-ψ₁(ζ) = -ζ + 1/2          
-ψ₂(ζ) =  ζ + 1/2          
+ 
 
 # Define nodes, classes, and field names of dofs
 Muscade.doflist(     ::Type{Bar3D{Mat,false}}) where{Mat} = 
@@ -66,39 +70,67 @@ function Bar3D{Udof}(nod::Vector{Node};mat) where {Udof}
     tgₘ     = SVector{3}( c[2]-c[1]   )
     L₀      = norm(tgₘ)
     ## Location ζgp of the Gauss points for a unit-length beam element, with nodes at ζnod=±1/2, and weigths. 
-    wgp    = SVector{ngp}(L₀/2*(18-sqrt(30))/36,L₀/2*(18+sqrt(30))/36  ,L₀/2*(18+sqrt(30))/36,L₀/2*(18-sqrt(30))/36  ) 
-    ζgp     = SVector{ngp  }(-1/2*sqrt(3/7+2/7*sqrt(6/5)),-1/2*sqrt(3/7-2/7*sqrt(6/5)), +1/2*sqrt(3/7-2/7*sqrt(6/5)),+1/2*sqrt(3/7+2/7*sqrt(6/5))) 
-    ζnod    = SVector{nXnod}(-1/2  ,1/2  )
+    wgp    = SVector{ngp}(      L₀/2*(18-sqrt(30))/36,          L₀/2*(18+sqrt(30))/36  ,        L₀/2*(18+sqrt(30))/36,          L₀/2*(18-sqrt(30))/36       ) 
+    ζgp     = SVector{ngp  }(   -1/2*sqrt(3/7+2/7*sqrt(6/5)),   -1/2*sqrt(3/7-2/7*sqrt(6/5)),   +1/2*sqrt(3/7-2/7*sqrt(6/5)),   +1/2*sqrt(3/7+2/7*sqrt(6/5))) 
+    ζnod    = SVector{nXnod}(   -1/2  ,1/2  )
     shapes  = (ψ₁.(ζgp), ψ₂.(ζgp))
     return Bar3D{typeof(mat),Udof}(cₘ,tgₘ,L₀,mat,wgp,ζgp,ζnod,shapes...)
 end;
 
+@espy function resultants(o::AxisymmetricBarCrossSection,ε,x,u) 
+    # Inertia 
+    a      = ∂2(x)
+    fi      = o.μ * a
+    
+    δ      = ∂0(u)
+    # Added mass
+    a₁ = a ∘₁ δ
+    a₂ = a - a₁ * δ
+    fa  = SVector{3}(o.Ca₁ * a₁,o.Ca₂ * a₂[2],o.Ca₂* a₂[3])
+    # Sum of external forces
+    ☼fe      =   fi+fa
+    # Internal forces
+    ☼fᵢ      = o.EA*∂0(ε)
+    return fᵢ,fe
+end;
+
+vec3(v,ind) = SVector{3}(v[i] for i∈ind);
+
 # Define now the residual function for the Bar3D element.
 @espy function Muscade.residual(o::Bar3D{Mat,Udof},   X,U,A,t,SP,dbg) where{Mat,Udof}
-    xᵧ      = ∂0(X)
-    tg      = o.tgₘ + SVector{3}(xᵧ[4]-xᵧ[1],xᵧ[5]-xᵧ[2],xᵧ[6]-xᵧ[3])   
-    L       = norm(tg)
-    u       = tg/L
-    ☼T      = o.mat.EA*(L/o.L₀ - 1)
-    F       = SVector{3}(T*u)
+    P,ND    = constants(X),length(X)
+    x_      = motion{P}(X) 
+    uᵧ₁,uᵧ₂   = vec3(x_,1:3), vec3(x_,4:6) 
+    c        = o.cₘ + 0.5*(uᵧ₁+uᵧ₂) 
+    tg      = o.tgₘ + uᵧ₂ - uᵧ₁
+    L       = √((o.L₀+uᵧ₂[1]-uᵧ₁[1])^2+(uᵧ₂[2]-uᵧ₁[2])^2+(uᵧ₂[3]-uᵧ₁[3])^2)
+    ε_       = L/o.L₀ - 1
+    u_       = tg/L
+    ε,u = motion⁻¹{P,ND}(ε_,u_)
+    uval = ∂0(u)
+    ε∂X₀ = 1/o.L₀*SVector{6}(-uval[1],-uval[2],-uval[3],uval[1],uval[2],uval[3]) # how strains vary with nodal displacements (will be used in the Princple of Virtual Work, PVW)
 
-    # Inertia
-    aᵧ      = ∂2(X)
-    @show translationalAcc = SVector{3}((aᵧ[1]+aᵧ[4])/2,(aᵧ[2]+aᵧ[5])/2,(aᵧ[3]+aᵧ[6])/2)
-    fi      = o.mat.μ * o.L₀ * translationalAcc
-    
-    # Added mass (requires splitting into tangential,1 and transverse,2)
-    @show a₁      = translationalAcc ∘₁ u
-    fa₁     = o.mat.Ca₁ *o.L₀ *a₁ * u
-    @show a₂      = translationalAcc - a₁*u
-    fa₂     = o.mat.Ca₂ *o.L₀ *a₂
-    fa      = fa₁+fa₂
-
-    # vᵧ        = ∂1(X)
-    fe = fi + fa
-    R        = SVector{6}(-F[1],-F[2],-F[3],F[1],F[2],F[3]) + SVector{6}(fe[1],fe[2],fe[3],fe[1],fe[2],fe[3])
+    # Compute Gauss point kinematics
+    gp = ntuple(ngp) do igp; 
+        x = c + tg * o.ζgp[igp]; 
+        @named(x); 
+    end
+    # Compute loads at Gauss points
+    gpContrib = ntuple(ngp) do igp
+        ζ = o.ζgp[igp] # Coordinate of the Gauss point along [-1/2,1/2]
+        x∂X₀ = SMatrix{3,6}(ψ₁(ζ),0,0, 0,ψ₁(ζ),0, 0,0,ψ₁(ζ), ψ₂(ζ),0,0, 0,ψ₂(ζ),0, 0,0,ψ₂(ζ))   # how motions of Gauss point vary with nodal displacements
+        
+        x = motion⁻¹{P,ND}(gp[igp].x)     # Physical location of the Gauss point 
+        fᵢ,fₑ     = ☼resultants(o.mat,ε,x,u)  # compute loads from strains/motions, etc.
+        
+        fₑ        = Udof ? fₑ-∂0(U) : fₑ                       # U is per unit length
+        R_        = ( fᵢ ∘₀ ε∂X₀ + fₑ ∘₁ x∂X₀ ) * o.wgp[igp]   #  Application of PVW, local contribution of the integral over the element
+        @named(R_);
+    end
+    R                   = sum(gpᵢ.R_ for gpᵢ∈gpContrib) 
     return R,noFB  
 end;
+
 
 # The following functions explain how the bar element should be drawn
 # using GLMakie
