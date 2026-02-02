@@ -130,29 +130,9 @@ for idxNod = 1:length(nodeList[3])
     addelement!(model,DofLoad,[nodeList[3][idxNod]];field=:t3,value=weight3);  
 end
 
-# Define the soil contact forces (element definition will be moved to the toolbox, work in progress)
-struct SoilContact <: AbstractElement
-    Kh :: 𝕣
-    Kv :: 𝕣
-    Ch :: 𝕣
-    Cv :: 𝕣
-end
-SoilContact(nod::Vector{Node};Kh=0.::𝕣,Kv=0.::𝕣,Ch=0.::𝕣,Cv=0.::𝕣) = SoilContact(Kh,Kv,Ch,Cv)
-@espy function Muscade.residual(o::SoilContact, X,U,A, t,SP,dbg) 
-    x,x′ = ∂0(X)[1], ∂1(X)[1]
-    y,y′ = ∂0(X)[2], ∂1(X)[2]
-    z,z′ = ∂0(X)[3], ∂1(X)[3]
-    if z<0 #sassumes that displacements are with respect to seabead
-        R         = SVector(o.Kh*x +o.Ch*x′,o.Kh*y +o.Ch*y′,o.Kv*z +o.Cv*z′)
-    else 
-        R         = SVector(0,0,0)
-    end
-    return R,noFB
-end
-Muscade.doflist( ::Type{SoilContact})  = (inod =(1 ,1, 1), class=(:X,:X,:X), field=(:t1,:t2,:t3))
 
 for idxNod = 1:length(nodeList[1])
-    addelement!(model,SoilContact,[nodeList[1][idxNod]],Kh=1.0e3,Kv=1.0e4,Ch=0.,Cv=0.);  
+    addelement!(model,SoilContact,[nodeList[1][idxNod]],z₀=0.,Kh=1.0e3,Kv=1.0e4,Ch=0.,Cv=0.);  
 end
    
 # Run the static analysis 

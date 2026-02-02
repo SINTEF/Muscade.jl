@@ -114,6 +114,8 @@ module Muscade
         export StrainGaugeOnEulerBeam3D
         include("../toolbox/PositionElement.jl")
         export Position3D  
+        include("../toolbox/SoilContact.jl")
+        export SoilContact  
     end
 
 end
