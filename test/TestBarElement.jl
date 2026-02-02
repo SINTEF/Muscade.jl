@@ -1,10 +1,9 @@
-#module TestBarElement
+module TestBarElement
 
 using Test, Muscade, StaticArrays, LinearAlgebra
 using Muscade.Toolbox
 
 
-## Testing residual
 EA = 10.
 L₀ =  2.
 μ = 1. 
@@ -112,30 +111,29 @@ end
 end
 ;
 
-# ## Testing weight
-# ## Beam bent upwards with uniform weight (along negative t3)  
-# w = 10
-# model           = Model(:TestModel)
-# node1           = addnode!(model,𝕣[0,0,0])
-# node2           = addnode!(model,𝕣[L,0,0])
-# elnod           = [model.nod[n.inod] for n∈[node1,node2]]
-# mat             = BarCrossSection(EA=EA,EI₂=EI₂,EI₃=EI₃,GJ=GJ,μ=μ,ι₁=ι₁,   w=w)
-# bar            = Bar3D(elnod;mat,orient2=SVector(0.,1.,0.))
-# x = SVector(0.,     0.,     0.,     0.,     w*L^3/(24*EI₂),     0.,            0.,    0.0,    0.,     0.,     -w*L^3/(24*EI₂),     0.); X = (x,)
-# R,FB=Muscade.residual(bar,   X,U,A,t,SP,dbg) 
-# @testset "residual weight" begin
-#     @test R        ≈  [ 0.0, 0.0, w*L/2, 0.0, 0.0, 0.0, 0.0, 0.0, w*L/2, 0.0, 0.0, 0.0 ]
-# end
+# Testing weight
+w = 10
+model           = Model(:TestModel)
+node1           = addnode!(model,𝕣[0,0,0])
+node2           = addnode!(model,𝕣[L₀,0,0])
+elnod           = [model.nod[n.inod] for n∈[node1,node2]]
+mat             = AxisymmetricBarCrossSection(EA=EA,μ=μ,w=w)
+bar            =  Bar3D(elnod;mat)
+x = SVector(0.,     0.,     0.,     0.,    0.,    0.); X = (x,)
+R,FB=Muscade.residual(bar,   X,U,A,t,SP,dbg) 
+@testset "residual weight" begin
+    @test R        ≈  [ 0.0, 0.0, w*L₀/2, 0.0, 0.0, w*L₀/2]
+end
 
 ## Testing inertia and added mass resultants
-Ca₁ = 2.
-Ca₂ = 3.
+Caₜ = 2.
+Caₙ = 3.
 a1,a2,a3 = 4.0,3.0,2.0;
 model           = Model(:TestModel)
 node1           = addnode!(model,𝕣[0,0,0])
 node2           = addnode!(model,𝕣[L₀,0,0])
 elnod           = [model.nod[n.inod] for n∈[node1,node2]]
-mat             = AxisymmetricBarCrossSection(EA=EA ,μ=μ, Ca₁=Ca₁, Ca₂=Ca₂)
+mat             = AxisymmetricBarCrossSection(EA=EA ,μ=μ, Caₜ=Caₜ, Caₙ=Caₙ)
 bar            = Bar3D(elnod;mat)
 displacement    =  SVector(0.,0.,0.,  0.,0.,0.); 
 velocity        =  SVector(0.,0.,0.,  0.,0.,0.); 
@@ -144,54 +142,77 @@ velocity        =  SVector(0.,0.,0.,  0.,0.,0.);
     acceleration =  SVector(a1,0.,0.,  a1,0.,0.); 
     X = (displacement,velocity,acceleration); 
     R,FB=Muscade.residual(bar,   X,U,A,t,SP,dbg)     
-    @test R        ≈  [ (μ+Ca₁)*a1*L₀/2, 0., 0.,    (μ+Ca₁)*a1*L₀/2, 0., 0.  ] 
+    @test R        ≈  [ (μ+Caₜ)*a1*L₀/2, 0., 0.,    (μ+Caₜ)*a1*L₀/2, 0., 0.  ] 
 
     acceleration =  SVector(0.,a2,0.,  0.,a2,0.); 
     X = (displacement,velocity,acceleration); 
     R,FB=Muscade.residual(bar,   X,U,A,t,SP,dbg) 
-    @test R        ≈  [ 0., (μ+Ca₂)*a2*L₀/2, 0.,    0., (μ+Ca₂)*a2*L₀/2, 0.] 
+    @test R        ≈  [ 0., (μ+Caₙ)*a2*L₀/2, 0.,    0., (μ+Caₙ)*a2*L₀/2, 0.] 
 
     acceleration =  SVector(0.,0.,a3,  0.,0.,a3); 
     X = (displacement,velocity,acceleration); 
     R,FB=Muscade.residual(bar,   X,U,A,t,SP,dbg) 
-    @test R        ≈  [ 0., 0., (μ+Ca₂)*a3*L₀/2,    0., 0., (μ+Ca₂)*a3*L₀/2] 
+    @test R        ≈  [ 0., 0., (μ+Caₙ)*a3*L₀/2,    0., 0., (μ+Caₙ)*a3*L₀/2] 
 
 end
 
-# ## Testing damping
-# Cl₁ = 1.
-# Cl₂ = 2.
-# Cl₃ = 3.
-# Cq₁ = .1
-# Cq₂ = .2
-# Cq₃ = .3
-# μ = 1. 
-# v1,v2,v3 = 1.0,1.1,0.1;
-# model           = Model(:TestModel)
-# node1           = addnode!(model,𝕣[0,0,0])
-# node2           = addnode!(model,𝕣[L,0,0])
-# elnod           = [model.nod[n.inod] for n∈[node1,node2]]
-# mat             = BarCrossSection(EA=EA ,EI₂=EI₂,EI₃=EI₃,GJ=GJ,μ=μ,ι₁=ι₁,   Cl₁=Cl₁, Cl₂=Cl₂,Cl₃=Cl₃, Cq₁=Cq₁, Cq₂=Cq₂,Cq₃=Cq₃)
-# bar            = Bar3D(elnod;mat,orient2=SVector(0.,1.,0.))
-# acceleration =  SVector(0,0.,0.,0.,0.,0.,  0.,0.,0.,0.,0.,0.); 
-# @testset "residual damping" begin
-#     displacement    =  SVector(0.,0.,0.,0.,0.,0.,  0.,0.,0.,0.,0.,0.); 
-#     velocity        =  SVector(v1,0.,0.,0.,0.,0.,  v1,0.,0.,0.,0.,0.); 
-#     X = (displacement,velocity,acceleration); 
-#     R,FB=Muscade.residual(bar,   X,U,A,t,SP,dbg) 
-#     @test R        ≈  [ (Cl₁+Cq₁*abs(v1))*v1*L/2, 0., 0.,    0.0, 0.0, 0.0,  (Cl₁+Cq₁*abs(v1))*v1*L/2, 0., 0.,  0.0, 0.0, 0.0 ]
+## Testing damping
+Clₜ = 1.
+Clₙ = 2.
+Cqₜ = 3.
+Cqₙ = 4.
+v1,v2,v3 = 1.0,1.1,0.1;
+model           = Model(:TestModel)
+node1           = addnode!(model,𝕣[0,0,0])
+node2           = addnode!(model,𝕣[L₀,0,0])
+elnod           = [model.nod[n.inod] for n∈[node1,node2]]
+mat             = AxisymmetricBarCrossSection(EA=EA, μ=μ,Clₜ=Clₜ, Clₙ=Clₙ, Cqₜ=Cqₜ, Cqₙ=Cqₙ)
+bar             = Bar3D(elnod;mat)
+acceleration    =  SVector(0,0.,0.,  0.,0.,0.); 
+@testset "residual damping" begin
+    displacement    =  SVector(0.,0.,0.,  0.,0.,0.); 
+    velocity        =  SVector(v1,0.,0.,  v1,0.,0.); 
+    X = (displacement,velocity,acceleration); 
+    R,FB=Muscade.residual(bar,   X,U,A,t,SP,dbg) 
+    @test R        ≈  [ (Clₜ+Cqₜ*abs(v1))*v1*L₀/2, 0., 0.,    (Clₜ+Cqₜ*abs(v1))*v1*L₀/2, 0., 0.]
 
-#     displacement =  SVector(0.,     0.,     0.,     0.,     0.,     -(Cl₂+Cq₂*abs(v2))*v2*L^3/(24*EI₃),     0.,    0.,    0.,     0.,      0.,      (Cl₂+Cq₂*abs(v2))*v2*L^3/(24*EI₃))
-#     velocity =      SVector(0.,v2,0.,0.,0.,0.,  0.,v2,0.,0.,0.,0.); 
-#     X = (displacement,velocity,acceleration); 
-#     R,FB=Muscade.residual(bar,   X,U,A,t,SP,dbg) 
-#     @test R        ≈  [ 0., (Cl₂+Cq₂*abs(v2))*v2*L/2, 0.,    0.0, 0.0, 0.0,  0., (Cl₂+Cq₂*abs(v2))*v2*L/2, 0.,  0.0, 0.0, 0.0 ]
+    velocity =      SVector(0.,v2,0.,  0.,v2,0.); 
+    X = (displacement,velocity,acceleration); 
+    R,FB=Muscade.residual(bar,   X,U,A,t,SP,dbg) 
+    @test R        ≈  [ 0., (Clₙ+Cqₙ*abs(v2))*v2*L₀/2, 0.,    0., (Clₙ+Cqₙ*abs(v2))*v2*L₀/2, 0.]
 
-#     displacement =  SVector(0.,     0.,     0.,     0.,     (Cl₃+Cq₃*abs(v3))*v3*L^3/(24*EI₂),     0.,     0.,    0.,    0.,     0.,      -(Cl₃+Cq₃*abs(v3))*v3*L^3/(24*EI₂),      0.)
-#     velocity =      SVector(0.,0.,v3,0.,0.,0.,  0.,0.,v3,0.,0.,0.); 
-#     X = (displacement,velocity,acceleration); 
-#     R,FB=Muscade.residual(bar,   X,U,A,t,SP,dbg)
-#     @test R        ≈  [ 0., 0., (Cl₃+Cq₃*abs(v3))*v3*L/2,    0.0, 0.0, 0.0,  0., 0., (Cl₃+Cq₃*abs(v3))*v3*L/2,  0.0, 0.0, 0.0 ]
-# end
+    velocity =      SVector(0.,0.,v3,  0.,0.,v3); 
+    X = (displacement,velocity,acceleration); 
+    R,FB=Muscade.residual(bar,   X,U,A,t,SP,dbg)
+    @test R        ≈  [ 0., 0., (Clₙ+Cqₙ*abs(v3))*v3*L₀/2,    0., 0., (Clₙ+Cqₙ*abs(v3))*v3*L₀/2]
+end
 
-#end
+
+# # Testing drawing
+# # Create model
+# nel         = 3
+# nodeCoord   = hcat( vcat(0:L₀/nel:L₀,zeros(nel)),zeros(Float64,nel+1 + nel,2))
+# mat         = AxisymmetricBarCrossSection(EA=EA,μ=μ)
+# model       = Model(:TestModel)
+# nodid       = addnode!(model,nodeCoord)
+# mesh        = hcat(nodid[1:nel],nodid[2:nel+1],nodid[nel+2:2nel+1])
+# eleid       = addelement!(model,Bar3D{true},mesh;mat=mat)
+
+# state    = initialize!(model);
+# setdof!(state,  [0.0150628,  0.00279812,  0.0323863,   0.00527616 ],nodID=nodid[1:nel+1     ]         ,field=:t1)
+# setdof!(state,  [0.0118553, -0.0150178 ,  0.0118042,   0.000708444],nodID=nodid[1:nel+1     ]         ,field=:t2)
+# setdof!(state,  [-0.000945, -0.00591755,  0.0133323,  -0.0545434  ],nodID=nodid[1:nel+1     ]         ,field=:t3)
+# setdof!(state,  [0.       ,  0.2        , 0.4                     ],nodID=nodid[nel+2:2nel+1],class=:U,field=:t1)
+# setdof!(state,  [0.       ,  0.         , 0.                      ],nodID=nodid[nel+2:2nel+1],class=:U,field=:t2)
+# setdof!(state,  [1.       ,  1.3        , 1.6                     ],nodID=nodid[nel+2:2nel+1],class=:U,field=:t3)
+
+# state2 = copy(state)
+# state2.X[1] .+= 1.
+
+# using GLMakie
+# fig      = Figure(size = (1000,1000))
+# ax = Axis3(fig[1,1])
+# draw!(ax,state)
+# display(fig)
+
+end
