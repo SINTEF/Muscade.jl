@@ -31,13 +31,14 @@ const nUdof      = 3 # Number of U-class degrees of freedom
 """
     Bar3D
 
-An Euler bar element
+A bar element
 """
 struct Bar3D{Mat,Uforce} <: AbstractElement
     cₘ       :: SVector{ndim,𝕣}  # Position of the middle of the element, as meshed
     tgₘ      :: SVector{ndim,𝕣}  # Vector connecting the nodes of the element in the global coordinate system (global)
     tgₑ      :: SVector{ndim,𝕣}  # Vector connecting the nodes of the element in the local coordinate system  (local)
     L₀       :: 𝕣                # As-meshed length of the element
+    Lₛ        :: 𝕣                # Stress-free length of the element (by default equal to L₀)
     mat      :: Mat              # Used to store material properties (AxisymmetricBarCrossSection, for example)
     wgp      :: SVector{ngp,𝕣}   # Weight associated to each Gauss point
     ζgp      :: SVector{ngp,𝕣}   # Location of the Gauss points for the normalized element defined on [-1/2,1/2]
@@ -61,20 +62,23 @@ Muscade.doflist(     ::Type{Bar3D{Mat,true}}) where{Mat} =
 
 # Constructor of the Bar3D element. 
 Bar3D(nod;kwargs...) = Bar3D{false}(nod;kwargs...) # by default, Bar3D does not have Udof.
-function Bar3D{Udof}(nod::Vector{Node};mat) where {Udof}
+function Bar3D{Udof}(nod::Vector{Node};mat,Lₛ=0.) where {Udof}
     c       = coord(nod)
     # Position of the middle of the element in the global coordinate system (as-meshed)
     cₘ      = SVector{3}((c[1]+c[2])/2)
     # Tangential vector to the element in the local and global coordinate system, and its length (as-meshed)
     tgₘ     = SVector{ndim}(c[2]-c[1])
-    L₀      = norm(tgₘ)
+    L₀ =  norm(tgₘ)
+    if Lₛ == 0.
+        Lₛ =  L₀
+    end
     tgₑ     = SVector{ndim}(L₀,0,0)
-    # Location ζgp of the Gauss points associated weigths, and values of the shape functions, for a unit-length beam element, with nodes at ζnod=±1/2. 
+    # Location ζgp of the Gauss points associated weigths, and values of the shape functions, for a unit-length bar element, with nodes at ζnod=±1/2. 
     wgp    = SVector{ngp}(      L₀/2*(18-sqrt(30))/36,          L₀/2*(18+sqrt(30))/36  ,        L₀/2*(18+sqrt(30))/36,          L₀/2*(18-sqrt(30))/36       ) 
     ζgp     = SVector{ngp  }(   -1/2*sqrt(3/7+2/7*sqrt(6/5)),   -1/2*sqrt(3/7-2/7*sqrt(6/5)),   +1/2*sqrt(3/7-2/7*sqrt(6/5)),   +1/2*sqrt(3/7+2/7*sqrt(6/5))) 
     ζnod    = SVector{nXnod}(   -1/2  ,1/2  )
     shapes  = (ψ₁.(ζgp), ψ₂.(ζgp))
-    return Bar3D{typeof(mat),Udof}(cₘ,tgₘ,tgₑ,L₀,mat,wgp,ζgp,ζnod,shapes...)
+    return Bar3D{typeof(mat),Udof}(cₘ,tgₘ,tgₑ,L₀,Lₛ,mat,wgp,ζgp,ζnod,shapes...)
 end;
 
 # Internal and external loads at a given Gauss point with coordinates x, and strain ε. 
@@ -94,9 +98,9 @@ end;
     # Linear and quadratic damping
     vₜ = v ∘₁ δ         # Tangential acceleration (scalar)
     vₙ = v - vₜ * δ     # Normal acceleration (vector)
-    fqₜ = o.Cqₜ * vₜ^2; if vₜ < 0; fqₜ = -fqₜ end
-    fqₙ2 = o.Cqₙ * vₙ[2]^2; if fqₙ2 < 0; fqₙ2 = -fqₙ2 end
-    fqₙ3 = o.Cqₙ * vₙ[3]^2; if fqₙ3 < 0; fqₙ3 = -fqₙ3 end
+    fqₜ = o.Cqₜ * vₜ^2;          if vₜ < 0; fqₜ = -fqₜ end
+    fqₙ2 = o.Cqₙ * vₙ[2]^2;     if vₙ[2] < 0; fqₙ2 = -fqₙ2 end
+    fqₙ3 = o.Cqₙ * vₙ[3]^2;     if vₙ[3] < 0; fqₙ3 = -fqₙ3 end
     fd  = SVector{3}(o.Clₜ * vₜ + fqₜ, o.Clₙ * vₙ[2] + fqₙ2 ,o.Clₙ* vₙ[3]+ fqₙ3 )
     # Sum of external forces
     ☼fe      =   fi+fw+fa+fd
@@ -105,7 +109,8 @@ end;
     return fᵢ,fe
 end;
 
-vec3(v,ind) = SVector{3}(v[i] for i∈ind);
+# The function below is already defined for beam elements
+# vec3(v,ind) = SVector{3}(v[i] for i∈ind);
 
 # Define now the residual function for the Bar3D element.
 @espy function Muscade.residual(o::Bar3D{Mat,Udof},   X,U,A,t,SP,dbg) where{Mat,Udof}
@@ -120,7 +125,7 @@ vec3(v,ind) = SVector{3}(v[i] for i∈ind);
     L       = √((o.L₀+uᵧ₂[1]-uᵧ₁[1])^2+(uᵧ₂[2]-uᵧ₁[2])^2+(uᵧ₂[3]-uᵧ₁[3])^2)
     δ_       = tg/L
     # Strains
-    ε_       = L/o.L₀ - 1
+    ε_       = L/o.Lₛ - 1
     # Compute how strains vary with nodal displacements (will be used in the Princple of Virtual Work, PVW)
     ε,δ = motion⁻¹{P,ND}(ε_,δ_); δ₀ = ∂0(δ)
     ε∂X₀ = 1/o.L₀*SVector{6}(-δ₀[1],-δ₀[2],-δ₀[3],δ₀[1],δ₀[2],δ₀[3]) 
@@ -141,8 +146,8 @@ vec3(v,ind) = SVector{3}(v[i] for i∈ind);
         R_        = ( fᵢ ∘₀ ε∂X₀ + fₑ ∘₁ x∂X₀ ) * o.wgp[igp]   
         @named(R_);
     end
-    R                   = sum(gpᵢ.R_ for gpᵢ∈gpContrib) 
-    return R,noFB  
+    R                   = sum(gpᵢ.R_ for gpᵢ∈gpContrib)
+return R,noFB  
 end;
 
 # The following functions explain how the bar element should be drawn
