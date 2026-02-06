@@ -7,16 +7,16 @@ using StaticArrays, LinearAlgebra, Muscade
 
 Data structure containing the cross section material properties, for example to a [`Bar3D`](@ref) 
 # Arguments to the constructor
-    EA  :: 𝕣    # Axial stiffness [N]
-    μ   :: 𝕣    # Mass per unit length [kg/m]
+-    `EA  :: 𝕣` is the axial stiffness [N]
+-    `μ   :: 𝕣` is the mass per unit length [kg/m]
 
 # Optional argument to the constructor (all set to zero by default)
-    Caₜ :: 𝕣 # Tangential added mass per unit length [kg/m]
-    Clₜ :: 𝕣 # Tangential linear damping coefficient per unit length [N/m/(m/s)]
-    Cqₜ :: 𝕣 # Tangential quadratic damping coefficient per unit length [N/m/(m/s)^2], for example from drag
-    Caₙ :: 𝕣 # Normal added mass per unit length [kg/m] for motions along second axis
-    Clₙ :: 𝕣 # Normal linear damping coefficient per unit length [N/m/(m/s)] for motions along second axis
-    Cqₙ :: 𝕣 # Normal quadratic damping coefficient per unit length [N/m/(m/s)^2], for motions along second axis
+-    `Caₜ :: 𝕣` is the tangential added mass per unit length [kg/m]
+-    `Clₜ :: 𝕣` is the tangential linear damping coefficient per unit length [N/m/(m/s)]
+-    `Cqₜ :: 𝕣` is the tangential quadratic damping coefficient per unit length [N/m/(m/s)^2], for example from drag
+-    `Caₙ :: 𝕣` is the normal added mass per unit length [kg/m] 
+-    `Clₙ :: 𝕣` is the normal linear damping coefficient per unit length [N/m/(m/s)] 
+-    `Cqₙ :: 𝕣` is the normal quadratic damping coefficient per unit length [N/m/(m/s)^2]
     
 # Example
 ```
@@ -40,9 +40,9 @@ struct AxisymmetricBarCrossSection
     Caₜ :: 𝕣 # Tangential added mass per unit length [kg/m]
     Clₜ :: 𝕣 # Tangential linear damping coefficient per unit length [N/m/(m/s)]
     Cqₜ :: 𝕣 # Tangential quadratic damping coefficient per unit length [N/m/(m/s)^2], for example from drag
-    Caₙ :: 𝕣 # Normal added mass per unit length [kg/m] for motions along second axis
-    Clₙ :: 𝕣 # Normal linear damping coefficient per unit length [N/m/(m/s)] for motions along second axis
-    Cqₙ :: 𝕣 # Normal quadratic damping coefficient per unit length [N/m/(m/s)^2], for motions along second axis
+    Caₙ :: 𝕣 # Normal added mass per unit length [kg/m] 
+    Clₙ :: 𝕣 # Normal linear damping coefficient per unit length [N/m/(m/s)] 
+    Cqₙ :: 𝕣 # Normal quadratic damping coefficient per unit length [N/m/(m/s)^2], 
     # TODO: add gravity field to bar properties (time dependent), and use it to compute the weight. This to enable static analyses. 
 end
 AxisymmetricBarCrossSection(;EA,μ,w=0.,Caₜ=0.,Clₜ=0.,Cqₜ=0.,Caₙ=0.,Clₙ=0.,Cqₙ=0.) = AxisymmetricBarCrossSection(EA,μ,w,Caₜ,Clₜ,Cqₜ,Caₙ,Clₙ,Cqₙ);
@@ -63,11 +63,11 @@ const nUdof      = 3 # Number of U-class degrees of freedom
 
 A three-dimensional bar element, with two nodes, six X-dofs and three U-dofs
 # Arguments to the constructor
--   nod   :: Vector{Node}   # Element's nodes
--   mat   :: Mat            # Material properties ([`AxisymmetricBarCrossSection`](@ref), for example)
+-   `nod   :: Vector{Node}` contains the element's nodes
+-   `mat   :: Mat` contains the material properties ([`AxisymmetricBarCrossSection`](@ref), for example)
 
 # Optional argument to the constructor
--    ϵₛ    ::𝕣        # Such that the stress-free length of the element is (1-ϵₛ) times the as-meshed length of the element. 
+-    `ϵₛ    ::𝕣` is such that the stress-free length of the element is (1-ϵₛ) times the as-meshed length of the element. 
 Providing ϵₛ is optional and set to machine precision by default. A non-zero ϵₛ means that the bar element exhibits some strain 
 in the as-meshed configuration, and hence has some transverse stiffness, which facilitates convergence in static analyses.
 
