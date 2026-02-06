@@ -1,6 +1,6 @@
 # # Dynamic analysis of a beam
 #
-# We perform the dynamic analysis of a steel catenary riser (SCR) and compare the results against the corresponding SIMA/RIFLEX example case. The risers consisting of three segments with two different cross-sections.  
+# We perform the dynamic analysis of a steel catenary riser (SCR) subject to forced top motions. We compare the results against the corresponding SIMA/RIFLEX example case. The riser consists of three segments with two different cross-sections.  
 using Muscade, StaticArrays, GLMakie, Muscade.Toolbox, Interpolations, CSV, DataFrames
 
 # Read RIFLEX motions, tensions, bending moment and curvatures time series (verification data)
@@ -12,7 +12,7 @@ dynMotionT = vcat(-10.,df[:,"x"],df[end,"x"]+100)
 xMotion = linear_interpolation(dynMotionT,-dynMotionX)
 zMotion = linear_interpolation(dynMotionT,dynMotionZ);
 
-# Some physical constant 
+# Some physical constants 
 const g=9.81
 const ρ=1025.;
 
@@ -58,7 +58,7 @@ x2_Cq₂  = 1.0 *   0.5 * ρ * x2_Dh   # Transverse drag coefficients [N/m/(m/s)
 x2_Cq₃  = 1.0 *   0.5 * ρ * x2_Dh
 x2_mat         = BeamCrossSection(EA=x2_EA, EI₂=x2_EI₂, EI₃=x2_EI₃, GJ=x2_GJ, μ=x2_μ, ι₁=x2_ι₁, Ca₂=x2_Ca₂, Cq₂=x2_Cq₂, Ca₃=x2_Ca₃, Cq₃=x2_Cq₃)
 
-# Model line, starting from anchor 
+# Model SCR, starting from the extremity located on seabed
 nel         = [60,      30,     10] # Number of elements per segment
 segLength   = [300.,    300.,   80.] # Segment lengths
 xSection    = [x1_mat,  x2_mat, x1_mat]; # Cross-section type
@@ -101,8 +101,8 @@ if nseg>=2
     end
 end
 
-# Define anchor point
-[addelement!(model,Hold,[firstNode[1]]  ;field)             for field∈[:t1,:t2,:t3,:r1]]; # Support at one end
+# Fix lower extremity
+[addelement!(model,Hold,[firstNode[1]]  ;field)             for field∈[:t1,:t2,:t3,:r1]]; 
 
 # Loading procedure for the static analysis is as follows
 # 1) start by elongating the line to create geometric stiffness
@@ -110,7 +110,7 @@ end
 # 3) move the end of the line to the prescribed displacement
 # 4) contact forces
 
-# Define the prescribed end displacements of the top node
+# Define the prescribed end displacements of the top extremity
 @functor with(xMotion) horizMove(x,t)=x[1] - (1.0 - exp(minimum([t,0]))*(181.0)     + xMotion(t))
 @functor with(zMotion) vertMove(x,t)= x[1] - (exp(minimum([t,0]))*303.1             + zMotion(t))
 addelement!(model,DofConstraint,[lastNode[3]],xinod=(1,),xfield=(:t1,), λinod=1, λclass=:X, λfield=:λt1, gap=horizMove, mode=equal)
@@ -130,29 +130,9 @@ for idxNod = 1:length(nodeList[3])
     addelement!(model,DofLoad,[nodeList[3][idxNod]];field=:t3,value=weight3);  
 end
 
-# Define the soil contact forces (element definition will be moved to the toolbox, work in progress)
-struct SoilContact <: AbstractElement
-    Kh :: 𝕣
-    Kv :: 𝕣
-    Ch :: 𝕣
-    Cv :: 𝕣
-end
-SoilContact(nod::Vector{Node};Kh=0.::𝕣,Kv=0.::𝕣,Ch=0.::𝕣,Cv=0.::𝕣) = SoilContact(Kh,Kv,Ch,Cv)
-@espy function Muscade.residual(o::SoilContact, X,U,A, t,SP,dbg) 
-    x,x′ = ∂0(X)[1], ∂1(X)[1]
-    y,y′ = ∂0(X)[2], ∂1(X)[2]
-    z,z′ = ∂0(X)[3], ∂1(X)[3]
-    if z<0 #sassumes that displacements are with respect to seabead
-        R         = SVector(o.Kh*x +o.Ch*x′,o.Kh*y +o.Ch*y′,o.Kv*z +o.Cv*z′)
-    else 
-        R         = SVector(0,0,0)
-    end
-    return R,noFB
-end
-Muscade.doflist( ::Type{SoilContact})  = (inod =(1 ,1, 1), class=(:X,:X,:X), field=(:t1,:t2,:t3))
 
 for idxNod = 1:length(nodeList[1])
-    addelement!(model,SoilContact,[nodeList[1][idxNod]],Kh=1.0e3,Kv=1.0e4,Ch=0.,Cv=0.);  
+    addelement!(model,SoilContact,[nodeList[1][idxNod]],z₀=0.,Kh=1.0e3,Kv=1.0e4,Ch=0.,Cv=0.);  
 end
    
 # Run the static analysis 
@@ -214,7 +194,7 @@ req = @request gp(κgp)
 out = getresult(dynamicStates,req,[elementList[64]])
 κgp1_ = [ out[idxEl].gp[1].κgp[1] for idxEl ∈ 1:size(out,2)];
 
-# Plot comparison between Muscade and RIFLEX results. Minor discrepancies might be due to the fact that loads are extracted at Gauss points in Muscade, while they are extracted at nodes in RIFLEX.
+# Plot comparison between Muscade and RIFLEX results. 
 fig2      = Figure(size = (1000,1000))
 ax1 = Axis(fig2[1, 1],ylabel="Top horiz. disp. [m]")
 lines!(ax1,dynamicLoadSteps,xMotion(dynamicLoadSteps))
@@ -235,4 +215,6 @@ if occursin("build", currentDir)
 elseif occursin("examples", currentDir)
     save(normpath(joinpath(currentDir,"dynamicAnalysisSCR.png")),fig2)
 end
+# Minor discrepancies might be due to the fact that loads are extracted at Gauss points in Muscade, while they are extracted at nodes in RIFLEX.
+
 # ![Result](assets/dynamicAnalysisSCR.png)
