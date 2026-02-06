@@ -2,7 +2,37 @@
 
 using StaticArrays, LinearAlgebra, Muscade
 
-# Data structure containing the cross section material properties
+"""
+    AxisymmetricBarCrossSection 
+
+Data structure containing the cross section material properties, for example to a [`Bar3D`](@ref) 
+# Arguments to the constructor
+    EA  :: 𝕣    # Axial stiffness [N]
+    μ   :: 𝕣    # Mass per unit length [kg/m]
+
+# Optional argument to the constructor (all set to zero by default)
+    Caₜ :: 𝕣 # Tangential added mass per unit length [kg/m]
+    Clₜ :: 𝕣 # Tangential linear damping coefficient per unit length [N/m/(m/s)]
+    Cqₜ :: 𝕣 # Tangential quadratic damping coefficient per unit length [N/m/(m/s)^2], for example from drag
+    Caₙ :: 𝕣 # Normal added mass per unit length [kg/m] for motions along second axis
+    Clₙ :: 𝕣 # Normal linear damping coefficient per unit length [N/m/(m/s)] for motions along second axis
+    Cqₙ :: 𝕣 # Normal quadratic damping coefficient per unit length [N/m/(m/s)^2], for motions along second axis
+    
+# Example
+```
+EA = 10.
+L₀ =  2.
+μ = 1. 
+model           = Model(:TestModel)
+node1           = addnode!(model,𝕣[0,0,0])
+node2           = addnode!(model,𝕣[L₀,0,0])
+elnod           = [model.nod[n.inod] for n∈[node1,node2]]
+mat             = AxisymmetricBarCrossSection(EA=EA,μ=μ)
+bar             = Bar3D(elnod;mat)
+```
+
+See also: [`Bar3D`](@ref), [`EulerBeam3D`](@ref)
+"""
 struct AxisymmetricBarCrossSection
     EA  :: 𝕣 # Axial stiffness [N]
     μ   :: 𝕣 # Mass per unit length [kg/m]
@@ -15,7 +45,7 @@ struct AxisymmetricBarCrossSection
     Cqₙ :: 𝕣 # Normal quadratic damping coefficient per unit length [N/m/(m/s)^2], for motions along second axis
     # TODO: add gravity field to bar properties (time dependent), and use it to compute the weight. This to enable static analyses. 
 end
-AxisymmetricBarCrossSection(;EA,μ=μ,w=0.,Caₜ=0.,Clₜ=0.,Cqₜ=0.,Caₙ=0.,Clₙ=0.,Cqₙ=0.) = AxisymmetricBarCrossSection(EA,μ,w,Caₜ,Clₜ,Cqₜ,Caₙ,Clₙ,Cqₙ);
+AxisymmetricBarCrossSection(;EA,μ,w=0.,Caₜ=0.,Clₜ=0.,Cqₜ=0.,Caₙ=0.,Clₙ=0.,Cqₙ=0.) = AxisymmetricBarCrossSection(EA,μ,w,Caₜ,Clₜ,Cqₜ,Caₙ,Clₙ,Cqₙ);
 
 const ngp        = 4 # Number of Gauss points
 const ndim       = 3 # Number of dimensions
@@ -29,16 +59,39 @@ const nUdof      = 3 # Number of U-class degrees of freedom
 
 # Data structure describing an Bar3D element as meshed
 """
-    Bar3D
+    Bar3D <: AbstractElement
 
-A bar element
+A three-dimensional bar element, with two nodes, six X-dofs and three U-dofs
+# Arguments to the constructor
+-   nod   :: Vector{Node}   # Element's nodes
+-   mat   :: Mat            # Material properties ([`AxisymmetricBarCrossSection`](@ref), for example)
+
+# Optional argument to the constructor
+-    ϵₛ    ::𝕣        # Such that the stress-free length of the element is (1-ϵₛ) times the as-meshed length of the element. 
+Providing ϵₛ is optional and set to machine precision by default. A non-zero ϵₛ means that the bar element exhibits some strain 
+in the as-meshed configuration, and hence has some transverse stiffness, which facilitates convergence in static analyses.
+
+# Example
+```
+EA = 10.
+L₀ =  2.
+μ = 1. 
+model           = Model(:TestModel)
+node1           = addnode!(model,𝕣[0,0,0])
+node2           = addnode!(model,𝕣[L₀,0,0])
+elnod           = [model.nod[n.inod] for n∈[node1,node2]]
+mat             = AxisymmetricBarCrossSection(EA=EA,μ=μ)
+bar             = Bar3D(elnod;mat)
+```
+
+See also: [`AxisymmetricBarCrossSection`](@ref), [`EulerBeam3D`](@ref)
 """
 struct Bar3D{Mat,Uforce} <: AbstractElement
     cₘ       :: SVector{ndim,𝕣}  # Position of the middle of the element, as meshed
     tgₘ      :: SVector{ndim,𝕣}  # Vector connecting the nodes of the element in the global coordinate system (global)
     tgₑ      :: SVector{ndim,𝕣}  # Vector connecting the nodes of the element in the local coordinate system  (local)
     L₀       :: 𝕣                # As-meshed length of the element
-    Lₛ        :: 𝕣                # Stress-free length of the element (by default equal to L₀)
+    Lₛ        :: 𝕣                # Stress-free length of the element (by default (1-ϵ)*L₀, to enable convergence)
     mat      :: Mat              # Used to store material properties (AxisymmetricBarCrossSection, for example)
     wgp      :: SVector{ngp,𝕣}   # Weight associated to each Gauss point
     ζgp      :: SVector{ngp,𝕣}   # Location of the Gauss points for the normalized element defined on [-1/2,1/2]
@@ -62,16 +115,14 @@ Muscade.doflist(     ::Type{Bar3D{Mat,true}}) where{Mat} =
 
 # Constructor of the Bar3D element. 
 Bar3D(nod;kwargs...) = Bar3D{false}(nod;kwargs...) # by default, Bar3D does not have Udof.
-function Bar3D{Udof}(nod::Vector{Node};mat,Lₛ=0.) where {Udof}
+function Bar3D{Udof}(nod::Vector{Node};mat,ϵₛ=eps()) where {Udof}
     c       = coord(nod)
     # Position of the middle of the element in the global coordinate system (as-meshed)
     cₘ      = SVector{3}((c[1]+c[2])/2)
     # Tangential vector to the element in the local and global coordinate system, and its length (as-meshed)
     tgₘ     = SVector{ndim}(c[2]-c[1])
     L₀ =  norm(tgₘ)
-    if Lₛ == 0.
-        Lₛ =  L₀
-    end
+    Lₛ =  (1-ϵₛ)*L₀
     tgₑ     = SVector{ndim}(L₀,0,0)
     # Location ζgp of the Gauss points associated weigths, and values of the shape functions, for a unit-length bar element, with nodes at ζnod=±1/2. 
     wgp    = SVector{ngp}(      L₀/2*(18-sqrt(30))/36,          L₀/2*(18+sqrt(30))/36  ,        L₀/2*(18+sqrt(30))/36,          L₀/2*(18-sqrt(30))/36       ) 

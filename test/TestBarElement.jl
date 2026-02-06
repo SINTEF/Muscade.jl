@@ -46,19 +46,9 @@ out = Muscade.diffed_residual(bar; X,U,A,t,SP)
 iλ,ix,iu,ia = 1,2,3,4
 R = out.R
 K = out.∇R[ix][1]
-C = out.∇R[ix][2]
+# C = out.∇R[ix][2]
 M = out.∇R[ix][3]
-H = out.∇R[iu][1]
-
-# using Printf
-# @printf "\nR\n"
-# print_element_array(bar,:X,out.R)    #  R
-# @printf "\nK=∂R/∂X₀\n"
-# print_element_array(bar,:X,out.∇R[2][1])  # K
-# # @printf "\nC=∂R/∂X₁\n"
-# # print_element_array(bar,:X,out.∇R[2][2])  # C
-# # @printf "\nM=∂R/∂X₂\n"
-# # print_element_array(bar,:X,out.∇R[2][3])  # M
+# H = out.∇R[iu][1]
 
 @testset "axial stiffness" begin
     @test K[1,1]        ≈  EA/L₀ 
