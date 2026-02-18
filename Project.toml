@@ -1,7 +1,7 @@
 name = "Muscade"
 uuid = "93488820-1883-11ed-0c34-05177b029e4d"
 authors = ["Philippe Maincon <philippe.maincon@sintef.no>","Thomas Sauder <thomas.sauder@sintef.no>"]
-version = "0.6.0"
+version = "0.7.0"
 
 [deps]
 GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
