@@ -106,7 +106,7 @@ const exp𝑖  = cis
 """
     𝕫log2(i::𝕫)
 
-Compute the integer `log2` of an integer, fails if `i` is not a power of two.
+Compute the integer `log2` of an integer, fast. Fails if `i` is not a power of two.
 """
 function 𝕫log2(i::𝕫) 
     a = 63-leading_zeros(i)
@@ -120,7 +120,7 @@ for T in (:𝔹,:ℕ,:ℤ,:ℝ,:ℂ)
     #@eval export $T
     @eval const  $(Symbol(T,:x)) = AbstractArray{t} where {t<: $T}
     #@eval export $(Symbol(T,:x))  
-    for N in (:1,:2,:3,:4)
+    for N in (:0,:1,:2,:3,:4)
         TN = Symbol(T,N)
         @eval const  $TN{t} = AbstractArray{t,$N} where {t<: $T}
         #@eval export $TN
@@ -134,6 +134,10 @@ for T in (:𝕓,:𝕟,:𝕫,:𝕣,:𝕔)
         #@eval export $TN
     end
 end
+for T in (:𝕓,:𝕟,:𝕫,:𝕣,:𝕔)
+    T0 = Symbol(T,:0)
+    @eval const  $T0 = Ref{$T}
+end
 const ℝ11      = AbstractVector{A} where {A<:ℝ1}
 const ℤ11      = AbstractVector{A} where {A<:ℤ1}
 const ℂ11      = AbstractVector{A} where {A<:ℂ1}
@@ -142,6 +146,7 @@ const 𝕫11      = Vector{Vector{𝕫}}
 const 𝕔11      = Vector{Vector{𝕔}}
 const Sparse𝕣2 = SparseMatrixCSC{𝕣,𝕫}
 const Sparse𝕔2 = SparseMatrixCSC{𝕔,𝕫}
+const LU𝕣      = SparseArrays.UMFPACK.UmfpackLU{𝕣,𝕫}
 
 ## Miscellaneous
 subtypeof(a::AbstractVector,b::AbstractVector) = a[a .<: Union{b...}]
@@ -196,47 +201,28 @@ function showtime(t)
     end
 end
 
-# if a function f is given the argument pointer= Ref{SomeType}()
-# the function can then do e.g. vec=allocate(pointer,Vector...) and write to vec.
-# and the caller retrievs the data with vec = pointer[] 
+# if a function f is given the argument ref= Ref{SomeType}()
+# the function can then do e.g. vec=allocate(ref,Vector...) and write to vec.
+# and the caller retrievs the data with vec = ref[] 
 # advantage over "return vec" is if f throws, then vec still contains some data.
 
-const Pointer = Base.RefValue
-#function allocate(pointer::Pointer{T},target::T) where{T}
-function allocate(pointer::Pointer,target) # TODO use line above
-    pointer[]=target
+function allocate(ref::Ref{R},target::T) where{R,T<:R}
+    ref[]=target
     return target
 end
 
+
 copies(n,a::T) where{T} = NTuple{n,T}(deepcopy(a) for i∈1:n)
 
-
 """
-    @once tag f(x)= x^2 
-    
-do not parse the definition of function `f` again if not modified.
-Using in a script, this prevents recompilations in `Muscade` or applications
-based on it when they receive such functions as argument.
+    value      = default{:fieldname}(namedtuple,defaultvalue)
+    namedtuple = default(inputnamedtuple,defaultnamedtuple)
 
-`tag` must be a legal variable name, and unique to this invocation of `@once`  
-"""    
-macro once(tag,ex)
-    ex  = postwalk(rmlines,ex)
-    ex  = postwalk(unblock,ex)
-    qex = QuoteNode(ex)
-    tag = Symbol("tag_for_the_once_macro_",tag)
-    return esc(quote
-        if  ~@isdefined($tag) || $tag≠$qex
-            $tag = $qex
-            $ex    
-        end 
-    end)
-end
-"""
-    default{:fieldname}(namedtuple,defval)
+The first syntax attempts to access field `fieldname` from `namedtuple`. If `namedtuple` does not have 
+such a field - or is not a `NamedTuple`, return `defaultvalue`.
 
-attempt to get a field `fieldname` from a `NamedTuple`. If `namedtuple` does not have 
-such a field - or is not a `NamedTuple`, return `defval`.
+The second syntax creates `namedtuple` from `inputnamedtuple`, supplementing with fields and values from `defaultnamedtuple` where
+there is no corresponding field in `inputnamedtuple`.  This a thin wrapper of Julia's `Base.merge`. 
 """
 struct default{S} end
 default{S}(t::T,d=nothing) where{S,T<:Base.Pairs} = default{S}((;t...),d)
@@ -256,6 +242,19 @@ See also Julia's `identity` function.
 struct IdVec end
 const idvec = IdVec()
 @inline Base.getindex(::IdVec,i) = i
+
+"""
+a*idmult == idmult*a = a
+and this should compile as a no-op.
+"""
+
+struct IdMult end
+const  idmult = IdMult()
+@inline Base.:(*)(::IdMult,a) = a
+@inline Base.:(*)(a,::IdMult) = a
+@inline Base.:(/)(a,::IdMult) = a
+
+
 
 """
     mod_onebased(i,n) = mod(i-1,n)+1

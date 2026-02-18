@@ -18,14 +18,14 @@ model           = Model(:TestModel)
 n1              = addnode!(model,[0.]) 
 n2              = addnode!(model,[1.])
 e1              = addelement!(model,Hold,[n1];field=:tx1)                       # Hold first node
-@once id1 load(t) = 3t
+@functor with() load(t) = 3t
 e2              = addelement!(model,DofLoad,[n2];field=:tx1,value=load)        # Increase load on second node
-@once id2 res(X,X′,X″,t)  = 12SVector(X[1]-X[2],X[2]-X[1])
+@functor with() res(X,X′,X″,t)  = 12SVector(X[1]-X[2],X[2]-X[1])
 e3              = addelement!(model,QuickFix,[n1,n2];inod=(1,2),field=(:tx1,:tx1),
                               res=res)  # Linear elastic spring with stiffness 12
 initialstate    = initialize!(model)
 state           = solve(SweepX{0};initialstate,time=[0.,1.],verbose=false)      # Solve the problem
-tx1,_           = getdof(state[2],field=:tx1,nodID=[n2])                        # Extract the displacement of the free node
+tx1             = getdof(state[2],field=:tx1,nodID=[n2])                        # Extract the displacement of the free node
 req             = @request F                                                    # Extract internal results from the spring element
 eleres          = getresult(state,req,[e2]) 
 iele,istep      = 1,2
@@ -45,11 +45,11 @@ The definition of a model is done in three phases:
 
 `Muscade` does not provide a mesher. There are some general purposes meshers with Julia API, which outputs could be used to generate calls to [`addnode!`](@ref) and [`addelement!`](@ref).
 
-Note that two `function`s, `load` and `res` are defined in the script, and then passed as argument to element constructors. In the script it is *recommended* (but not compulsory) to annotate the function definition with the macro[`@once`](@ref).  The first argument must be a unique variable name. The second argument is the function definition.  The macro prevents the function to be re-parsed if unchanged, which in turn prevents unnecessary recompilations of Muscade when the script is runned multiple times in a session. 
+Note that two `Function`s, `load` and `res` are defined in the script, and then passed as argument to element constructors. Elements require that the function has been defined by using the macro [`@functor`](@ref).  The first argument is a list of parameters captured by the function. The macro ensures that the *values* of the parameters are captured. The second argument is the function definition.  The macro prevents the function to be re-parsed if unchanged, which in turn prevents unnecessary recompilations of Muscade when the script is runned multiple times in a session. 
 
-The model - either finitialized or under construction, can be examined using [`describe`](@ref) and [`getndof`](@ref).  
+The model - either finitialized or under construction, can be examined using [`Muscade.describe`](@ref) and [`getndof`](@ref).  
 
-Optionaly, one can also use [`setscale!`](@ref) (with the help of [`studyscale`](@ref)) to scale the variables and thus improve the conditioning of the problem. 
+Optionaly, one can also use [`setscale!`](@ref) (with the help of [`Muscade.study_scale`](@ref)) to scale the variables and thus improve the conditioning of the problem. 
 
 Information on commands provided by Julia and packages (including ``Muscade``) can be obtained from the help mode in the REPL.  Make sure the command is available by `using Muscade`, then activate the help mode by pressing `?`. 
 
@@ -76,13 +76,17 @@ With a few exceptions for testing and demonstration, `Muscade` does not provide 
 
 [`DofLoad`](@ref) adds a time-varying load on a single ``X``-dof.  Elements for more general loads, in particular, consistent loads on element boundaries or domain, or follower loads, need to be implemented if required.
 
-[`DofCost`](@ref) adds a cost as a function of either ``X``-dofs ,``U``-dofs (and/or their derivatives), ``A``-dofs and time, or as a function of ``A``-dofs alone. Elements for costs on unknwn distributed load *fields* (over boundary or domain) must be provided by apps if required.
+[`DofCost`](@ref) adds a cost per unit of time, as a function of either ``X``-dofs ,``U``-dofs (and/or their derivatives), ``A``-dofs and time. Elements for costs on unknown distributed load *fields* (over boundary or domain) must be provided by apps if required.
 
 [`SingleDofCost`](@ref) provides a simplified syntax for costs on a single dof.
 
+[`Acost`](@ref) adds a once-off cost, as a function of ``A``-dofs. 
+
+[`SingleAcost`](@ref) provides a simplified syntax for A once-off cost on a single ``A``-dof.
+
 [`SingleUdof`](@ref) allows to define an unknown external nodal load and apply a cost to it.
 
-[`ElementCost`](@ref) adds a cost on a combination of one element's dofs and element-results.
+[`ElementCost`](@ref) adds a cost per unti of time on a combination of one element's dofs and element-results.
 
 [`DofConstraint`](@ref) adds a constraint to a combination of *values* (no time derivatives) of dofs. The constraints can switch over time between equality, inequality and "off". Inequality constraints are handled using a modified interior point method.
 
@@ -92,19 +96,22 @@ With a few exceptions for testing and demonstration, `Muscade` does not provide 
 
 [`QuickFix`](@ref) allows to rapidly create a simple element, with limitations in functionality. 
 
+When using `xxxCost` elements to introduce measured time series, consider using [`DataInterpolations.jl`](https://github.com/SciML/DataInterpolations.jl).
+
+
 ## Running the analysis
 
 [`solve`](@ref) is then called with the name of the solver to be used (here [`SweepX{0}`](@ref)), and any named parameters required by the solver. The return value `state` can have different structures, depending on the solver.  For [`SweepX{0}`](@ref), `state` is a vector (over the time steps) of `State`s.
 
-[`describe`](@ref) can also be used to inspect `State`s.
+[`Muscade.describe`](@ref) can also be used to inspect `State`s.
 
-Analyses may fail due to singular matrix.  The source of the singularity can be challenging to diagnose. [`studysingular`](@ref) can help determine the null-space of an incremental matrix, for small problems.
+Analyses may fail due to singular matrix.  The source of the singularity can be challenging to diagnose. [`Muscade.study_singular`](@ref) can help determine the null-space of an incremental matrix, for small problems.
 
 ## Extracting results
 
 `State`s (returned by [`initialize!`](@ref) and [`solve`](@ref)). are variables which contents are private (not part of the API, and subject to change), but can be accessed using [`getdof`](@ref) and [`getresult`](@ref).
 
- [`getdof`](@ref) allows to obtain dofs which are directly stored in `state`, by specifying class, field and node.
+[`getdof`](@ref) allows to obtain dofs which are directly stored in `state`, by specifying class, field and node.
 
 [`getresult`](@ref) (used in combination with [`Muscade.@request`](@ref)) allows to obtain "element-results".  Element-results are intermediate values that are computed within [`Muscade.lagrangian`](@ref) or [`Muscade.residual`](@ref), but are (generaly) not returned, because the API for these functions does not open for this.  In mechanics,  [`Muscade.residual`](@ref) would take displacements as inputs (``X``-dofs) and from them compute the forces that must act on the element to cause these displacements. Element-results woudl then include quantities such as stresses and strains.  To be requestable, a variable must be tagged in [`Muscade.lagrangian`](@ref) or [`Muscade.residual`](@ref), prefixing its name with `☼` (`\sun`) at the right hand of an assigment.
 
@@ -136,4 +143,28 @@ runtime overhead, and allow to verify code for unit consistency (`Muscade` does 
 
 ## Drawing
 
-TODO 
+### Generating figures with `Draw!`
+
+To create a snapshot of a `State`, either the initialised model, or a step from an analysis, one can use [`draw!`](@ref):
+```julia
+using GLMakie
+fig     = Figure(size = (500,500))
+axis    = Axis3(fig[1,1])
+draw!(axis,state;kwargs...)
+```
+
+[`draw!`](@ref) calls methods [`Muscade.allocate_drawing`](@ref), [`Muscade.update_drawing`](@ref) and [`Muscade.display_drawing!`](@ref) for all (or specific) elements of the model.  
+
+Elements that do not implement the above three methods simply have no graphic representation. `Muscade`'s built-in elements, for example, do not implement such methods.  This is for two reasons.
+
+First, `Muscade` is not written to serve a specific domain of physics.  How a [`DofConstraint`](@ref) should be represented would be different in mechanics and chemical species diffusion.  Developers of `Muscade`-based application can create domain-specific drawing methods for specific elements.
+
+Second, while `Muscade` is tested with [`GLMakie.jl`](https://docs.makie.org/), it is intended to support other graphic engines.  For example, `fig` in the above example could be an opened [`Paraview`](https://www.paraview.org/) file (VTK file), and the drawing methods could be made to write to this file. `Muscade` itself only passes `fig` on to the drawing methods, with no form of type checking.
+
+[`draw!`](@ref) accepts a list of keywords argument (`kwargs...`) in the above example, which `Muscade` just passes on to the drawing methods of all elements. This is intended to provide the user control over what is drawn and how (choose which field to display, line thickness, surface color etc.).
+
+### Interactive exploration with `GUI`
+
+The function [`GUI`](@ref) can be called with a `Vector` of `State`s.  This allows to explore a sequence of steps interactively, and allows to scale results for visualisation, 
+
+

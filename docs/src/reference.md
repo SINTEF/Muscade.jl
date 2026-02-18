@@ -28,6 +28,13 @@ Modules = [Muscade]
 Order   = [:macro]
 ```
 
+## Toolbox
+
+```@autodocs
+Modules = [Muscade.Toolbox]
+```
+
+
 ## Index
 
 ```@index

@@ -94,19 +94,20 @@ In `Λ`, `X`, `U` and `A` handed by Muscade to `residual` or `lagrangian`,
 the dofs in the vectors will follow the order in the doflist. Element developers
 are free to number their dofs by node, by field, or in any other way.
 
-See also: [`Muscade.lagrangian`](@ref), [`Muscade.residual`](@ref), [`Muscade.nosecondorder`](@ref)  
+See also: [`Muscade.lagrangian`](@ref), [`Muscade.residual`](@ref), [`Muscade.no_second_order`](@ref)  
 """
 doflist(     ::Type{E}) where{E<:AbstractElement}  = muscadeerror(@sprintf("method 'Muscade.doflist' must be provided for elements of type '%s'\n",E))
 
 """
-    nosecondorder(::Type{E<:AbstractElement})
+    no_second_order(::Type{E<:AbstractElement})
 
-Elements that define `residual` which would give excessive compilation and/or execution time if differentiated
-to the second order can implement a method after the below pattern to limit differentiation to first order:   
+Elements that define `residual` are normaly mostly differentiated only to the first order, to avoid
+excessive compilation and/or execution time.
+To allow differentiation to the second order (for elements with few dofs), implement a method after the below pattern:   
 
-    Muscade.nosecondorder(     ::Type{<:MyElementType}) = Val(true)
+    Muscade.no_second_order(     ::Type{<:MyElementType}) = Val(false)
 """
-nosecondorder(     ::Type{<:AbstractElement}) = Val(false)
+no_second_order(     ::Type{<:AbstractElement}) = Val(false)
 
 """
     @espy function Muscade.lagrangian(eleobj::MyElement,Λ,X,U,A,t,SP,dbg)
@@ -167,7 +168,7 @@ Elements must implement a method for `Muscade.residual` or [`Muscade.lagrangian`
 - `FB` feedback from the element to the solver (for example: can `γ` be 
   reduced?). Return `noFB` of the element has no feedback to provide.
 
-See also: [`Muscade.lagrangian`](@ref), [`Muscade.nosecondorder`](@ref), [`Muscade.doflist`](@ref), [`@espy`](@ref), [`∂0`](@ref), [`∂1`](@ref), [`∂2`](@ref), [`noFB`](@ref)
+See also: [`Muscade.lagrangian`](@ref), [`Muscade.no_second_order`](@ref), [`Muscade.doflist`](@ref), [`@espy`](@ref), [`∂0`](@ref), [`∂1`](@ref), [`∂2`](@ref), [`noFB`](@ref)
 """
 residual()=nothing
 """

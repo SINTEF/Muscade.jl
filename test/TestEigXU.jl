@@ -6,8 +6,8 @@
 
 
 #invs = @snoop_invalidations 
-# using Muscade, Test, StaticArrays,SparseArrays;
-
+using Muscade, Test, StaticArrays,SparseArrays;
+using Muscade.Toolbox
 
 q          = 6
 nel        = 2^q
@@ -20,11 +20,6 @@ xn         = 1.
 λn         = 1e3
 un         = 1e3
 
-## beam in space
-include("../examples/BeamElement.jl")
-include("../examples/StrainGaugeOnBeamElement.jl")
-include("../examples/PositionElement.jl")
-
 L    = 1;    # Beam length [m]
 q    = 0.0;  # Uniform lateral load [N/m]
 EI₂  = 1;    # Bending stiffness [Nm²]
@@ -34,10 +29,10 @@ GJ   = 1e6;  # Torsional stiffness [Nm²]
 μ    = 1;
 ι₁   = 1;
 hasU = true
-const σε   = 100e-6*100 # precision of strain measurements
+σε   = 100e-6*100 # precision of strain measurements
 σx   = 1e-1
 σu   = 1e-0
-const σa   = 1e5
+σa   = 1e5
 
 α           = iels/nel*2π
 XnodeCoord  = hcat(cos.(α),sin.(α),zeros(nel,1))
@@ -51,9 +46,15 @@ nakedmesh   = mesh[inaked,:]
 strainmesh  = mesh[istrain,:]
 accmesh     = reshape(Xnod[iacc],(length(iacc),1))
 addelement!(model,EulerBeam3D{hasU},nakedmesh;mat=mat,orient2=SVector(0.,0.,1.))
+
+@functor with(σε) costStrain(eleres,t) = .5*sum((eleres.ε/σε).^2)
+@functor with(σa) costAcc(eleres,t) =    .5*sum((eleres.a/σa).^2)
+@functor with(σu) costU(u,t) =                 .5*(u/σu).^2
+@functor with(σx) costX(x,t) =                 .5*(x/σx).^2
+
 addelement!(model,ElementCost,strainmesh;
                         req           = @request(ε),
-                        cost          = (eleres,X,U,A,t) -> sum((eleres.ε/σε).^2)/2,
+                        cost          = costStrain,
                         ElementType   = StrainGaugeOnEulerBeam3D,
                         elementkwargs = (P             = SMatrix{3,4}(0.,0.,.05, 0.,0.05,0.,  0.,0.,-.05,  0.,-.05,0.),
                                          D             = SMatrix{3,4}(1.,0.,0.,  1.,0.,0.,    1.,0.,0.,    1.,0.,0.  ),
@@ -62,18 +63,18 @@ addelement!(model,ElementCost,strainmesh;
                                                           orient2 = SVector(0.,0.,1.))))
 addelement!(model,ElementCost,accmesh;
                         req           = @request(a),
-                        cost          = (eleres,X,U,A,t) -> sum((eleres.a/σa).^2)/2,
+                        cost          = costAcc,
                         ElementType   = Position3D,
                         elementkwargs = (P             = SMatrix{3,3}(0.,0.,.1,  0.,0.,.1,  0.,0.,.1),
                                          D             = SMatrix{3,3}(1.,0.,0.,  0.,1.,0.,    0.,0.,1.) ))
 # Ucost
-addelement!( model, SingleDofCost, Muscade.columnmatrix(Unod         )    ,class=:U, field=:t1,cost=QuadraticFunction(0.,0.5(σu^-2)))
-addelement!( model, SingleDofCost, Muscade.columnmatrix(Unod         )    ,class=:U, field=:t2,cost=QuadraticFunction(0.,0.5(σu^-2)))
-addelement!( model, SingleDofCost, Muscade.columnmatrix(Unod         )    ,class=:U, field=:t3,cost=QuadraticFunction(0.,0.5(σu^-2)))
+addelement!( model, SingleDofCost, Muscade.columnmatrix(Unod         )    ,class=:U, field=:t1,cost=costU)
+addelement!( model, SingleDofCost, Muscade.columnmatrix(Unod         )    ,class=:U, field=:t2,cost=costU)
+addelement!( model, SingleDofCost, Muscade.columnmatrix(Unod         )    ,class=:U, field=:t3,cost=costU)
 # disp meas
-addelement!( model, SingleDofCost, Muscade.columnmatrix(Xnod[istrain])    ,class=:X, field=:t1,cost=QuadraticFunction(0.,0.5(σx^-2)))
-addelement!( model, SingleDofCost, Muscade.columnmatrix(Xnod[istrain])    ,class=:X, field=:t2,cost=QuadraticFunction(0.,0.5(σx^-2)))
-addelement!( model, SingleDofCost, Muscade.columnmatrix(Xnod[istrain])    ,class=:X, field=:t3,cost=QuadraticFunction(0.,0.5(σx^-2)))
+addelement!( model, SingleDofCost, Muscade.columnmatrix(Xnod[istrain])    ,class=:X, field=:t1,cost=costX)
+addelement!( model, SingleDofCost, Muscade.columnmatrix(Xnod[istrain])    ,class=:X, field=:t2,cost=costX)
+addelement!( model, SingleDofCost, Muscade.columnmatrix(Xnod[istrain])    ,class=:X, field=:t3,cost=costX)
 
 initialstate      = initialize!(model)   
 initialstate.time     = 0.
@@ -93,7 +94,7 @@ OX,OU                 = 2,0
 
 ## EigXU analysis
 Δω                = 2^-6 
-p                 = 11
+p                 = 2#11
 nmod              = 5
 
 
@@ -113,6 +114,31 @@ nmod              = 5
 
 
 eigincXU          = solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=true,verbosity=1,tol=1e-20,σₓᵤ)
+
+
+# using ProfileView
+# using Profile
+# using BenchmarkTools
+
+# mission = :profile
+# if mission == :report
+#     eigincXU           = solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=true,verbosity=1,tol=1e-20,σₓᵤ)
+
+# elseif mission == :time
+#     eigincXU           = solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=false,verbosity=1,tol=1e-20,σₓᵤ)
+#     @btime eigincXU    = solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=false,verbosity=1,tol=1e-20,σₓᵤ)
+# elseif mission == :profile
+#     eigincXU           = solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=false,verbosity=1,tol=1e-20,σₓᵤ)
+#     Profile.clear()
+#     Profile.@profile for i=1:100
+#         local eigincXU = solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=false,verbosity=1,tol=1e-20,σₓᵤ)
+#     end
+#     ProfileView.view(fontsize=30);
+#     # After clicking on a bar in the flame diagram, you can type warntype_last() and see the result of 
+#     # code_warntype for the call represented by that bar.
+# end
+
+
 
 nα                = 32
 α                 = 2π*(1:nα)/nα

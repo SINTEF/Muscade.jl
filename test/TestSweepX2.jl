@@ -1,4 +1,4 @@
-module TestNewmarkX
+module TestSweepX2
 using Test
 using Muscade
 
@@ -17,7 +17,6 @@ state           = solve(SweepX{2};  initialstate,time= T,verbose=false,catcherro
 X  = getdof(state;field=:tx1,nodID=[node],order=0)
 X′ = getdof(state;field=:tx1,nodID=[node],order=1)
 X″ = getdof(state;field=:tx1,nodID=[node],order=2)
-
 @testset "SDof oscillator output" begin
     @test X[ 1:10:end] ≈ [0.3653456491624315, 0.039495394592936224, -0.9800856952523974, 0.0204208015740059, 0.10202734361080085, -0.08876358375431506, 0.020279004568508258, 0.009410960025011333, -0.01164572216979256, 0.0044937076208295505]
     @test X′[1:10:end] ≈ [0.8267282458121575, -0.5543584424772612, 0.1761431693326722, 0.17142199935793515, -0.07990836783415763, 0.009615311853025504, 0.01797222270368847, -0.012951778973228531, 0.0032459856194525815, 0.0015257230558188115]
@@ -27,11 +26,11 @@ end
 # using GLMakie
 # fig      = Figure(size = (2000,1500))
 # axe      = Axis(fig[1,1],title="Test",xlabel="time",ylabel="x")
-# oedge    = lines!(  axe,T,X , linewidth = 1)
-# oedge    = lines!(  axe,T,X′, linewidth = 1)
-# oedge    = lines!(  axe,T,X″, linewidth = 1)
-#save("C:\\Users\\philippem\\.julia\\dev\\Muscade\\test\\testDynamic.jpg",fig)
-
+# oedge    = lines!(  axe,T,X[1,:] , linewidth = 1)
+# oedge    = lines!(  axe,T,X′[1,:], linewidth = 1)
+# oedge    = lines!(  axe,T,X″[1,:], linewidth = 1)
+# #save("C:\\Users\\philippem\\.julia\\dev\\Muscade\\test\\testDynamic.jpg",fig)
+# display(fig)
 #######
 
 model           = Model(:TestModel)
@@ -73,8 +72,6 @@ X″ = [s.X[3][1] for s∈state]
     @test X′[1:10:end] ≈ [0.9292395811463382,    0.0693102861285251,   -0.362977355522562,   -0.42183677927675134,   -0.16079100719211595,    0.12680704937085094,    0.20617807686338632,    0.1271272660824127,    0.016424801988853523,   -0.05507494559856239]
     @test X″[1:10:end] ≈ [-0.9434722513821608,    -0.3907491466781534,    -0.17587190387027593,     0.08650341365728759,     0.22492856089769642,     0.1294376784731921,    -0.013913519287633938,    -0.07718750825920974,    -0.06535656010969325,    -0.026317647770282403]
 end
-
-
 
 # using GLMakie
 # fig      = Figure(size = (2000,1500))

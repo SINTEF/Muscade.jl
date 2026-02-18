@@ -6,7 +6,7 @@ struct FollowerPointLoad{Tf,Tm} <: AbstractElement
     f :: Tf
     m :: Tm
 end
-Muscade.nosecondorder(::Type{<:FollowerPointLoad}) = Val(true)
+Muscade.no_second_order(::Type{<:FollowerPointLoad}) = Val(true)
 Muscade.doflist(::Type{<:FollowerPointLoad}) = (inod = (1,1,1,1,1,1),class= ntuple(i->:X,ndof),field= (:t1,:t2,:t3,:r1,:r2,:r3) )
 FollowerPointLoad(nod::Vector{Node};f,m) = FollowerPointLoad(f,m)
 @espy function Muscade.residual(o::FollowerPointLoad,   X,U,A,t,SP,dbg) 

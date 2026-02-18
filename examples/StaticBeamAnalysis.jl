@@ -5,8 +5,7 @@
 # Comparison to solutions by Longva (2015) and Crisfield (1990)
 
 using Muscade, StaticArrays, GLMakie
-include("BeamElement.jl");
-
+using Muscade.Toolbox
 
 R = 100.0;  # Radius of the bend [m]
 EI₂ = 833.33e3;  # Bending stiffness [Nm²]
@@ -28,12 +27,12 @@ eleid       = addelement!(model,EulerBeam3D,mesh;mat=mat,orient2=SVector(0.,1.,0
 [addelement!(model,Hold,[nodid[1]]  ;field) for field∈[:t1,:t2,:t3,:r1,:r2,:r3]]; # Clamp at one end
 
 # Define the loading procedure. First 300 N then 450  and 600 N
-function load(t)
+@functor with() function load(t)
     t<=1. ? load=t*300. : 
     t>1. && t<=2. ? load=300. +(t-1)*150. :
     load=450. +(t-2)*150. 
 end
-addelement!(model,DofLoad,[nodid[nnodes]];field=:t2,value=t->load(t));                                        # Force along axis2 at other
+addelement!(model,DofLoad,[nodid[nnodes]];field=:t2,value=load);                                        # Force along axis2 at other
 
 # Run the static analysis 
 initialstate    = initialize!(model);
@@ -46,12 +45,13 @@ x_ = [getdof(state[idxLoad];field=:t1,nodID=nodid[1:nnodes]) for idxLoad ∈ 1:n
 y_ = [getdof(state[idxLoad];field=:t2,nodID=nodid[1:nnodes]) for idxLoad ∈ 1:nLoadSteps] 
 z_ = [getdof(state[idxLoad];field=:t3,nodID=nodid[1:nnodes]) for idxLoad ∈ 1:nLoadSteps] 
 
-fig      = Figure(size = (1000,1000))
-ax = Axis3(fig[1,1],xlabel="x [m]", ylabel="y [m]", zlabel="z [m]",aspect=:equal)
+fig     = Figure(size = (1000,1000))
+ax      = Axis3(fig[1,1],xlabel="x [m]", ylabel="y [m]", zlabel="z [m]",aspect=:equal)
+clr = [:black,:blue,:green,:red]
 for idxLoad ∈ 1:nLoadSteps
-    lines!(ax,nodeCoord[:,1]+x_[idxLoad][:], nodeCoord[:,2]+y_[idxLoad][:] , nodeCoord[:,3]+z_[idxLoad][:]                  , label="F="*string(load(loadSteps[idxLoad]))*" N");
+    draw!(ax,state[idxLoad];EulerBeam3D=(;nseg=10,line_color=clr[idxLoad]))
 end
-xlims!(ax, 0,70); ylims!(ax, 0,60); zlims!(ax, 0,40); axislegend()
+xlims!(ax, 0,70); ylims!(ax, 0,60); zlims!(ax, 0,40); 
 currentDir = @__DIR__
 if occursin("build", currentDir)
     save(normpath(joinpath(currentDir,"..","src","assets","StaticBeamAnalysis1.png")),fig)

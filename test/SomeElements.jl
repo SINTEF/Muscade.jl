@@ -164,18 +164,18 @@ end
 struct Spring{D} <: AbstractElement
     x₁     :: SVector{D,𝕣}  # x1,x2,x3
     x₂     :: SVector{D,𝕣} 
-    EI     :: 𝕣
+    EA     :: 𝕣
     L      :: 𝕣
 end
-Spring{D}(nod::Vector{Node};EI) where{D}= Spring{D}(coord(nod)[1],coord(nod)[2],EI,norm(coord(nod)[1]-coord(nod)[2]))
+Spring{D}(nod::Vector{Node};EA) where{D}= Spring{D}(coord(nod)[1],coord(nod)[2],EA,norm(coord(nod)[1]-coord(nod)[2]))
 @espy function Muscade.residual(o::Spring{D}, X,U,A, t,SP,dbg) where{D}
+    ☼L₀      = o.L *exp10(A[1]) 
+    ☼EA      = o.EA*exp10(A[2]) 
     x₁       = ∂0(X)[SVector{D}(i   for i∈1:D)]+o.x₁
     x₂       = ∂0(X)[SVector{D}(i+D for i∈1:D)]+o.x₂
-    ☼L₀      = o.L *exp10(A[1]) 
-    ☼EI      = o.EI*exp10(A[2]) 
     Δx       = x₁-x₂
     ☼L       = norm(Δx)
-    ☼T       = EI*(L-L₀)/L₀   
+    ☼T       = EA*(L-L₀)/L₀   
     F₁       = Δx/L*T # external force on node 1
     R        = vcat(F₁,-F₁)
     return R,noFB
@@ -184,6 +184,9 @@ Muscade.doflist(     ::Type{Spring{D}}) where{D}=(
     inod  = (( 1 for i=1: D)...,(2 for i=1:D)...,3,3),
     class = ((:X for i=1:2D)...,:A,:A),
     field = ((Symbol(:tx,i) for i=1: D)...,(Symbol(:tx,i) for i=1: D)...,:ΞL₀,:ΞEI)) # \Xi
+
+Muscade.no_second_order(::Type{<:Spring}) = Val(false)
+
 
 ### SdofOscillator
 
@@ -203,3 +206,21 @@ SdofOscillator(nod::Vector{Node};K₁=0.::𝕣,K₂::𝕣=0.,C₁=0.::𝕣,C₂:
 end
 Muscade.doflist( ::Type{SdofOscillator})  = (inod =(1 ,1 ), class=(:X,:U), field=(:tx1,:tu1))
 
+### AdjustableSdofOscillator
+
+struct AdjustableSdofOscillator <: AbstractElement
+    K :: 𝕣
+    C :: 𝕣
+    M :: 𝕣
+end
+AdjustableSdofOscillator(nod::Vector{Node};K=1.::𝕣,C=0.::𝕣,M=0.::𝕣) = AdjustableSdofOscillator(K,C,M)
+@espy function Muscade.residual(o::AdjustableSdofOscillator, X,U,A, t,SP,dbg) 
+    x,x′,x″,u = ∂0(X)[1], ∂1(X)[1], ∂2(X)[1], ∂0(U)[1]
+    # ☼K        = o.K *exp10(A[1]) 
+    # R         = SVector(-u +K*x +o.C*x′ +o.M*x″)
+    ☼C        = o.C *exp10(A[1]) 
+    R         = SVector(-u +o.K*x +C*x′ +o.M*x″)
+    return R,noFB
+end
+#Muscade.doflist( ::Type{AdjustableSdofOscillator})  = (inod =(1 ,1, 1, 1), class=(:X,:U,:A,:A), field=(:tx1,:tu1,:ΞK,:ΞC))
+Muscade.doflist( ::Type{AdjustableSdofOscillator})  = (inod =(1 ,1, 1), class=(:X,:U,:A), field=(:tx1,:tu1,:ΞK))

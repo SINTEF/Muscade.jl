@@ -25,20 +25,20 @@ include("SomeElements.jl")
 model           = Model(:TrueModel)
 n1              = addnode!(model,𝕣[0])  
 n2              = addnode!(model,𝕣[1])  
-n3              = addnode!(model,𝕣[]) # anode for spring
+n3              = addnode!(model,𝕣[ ]) # anode for spring
 e1              = addelement!(model,El1,[n1], K=1.,C=0.05,M=1.)
 e2              = addelement!(model,El1,[n2], K=0.,C=0.0 ,M=1.)
-e3              = addelement!(model,Spring{1},[n1,n2,n3], EI=1.1)
-@once f f(x) = x^2
-@once fu fu(u,t) = u^2
-@once l1 l1(tx1,t) = (tx1-0.1*sin(t))^2
-@once l2 l2(tx1,t) = (tx1-0.1*cos(t))^2
-e4              = addelement!(model,SingleDofCost,[n3];class=:A,field=:ΞL₀,     cost=f)
-e5              = addelement!(model,SingleDofCost,[n3];class=:A,field=:ΞEI,     cost=f)
-e6              = addelement!(model,SingleDofCost,[n1];class=:A,field=:ΞC ,     cost=f)
-e7              = addelement!(model,SingleDofCost,[n1];class=:A,field=:ΞM ,     cost=f)
-e8              = addelement!(model,SingleDofCost,[n2];class=:A,field=:ΞC ,     cost=f)
-e9              = addelement!(model,SingleDofCost,[n2];class=:A,field=:ΞM ,     cost=f)
+e3              = addelement!(model,Spring{1},[n1,n2,n3], EA=1.1)
+@functor with() fa(a)     = a^2*1e-14 # tiny
+@functor with() fu(u,t)   = u^2
+@functor with() l1(tx1,t) = (tx1-0.1*sin(t))^2
+@functor with() l2(tx1,t) = (tx1-0.1*cos(t))^2
+e4              = addelement!(model,SingleAcost  ,[n3];field=:ΞL₀,     cost=fa)
+e5              = addelement!(model,SingleAcost  ,[n3];field=:ΞEI,     cost=fa)
+e6              = addelement!(model,SingleAcost  ,[n1];field=:ΞC ,     cost=fa)
+e7              = addelement!(model,SingleAcost  ,[n1];field=:ΞM ,     cost=fa)
+e8              = addelement!(model,SingleAcost  ,[n2];field=:ΞC ,     cost=fa)
+e9              = addelement!(model,SingleAcost  ,[n2];field=:ΞM ,     cost=fa)
 e10             = addelement!(model,SingleUdof   ,[n1];Xfield=:tx1,Ufield=:utx1,cost=fu)
 e11             = addelement!(model,SingleUdof   ,[n2];Xfield=:tx1,Ufield=:utx1,cost=fu)
 e12             = addelement!(model,SingleDofCost,[n1];class=:X,field=:tx1,     cost=l1)
@@ -63,22 +63,32 @@ for i=1:nstep
     state[i].time = Δt*i
 end
 
-Muscade.assemble!(out,asm,dis,model,state[1],(;))
-pattern    = Muscade.makepattern(OX,OU,IA,nstep,out)
+Muscade.assembleA!{:matrices}(out,asm,dis,model,state[1],(;))
+@testset "prepareA_out" begin
+    @test all(all(v.==0) for  v∈out.L1[1])
+    @test all(all(v.==0) for  v∈out.L1[2])
+    @test all(all(v.==0) for  v∈out.L1[3])
+    @test all(all(v.==0) for  v∈out.L1[4])
+    @test all(all(m.==0) for  m∈out.L2[1])
+    @test all(all(m.==0) for  m∈out.L2[2])
+    @test all(all(m.==0) for  m∈out.L2[3])
+    @test out.L2[4,4][1,1] ≈ sparse([1, 2, 1, 2, 3, 4, 3, 4, 5, 6, 5, 6], [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6], [2.0e-14, 0.0, 0.0, 2.0e-14, 2.0e-14, 0.0, 0.0, 2.0e-14, 2.0e-14, 0.0, 0.0, 2.0e-14], 6, 6)
+end
+#Muscade.assemble!(out,asm,dis,model,state[1],(;))
+pattern    = Muscade.makepattern(IA,[nstep],out)
 # using Spy,GLMakie
 # fig = spypattern(pattern)
 # save("C:\\Users\\philippem\\.julia\\dev\\Muscade\\spypattern.jpg",fig)
 
-Lvv,Lv,Lvvasm,Lvasm,Lvdis  = Muscade.preparebig(OX,OU,IA,nstep,out)
+Lvv,Lv,Lvvasm,Lvasm,Lvdis  = Muscade.preparebig(IA,nstep,out)
 
-Muscade.assemblebig!(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out,state,nstep,Δt,(γ=0.,iter=1),(caller=:TestDirectXUA,))
+Muscade.assemblebig!{:matrices}(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out,[state],[nstep],Δt,(γ=0.,iter=1),(caller=:TestDirectXUA,))
 
-
-# using Spy,GLMakie
-# fig = Spy.spy(Lvv,title="bigsparse Lvv sparsity",size=500)
+# using GLMakie
+# fig = Muscade.spy(Lvv,title="bigsparse Lvv sparsity",size=500)
 # save("C:\\Users\\philippem\\.julia\\dev\\Muscade\\spy.jpg",fig)
 
-stateXUA         = solve(DirectXUA{OX,OU,IA};initialstate=state0,time=0:1.:5,maxiter=10,verbose=false)
+stateXUA         = solve(DirectXUA{OX,OU,IA};initialstate=[state0,state0],time=[0:1.:5, 6:1.:12],maxiter=100,verbose=false)
 
 @testset "prepare_out" begin
     @test out.L1[1] ≈ [[0.0, 0.0]]
@@ -94,7 +104,7 @@ stateXUA         = solve(DirectXUA{OX,OU,IA};initialstate=state0,time=0:1.:5,max
     @test out.L2[2,1][3,1] ≈ sparse([1, 2, 1, 2], [1, 1, 2, 2], [1.0, 0.0, 0.0, 1.0], 2, 2)
     @test out.L2[3,3][1,1] ≈ sparse([1, 2, 3, 4], [1, 2, 3, 4], [0.0, 0.0, 2.0, 2.0], 4, 4)
     @test out.L2[3,4][1,1] ≈ sparse([1, 1, 2, 2], [1, 2, 3, 4], [0.0, 0.0, 0.0, 0.0], 4, 6)
-    @test out.L2[4,4][1,1] ≈ sparse([1, 2, 1, 2, 3, 4, 3, 4, 5, 6, 5, 6], [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6], [2.0, 0.0, 0.0, 2.0, 2.0, 0.0, 0.0, 2.0, 2.0, 0.0, 0.0, 2.0], 6, 6)
+    @test out.L2[4,4][1,1] ≈ sparse([1, 2, 1, 2, 3, 4, 3, 4, 5, 6, 5, 6], [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6], [2.0e-14, 0.0, 0.0, 2.0e-14, 2.0e-14, 0.0, 0.0, 2.0e-14, 2.0e-14, 0.0, 0.0, 2.0e-14], 6, 6)
 end
 @testset "prepare_asm" begin
     @test asm[1,1]  ≈ [1 2]      # asm[iarray,ieletyp][ieledof,iele] -> idof|inz
@@ -124,6 +134,10 @@ end
     @test Lvvasm.nzval[4]' == [7 8 19 20]
     @test Lvvasm.nzval[151]' == [595  596  615  616  635  636  655  656  681  682  707  708]
 end
+
+# @testset "solve" begin
+#     @test stateXUA[1][1].A' ≈ [2.95543e-12  2.12722e-9  0.0  -3.1108e-23  -1.61331e-6  -6.08871e-9] rtol = 1e-4
+# end
 
 end 
 

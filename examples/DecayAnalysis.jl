@@ -18,7 +18,7 @@ struct FloaterOnCalmWater <: AbstractElement
 end
 FloaterOnCalmWater(nod::Vector{Node};K,C,M  )  = FloaterOnCalmWater(K,C,M)
 
-Muscade.nosecondorder(::Type{<:FloaterOnCalmWater}) = Val(true)
+Muscade.no_second_order(::Type{<:FloaterOnCalmWater}) = Val(true)
 
 Muscade.doflist(::Type{<:FloaterOnCalmWater}) = (inod  = (ntuple(i-> 1,3)...,ntuple(i-> 1,3)...,ntuple(i-> 1,6)...,                  ntuple(i-> 1,6)...           ),                                             
                                                  class = (ntuple(i->:X,3)...,ntuple(i->:U,3)...,ntuple(i->:A,6)...,                  ntuple(i->:A,6)...          ), 
@@ -42,7 +42,7 @@ struct SingleDecayAcost{Field,Tcost,Tcostargs} <: AbstractElement
     fac      :: 𝕣1
 end
 
-SingleDecayAcost(nod::Vector{Node};field::Symbol,fac,cost::Function ,costargs=()) = SingleDecayAcost{field,typeof(cost),typeof(costargs)}(cost,costargs,fac)
+SingleDecayAcost(nod::Vector{Node};field::Symbol,fac,cost::Functor ,costargs=()) = SingleDecayAcost{field,typeof(cost),typeof(costargs)}(cost,costargs,fac)
 Muscade.doflist(::Type{<:SingleDecayAcost{Field,Tcost,Tcostargs}}) where{Field,Tcost,Tcostargs} = (inod=(1,),class=(:A,),field=(Field,))
 @espy function Muscade.lagrangian(o::SingleDecayAcost,Λ,X,U,A,t,SP,dbg) 
     iter  = min(length(o.fac),default{:iter}(SP,length(o.fac)))
@@ -86,28 +86,34 @@ Mguess         = fold(SVector{6}([1.0,    1.0,     1.0,     1.0,    1.0,     1.0
 #src Cguess = C .* fold(devToModelC[@SVector [i for i∈1:6 ]])
 
 # Create XUA model
-modelXUA     = Model(:MooredFloater)
+modelXUA  = Model(:MooredFloater)
 n1        = addnode!(modelXUA,𝕣[0,0,0])  
 e1        = addelement!(modelXUA,FloaterOnCalmWater,[n1]; K,C=Cguess,M=Mguess);
 # Assign costs to unknown forces
 Quu       = @SVector [0.05 ^-2 for i=1:3 ]  
-e2        = [addelement!(modelXUA,SingleDofCost     ,[n1]; class=:U,field=f           ,    cost=(u,t)-> 0.5*Quu[i]*u^2)  for (i,f)∈enumerate(floatermotion)];
+@functor with(Quu) cost1(u,t,i) = 0.5*Quu[i]*u^2
+e2        = [addelement!(modelXUA,SingleDofCost     ,[n1]; class=:U,field=f           ,    cost=cost1,costargs=(i,))  for (i,f)∈enumerate(floatermotion)];
 # Assign costs to variations of model parameters (wrt guess).
 fac       = [256,128,64,32,16,8,4,2,1] 
 QCaa      = @SVector [.1 ^-2 for i=1:6 ]  
-e3        = [addelement!(modelXUA,SingleDecayAcost  ,[n1];          field=f,fac,           cost=(a  )-> 0.5*QCaa[i]/length(T)*a^2) for (i,f)∈enumerate((:C11,:C12,:C16,:C22,:C26,:C66))] 
+@functor with(QCaa,T) cost2(a,i) = 0.5*QCaa[i]/length(T)*a^2
+e3        = [addelement!(modelXUA,SingleDecayAcost  ,[n1];          field=f,fac,           cost=cost2,costargs=(i,)) for (i,f)∈enumerate((:C11,:C12,:C16,:C22,:C26,:C66))] 
 QMaa      = @SVector [.1 ^-2 for i=1:6 ]  
-e4        = [addelement!(modelXUA,SingleDecayAcost  ,[n1];          field=f,fac,           cost=(a  )-> 0.5*QMaa[i]/length(T)*a^2) for (i,f)∈enumerate((:M11,:M12,:M16,:M22,:M26,:M66))];
+@functor with(QMaa,T) cost3(a,i) = 0.5*QMaa[i]/length(T)*a^2
+e4        = [addelement!(modelXUA,SingleDecayAcost  ,[n1];          field=f,fac,           cost=cost3,costargs=(i,)) for (i,f)∈enumerate((:M11,:M12,:M16,:M22,:M26,:M66))];
 # Assign costs to measurement errors
 surgeInt    = linear_interpolation(T, surgeMeas)
 swayInt     = linear_interpolation(T, swayMeas)
 yawInt      = linear_interpolation(T, yawMeas)
-@once surge devSurge(surge,t)     = 1e-1 ^-2 * (surge-surgeInt(t))^2
-@once sway devSway(sway,t)       = 1e-1 ^-2 * (sway-swayInt(t))^2
-@once yaw devYaw(yaw,t)         = 1e-1 ^-2 * (yaw-yawInt(t))^2
+@functor with(surgeInt) devSurge(surge,t)     = 1e-1 ^-2 * (surge-surgeInt(t))^2
+@functor with(swayInt ) devSway(sway,t)       = 1e-1 ^-2 * (sway-swayInt(t))^2
+@functor with(yawInt  ) devYaw(yaw,t)         = 1e-1 ^-2 * (yaw-yawInt(t))^2
 e5             = addelement!(modelXUA,SingleDofCost,[n1];class=:X,field=:surge,    cost=devSurge)
 e6             = addelement!(modelXUA,SingleDofCost,[n1];class=:X,field=:sway,     cost=devSway)
 e7             = addelement!(modelXUA,SingleDofCost,[n1];class=:X,field=:yaw,      cost=devYaw);
+
+
+
 
 #src Setting scale to improve convergence
 #src myScaling = (   X=(surge=1.,    sway=1.,    yaw=1.),
@@ -118,23 +124,23 @@ e7             = addelement!(modelXUA,SingleDofCost,[n1];class=:X,field=:yaw,   
 
 #Solve inverse problem
 initialstateXUA    = initialize!(modelXUA;time=0.)
-stateXUA         = solve(DirectXUA{2,0,1};initialstate=initialstateXUA,time=T,
+stateXUA         = solve(DirectXUA{2,0,1};initialstate=[initialstateXUA],time=[T],
                         maxiter=100,saveiter=true,
                         maxΔx=1e-5,maxΔλ=Inf,maxΔu=1e-5,maxΔa=1e-5);
 
 # Fetch and display estimated model parameters
-lastIter = findlastassigned(stateXUA); niter = lastIter; 
-Mest      = Mguess .* fold(exp10.(SVector{6}(stateXUA[niter][1].A[1:6 ]))) 
-Cest      = Cguess .* fold(exp10.(SVector{6}(stateXUA[niter][1].A[7:12])));  
+lastIter = findlastassigned(stateXUA); niter = lastIter; iexp=1;
+Mest      = Mguess .* fold(exp10.(SVector{6}(stateXUA[niter][iexp][1].A[1:6 ]))) 
+Cest      = Cguess .* fold(exp10.(SVector{6}(stateXUA[niter][iexp][1].A[7:12])));  
 # Fetch response and loads 
-surgeRec   = [s.X[1][1] for s∈stateXUA[niter]]
-swayRec    = [s.X[1][2] for s∈stateXUA[niter]]
-yawRec     = [s.X[1][3] for s∈stateXUA[niter]]
-surgeExtF   = [s.U[1][1] for s∈stateXUA[niter]]
-swayExtF    = [s.U[1][2] for s∈stateXUA[niter]]
-yawExtF     = [s.U[1][3] for s∈stateXUA[niter]]
+surgeRec    = [s.X[1][1] for s∈stateXUA[niter][iexp]]
+swayRec     = [s.X[1][2] for s∈stateXUA[niter][iexp]]
+yawRec      = [s.X[1][3] for s∈stateXUA[niter][iexp]]
+surgeExtF   = [s.U[1][1] for s∈stateXUA[niter][iexp]]
+swayExtF    = [s.U[1][2] for s∈stateXUA[niter][iexp]]
+yawExtF     = [s.U[1][3] for s∈stateXUA[niter][iexp]]
 req = @request r₂,r₁,r₀  
-loads = getresult(stateXUA[niter],req,[e1])
+loads = getresult(stateXUA[niter][iexp],req,[e1])
 inertiaLoads = [loads[i][:r₂] for i∈1:length(T)]
 dampingLoads = [loads[i][:r₁] for i∈1:length(T)]
 stiffnessLoads = [loads[i][:r₀] for i∈1:length(T)];

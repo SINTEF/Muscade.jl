@@ -2,19 +2,48 @@ module TestFunctors
 using Muscade
 using Test
 
-f  = FunctionFromVector(0:.1:.9,[0.,1.,1.,1.,1.,2.,2.,2.,3.,4.])
+a = 3
+@functor with(a,e=2)  g(x::Real)=a*x^e
+@functor with(a,e=2) function f(x::Real)
+    return a*x^e
+end
+@functor with() h(x) = 2x
+@functor with() fu(u,t) = u^2
+fukwargs = (;) 
+a = :a
 
-q1 = QuadraticFunction(1.,1.)
-q2 = QuadraticFunction(f,1.)
+a = 2 # changing a: test capture by value, not reference
+b = 1
+@functor with()        cost1(x) = x
+@functor with(a)       cost2(x) = a*x
+@functor with(a=2)     cost3(x) = a*x
+@functor with(a,b=1)   cost4(x) = a*x+b
+@functor with(a=2,b=1) cost5(x) = a*x+b
+@functor with(a,b)     cost6(x) = a*x+b
+
+
 
 @testset "functors" begin
-    @test f(.45)        ≈ 1.5
-    @test q1(1.5)       ≈ 0.125
-    @test q2(1.5,.45)   ≈ 0.
-    @test f  isa Function
-    @test q1 isa Function
-    @test q2 isa Function
-end
+    @test typeof(f)    == Functor{:f, @NamedTuple{a::Int64, e::Int64}}
+    @test typeof(g)    == Functor{:g, @NamedTuple{a::Int64, e::Int64}}
+    @test typeof(h)    == Functor{:h, @NamedTuple{}}
+    @test f isa Functor
+    @test f isa Function
+    @test @inferred f(2.) ≈ 12.
+    @test @inferred g(2.) ≈ 12.
+    @test @inferred h(2.) ≈ 4.
+    @test @inferred f(2) == 12
+    @test @inferred fu(1.,0,fukwargs...) == 1.
+    @test @inferred cost1(3) == 3
+    @test @inferred cost2(3) == 6
+    @test @inferred cost3(3) == 6
+    @test @inferred cost4(3) == 7
+    @test @inferred cost5(3) == 7
+    @test @inferred cost6(3) == 7
 
 end
 
+end
+
+
+ 

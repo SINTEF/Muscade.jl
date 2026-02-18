@@ -51,4 +51,4 @@ yₓ  = ∂{P,N}(y2)
 
 ## Taylor expansions
 
-One way to accelerate automatic differentiation of complicated functions can be to compose the differentiation of simpler functions, in particular function with smaller inputs.  Use [`fast`](@ref) for basic applications, and [`revariate`](@ref) and [`compose`](@ref) for advanced usage. 
+One way to accelerate automatic differentiation of complicated functions can be to chainrule the differentiation of simpler functions, in particular function with smaller inputs.  Use [`fast`](@ref) for basic applications, and [`revariate`](@ref) and [`chainrule`](@ref) for advanced usage. 

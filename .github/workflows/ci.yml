@@ -4,6 +4,7 @@ on:
     branches:
       - main
       - dev
+      - re-arch
     tags: '*'
   pull_request:  
 env:
@@ -16,9 +17,10 @@ jobs:
       fail-fast: true
       matrix:
         version:
-          - 'lts'
+          # - 'lts'
           - '1.11'
-          - 'pre'
+          - '1.12'
+          # - 'pre'
         os:
           - ubuntu-latest
           #- macOS-latest

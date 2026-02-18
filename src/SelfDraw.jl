@@ -79,7 +79,7 @@ Application developers can implement methods [`Muscade.allocate_drawing`](@ref),
 `kwargs...` is any additional key words arguments that will be passed to the `draw` method of each element, 
 for example to specify colors, etc.  See the elements' documentation.
 
-When a plot of the `Model` is first generated, `axis` must be provided, and `draw!` returns `graphic`. `graphic` can
+When a plot of the [`Model`](@ref) is first generated, `axis` must be provided, and `draw!` returns `graphic`. `graphic` can
 then be provided for further calls to `draw!` to update the graphic.
 
 See also: [`getdof`](@ref), [`@request`](@ref), [`@espy`](@ref), [`addelement!`](@ref), [`solve`](@ref)
@@ -144,6 +144,7 @@ function draw_!(graphic::Graphic,dis::EletypDisassembler,eleobj::AbstractVector{
     #     obsᵢ[] = mutᵢ
     # end
     display_drawing!(graphic.axis,Eletyp,graphic.obs,graphic.opt)
+    return graphic
 end
 function draw!(graphic::Vector{Graphic},state::State;kwargs...)   # whole model
     for ieletyp ∈ eachindex(state.model.eleobj)
@@ -152,6 +153,7 @@ function draw!(graphic::Vector{Graphic},state::State;kwargs...)   # whole model
         iele            = eachindex(eleobj)
         draw_!(graphic[ieletyp],dis,eleobj,iele,state,(ieletyp=ieletyp,);kwargs...) # call kernel
     end
+    return graphic
 end   
 function draw!(graphic::Graphic,state::State,eleID::Vector{EleID};kwargs...)     # Some elements, all of same concrete type
     ieletyp             = eleID[begin].ieletyp
@@ -160,6 +162,7 @@ function draw!(graphic::Graphic,state::State,eleID::Vector{EleID};kwargs...)    
     iele                = [e.iele for e∈eleID]
     eleobj              = view(state.model.eleobj[ieletyp],iele)
     draw_!(graphic,dis,eleobj,iele,state,(ieletyp=ieletyp,);kwargs...) # call kernel
+    return graphic
 end
 function draw!(graphic::Graphic,state::State,::Type{E};kwargs...) where{E<:AbstractElement}  # All elements of given concrete type
     ieletyp             = findfirst(E.==eletyp(state.model))
@@ -168,12 +171,13 @@ function draw!(graphic::Graphic,state::State,::Type{E};kwargs...) where{E<:Abstr
     dis                 = state.dis.dis[ieletyp]
     iele                = eachindex(eleobj)
     draw_!(graphic,dis,eleobj,iele,state,(ieletyp=ieletyp,);kwargs...) # call kernel
+    return graphic
 end    
 
 """
     axis = Muscade.SpyAxis()
 
-Spoof a GLMakie `Axis` object so that calls like
+Spoof a [`GLMakie.jl`](https://docs.makie.org/) `Axis`/`Axis3` object so that calls like
 
     lines!(  axis,args...;kwargs...) 
     
@@ -183,7 +187,7 @@ Results are accessed by for example
     axis.call[3].fun        
     axis.call[3].args[2]
 
-To get the name of the 3rd GLMakie function that was called, and the
+To get the name of the 3rd [`GLMakie.jl`](https://docs.makie.org/) function that was called, and the
 2nd input argument of this call.
 
 Only `lines!`, `scatter!` and `mesh!` logging functions are implemented for now, but more functions can
@@ -196,3 +200,63 @@ SpyAxis() = SpyAxis(Any[])
 GLMakie.lines!(  axis::SpyAxis,args...;kwargs...) = push!(axis.call,(fun=:lines!  ,args=args,kwargs=kwargs))
 GLMakie.scatter!(axis::SpyAxis,args...;kwargs...) = push!(axis.call,(fun=:scatter!,args=args,kwargs=kwargs))
 GLMakie.mesh!(   axis::SpyAxis,args...;kwargs...) = push!(axis.call,(fun=:mesh!   ,args=args,kwargs=kwargs))
+
+"""
+    GUI(state,refstate=state[1];dim=3,kwargs...)
+
+Taking `state`, a `Vector` of `State`s output by various solvers, provide
+a GUI to explore the results.
+
+This assumes that elements' drawing methods are writen for [`GLMakie`](https://docs.makie.org/).
+
+The GUI allows to intereactively amplify responses (`Λ`,`X`,`U` and `A`-dofs) to 
+make then easier to visualise. For `X`-dofs, it is the difference from the `refstate` 
+(by default: `state[1]`) that is amplified.
+
+Optional keyword arguements are
+- `dim`, 2 or 3 depending on whether elements assume `Axis` or `Axis3` 
+- `kwargs` keywords argument, that will be passed to [`draw!`](@ref)
+
+See also [`EigXU`](@ref)
+"""
+function GUI(state::AbstractVector{S},initialstate=state[1];dim=3,kwargs...) where{S<:State{nΛder,nXder,nUder}} where{nΛder,nXder,nUder}
+    ## Organize the window
+    fig             = Figure(size = (1500,900))
+    GLMakie.activate!(title = "Muscade.jl")
+    display(fig) 
+    panelSteps      = fig[1,1]        
+    panelEmpty      = panelSteps[1,1] 
+    panelSlide      = panelSteps[2,1] 
+    panelModel      = fig[1,2:3]        
+    Box(panelModel, cornerradius = 20,z=1., color = :transparent)
+    axisModel = if dim==3
+         Axis3(panelModel,aspect=:data,viewmode=:free,perspectiveness=.5,clip=false)
+    else
+         Axis2(panelModel)
+    end
+    ## sliders
+    time            = [stateᵢ.time for stateᵢ∈state]
+    sg              = SliderGrid(panelSlide,
+                    (label="t"      , range=time     , startvalue=time[1], snap=true, update_while_dragging=true, format = "{:.1f} s" ),
+                    (label="Λ scale", range=-5:0.01:5, startvalue=0      , snap=true, update_while_dragging=true, format = "10^{:.1f}"),
+                    (label="X scale", range=-5:0.01:5, startvalue=0      , snap=true, update_while_dragging=true, format = "10^{:.1f}"),
+                    (label="U scale", range=-5:0.01:5, startvalue=0      , snap=true, update_while_dragging=true, format = "10^{:.1f}"),
+                    (label="A scale", range=-5:0.01:5, startvalue=0      , snap=true, update_while_dragging=true, format = "10^{:.1f}"))
+    obs  = (t      = sg.sliders[1].value,
+            Λscale = sg.sliders[2].value,
+            Xscale = sg.sliders[3].value,
+            Uscale = sg.sliders[4].value,
+            Ascale = sg.sliders[5].value)
+    ## Model
+    graphic        = draw!(axisModel,initialstate;kwargs...)  # Create graphic objects
+    _ = map(obs.t,obs.Λscale,obs.Xscale,obs.Uscale,obs.Ascale) do t,Λscale,Xscale,Uscale,Ascale                                    # Then observe the sliders to update the graphic objects
+        istep      = argmin(abs.(t.-time))
+        ampedstate = State{nΛder,nXder,nUder}(copy(initialstate)) 
+        for ider∈nΛder; ampedstate.Λ[ider] .+=  state[istep].Λ[ider]                    *exp10(Λscale) end
+        for ider∈nXder; ampedstate.X[ider] .+= (state[istep].X[ider]-initialstate.X[1]) *exp10(Xscale) end
+        for ider∈nUder; ampedstate.U[ider] .+=  state[istep].U[ider]                    *exp10(Uscale) end
+                        ampedstate.A       .+=  state[istep].A                          *exp10(Ascale) 
+        draw!(graphic,ampedstate;kwargs...)
+    end
+end
+

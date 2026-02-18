@@ -8,6 +8,9 @@ module Runtest
         @testset "TestElementAPI" begin
             include("TestElementAPI.jl")
         end
+        @testset "TestDots" begin
+            include("TestDots.jl")
+        end
         @testset "TestAdiff" begin
             include("TestAdiff.jl")
         end
@@ -26,9 +29,15 @@ module Runtest
         @testset "TestSweepX2" begin
             include("TestSweepX2.jl")
         end
+        @testset "TestSweepX1" begin
+            include("TestSweepX1.jl")
+        end
         @testset "TestSweepX0" begin
             include("TestSweepX0.jl")
         end
+        #@testset "TestNewmarkSweep" begin
+        #    include("TestNewmarkSweep.jl")
+        #end
         @testset "TestDirectXUA" begin
             include("TestDirectXUA.jl")
         end
@@ -40,9 +49,6 @@ module Runtest
         end
         @testset "TestScale" begin
             include("TestScale.jl")
-        end
-        @testset "TestDofConstraints" begin
-            include("TestDofConstraints.jl")
         end
         @testset "TestElementCost" begin
             include("TestElementCost.jl")
@@ -71,6 +77,9 @@ module Runtest
         @testset "TestElementTestTools" begin
             include("TestElementTestTools.jl")
         end
+        @testset "TestBarElement" begin
+            include("TestBarElement.jl")
+        end
         @testset "TestBeamElement" begin
             include("TestBeamElement.jl")
         end
@@ -83,6 +92,5 @@ module Runtest
         @testset "TestPositionElement" begin
             include("TestPositionElement.jl")
         end
-        # doctest(Muscade) # we do not use doctest, we run Literate.jl on mydemo.jl files that are included in a unit test file
     end
 end

@@ -1,8 +1,7 @@
 module TestRotations
 
 using Test, StaticArrays, LinearAlgebra
-
-include("../examples/Rotations.jl")
+using Muscade, Muscade.Toolbox
 
 θ = [0,1e-8,1e-6,1e-2,.1,1,π]
 @testset "sinc1" begin

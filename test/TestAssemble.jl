@@ -14,7 +14,7 @@ X        = @SVector [1.,2.]
 U        = @SVector 𝕣[]
 A        = @SVector [0.,0.]  # [Δseadrag,Δskydrag]
 
-out = diffed_residual(turbine;X=(X,),U=(U,),A)
+out = Muscade.diffed_residual(turbine;X=(X,),U=(U,),A)
 @testset "Turbine gradient" begin
     @test out.R                   ≈ [-2, -3]    # R
     @test out.∇R[2][1]            ≈ [0 0;0 0]    # Lx
@@ -32,7 +32,7 @@ X        = @SVector [0.,0.,0.]
 U        = @SVector 𝕣[]
 A        = @SVector [0.,0.]  # [Δseadrag,Δskydrag]
 #                             eleobj, Λ, X,  U,  A, t, SP,     dbg
-out   = Muscade.diffed_lagrangian(anchorline;Λ ,X=(X,),U=(U,),A)
+out   = Muscade.diffed_lagrangian{2}(anchorline;Λ ,X=(X,),U=(U,),A)
 @testset "anchorline1" begin
     @test out.∇L[1][1]              ≈ [-12.25628901693551, 0.2607721067433087, 24.51257803387102]
     @test out.∇L[2][1]            ≈ [-0.91509745608786, 0.14708204066349, 1.3086506986891027]
@@ -150,7 +150,7 @@ Muscade.makevecfromfields!(vec,dofgr,(;X=(tx1=1.,tx2=2.,rx3=3.)))
 end
 
 state = Muscade.State{1,1,1}(model,dis)
-Muscade.assemble!(out,asm,dis,model,state,(someunittest=true,))
+Muscade.assemble!{:iter}(out,asm,dis,model,state,Muscade.idmult,(someunittest=true,))
 
 @testset "assemble" begin
     @test  out.Lλ  ≈ [-152130.71199858442, -3.0, 0.0]

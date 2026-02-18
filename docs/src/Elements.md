@@ -85,7 +85,7 @@ function MyElement(nod::Vector{Node};...)
     ...
     return eleobj
 end
-Muscade.nosecondorder(::Type{<:MyElement}) = Val(true)
+Muscade.no_second_order(::Type{<:MyElement}) = Val(true)
 @espy function Muscade.residual(o::MyElement,   X,U,A,t,SP,dbg) 
     ...
     return R,noFB  
@@ -224,7 +224,7 @@ end
 
 See [`Muscade.residual`](@ref) for the list of arguments and outputs.
 
-Some solvers may prefer to evaluate 2nd order derivatives of `residual`.  However, for elements with anything but a small number of degrees of freedom, this quickly leads to intractably high compilation and/or execution times.  If this is the case, then the element should implement [`Muscade.nosecondorder`](@ref) to limit differentiation to the first order only. 
+Some solvers may prefer to evaluate 2nd order derivatives of `residual`.  However, for elements with anything but a small number of degrees of freedom, this quickly leads to intractably high compilation and/or execution times.  If this is the case, then the element should implement [`Muscade.no_second_order`](@ref) to limit differentiation to the first order only. 
 
 ### Automatic differentiation
 
@@ -355,7 +355,7 @@ For a given element formulation, the performance of `Muscade.residual` and `Musc
 
 **Automatic differentiation** generaly does not affect how `Muscade.residual` and `Muscade.lagrangian` are written.  There are two performance-related exceptions to this:
 
-1. If a complicated sub-function in `Muscade.residual` and `Muscade.lagrangian` (typicaly a material model or other closure) operates on an array (for example, the strain) that is smaller than the number of degrees of freedom of the system, computing time can be saved by computing the derivative of the output (in the example, the stress) with respect to the input to the subfunction, and then compose the derivatives.
+1. If a complicated sub-function in `Muscade.residual` and `Muscade.lagrangian` (typicaly a material model or other closure) operates on an array (for example, the strain) that is smaller than the number of degrees of freedom of the system, computing time can be saved by computing the derivative of the output (in the example, the stress) with respect to the input to the subfunction, and then chainrule the derivatives.
 2. Iterative precedures are sometimes used within `Muscade.residual` and `Muscade.lagrangian`, a typical example being in plastic material formulations.  There is no need to propagate automatic differentiation through all the iterations - doing so with the result of the iteration provides the same result.
 3. Elements with corotated reference system (e.g. [beam elements](StaticBeamAnalysis.md)) can use automatic differentiation to transform the residual back to the global reference system.
 
@@ -410,7 +410,7 @@ The initial call to `draw!` on a `Model` will call the above three methods in se
 
 #### Vectorization
 
-The element's method for  [`Muscade.allocate_drawing`](@ref), [`Muscade.update_drawing`](@ref) and [`Muscade.display_drawing!`](@ref) act on all elements of the same type, in one call. This allows to exploit that e.g. in `Makie.jl` multiple lines can be drawn in one call to `lines!` by using `NaN`s to "lift the pen".
+The element's method for [`Muscade.allocate_drawing`](@ref), [`Muscade.update_drawing`](@ref) and [`Muscade.display_drawing!`](@ref) act on all elements of the same type, in one call. This allows to exploit that e.g. in `Makie.jl` multiple lines can be drawn in one call to `lines!` by using `NaN`s to "lift the pen".
 
 ### Keyword arguments
 
@@ -418,37 +418,35 @@ When requesting a drawing of all or part of the model, the user can provide spec
 The user can for example require
 
 ```julia
-draw!(model;linewidth=2)
+draw!(axis,state;linewidth=2)
 ```
 
-The element's [`Muscade.allocate_drawing`](@ref) method *must* accept an arbitrary list of keyword arguments.  Keywords arguments not used by the method are automaticaly ignored.  What instructions can be provided, how they are structured and what effect they will have on the graphics depends on the elements. 
+[`draw!`](@ref) just passes all keyword argument to the [`Muscade.allocate_drawing`](@ref) methods of all element type. A pattern that application developers are encouraged to consider is:
 
-In order not to fail if a *used* keyword argument is not provided by the user, the following mechanisms can be used:  The first is
+- All inputs are optional, all parameters have a default value.
+- Instructions adressed to one element type are gathered by element type.  For example 
+ 
+```julia 
+draw!(axis,state;BeamElement  = (color=:red,linethickness=3),
+                 OtherElement = (;property=:value          ))
+```
+
+[`default`](@ref) provides support for the above pattern:
 
 ```julia
 function Muscade.allocate_drawing(axis,o::AbstractVector{MyElement};kwargs...) 
-    # instead of width = kwargs.linewidth
-    with = default{:linewidth}(kwargs,2.)
+    # Extract the NamedTuple of arguments adressed to MyElement.  
+    # Default to empty NamedTuple (;).
+    args = default{:MyElement}(kwargs,(;))
+    # Create opt, in which the default color=:blue is superseeded by 
+    # input color=:red
+    opt  = default(args,(draw_marking=true,color=:blue,linethickness=2))
     ...
 end
 ```
-
-which can be read: if `kwargs.linewidth` exists, the set `width` to its value, otherwise, set it to `2.`.  The second mechanism is
-
-```julia
-function Muscade.allocate_drawing(axis,o::AbstractVector{MyElement};kwargs...) 
-    defaults = (linewidth=2.,someotherkey=defaultvalue)
-    opt = (default(kwargs,defaults))
-    ...
-end
-```
-
-
-which creates a new `NamedTuple` `opt` from `kwargs`.  For keys in `defaults` not found in `kwargs`, use the value from `defaults`.
-
 `Muscade` provides facilities to draw only selected element types or selected elements, so the element's `Muscade.allocate_drawing` method does not need to implement a switch on *whether* to draw.
 
-See `Muscade/test/SomeElements.jl` for simple examples of implementation.  See also [`examples/BeamElement.jl`](StaticBeamAnalysis.md) for an advanced example of implementation where there are options to create completely different drawings of the same element.  
+See `Muscade/test/SomeElements.jl` for simple examples of implementation.  See also [`toolbox/BeamElement.jl`](StaticBeamAnalysis.md) for an advanced example of implementation where there are options to create completely different type of drawing for the same element type.  
 
 ### Getting element results
 
@@ -466,23 +464,17 @@ Constant [`noFB`](@ref) (which have value `nothing`) can be used by elements tha
 
 For those prefering to think in terms of Cartesian tensor algebra, rather than matrix algebra, operators [`⊗`](@ref), [`∘₁`](@ref) and [`∘₂`](@ref) provide the exterior product, the single dot product and the double dot product respectively.
 
-Elements with a corotated reference system, can make use of [`examples/Rotations.jl`](StaticBeamAnalysis.md) that provides functionality to handle rotations in ℝ³.  See [`examples/BeamElement.jl`](StaticBeamAnalysis.md) for an example.
+Elements with a corotated reference system, can make use of [`toolbox/Rotations.jl`](StaticBeamAnalysis.md) that provides functionality to handle rotations in ℝ³.  See [`toolbox/BeamElement.jl`](StaticBeamAnalysis.md) for an example.
 
 ## Automatic differentiation within element code
 
-Some advanced elements (in particular, elements with co-rotated element systems) can be implemented elegantly by using automatic differentiation within `residual` or `lagrangian`.  These are advanced techniques, requiring a good understanding of [`automatic differentiation`](Adiff.md).  Example of usage can be found in [`examples/BeamElement.jl`](StaticBeamAnalysis.md).
+Some advanced elements (in particular, elements with co-rotated element systems) can be implemented elegantly by using automatic differentiation within `residual` or `lagrangian`.  These are advanced techniques, requiring a good understanding of [`automatic differentiation`](Adiff.md).  Example of usage can be found in [`toolbox/BeamElement.jl`](StaticBeamAnalysis.md).
 
 Helper functions [`motion`](@ref) and [`motion⁻¹`](@ref) allow to transform a `tuple` of `SVectors`, like the input `X` given to `residual` and `lagrangian`, into a an automatic differentiation structure, so that functions of `∂0(X)` only can be differentiated with respect to time. 
 
-It is sometimes possible to improve performance by identifying a part of `residual` or `lagrangian` which takes a single, `SVector` as an input: A vector shorter than the list of dofs differentiated by the solver allow to accelerate computations, by using [`fast`](@ref), or for more adbanced usage, [`revariate`](@ref) in combination with [`compose`](@ref). 
+It is sometimes possible to improve performance by identifying a part of `residual` or `lagrangian` which takes a single, `SVector` as an input: A vector shorter than the list of dofs differentiated by the solver allow to accelerate computations, by using [`fast`](@ref), or for more adbanced usage, [`revariate`](@ref) in combination with [`chainrule`](@ref). 
 
-In [`examples/BeamElement.jl`](StaticBeamAnalysis.md), in function `kinematics`, [`fast`](@ref) is applied to accelerate a process of differentiation to the 2nd order.  In `residual`, [`revariate`](@ref) and [`compose`](@ref) in order to differentiate `kinematics` and accelerate computations by exploiting the fact that `kinematic` is a function of `∂0(X)` only.
+In [`toolbox/BeamElement.jl`](StaticBeamAnalysis.md), in function `kinematics`, [`fast`](@ref) is applied to accelerate a process of differentiation to the 2nd order.  In `residual`, [`revariate`](@ref) and [`chainrule`](@ref) in order to differentiate `kinematics` and accelerate computations by exploiting the fact that `kinematic` is a function of `∂0(X)` only.
 
-## Testing elements
-When developing a new element, it is advisable to test the constructor, and `residual` or `lagrangian` in a direct call (outside of any Muscade solver), and examine the returned outputs.
-
-Generaly, automatic differentiation is unproblematic, but when advanced tools are used (e.g. [`revariate`](@ref) and [`compose`](@ref)), then the derivatives should be inspected.  See [`diffed_residual`](@ref) and [`diffed_lagrangian`](@ref) to compute the derivatives of `R` and `L` returned by `residual` and `lagrangian` respectively. 
-
-See also [`Muscade.SpyAxis`](@ref) for testing of graphic generating functions such as [`Muscade.display_drawing!`](@ref).
 
 

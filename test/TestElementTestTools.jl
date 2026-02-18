@@ -7,13 +7,14 @@ node1           = addnode!(model,𝕣[0,0,0])
 #elnod           = model.nod
 
 uload = SingleUdof(model.nod;Xfield=:Xdof,Ufield=:Udof,cost=(u,t)->.5*u^2)
-rload = DofLoad(model.nod;field=:Xdof,value=t->cos(t))
+@functor with() value(t) = cos(t)
+rload = DofLoad(model.nod;field=:Xdof,value=value)
 
 Λ = SVector(0.)
 X = (SVector(0.1),)
 U = (SVector(0.3),)
 A = SVector{0,Float64}()
-out1 = diffed_lagrangian(uload; Λ,X,U,A)
+out1 = Muscade.diffed_lagrangian{2}(uload; Λ,X,U,A)
 # @printf "\nU\n"
 # print_element_array(uload,:U,U[1])
 # @printf "∂L/∂U₀\n"
@@ -30,7 +31,7 @@ end
 X = (SVector(0.1),)
 U = (SVector{0,Float64}(),)
 A = SVector{0,Float64}()
-out2 = diffed_residual(rload; X,U,A)
+out2 = Muscade.diffed_residual(rload; X,U,A)
 # @printf "\nR\n"
 # print_element_array(uload,:X,out2.R)
 # @printf "\n∂R/∂X₀\n"

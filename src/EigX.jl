@@ -35,7 +35,7 @@ function solve(::Type{EigX{ℝ}},pstate,verbose,dbg;
     out,asm,dofgr    = prepare(AssemblyDirect{OX,OU,IA},model,dis)  
     nXdof            = getndof.(dofgr)[ind.X]
     state₀           = State{1,OX+1,OU+1}(copy(state))   
-    assemble!(out,asm,dis,model,state₀,(dbg...,solver=:EigXℝ))
+    assemble!{:matrices}(out,asm,dis,model,state₀,idmult,(dbg...,solver=:EigXℝ))
     K                = out.L2[ind.Λ,ind.X][1,1]
     M                = out.L2[ind.Λ,ind.X][1,3]
     sparser!(K,droptol)
@@ -107,7 +107,7 @@ function solve(::Type{EigX{ℂ}},pstate,verbose,dbg;
     out,asm,dofgr    = prepare(AssemblyDirect{OX,OU,IA},model,dis)  
     nXdof            = getndof.(dofgr)[ind.X]
     state₀           = State{1,OX+1,OU+1}(copy(state))   
-    assemble!(out,asm,dis,model,state₀,(dbg...,solver=:EigXℂ))
+    assemble!{:matrices}(out,asm,dis,model,state₀,idmult,(dbg...,solver=:EigXℂ))
     K                = out.L2[ind.Λ,ind.X][1,1]
     C                = out.L2[ind.Λ,ind.X][1,2]
     M                = out.L2[ind.Λ,ind.X][1,3]

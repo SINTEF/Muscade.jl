@@ -39,8 +39,8 @@ lines!(  axe,a2,c ,color = :blue,  linewidth = 1)
 
 #-----------------------------------------------------------------
 
-# @once g g(x,t)  = x[1]
-# @once f f(x)    = 0.4x.+1+.5x.^2
+# @functor with() g(x,t)  = x[1]
+# @functor with() f(x)    = 0.4x.+1+.5x.^2
 # γ0              = .3
 # model           = Model(:TestModel)
 # n1              = addnode!(model,𝕣[0]) 
@@ -68,8 +68,8 @@ lines!(  axe,a2,c ,color = :blue,  linewidth = 1)
 
 #-----------------------------------------------------------------
 
-# @once g g(x,t)  = x[1]+.1
-# @once f f(x)    = 0.4x.+.08+.5x.^2
+# @functor with() g(x,t)  = x[1]+.1
+# @functor with() f(x)    = 0.4x.+.08+.5x.^2
 
 # γ0              = 1.
 # γfac            = .5

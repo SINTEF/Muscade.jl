@@ -14,7 +14,7 @@ function finitediff(order,n,s)
     # OUTPUT 
     # iterable collection of (Δs,w): index offset and weight
     #
-    n<6 && muscadeerror("Number of steps must be ≥6")
+    order>0 && n<6 && muscadeerror("Number of steps must be ≥6")
     p = table_of_finite_diff_kernels
     if     order == 0 p[1][1]
     elseif order == 1

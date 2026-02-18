@@ -1,8 +1,7 @@
 module TestDrawBeamElement
 using Muscade, StaticArrays, Test
 using Printf
-
-include("../examples/BeamElement.jl")
+using Muscade.Toolbox
 
 # Beam simply supported at both ends  
 L   = 1;  # Beam length [m]

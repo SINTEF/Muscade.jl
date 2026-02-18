@@ -15,7 +15,9 @@ module Muscade
     export ℝ1,ℤ1,𝕣1,𝕫1,𝔹1,𝕓1
     export ℝ2,ℤ2,𝕣2,𝕫2,𝔹2,𝕓2
     export ℝ11,ℤ11,𝕣11,𝕫11,𝔹11,𝕓11
-    export toggle,default,@once,mod_onebased
+    export toggle,default,mod_onebased
+
+    include("OffsetVector.jl")
 
     include("Adiff.jl")
     export  ∂ℝ #\partial \bbR
@@ -24,10 +26,10 @@ module Muscade
     export  constants,precedence,npartial,norm
 
     include("Taylor.jl")
-    export  motion,motion⁻¹,revariate,compose,fast,apply,justinvoke,composevalue,composeJacobian 
+    export  motion,motion⁻¹,revariate,chainrule,fast,apply,justinvoke,composevalue,composeJacobian 
 
     include("Functors.jl")
-    export QuadraticFunction,FunctionFromVector 
+    export Functor, @functor
 
     include("Dots.jl")
     export dots,∘₀,∘₁,∘₂,⊗
@@ -49,12 +51,9 @@ module Muscade
     export coord,∂0,∂1,∂2,getsomedofs
     export noFB
 
-    include("ElementTestTools.jl")
-    export diffed_residual,diffed_lagrangian,print_element_array, @typeof
-
     include("BasicElements.jl")
     export off,equal,positive
-    export DofCost,SingleDofCost,SingleUdof,ElementCost
+    export DofCost,SingleDofCost,SingleUdof,ElementCost,Acost,SingleAcost
     export DofConstraint,Hold,ElementConstraint
     export QuickFix,DofLoad
 
@@ -72,6 +71,9 @@ module Muscade
     include("SweepX.jl")
     export SweepX
 
+    include("SweepXA.jl")
+    export SweepXA
+
     include("DirectXUA.jl")
     export DirectXUA
 
@@ -79,19 +81,19 @@ module Muscade
     export EigX,increment
 
     include("EigXU.jl")
-    export EigXU,GUI
+    export EigXU
 
     include("FreqXU.jl")
     export FreqXU
 
     include("Diagnostic.jl")
-    export studyscale,studysingular,describe
+    export describe
 
     include("Output.jl")
     export setdof!,getdof,getresult,findlastassigned,eletyp
 
     include("SelfDraw.jl")
-    export draw!,request2draw
+    export draw!,request2draw,GUI
 
     include("Unit.jl")
     export ←,→
@@ -100,4 +102,20 @@ module Muscade
     #export getδf,getδt(n3,δf3′),𝔉𝕣(g.(t3),δt3),𝔉𝕣⁻¹(X3′′,δf3)
 
     include("Eigenmodes.jl")
+
+    module Toolbox
+        include("../toolbox/Rotations.jl")
+        export Rodrigues, Rodrigues⁻¹, adjust, scac, sinc1, sinc1′,sinc1″, sinc1‴, sinc1⁗, intrinsicrotationrates
+        include("../toolbox/BarElement.jl")
+        export Bar3D, AxisymmetricBarCrossSection
+        include("../toolbox/BeamElement.jl")
+        export EulerBeam3D, BeamCrossSection
+        include("../toolbox/StrainGaugeOnBeamElement.jl")
+        export StrainGaugeOnEulerBeam3D
+        include("../toolbox/PositionElement.jl")
+        export Position3D  
+        include("../toolbox/SoilContact.jl")
+        export SoilContact  
+    end
+
 end

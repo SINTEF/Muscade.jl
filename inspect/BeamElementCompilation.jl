@@ -3,7 +3,7 @@ using SnoopCompileCore, SnoopCompile, AbstractTrees, ProfileView
 using Profile
 using BenchmarkTools
 
-include("../examples/BeamElement.jl")
+include("../toolbox/BeamElement.jl")
 include("../examples/StrainGaugeOnBeamElement.jl")
 
 model        = Model(:TestModel)
@@ -12,7 +12,6 @@ node2        = addnode!(model,𝕣[4,3,0])
 node3        = addnode!(model,𝕣[]) # Unod
 elnod        = [model.nod[n.inod] for n∈[node1,node2,node3]]
 mat          = BeamCrossSection(EA=10.,EI₂=3.,EI₃=3.,GJ=4.,μ=1.,ι₁=1.0)
-const σε           = 1.
 beam         = EulerBeam3D{false}(elnod;mat,orient2=SVector(0.,1.,0.))
 strainbeam = StrainGaugeOnEulerBeam3D(elnod;
                                          P             = SMatrix{3,4}(0.,0.,.05, 0.,0.05,0.,  0.,0.,-.05,  0.,-.05,0.),
@@ -20,23 +19,16 @@ strainbeam = StrainGaugeOnEulerBeam3D(elnod;
                                          ElementType   = EulerBeam3D{true},
                                          elementkwargs = (mat     = mat,
                                                           orient2 = SVector(0.,0.,1.)))
+@functor with(σε=1.) cost(eleres,X,U,A,t) = sum((eleres.ε/σε).^2)/2
 coststrainbeam = ElementCost(elnod;
                         req           = @request(ε),
-                        cost          = (eleres,X,U,A,t) -> sum((eleres.ε/σε).^2)/2,
+                        cost          = cost,
                         ElementType   = StrainGaugeOnEulerBeam3D,
                         elementkwargs = (P             = SMatrix{3,4}(0.,0.,.05, 0.,0.05,0.,  0.,0.,-.05,  0.,-.05,0.),
                                          D             = SMatrix{3,4}(1.,0.,0.,  1.,0.,0.,    1.,0.,0.,    1.,0.,0.  ),
                                          ElementType   = EulerBeam3D{true},
                                          elementkwargs = (mat     = mat,
                                                           orient2 = SVector(0.,0.,1.))))
-
-
-
-
-
-
-
-
 
 
 displacement =  SVector(0.,0.,0.,0.,0.,0.,  0.,0.,0.,0.,0.,0.); 
@@ -84,17 +76,17 @@ t,SP         = 0.,(;)
 # # Julia 1.12: @trace_compile solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=true,verbosity=1,tol=1e-20,σₓᵤ)
 
 
-mission = :time
+mission = :profile
 if mission == :report
-    out = diffed_residual(strainbeam; X,U,A,t,SP)
+    out = Muscade.diffed_residual(strainbeam; X,U,A,t,SP)
 elseif mission == :time
-    out = diffed_residual(strainbeam; X,U,A,t,SP)
+    out = Muscade.diffed_residual(strainbeam; X,U,A,t,SP)
     @btime out =diffed_residual(strainbeam; X,U,A,t,SP)
 elseif mission == :profile
-    out = diffed_residual(strainbeam; X,U,A,t,SP)
+    out = Muscade.diffed_residual(strainbeam; X,U,A,t,SP)
     Profile.clear()
     Profile.@profile for i=1:30000
-        local out = diffed_residual(strainbeam; X,U,A,t,SP)
+        local out = Muscade.diffed_residual(strainbeam; X,U,A,t,SP)
     end
     ProfileView.view(fontsize=30);
     # After clicking on a bar in the flame diagram, you can type warntype_last() and see the result of 

@@ -8,7 +8,7 @@ model           = Model(:TestModel)
 n1              = addnode!(model,𝕣[0,0,+100]) # turbine
 n3              = addnode!(model,𝕣[])  # Anod for anchor
 
-@once cost cost(eleres,X,U,A,t) = eleres.Fh^2
+@functor with() cost(eleres,t) = eleres.Fh^2
 el = ElementCost(model.nod;req=@request(Fh),cost,ElementType=AnchorLine, 
                  elementkwargs=(Δxₘtop=[5.,0,0], xₘbot=[250.,0], L=290., buoyancy=-5e3))
 d  = Muscade.doflist(typeof(el))
@@ -62,7 +62,7 @@ end
 
 ###
 
-@once gap gap(eleres,X,U,A,t) = eleres.Fh^2
+@functor with() gap(eleres,t) = eleres.Fh^2
 el = ElementConstraint(model.nod;req=@request(Fh),gap,ElementType=AnchorLine,λinod=1,λfield=:λ,mode=equal, 
                  elementkwargs=(Δxₘtop=[5.,0,0], xₘbot=[250.,0], L=290., buoyancy=-5e3))
 d               = Muscade.doflist(typeof(el))

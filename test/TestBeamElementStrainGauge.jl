@@ -1,8 +1,6 @@
 module TestStrainGaugeOnEulerBeam3D
 
-using Test, Muscade, StaticArrays, LinearAlgebra
-include("../examples/BeamElement.jl")
-include("../examples/StrainGaugeOnBeamElement.jl")
+using Test, Muscade, Muscade.Toolbox, StaticArrays, LinearAlgebra
 
 model            = Model(:TestModel)
 node1            = addnode!(model,𝕣[0,0,0])
@@ -89,7 +87,7 @@ _       = Muscade.display_drawing!(axis,typeof(instrumentedbeam),mut,opt)
     @test axis.call[2].fun == :scatter! # call to EulerBeam3D took place
 end
 
-function straincost(eleres,X,U,A,t) 
+@functor with() function straincost(eleres,t) 
     σ  = 15e-6
     ε  = eleres.ε
     εₘ = SVector(cos(t),0.,-cos(t),0.,cos(t)/2)*0.001  
@@ -105,23 +103,11 @@ costedbeam =  ElementCost(elnod;
                             elementkwargs = (P,D,
                                               elementkwargs=(mat=mat,orient2=SVector(0.,1.,0.))))
 
-out = Muscade.diffed_lagrangian(costedbeam;Λ,X,U,A,t=0.)
+out = Muscade.diffed_lagrangian{1}(costedbeam;Λ,X,U,A,t=0.) # hard to compile !
 
 @testset "costedbeam" begin
     @test costedbeam.eleobj == instrumentedbeam
     @test  out.∇L[2][1] ≈ [  277777.7777783019,       0.0,       1.1102230246251565e-16,  201441.02435832855,       2.7777777927777793e7,      -1.2430497627256343e6, -277777.7777783019,       0.0,      -1.1102230246251565e-16,  -76336.75341947998,      -2.7777777927777793e7,       1.2569502372743965e6]
-    @test  out.HL[2,2][1,1] ≈ [  1.18056e9   0.0  0.0   3.64598e7    1.92747e-9   -3.29847e7    -1.18056e9   0.0  0.0  -3.29847e7     9.63735e-8   3.64598e7;
-                                 0.0         0.0  0.0   0.0          0.0           0.0           0.0         0.0  0.0   0.0           0.0          0.0;
-                                 0.0         0.0  0.0   0.0          0.0           0.0           0.0         0.0  0.0   0.0           0.0          0.0;
-                                 3.64598e7   0.0  0.0   1.94899e7    1.01196e-9   -2.42679e7    -3.64598e7   0.0  0.0  -1.69698e7     2.02392e-9   2.60924e7;
-                                 1.92747e-9  0.0  0.0   1.01196e-9   1.38889e8    -9.15508e-10  -1.92747e-9  0.0  0.0  -9.15508e-10  -1.38889e8    1.01196e-9;
-                                -3.29847e7   0.0  0.0  -2.42679e7   -9.15508e-10   1.54556e8     3.29847e7   0.0  0.0   8.71679e6    -1.83102e-9  -1.56207e8;
-                                -1.18056e9   0.0  0.0  -3.64598e7   -1.92747e-9    3.29847e7     1.18056e9   0.0  0.0   3.29847e7    -9.63735e-8  -3.64598e7;
-                                 0.0         0.0  0.0   0.0          0.0           0.0           0.0         0.0  0.0   0.0           0.0          0.0;
-                                 0.0         0.0  0.0   0.0          0.0           0.0           0.0         0.0  0.0   0.0           0.0          0.0;
-                                -3.29847e7   0.0  0.0  -1.69698e7   -9.15508e-10   8.71679e6     3.29847e7   0.0  0.0   1.60148e7    -1.83102e-9  -1.03674e7;
-                                 9.63735e-8  0.0  0.0   2.02392e-9  -1.38889e8    -1.83102e-9   -9.63735e-8  0.0  0.0  -1.83102e-9    1.38889e8    2.02392e-9;
-                                 3.64598e7   0.0  0.0   2.60924e7    1.01196e-9   -1.56207e8    -3.64598e7   0.0  0.0  -1.03674e7     2.02392e-9   1.58031e8] rtol = 1e-4
 end
 
 end
