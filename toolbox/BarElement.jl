@@ -133,15 +133,15 @@ function Bar3D{Udof}(nod::Vector{Node};mat,ϵₛ=eps()) where {Udof}
 end;
 
 # Internal and external loads at a given Gauss point with coordinates x, and strain ε. 
-@espy function resultants(o::AxisymmetricBarCrossSection,ε,x,u) 
+@espy function resultants(o::AxisymmetricBarCrossSection,ε,x,u,t) 
     # Unit vector tangential to the element
     δ      = ∂0(u)
     # Velocity and acceleration
     v,a      = ∂1(x),∂2(x)    
     # Inertia force
     fi      = o.μ * a
-    # Weight
-    fw =  SVector(0,0,o.w)
+    # Weight (applied progressively from t=-10 to t=-5)
+    fw =  SVector(0,0,(min(t,-5.)+10)/5 * o.w) 
     # Added mass
     aₜ = a ∘₁ δ         # Tangential acceleration (scalar)
     aₙ = a - aₜ * δ     # Normal acceleration (vector)
@@ -173,7 +173,7 @@ end;
     c        = o.cₘ + 0.5*(uᵧ₁+uᵧ₂) 
     # Element direction and length
     tg      = o.tgₘ + uᵧ₂ - uᵧ₁
-    L       = √((o.L₀+uᵧ₂[1]-uᵧ₁[1])^2+(uᵧ₂[2]-uᵧ₁[2])^2+(uᵧ₂[3]-uᵧ₁[3])^2)
+    L       = √(tg[1]^2+tg[2]^2+tg[3]^2)
     δ_       = tg/L
     # Strains
     ε_       = L/o.Lₛ - 1
@@ -191,14 +191,14 @@ end;
         # Compute how motions of Gauss point vary with nodal displacements (used in PVW below)
         x∂X₀ = SMatrix{3,6}(ψ₁(ζ),0,0, 0,ψ₁(ζ),0, 0,0,ψ₁(ζ), ψ₂(ζ),0,0, 0,ψ₂(ζ),0, 0,0,ψ₂(ζ))   
         x = motion⁻¹{P,ND}(gp[igp].x)          # Physical location of the Gauss point 
-        fᵢ,fₑ     = ☼resultants(o.mat,ε,x,δ)   # Compute loads from strains/motions, etc.
+        fᵢ,fₑ     = ☼resultants(o.mat,ε,x,δ,t)   # Compute loads from strains/motions, etc.
         fₑ        = Udof ? fₑ-∂0(U) : fₑ       # If there are unknown loads, they're added here (U is per unit length)
         #  Application of PVW, local contribution of the integral over the element
         R_        = ( fᵢ ∘₀ ε∂X₀ + fₑ ∘₁ x∂X₀ ) * o.wgp[igp]   
         @named(R_);
     end
     R                   = sum(gpᵢ.R_ for gpᵢ∈gpContrib)
-return R,noFB  
+    return R,noFB  
 end;
 
 # The following functions explain how the bar element should be drawn
