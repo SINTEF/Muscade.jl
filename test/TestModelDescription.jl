@@ -1,4 +1,4 @@
-module TestModelDescription
+#module TestModelDescription
 
 using Test
 using Muscade
@@ -104,4 +104,11 @@ end
     Muscade.getnele(model) == 2
     Muscade.getnele(model,1) == 1
 end
-end # module
+
+@testset "get" begin
+    @test get(model,e1) == (eletyp = Turbine{typeof(sea), typeof(sky)}, nods = ((inod = 1, coord = [0.0, 0.0, -10.0]), (inod = 2, coord = Float64[])), dofs = ((idof = 1, inod = 1, class = :X, field = :tx1, scale = 1.0), (idof = 2, inod = 1, class = :X, field = :tx2, scale = 1.0), (idof = 1, inod = 2, class = :A, field = :Δseadrag, scale = 3.0), (idof = 2, inod = 2, class = :A, field = :Δskydrag, scale = 4.0)))
+    @test get(model,n1) == (coord = [0.0, 0.0, -10.0], eles = Any[(eleID = EleID(1, 1), eletyp = Turbine{typeof(sea), typeof(sky)}), (eleID = EleID(2, 1), eletyp = AnchorLine)], dofs = Any[(dofID = DofID(:X, 1), class = :X, field = :tx1, scale = 1.0), (dofID = DofID(:X, 2), class = :X, field = :tx2, scale = 1.0), (dofID = DofID(:X, 3), class = :X, field = :rx3, scale = 2.0)])
+    @test get(model,DofID(:X, 1)) == (class = :X, field = :tx1, nodID = NodID(1), scale = 1.0)
+end
+
+#end # module

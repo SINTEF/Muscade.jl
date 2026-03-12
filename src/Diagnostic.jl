@@ -21,18 +21,18 @@ See also: [`addelement!`](@ref), [`addnode!`](@ref)
 """
 function describe(model::Model,eleID::EleID)
     try 
-        dof = model.ele[eleID] 
+        ele = model.ele[eleID] 
     catch
         printstyled("Not a valid EleID\n",color=:red,bold=true)
         return
     end
-    e  = model.ele[eleID]
+    ele  = model.ele[eleID]
     eo = model.eleobj[eleID]
     @printf "Element with EleID(%i,%i)\n" eleID.ieletyp eleID.iele 
     @printf "   model.eleobj[%i][%i]::" eleID.ieletyp eleID.iele 
     printstyled(@sprintf("%s\n",typeof(eo)),color=:cyan)
     @printf "   model.ele[%i][%i]:\n" eleID.ieletyp eleID.iele
-    for dofid ∈ e.dofID
+    for dofid ∈ ele.dofID
         dof    = model.dof[dofid]
         nod    = model.nod[dof.nodID]
         doftyp = model.doftyp[dof.idoftyp]

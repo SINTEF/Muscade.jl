@@ -330,6 +330,57 @@ function unlock(model::Model,ID::Symbol)
     return newmodel
 end    
  
+function Base.get(model::Model,eleID::EleID)
+    ele    = model.ele[   eleID]
+    eo     = model.eleobj[eleID]
+    teo    = typeof(eo)
+    ndof   = getndof(teo)
+    nnod   = getnnod(teo)
 
+    dofs   =  ntuple(ndof) do idof 
+        dofID  = ele.dofID[idof]
+        dof    = model.dof[dofID]
+        doftyp = model.doftyp[dof.idoftyp]
+        (idof=dofID.idof, inod=dof.nodID.inod, class=doftyp.class, field=doftyp.field, scale=doftyp.scale)
+    end    
 
- 
+    nods = ntuple(nnod) do inod
+        nodID = ele.nodID[inod] 
+        nod   = model.nod[nodID]
+        (inod=nodID.inod, coord=copy(nod.coord))   
+    end
+
+    return (eletyp=teo, nods=nods, dofs=dofs)
+end
+
+ function Base.get(model::Model,nodID::NodID)
+    nod            = model.nod[   nodID]
+        
+    ndof           = length(nod.dofID)   
+    dofs           = Vector{Any}(undef,ndof)
+    for idof       = 1:ndof
+        dofID      = nod.dofID[idof]
+        dof        = model.dof[dofID]
+        doftyp     = model.doftyp[dof.idoftyp]
+        dofs[idof] = (dofID=dofID, class=doftyp.class, field=doftyp.field, scale=doftyp.scale)
+    end
+
+    nele           = length(nod.eleID)    
+    eles           = Vector{Any}(undef,nele)
+    for iele=1:nele
+        eleID      = nod.eleID[iele]
+        teo        = typeof(model.eleobj[eleID])
+        eles[iele] = (eleID=eleID, eletyp=teo)  
+    end
+
+    return (coord=copy(nod.coord), eles=eles, dofs=dofs)
+end
+
+function Base.get(model::Model,dofID::DofID)
+    dof     = model.dof[dofID]
+    nodID   = dof.nodID
+    nod     = model.nod[nodID]
+    doftyp  = model.doftyp[dof.idoftyp]
+
+    return (class=doftyp.class,field=doftyp.field,nodID=nodID,scale=doftyp.scale)
+end
