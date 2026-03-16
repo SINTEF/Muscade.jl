@@ -104,4 +104,16 @@ end
     Muscade.getnele(model) == 2
     Muscade.getnele(model,1) == 1
 end
-end # module
+
+@testset "get" begin
+    @test get(model,e1)           == (eletyp = Turbine{typeof(sea), typeof(sky)}, nods = ((nodID = NodID(1), coord = [0.0, 0.0, -10.0]), (nodID = NodID(2), coord = Float64[])), dofs = ((dofID = DofID(:X, 1), nodID = NodID(1), class = :X, field = :tx1, scale = 1.0), (dofID = DofID(:X, 2), nodID = NodID(1), class = :X, field = :tx2, scale = 1.0), (dofID = DofID(:A, 1), nodID = NodID(2), class = :A, field = :Δseadrag, scale = 3.0), (dofID = DofID(:A, 2), nodID = NodID(2), class = :A, field = :Δskydrag, scale = 4.0)))
+    @test get(model,n1)           == (coord = [0.0, 0.0, -10.0], eles = [(eleID = EleID(1, 1), eletyp = Turbine{typeof(sea), typeof(sky)}), (eleID = EleID(2, 1), eletyp = AnchorLine)], dofs = [(dofID = DofID(:X, 1), class = :X, field = :tx1, scale = 1.0), (dofID = DofID(:X, 2), class = :X, field = :tx2, scale = 1.0), (dofID = DofID(:X, 3), class = :X, field = :rx3, scale = 2.0)])
+    @test get(model,DofID(:X, 1)) == (class = :X, field = :tx1, nodID = NodID(1), scale = 1.0, eles = @NamedTuple{eleID::EleID, eletyp::DataType, ielnod::Int64}[(eleID = EleID(1, 1), eletyp = Turbine{typeof(sea), typeof(sky)}, ielnod = 1), (eleID = EleID(2, 1), eletyp = AnchorLine, ielnod = 1)])
+end
+
+# describe(model,e1)           
+# describe(model,n1)           
+# describe(model,DofID(:X, 1)) 
+
+
+end
