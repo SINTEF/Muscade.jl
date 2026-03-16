@@ -330,6 +330,21 @@ function unlock(model::Model,ID::Symbol)
     return newmodel
 end    
  
+"""
+    get(model::Model,eleID::EleID)
+
+where `eleID` is returned by `addelement!`, returns a datastructure:
+- `eletyp`: the datatype of the element
+- `dofs`: an array with, for each node of the element
+    - `dofID` identifying the dof within the model
+    - `nodID` identifying the nod of the model bearing this dof
+    - `class`, dofclass `:X`, `:U` or `:A`
+    - `field`, field of the dof
+    - `scale` scaling factor 
+- `nods`:     
+    - `nodID` identifying the nod of the model bearing this dof
+    - `coord` the coordinate of the node
+"""
 function Base.get(model::Model,eleID::EleID)
     ele    = model.ele[   eleID]
     eo     = model.eleobj[eleID]
@@ -337,27 +352,41 @@ function Base.get(model::Model,eleID::EleID)
     ndof   = getndof(teo)
     nnod   = getnnod(teo)
 
+    nods = ntuple(nnod) do inod
+        nodID = ele.nodID[inod] 
+        nod   = model.nod[nodID]
+        (nodID=nodID, coord=copy(nod.coord))   
+    end
+
     dofs   =  ntuple(ndof) do idof 
         dofID  = ele.dofID[idof]
         dof    = model.dof[dofID]
         doftyp = model.doftyp[dof.idoftyp]
-        (idof=dofID.idof, inod=dof.nodID.inod, class=doftyp.class, field=doftyp.field, scale=doftyp.scale)
+        (dofID=dofID, nodID=dof.nodID, class=doftyp.class, field=doftyp.field, scale=doftyp.scale)
     end    
-
-    nods = ntuple(nnod) do inod
-        nodID = ele.nodID[inod] 
-        nod   = model.nod[nodID]
-        (inod=nodID.inod, coord=copy(nod.coord))   
-    end
 
     return (eletyp=teo, nods=nods, dofs=dofs)
 end
 
+"""
+    get(model::Model,nodID::nodID)
+
+where `nodID` is returned by `addnode!`, returns a datastructure:
+- `coord` the coordinate of the node
+- `eles`: an array with, for each element connected to this node
+    - `eleID` identifying the element within the model
+    - `eletyp` the datatype of the element
+- `nods`:     
+    - `dofID` identifying the dof of the model
+    - `class`, dofclass `:X`, `:U` or `:A`
+    - `field`, field of the dof
+    - `scale` scaling factor 
+"""
  function Base.get(model::Model,nodID::NodID)
     nod            = model.nod[   nodID]
         
     ndof           = length(nod.dofID)   
-    dofs           = Vector{Any}(undef,ndof)
+    dofs           = Vector{@NamedTuple{dofID::DofID, class::Symbol, field::Symbol, scale::Float64}}(undef,ndof)
     for idof       = 1:ndof
         dofID      = nod.dofID[idof]
         dof        = model.dof[dofID]
@@ -366,7 +395,7 @@ end
     end
 
     nele           = length(nod.eleID)    
-    eles           = Vector{Any}(undef,nele)
+    eles           = Vector{@NamedTuple{eleID::EleID, eletyp::DataType}}(undef,nele)
     for iele=1:nele
         eleID      = nod.eleID[iele]
         teo        = typeof(model.eleobj[eleID])
@@ -376,11 +405,50 @@ end
     return (coord=copy(nod.coord), eles=eles, dofs=dofs)
 end
 
+"""
+    get(model::Model,nodID::dofID)
+
+where `dofID` is found in the output of `get(model,eleID)` and `get(model,nodID)`, returns a datastructure:
+- `class`, dofclass `:X`, `:U` or `:A`
+- `field`, field of the dof
+- `nodID` identifying the nod of the model bearing this dof
+- `scale` scaling factor 
+- `eles`: an array with, for each element sharing this dof
+    - `eleID` identifying the element within the model
+    - `eletyp` the datatype of the element
+    - `ielnod` the element's node number
+"""
 function Base.get(model::Model,dofID::DofID)
+    # BUG I am not getting all elements
     dof     = model.dof[dofID]
     nodID   = dof.nodID
     nod     = model.nod[nodID]
     doftyp  = model.doftyp[dof.idoftyp]
 
-    return (class=doftyp.class,field=doftyp.field,nodID=nodID,scale=doftyp.scale)
+    nele    = length(nod.eleID)
+    eles    = Vector{@NamedTuple{eleID::EleID, eletyp::DataType, ielnod::Int64}}(undef,nele)
+    jele    = 0
+
+    for iele=1:nele
+        eleID      = nod.eleID[iele]
+        ele        = model.ele[eleID]
+        eleobj     = model.eleobj[eleID] 
+        teo        = typeof(eleobj)
+        dl         = doflist(teo)
+        local hit,ielnod
+        for ieldof = 1:length(dl.inod)
+            ielnod = dl.inod[ieldof]
+            hit = ele.nodID[ielnod]==nodID       && 
+                  dl.class[ieldof]==doftyp.class &&
+                  dl.field[ieldof]==doftyp.field 
+            hit && break
+        end
+        if hit 
+            jele += 1
+            eles[jele] = (eleID=eleID, eletyp=teo,ielnod=ielnod)
+        end  
+    end
+    resize!(eles,jele)
+
+    return (class=doftyp.class,field=doftyp.field,nodID=nodID,scale=doftyp.scale,eles=eles)
 end

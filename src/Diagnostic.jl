@@ -20,82 +20,70 @@ Provide a description of the dofs stored in `state`.
 See also: [`addelement!`](@ref), [`addnode!`](@ref)
 """
 function describe(model::Model,eleID::EleID)
+    local ele
     try 
-        ele = model.ele[eleID] 
+        ele = get(model,eleID) 
     catch
         printstyled("Not a valid EleID\n",color=:red,bold=true)
-        return
-    end
-    ele  = model.ele[eleID]
-    eo = model.eleobj[eleID]
-    @printf "Element with EleID(%i,%i)\n" eleID.ieletyp eleID.iele 
-    @printf "   model.eleobj[%i][%i]::" eleID.ieletyp eleID.iele 
-    printstyled(@sprintf("%s\n",typeof(eo)),color=:cyan)
-    @printf "   model.ele[%i][%i]:\n" eleID.ieletyp eleID.iele
-    for dofid ∈ ele.dofID
-        dof    = model.dof[dofid]
-        nod    = model.nod[dof.nodID]
-        doftyp = model.doftyp[dof.idoftyp]
-        @printf "      NodID(%i), class=:%s, field=:%-12s\n" dof.nodID.inod doftyp.class doftyp.field 
-    end
+    else
+        @printf "EleID(%i,%i) is a " eleID.ieletyp eleID.iele 
+        printstyled(@sprintf("%s\n",ele.eletyp),color=:cyan)
+        @printf "has nodes\n" 
+        for (inod,nod) ∈ enumerate(ele.nods)
+            @printf "      %i: NodID(%i), coord=[" inod nod.nodID.inod
+            for coord ∈ nod.coord
+                @printf "%g " coord
+            end 
+            @printf"]\n" 
+        end
+        @printf "has dofs\n"
+        for (idof,dof) ∈ enumerate(ele.dofs)
+            @printf "      %i: DofID(:%s,%i), NodID(%i), class=:%s, field=:%s, scale=%g\n" idof dof.class dof.dofID.idof dof.nodID.inod dof.class dof.field dof.scale
+        end  
+    end  
 end
+
 function describe(model::Model,dofID::DofID)
+    local dof
     try 
-        dof = model.dof[dofID] 
+        dof = get(model,dofID) 
     catch
         printstyled("Not a valid DofID\n",color=:red,bold=true)
         if dofID.class==:Λ
             @printf "Optimisation solvers introduce a one-to-one correspondance between :Λ-dofs and :X-dofs, \nbut :Λ-dofs are not part of the model description: try DofID(:X,...)\n"
         end
-        return
-    end
-    dof     = model.dof[dofID] 
-    doftyp  = model.doftyp[dof.idoftyp]
-    @printf "Degree of freedom with DofID(:%s,%i)\n" dofID.class dofID.idof
-    @printf "   model.dof.%s[%i]:\n" dofID.class dofID.idof
-    @printf "   NodID(%i), class=:%s, field=:%-12s\n" dof.nodID.inod dofID.class doftyp.field 
-    @printf "   elements:\n"
-    for eleid ∈ dof.eleID
-        @printf "      EleID(%i,%i), " eleid.ieletyp eleid.iele 
-        printstyled(@sprintf("%s\n",eltype(model.eleobj[eleid.ieletyp])),color=:cyan)
-    end
-    if dofID.class == :X
-        @printf "   Output in state[istep].X[ider+1][%i] and state[istep].Λ[%i]\n" dofID.idof dofID.idof    
-    elseif dofID.class ==:U
-            @printf "   Output in state[istep].U[ider][%i]\n" dofID.idof   
-        elseif dofID.class == :A
-        @printf "   Output in state[istep].A[%i]\n" dofID.idof   
-    end            
+    else
+        @printf "DofID(:%s,%i), node=NodID(%i), class=:%s, field=:%s, scale=%g\n" dofID.class dofID.idof dof.nodID.inod dof.class dof.field dof.scale
+        @printf "is shared by elements:\n"
+        for (iele,ele) ∈ enumerate(dof.eles)
+            @printf "      %i: EleID(%i,%i), ielnod=%i, " iele ele.eleID.ieletyp ele.eleID.iele ele.ielnod 
+            printstyled(@sprintf("%s\n",ele.eletyp),color=:cyan)
+        end
+    end        
 end
 function describe(model::Model,nodID::NodID)
+    local nod
     try 
-        nod = model.nod[nodID] 
+        nod = get(model,nodID) 
     catch
         printstyled("Not a valid NodID\n",color=:red,bold=true)
-        return
-    end
-    nod = model.nod[nodID]
-    @printf "Node with NodID(%i)\n" nodID.inod
-    @printf "   model.nod[%i]:\n" nodID.inod
-    nc = length(nod.coord)
-    @printf "   coord=[" 
-    for ic=1:nc-1
-        @printf "%g," nod.coord[ic] 
-    end
-    if nc>0
-        @printf "%g" nod.coord[nc] 
-    end
-    @printf "]\n" 
-    @printf "   dof (degrees of freedom):\n"
-    for dofid ∈ nod.dofID
-        dof = model.dof[dofid]
-        doftyp = model.doftyp[dof.idoftyp]
-        @printf "      DofID(:%s,%i), class=:%s, inod=%i, field=:%-12s\n" dofid.class dofid.idof dofid.class nodID.inod doftyp.field    
-    end
-    @printf "   elements:\n"
-    for eleID ∈ nod.eleID
-        @printf "      EleID(%i,%i), " eleID.ieletyp eleID.iele 
-        printstyled(@sprintf("%s\n",typeof(model.eleobj[eleID])),color=:cyan)
+    else
+        @printf "NodID(%i), coord=[" nodID.inod
+        for coord∈nod.coord
+            @printf "%g " coord 
+        end
+        @printf "]\n" 
+        @printf "has dofs (degrees of freedom):\n"
+        for idof ∈ eachindex(nod.dofs)
+            dof = nod.dofs[idof]
+            @printf "      %i:  DofID(:%s,%i), class=:%s, field=:%s, scale=%g\n" idof dof.dofID.class dof.dofID.idof dof.class dof.field dof.scale   
+        end
+        @printf "is connected to elements:\n"
+        for iele ∈ eachindex(nod.eles)
+            ele = nod.eles[iele]
+            @printf "      %i:  EleID(%i,%i), " iele ele.eleID.ieletyp ele.eleID.iele 
+            printstyled(@sprintf("%s\n",ele.eletyp),color=:cyan)
+        end
     end
  end
 function describe(model::Model,s::Symbol)
