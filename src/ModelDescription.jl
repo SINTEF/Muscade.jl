@@ -419,7 +419,6 @@ where `dofID` is found in the output of `get(model,eleID)` and `get(model,nodID)
     - `ielnod` the element's node number
 """
 function Base.get(model::Model,dofID::DofID)
-    # BUG I am not getting all elements
     dof     = model.dof[dofID]
     nodID   = dof.nodID
     nod     = model.nod[nodID]

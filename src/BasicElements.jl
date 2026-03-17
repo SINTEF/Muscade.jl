@@ -482,10 +482,9 @@ e     = addelement!(model,Hold,[node];field=:tx)
 See also: [`DofConstraint`](@ref), [`DofLoad`](@ref), [`DofCost`](@ref) 
 """
 struct Hold <: AbstractElement end  
-function Hold(nod::Vector{Node};field::Symbol,λfield::Symbol=Symbol(:λ,field)) 
-    gap(v,t)=v[1]
-    return DofConstraint{:X     ,1, 0, 0, (1,),(field,),(),   (),    (),   (),    1,    λfield, typeof(gap),typeof(()),typeof(equal)}(gap,(),equal)
-end
+@functor with() gap_for_hold_functor(v,t)=v[1]
+Hold(nod::Vector{Node};field::Symbol,λfield::Symbol=Symbol(:λ,field)) = 
+    DofConstraint{:X     ,1, 0, 0, (1,),(field,),(),   (),    (),   (),    1,    λfield, typeof(gap_for_hold_functor),typeof(()),typeof(equal)}(gap_for_hold_functor,(),equal)
 
 #-------------------------------------------------
 
