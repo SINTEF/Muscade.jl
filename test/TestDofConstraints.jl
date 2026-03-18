@@ -1,14 +1,15 @@
-module TestConstraints
+#module TestConstraints
 
 using Test,StaticArrays
-using Muscade
+using Muscade,StaticArrays
 
-Muscade.DofConstraint{:X,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield                       }(g,mode) where
-                        {Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield} =
-Muscade.DofConstraint{:X,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,typeof(g),typeof(()),typeof(mode)}(g,(),mode)
-Muscade.DofConstraint{:U,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield                       }(g,mode) where
-                        {Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield} =
-Muscade.DofConstraint{:U,Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,λinod,λfield,typeof(g),typeof(()),typeof(mode)}(g,(),mode)
+Muscade.DofConstraint{:X,Nλ,Nx,Nu,Na,λinod,λfield,xinod,xfield,uinod,ufield,ainod,afield                       }(g,mode) where
+                        {Nλ,Nx,Nu,Na,λinod,λfield,xinod,xfield,uinod,ufield,ainod,afield} =
+Muscade.DofConstraint{:X,Nλ,Nx,Nu,Na,λinod,λfield,xinod,xfield,uinod,ufield,ainod,afield,typeof(g),typeof(()),typeof(mode)}(g,(),mode)
+
+Muscade.DofConstraint{:U,Nλ,Nx,Nu,Na,λinod,λfield,xinod,xfield,uinod,ufield,ainod,afield                       }(g,mode) where
+                        {Nλ,Nx,Nu,Na,λinod,λfield,xinod,xfield,uinod,ufield,ainod,afield} =
+Muscade.DofConstraint{:U,Nλ,Nx,Nu,Na,λinod,λfield,xinod,xfield,uinod,ufield,ainod,afield,typeof(g),typeof(()),typeof(mode)}(g,(),mode)
 
 t,dbg  = 0.,(status=:testing,)
 SP1 = (γ=1.,)
@@ -16,13 +17,13 @@ SP0 = (γ=0.,)
 
 #---------------------------------------------------------
 
-g(x,t)     = .3x[1] + .4x[2]
+g(x,t)     = SVector{1,typeof(x)}(.3x[1] + .4x[2])
 Xctc       = Muscade.variate{1,3}(SVector{3}(4,-3,10.)) # contact
 Xgap       = Muscade.variate{1,3}(SVector{3}(4,3,10.))  # gap
 U          = SVector{0,𝕣}()
 A          = SVector{0,𝕣}()
-C          = Muscade.DofConstraint{:X,    2 ,0 ,0 ,(1,1),(:t1,:t2),()   ,()    ,()   ,()    ,1    ,:λ    }
-#                    DofConstraint{λclass,Nx,Nu,Na,xinod,xfield   ,uinod,ufield,ainod,afield,λinod,λfield}(g,mode)
+C          = Muscade.DofConstraint{:X,    1 ,2 ,0 ,0 ,(1,) ,(:λ,) ,(1,1),(:t1,:t2),()   ,()    ,()   ,()    }
+#                    DofConstraint{λclass,Nλ,Nx,Nu,Na,λinod,λfield,xinod,xfield   ,uinod,ufield,ainod,afield}(g,mode)
 
 @testset "X equal contact" begin
     c     = C(g,equal)
@@ -88,14 +89,14 @@ end
 
 #---------------------------------------------------------
 
-g(x,u,a,t) = .3u[1] + .4u[2]
+g(x,u,a,t) = SVector(.3u[1] + .4u[2])
 Uctc       = Muscade.variate{2,3}(Muscade.variate{1,3}(SVector{3}(4,-3,10.))) # contact
 Ugap       = Muscade.variate{2,3}(Muscade.variate{1,3}(SVector{3}(4, 3,10.))) # gap
 Λ          = SVector{0,𝕣}()
 X          = SVector{0,𝕣}()
 A          = SVector{0,𝕣}()
-C          = Muscade.DofConstraint{:U,    0 ,2 ,0 ,()   ,()       ,(1,1),(:t1,:t2),()   ,()    ,1    ,:λ    }
-#                    DofConstraint{λclass,Nx,Nu,Na,xinod,xfield   ,uinod,ufield   ,ainod,afield,λinod,λfield}(g,mode)
+C          = Muscade.DofConstraint{:U,    1, 0 ,2 ,0 ,(1,) ,(:λ,) ,()   ,()       ,(1,1),(:t1,:t2),()   ,()    }
+#                    DofConstraint{λclass,Nλ,Nx,Nu,Na,λinod,λfield,xinod,xfield   ,uinod,ufield   ,ainod,afield}(g,mode)
 
 @testset "U equal contact" begin
     c     = C(g,equal)
@@ -161,16 +162,16 @@ end
 #---------------------------------------------------------
 
 
-@functor with() g1(x,t)       = -0.1*sin(1.2*x[1])+.2x[1]+x[2]+1 
-@functor with() g2(x,t)       = -.4x[1] + .3x[2]+.1
+@functor with() g1(x,t)       = SVector(-0.1*sin(1.2*x[1])+.2x[1]+x[2]+1 )
+@functor with() g2(x,t)       = SVector(-.4x[1] + .3x[2]+.1)
 @functor with() f1(x)         = -(-0.1*sin(1.2*x)+.2x-1) 
 @functor with() f2(x)         = (-1/.3)*(-.4x + .1)
 @functor with() gravity(t)    = -2.
 
 model           = Model(:TestModel)
 n1              = addnode!(model,𝕣[0,0]) 
-e1              = addelement!(model,DofConstraint,[n1],xinod=(1,1),xfield=(:t1,:t2),λinod=1, λclass=:X, λfield=:λ1,gap=g1,mode=positive)
-e2              = addelement!(model,DofConstraint,[n1],xinod=(1,1),xfield=(:t1,:t2),λinod=1, λclass=:X, λfield=:λ2,gap=g2,mode=positive)
+e1              = addelement!(model,DofConstraint,[n1],λclass=:X, λinod=(1,),λfield=(:λ1,), xinod=(1,1),xfield=(:t1,:t2), gap=g1,mode=positive)
+e2              = addelement!(model,DofConstraint,[n1],λclass=:X, λinod=(1,),λfield=(:λ2,), xinod=(1,1),xfield=(:t1,:t2), gap=g2,mode=positive)
 e3              = addelement!(model,DofLoad      ,[n1],field=:t2,value=gravity)
 initialstate    = initialize!(model)
 initialstate    = setdof!(initialstate,1.;field=:λ1)
@@ -182,4 +183,4 @@ state           = solve(SweepX{0};initialstate,time=[0.],verbose=false,silenterr
     @test abs(g1(X,0))   < 1e-6
     @test abs(g2(X,0))   < 1e-5
 end
-end
+#end
