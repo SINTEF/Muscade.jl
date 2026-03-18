@@ -286,7 +286,7 @@ end
 
 #McCormick(a,b)= α->a*exp(-(α/b)^2)            # provided as input to solvers, used by their Addin
 
-S(λ,g,γ) = λ.*g-γ # complementary slacknesses 
+S(λ,g,γ) = λ.*g.-γ # complementary slacknesses 
 
 KKT(λ::𝕣        ,g::𝕣         ,γ::𝕣)                 = 0 # A pseudo-potential with strange derivatives
 KKT(λ::∂ℝ{P,N,R},g::∂ℝ{P,N,R},γ::𝕣) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(0, λ.x*g.dx + S(λ.x,g.x,γ)*λ.dx)
@@ -305,7 +305,7 @@ function KKT(λ::∂ℝ{Pλ,Nλ,Rλ},g::∂ℝ{Pg,Ng,Rg},γ::𝕣) where{Pλ,Pg,
         return ∂ℝ{Pg,Ng}(convert(R,KKT(λ.x,g  ,γ)),convert.(R,                S(λ.x,g.x,γ)*λ.dx))
     end
 end
-KKT(λ::SVector{Nλ},g::SVector{Nλ},γ::𝕣) where{Nλ} = SVector( (KKT(λ[i],g[i],γ) for i=1:Nλ)...) 
+KKT(λ::SVector{Nλ},g::SVector{Nλ},γ::𝕣) where{Nλ} = sum(KKT(λ[i],g[i],γ) for i=1:Nλ) 
 
 
 #-------------------------------------------------
@@ -384,21 +384,22 @@ return a `SVector{Nλ,𝕫}`.
 
 # Example    TODO
 ```jldoctest; output = false
-# using Muscade,StaticArrays
-# model           = Model(:TestModel)
-# n1              = addnode!(model,𝕣[0])
-# @functor with() gap(x,    t)=x+.1
-# @functor with() res(x,u,a,t)=0.4x.+.08+.5x.^2)
-# e1              = addelement!(model,DofConstraint,[n1],λclass=:X, 
-#                               λinod=(1,),λfield=(:λ1,), xinod=(1,),xfield=(:t1,),
-#                               gap=gap,
-#                               mode=positive)
-# e2              = addelement!(model,QuickFix  ,[n1],inod=(1,),field=(:t1,),
-#                               res=res
-# initialstate    = initialize!(model)
-# setdof!(initialstate,1.;field=:λ1)
-# state           = solve(SweepX{0};initialstate,time=[0.],verbose=false) 
-# X               = state[1].X[1]
+using Muscade,StaticArrays
+model           = Model(:TestModel)
+n1              = addnode!(model,𝕣[0])
+@functor with() gap(x,    t)=SVector(x+.1)
+@functor with() res(x,u,a,t)=0.4x.+.08+.5x.^2)
+e1              = addelement!(model,DofConstraint,[n1],λclass=:X, 
+                              λinod=(1,),λfield=(:λ1,), 
+                              xinod=(1,),xfield=(:t1,),
+                              gap=gap,
+                              mode=positive)
+e2              = addelement!(model,QuickFix  ,[n1],inod=(1,),field=(:t1,),
+                              res=res
+initialstate    = initialize!(model)
+setdof!(initialstate,1.;field=:λ1)
+state           = solve(SweepX{0};initialstate,time=[0.],verbose=false) 
+X               = state[1].X[2]
 
 # output
 
@@ -409,7 +410,7 @@ return a `SVector{Nλ,𝕫}`.
 
 See also: [`Hold`](@ref), [`ElementConstraint`](@ref), [`off`](@ref), [`equal`](@ref), [`positive`](@ref)
 """
-struct DofConstraint{λclass,Nλ,Nx,Nu,Na,λinod,λfield,xinod,xfield,uinod,ufield,ainod,afield,Tg,Tgargs,Tmode} where{Tg<:Functor,Tmode<:Functor} <: AbstractElement
+struct DofConstraint{λclass,Nλ,Nx,Nu,Na,λinod,λfield,xinod,xfield,uinod,ufield,ainod,afield,Tg<:Functor,Tgargs,Tmode<:Functor} <: AbstractElement
     gap      :: Tg    # Class==:X gap(x,t,gargs...) ,Class==:U  gap(x,u,a,t,gargs...), Class==:A gap(a,gargs...) 
     gargs    :: Tgargs
     mode     :: Tmode # mode(t)->symbol, or Symbol for Aconstraints
@@ -450,7 +451,7 @@ end
     iu         = SVector{Nu}(Nλ+1:Nλ+Nu)
     γ          = default{:γ}(SP,0.)
     m          = o.mode(t)
-    ☼λ,x,u,a   = ∂0(U)[iλ], ∂0(X), ∂0(U)[iy], A
+    ☼λ,x,u,a   = ∂0(U)[iλ], ∂0(X), ∂0(U)[iu], A
     ☼gap       = o.gap(x,u,a,t,o.gargs...)
     L = if     m==:equal;    -λ ∘₁ gap         
     elseif     m==:positive; -KKT(λ,gap,γ)  
