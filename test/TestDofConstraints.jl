@@ -3,13 +3,9 @@ module TestConstraints
 using Test,StaticArrays
 using Muscade,StaticArrays
 
-Muscade.DofConstraint{:X,Nλ,Nx,Nu,Na,λinod,λfield,xinod,xfield,uinod,ufield,ainod,afield                       }(g,mode) where
-                        {Nλ,Nx,Nu,Na,λinod,λfield,xinod,xfield,uinod,ufield,ainod,afield} =
-Muscade.DofConstraint{:X,Nλ,Nx,Nu,Na,λinod,λfield,xinod,xfield,uinod,ufield,ainod,afield,typeof(g),typeof(()),typeof(mode)}(g,(),mode)
-
-Muscade.DofConstraint{:U,Nλ,Nx,Nu,Na,λinod,λfield,xinod,xfield,uinod,ufield,ainod,afield                       }(g,mode) where
-                        {Nλ,Nx,Nu,Na,λinod,λfield,xinod,xfield,uinod,ufield,ainod,afield} =
-Muscade.DofConstraint{:U,Nλ,Nx,Nu,Na,λinod,λfield,xinod,xfield,uinod,ufield,ainod,afield,typeof(g),typeof(()),typeof(mode)}(g,(),mode)
+Muscade.DofConstraint{λclass,Nλ,Nx,Nu,Na,λinod,λfield,xinod,xfield,uinod,ufield,ainod,afield                       }(g,mode) where
+                     {λclass,Nλ,Nx,Nu,Na,λinod,λfield,xinod,xfield,uinod,ufield,ainod,afield} =
+Muscade.DofConstraint{λclass,Nλ,Nx,Nu,Na,λinod,λfield,xinod,xfield,uinod,ufield,ainod,afield,typeof(g),typeof(()),typeof(mode)}(g,(),mode)
 
 t,dbg  = 0.,(status=:testing,)
 SP1 = (γ=1.,)
@@ -82,6 +78,64 @@ end
     @test R∂X ≈  [-2.4 -3.0 -4.0; -0.3 -0.0 -0.0; -0.4 -0.0 -0.0]
 end
 
+#---------------------------------------------------------
+# Multiple X constraints
+
+@functor with() g(x,t) = x
+Xctc       = Muscade.variate{1,4}(SVector{4}(10.,3.,0,0)) # contact
+Xgap       = Muscade.variate{1,4}(SVector{4}( 0.,0.,2,1)) # gap
+U          = SVector{0,𝕣}()
+A          = SVector{0,𝕣}()
+C          = Muscade.DofConstraint{:X,    2 ,2 ,0 ,0 ,(1,1) ,(:λ1,:λ2) ,(1,1),(:t1,:t2),()   ,()    ,()   ,()    }
+#                    DofConstraint{λclass,Nλ,Nx,Nu,Na,λinod,λfield     ,xinod,xfield   ,uinod,ufield,ainod,afield}(g,mode)
+
+c     = C(g,equal)
+r,FB  = Muscade.residual(c, (Xctc,),(U,),A, t,SP0,dbg)
+R,R∂X = Muscade.value_∂{1,4}(r)
+@testset "X equal multiple" begin
+    @test Muscade.doflist(typeof(c)) == (inod = (1, 1, 1, 1), class = (:X, :X, :X, :X), field = (:λ1, :λ2, :t1, :t2))
+    @test R   ≈ [0, 0,-10,-3]
+    @test R∂X ≈  [-0.0 -0.0 -1.0 -0.0; 
+                  -0.0 -0.0 -0.0 -1.0; 
+                  -1.0 -0.0 -0.0 -0.0; 
+                  -0.0 -1.0 -0.0 -0.0]
+end
+
+c     = C(g,positive)
+r,FB  = Muscade.residual(c, (Xctc,),(U,),A, t,SP0,dbg)
+R,R∂X = Muscade.value_∂{1,4}(r)
+@testset "X positive contact multiple" begin
+    @test Muscade.doflist(typeof(c)) == (inod = (1, 1, 1, 1), class = (:X, :X, :X, :X), field = (:λ1, :λ2, :t1, :t2))
+    @test R   ≈ [0.0, 0.0, -10.0, -3.0]
+    @test R∂X ≈  [-0.0 -0.0 -10.0 -0.0; 
+                  -0.0 -0.0  -0.0 -3.0; 
+                  -1.0 -0.0  -0.0 -0.0; 
+                  -0.0 -1.0  -0.0 -0.0]
+end
+
+c     = C(g,positive)
+r,FB  = Muscade.residual(c, (Xgap,),(U,),A, t,SP0,dbg)
+R,R∂X = Muscade.value_∂{1,4}(r)
+@testset "X positive gap multiple" begin
+    @test Muscade.doflist(typeof(c)) == (inod = (1, 1, 1, 1), class = (:X, :X, :X, :X), field = (:λ1, :λ2, :t1, :t2))
+    @test R   ≈ [0.0, 0.0, 0.0, 0.0]
+    @test R∂X ≈  [-2.0 -0.0 -0.0 -0.0; 
+                  -0.0 -1.0 -0.0 -0.0; 
+                  -1.0 -0.0 -0.0 -0.0; 
+                  -0.0 -1.0 -0.0 -0.0] 
+end
+
+c     = C(g,off)
+r,FB  = Muscade.residual(c, (Xgap,),(U,),A, t,SP0,dbg)
+R,R∂X = Muscade.value_∂{1,4}(r)
+@testset "X off multiple" begin
+    @test Muscade.doflist(typeof(c)) == (inod = (1, 1, 1, 1), class = (:X, :X, :X, :X), field = (:λ1, :λ2, :t1, :t2))
+    @test R   ≈ [0.0, 0.0, 0.0, 0.0]
+    @test R∂X ≈  [-1.0 -0.0 -0.0 -0.0; 
+                  -0.0 -1.0 -0.0 -0.0; 
+                  0.0 0.0 0.0 0.0; 
+                  0.0 0.0 0.0 0.0]
+end
 
 #---------------------------------------------------------
 
@@ -177,4 +231,5 @@ state           = solve(SweepX{0};initialstate,time=[0.],verbose=false,silenterr
     @test abs(g1(X,0)[1])   < 1e-6
     @test abs(g2(X,0)[1])   < 1e-5
 end
+
 end
