@@ -411,9 +411,10 @@ X               = state[1].X[2]
 See also: [`Hold`](@ref), [`ElementConstraint`](@ref), [`off`](@ref), [`equal`](@ref), [`positive`](@ref)
 """
 struct DofConstraint{λclass,Nλ,Nx,Nu,Na,λinod,λfield,xinod,xfield,uinod,ufield,ainod,afield,Tg<:Functor,Tgargs,Tmode<:Functor} <: AbstractElement
-    gap      :: Tg    # Class==:X gap(x,t,gargs...) ,Class==:U  gap(x,u,a,t,gargs...), Class==:A gap(a,gargs...) 
+    gap      :: Tg    # λclass==:X gap(x,t,gargs...) ,λclass==:U  gap(x,u,a,t,gargs...), λclass==:A gap(a,gargs...) 
     gargs    :: Tgargs
     mode     :: Tmode # mode(t)->symbol, or Symbol for Aconstraints
+
 end
 function DofConstraint(nod::Vector{Node};λclass::Symbol,
                                          λinod::NTuple{Nλ,𝕫}=(),λfield::NTuple{Nλ,Symbol}=(),
@@ -423,6 +424,12 @@ function DofConstraint(nod::Vector{Node};λclass::Symbol,
                                          gap::Functor ,gargs=(),mode::Functor) where{Nλ,Nx,Nu,Na} 
     (λclass==:X && (Nu>0||Na>0)) && muscadeerror("Constraints with λclass=:X must have zero U-dofs and zero A-dofs") 
     (λclass==:A && (Nx>0||Nu>0)) && muscadeerror("Constraints with λclass=:A must have zero X-dofs and zero U-dofs") 
+    if     λclass==:X typeof(gap(SVector{Nx}(0. for i=1:Nx),0.,gargs...)) 
+    elseif λclass==:U typeof(gap(SVector{Nx}(0. for i=1:Nx),
+                                 SVector{Nu}(0. for i=1:Nu),
+                                 SVector{Na}(0. for i=1:Na),0.,gargs...)) 
+    elseif λclass==:A typeof(gap(SVector{Na}(0. for i=1:Na),   gargs...))    
+    end <: SVector{Nλ} || muscadeerror("gap must return a SVector of length Nλ")
     return DofConstraint{λclass,Nλ,Nx,Nu,Na,λinod,λfield,xinod,xfield,uinod,ufield,ainod,afield,
                        typeof(gap),typeof(gargs),typeof(mode)}(gap,gargs,mode)
 end
