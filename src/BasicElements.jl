@@ -424,12 +424,13 @@ function DofConstraint(nod::Vector{Node};λclass::Symbol,
                                          gap::Functor ,gargs=(),mode::Functor) where{Nλ,Nx,Nu,Na} 
     (λclass==:X && (Nu>0||Na>0)) && muscadeerror("Constraints with λclass=:X must have zero U-dofs and zero A-dofs") 
     (λclass==:A && (Nx>0||Nu>0)) && muscadeerror("Constraints with λclass=:A must have zero X-dofs and zero U-dofs") 
-    if     λclass==:X typeof(gap(SVector{Nx}(0. for i=1:Nx),0.,gargs...)) 
-    elseif λclass==:U typeof(gap(SVector{Nx}(0. for i=1:Nx),
-                                 SVector{Nu}(0. for i=1:Nu),
-                                 SVector{Na}(0. for i=1:Na),0.,gargs...)) 
-    elseif λclass==:A typeof(gap(SVector{Na}(0. for i=1:Na),   gargs...))    
-    end <: SVector{Nλ} || muscadeerror("gap must return a SVector of length Nλ")
+    gaptyp = if     λclass==:X typeof(gap(SVector{Nx}(0. for i=1:Nx),0.,gargs...)) 
+             elseif λclass==:U typeof(gap(SVector{Nx}(0. for i=1:Nx),
+                                          SVector{Nu}(0. for i=1:Nu),
+                                          SVector{Na}(0. for i=1:Na),0.,gargs...)) 
+             elseif λclass==:A typeof(gap(SVector{Na}(0. for i=1:Na),   gargs...))    
+             end 
+    gaptyp <: SVector{Nλ} || muscadeerror(@sprintf("gap expected to return a SVector of length Nλ=%i, got %s.",Nλ,gaptyp))
     return DofConstraint{λclass,Nλ,Nx,Nu,Na,λinod,λfield,xinod,xfield,uinod,ufield,ainod,afield,
                        typeof(gap),typeof(gargs),typeof(mode)}(gap,gargs,mode)
 end
