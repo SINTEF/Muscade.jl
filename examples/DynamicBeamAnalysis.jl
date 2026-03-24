@@ -111,10 +111,10 @@ end
 # 4) contact forces
 
 # Define the prescribed end displacements of the top extremity
-@functor with(xMotion) horizMove(x,t)=x[1] - (1.0 - exp(minimum([t,0]))*(181.0)     + xMotion(t))
-@functor with(zMotion) vertMove(x,t)= x[1] - (exp(minimum([t,0]))*303.1             + zMotion(t))
-addelement!(model,DofConstraint,[lastNode[3]],xinod=(1,),xfield=(:t1,), λinod=1, λclass=:X, λfield=:λt1, gap=horizMove, mode=equal)
-addelement!(model,DofConstraint,[lastNode[3]],xinod=(1,),xfield=(:t3,), λinod=1, λclass=:X, λfield=:λt3, gap=vertMove, mode=equal);
+@functor with(xMotion) horizMove(x,t)= SVector( x[1]-(1.0 - exp(minimum([t,0]))*(181.0) + xMotion(t)) )
+@functor with(zMotion) vertMove(x,t) = SVector( x[1]-(exp(minimum([t,0]))*303.1         + zMotion(t)) )
+addelement!(model,DofConstraint,[lastNode[3]]; λclass=:X, xinod=(1,),xfield=(:t1,), λinod=(1,),λfield=(:λt1,), gap=horizMove, mode=equal)
+addelement!(model,DofConstraint,[lastNode[3]]; λclass=:X, xinod=(1,),xfield=(:t3,), λinod=(1,),λfield=(:λt3,), gap=vertMove , mode=equal);
 
 # Define the loading procedure for the weight (this should eventually be transfered to the element, involving the definition a tunable gravity field, work in progress)
 @functor with(x1_w,segLength,nel) weight1(t) = - ((min(t,-5.)+10)/5) * x1_w * segLength[1] / nel[1]; 
