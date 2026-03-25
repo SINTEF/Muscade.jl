@@ -15,7 +15,7 @@ module Muscade
     export ℝ1,ℤ1,𝕣1,𝕫1,𝔹1,𝕓1
     export ℝ2,ℤ2,𝕣2,𝕫2,𝔹2,𝕓2
     export ℝ11,ℤ11,𝕣11,𝕫11,𝔹11,𝕓11
-    export toggle,default,mod_onebased
+    public toggle,default,mod_onebased
 
     include("OffsetVector.jl")
 
@@ -23,10 +23,12 @@ module Muscade
     export  ∂ℝ #\partial \bbR
     export  variate,δ,directional # \delta
     export  value,VALUE,∂,value_∂ # \partial, \nabla
-    export  constants,precedence,npartial,norm
+    export  constants
+    public  precedence,npartial,norm
 
     include("Taylor.jl")
-    export  motion,motion⁻¹,revariate,chainrule,fast,apply,justinvoke,composevalue,composeJacobian 
+    export  motion,motion⁻¹,revariate,chainrule,apply,composevalue,composeJacobian 
+    public fast,justinvoke
 
     include("Functors.jl")
     export Functor, @functor
@@ -35,7 +37,8 @@ module Muscade
     export dots,∘₀,∘₁,∘₂,⊗
 
     include("Espy.jl") 
-    export @request, mergerequest
+    export @request
+    public mergerequest
     export @espy,@espydbg
 
     include("Exceptions.jl")
@@ -44,27 +47,31 @@ module Muscade
     include("ModelDescription.jl")
     export AbstractElement
     export Model,addnode!,addelement!,setscale!,initialize!
-    export Node
+    public Node
     export getndof
 
     include("ElementAPI.jl")
     export coord,∂0,∂1,∂2,getsomedofs
     export noFB
+    public no_second_order
+    public allocate_drawing, update_drawing, display_drawing!
+    public residual,lagrangian,doflist
 
     include("BasicElements.jl")
-    export off,equal,positive
+    public off,equal,positive
     export DofCost,SingleDofCost,SingleUdof,ElementCost,Acost,SingleAcost
     export DofConstraint,Hold,ElementConstraint
-    export QuickFix,DofLoad
+    export DofLoad
+    public QuickFix
 
     include("Assemble.jl")
-    export Assembly
+    #export Assembly
 
     include("Solve.jl")
     export solve
 
     include("SparseTools.jl")
-    export prepare,cat!,addin!,zero!,getblock
+    public prepare,cat!,addin!,zero!,getblock
     
     include("FiniteDifferences.jl")
 
@@ -88,24 +95,26 @@ module Muscade
 
     include("Diagnostic.jl")
     export describe
+    public study_scale,study_singular,plot_matrix_sparsity,spy   # <<<<<<<<<<<<<<<<<<
+    public plot_block_matrix_sparsity,print_nz,Monitor,@typeof,print_element_array,diffed_lagrangian,diffed_residual
+
+# REPRISE
 
     include("Output.jl")
     export setdof!,getdof,getresult,findlastassigned,eletyp
 
     include("SelfDraw.jl")
-    export draw!,request2draw,GUI
-
-    include("Unit.jl")
-    export ←,→
+    export draw!,request2draw
+    public GUI
 
     include("FFT.jl")
-    #export getδf,getδt(n3,δf3′),𝔉𝕣(g.(t3),δt3),𝔉𝕣⁻¹(X3′′,δf3)
+    public getδf,getδt,𝔉𝕣,𝔉𝕣⁻¹
 
     include("Eigenmodes.jl")
 
     module Toolbox
         include("../toolbox/Rotations.jl")
-        export Rodrigues, Rodrigues⁻¹, adjust, scac, sinc1, sinc1′,sinc1″, sinc1‴, sinc1⁗, intrinsicrotationrates
+        public Rodrigues, Rodrigues⁻¹, adjust, scac, sinc1, sinc1′,sinc1″, sinc1‴, sinc1⁗, intrinsicrotationrates
         include("../toolbox/BarElement.jl")
         export Bar3D, AxisymmetricBarCrossSection
         include("../toolbox/BeamElement.jl")
@@ -116,6 +125,8 @@ module Muscade
         export Position3D  
         include("../toolbox/SoilContact.jl")
         export SoilContact  
+        include("Unit.jl")
+        export ←,→
     end
 
 end

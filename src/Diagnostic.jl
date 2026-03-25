@@ -956,7 +956,6 @@ end
 
 Opens a GLMakie window and displays the sparsity structure of `M`.
 """     
-
 function spy(M::SparseMatrixCSC;pixels=500,title=nothing,markersize=2,tol=1e-9)
     (i,j,v)  = findnz(M)
     s  = size(M)

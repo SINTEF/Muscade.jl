@@ -120,6 +120,16 @@ ele1 = addelement!(model,ElementCost,[nod1];req=@request(Fh),
 Note that `Fh0` is within a `NamedTuple` in the call to `addelement!`, but not in the definition
 of the `Functor` `cost`.
 
+# Requestable internal variables
+
+Not to be confused with the `req` provided as input to `addelement!` when adding an `ElementCost`, one can, after 
+the analysis, request results from `ElementCost`: 
+- `cost`                The cost introduced by this element
+- `eleres(...)`         where `...` is the list of requestables wanted from the target element.  The "prefix"  
+                        `eleres` is there to prevent possible confusion with variables requestable from `ElementCost`.  
+                        For example `@request cost` would extract the value of the `ElementCost`'s function `cost`, while
+                        `@request eleres(cost)` refers to the value of a variable called `cost` in the target element. 
+
 See also: [`SingleDofCost`](@ref), [`DofCost`](@ref), [`@request`](@ref), [`@functor`](@ref) 
 """
 struct ElementCost{Teleobj,Treq,Tcost,Tcostargs} <: AbstractElement
@@ -134,8 +144,8 @@ function ElementCost(nod::Vector{Node};req,cost::Functor,costargs=(),ElementType
 end
 doflist( ::Type{<:ElementCost{Teleobj}}) where{Teleobj} = doflist(Teleobj)
 @espy function lagrangian(o::ElementCost, Λ,X,U,A,t,SP,dbg)
-    L,FB,eleres  = getlagrangian(o.eleobj,Λ,X,U,A,t,SP,(dbg...,via=ElementCost),o.req.eleres)
-    cost         = o.cost(eleres,t,o.costargs...) 
+    L,FB,☼eleres  = getlagrangian(o.eleobj,Λ,X,U,A,t,SP,(dbg...,via=ElementCost),o.req.eleres)
+    ☼cost         = o.cost(eleres,t,o.costargs...) 
     return L+cost,FB
 end   
 allocate_drawing(axis,eleobj::AbstractVector{Teleobj};kwargs...)                    where{Teleobj<:ElementCost} = allocate_drawing(axis,[eᵢ.eleobj for eᵢ∈eleobj];kwargs...)
