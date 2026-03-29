@@ -104,18 +104,32 @@ module Muscade
     include("Eigenmodes.jl")
 
     module Toolbox
+        include("../toolbox/Basics.jl")
+        export clutch        
+
         include("../toolbox/Rotations.jl")
         export Rodrigues, Rodrigues⁻¹, adjust, scac, sinc1, sinc1′,sinc1″, sinc1‴, sinc1⁗, intrinsicrotationrates
+        
         include("../toolbox/BarElement.jl")
         export Bar3D, AxisymmetricBarCrossSection
+        
         include("../toolbox/BeamElement.jl")
         export EulerBeam3D, BeamCrossSection
+        
         include("../toolbox/StrainGaugeOnBeamElement.jl")
         export StrainGaugeOnEulerBeam3D
+        
         include("../toolbox/PositionElement.jl")
         export Position3D  
+        
         include("../toolbox/SoilContact.jl")
-        export SoilContact  
+        export SoilContact
+
+        include("../toolbox/RigidBodyKinematics.jl")
+        export ExcentricRigidConnection
+
+        include("../toolbox/MeshLine.jl")
+        export MeshLine
     end
 
 end

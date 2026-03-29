@@ -2,7 +2,43 @@
 
 using StaticArrays, LinearAlgebra, Muscade
 
-# Data structure containing the cross section material properties
+"""
+    BeamCrossSection 
+
+Data structure containing the cross section material properties, for example to a [`EulerBeam3D`](@ref) 
+# Arguments to the constructor
+-    `EA  :: 𝕣` is the axial stiffness [N]
+-    `EI₂ :: 𝕣` is the bending stiffness [Nm/(1/m)] about second axis
+-    `EI₃ :: 𝕣` is the bending stiffness [Nm/(1/m)] about third axis
+-    `GJ  :: 𝕣` is the torsional stiffness [Nm/(rad/m)] about longitudinal axis
+-    `μ   :: 𝕣` is the mass per unit length [kg/m]
+-    `ι₁  :: 𝕣` is the (mass) moment of inertia about longitudial axis per unit length [kgm²/m]
+
+# Optional argument to the constructor (all set to zero by default)
+-    `w   :: 𝕣` is the weight per unit length [N/m]
+-    `Ca₁ :: 𝕣` is the tangential added mass per unit length [kg/m]
+-    `Cl₁ :: 𝕣` is the tangential linear damping coefficient per unit length [N/m/(m/s)]
+-    `Cq₁ :: 𝕣` is the tangential quadratic damping coefficient per unit length [N/m/(m/s)^2], for example from drag
+-    `Ca₂ :: 𝕣` is the transverse added mass per unit length [kg/m] for motions along second axis
+-    `Cl₂ :: 𝕣` is the transverse linear damping coefficient per unit length [N/m/(m/s)] for motions along second axis
+-    `Cq₂ :: 𝕣` is the transverse quadratic damping coefficient per unit length [N/m/(m/s)^2], for motions along second axis
+-    `Ca₃ :: 𝕣` is the transverse added mass per unit length [kg/m] for motions along third axis
+-    `Cl₃ :: 𝕣` is the transverse linear damping coefficient per unit length [N/m/(m/s)] for motions along third axis
+-    `Cq₃ :: 𝕣` is the transverse quadratic damping coefficient per unit length [N/m/(m/s)^2], for motions along third axis
+    
+# Example
+```
+EA = 10.
+EI₂ = 1.
+EI₃ = 1.
+GJ = 1.
+μ = 1. 
+ι₁ = 0.1
+mat             = BeamCrossSection(EA=EA,EI₂=EI₂,EI₃=EI₃,GJ=GJ,μ=μ,ι₁=ι₁)
+```
+
+See also: [`EulerBeam3D`](@ref), [`AxisymmetricBarCrossSection`](@ref)
+"""
 struct BeamCrossSection
     EA  :: 𝕣 # Axial stiffness [N]
     EI₂ :: 𝕣 # Bending stiffness [Nm/(1/m)] about second axis
@@ -188,7 +224,6 @@ function kinematics{Mode}(o::EulerBeam3D,X₀)  where{Mode}
     return gp,ε,vₛₘ,rₛₘ,vₗ₂,uₗ₂,cₛₘ
 end
 
-vec3(v,ind) = SVector{3}(v[i] for i∈ind);
 struct corotated{Mode} end 
 function corotated{Mode}(o::EulerBeam3D,X₀)  where{Mode}
     cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp,L  = o.cₘ,o.rₘ,o.tgₘ,o.tgₑ,o.ζnod,o.ζgp,o.L   # As-meshed element coordinates and describing tangential vector
