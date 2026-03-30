@@ -1,10 +1,11 @@
 """
-    MeshLine(topNode, azimuth, eltype, xSection, segLength, nel)
+    MeshLine!(model,topNode, azimuth, eltype, xSection, segLength, nel)
 
-Create the mesh of a multi-segment line, to initialize a finite element model.
+Create the mesh of a multi-segment line in a Muscade model.
 Nodes and elements are generated along a straight line, contained in the (:t1,:t2) plane, and oriented based on the given azimuth angle.
 
 # Arguments
+- `model`: The Muscade model
 - `topNode`: The top node of the mesh line.
 - `azimuth`: The azimuth angle (in radians) defining the direction of the line.
 - `eltype`: The type of element to use for the mesh, for example [`Bar3D`](@ref) or [`EulerBeam3D`](@ref).
