@@ -68,13 +68,3 @@ elseif occursin("examples", currentDir)
     save(normpath(joinpath(currentDir,"beamModes.png")),fig)
 end
 # ![Result](assets/beamModes.png)
-
-#src Dynamic analysis
-#src T               = 0.01 *(1:1000)
-#src dynAnalysis     = solve(SweepX{2};initialstate=state[1],time=T) 
-#src ERROR: MethodError: no method matching motion{2}(::Tuple{SVector{12, Float64}, SVector{12, ∂ℝ{1, 1, Float64}}, SVector{12, ∂ℝ{1, 1, Float64}}})
-#src Closest candidates are:
-#src   (::Type{motion{P}} where P)()
-#src    @ Muscade C:\Users\thsa\code\Muscade.jl\src\Taylor.jl:1
-#src   motion{P}(::Tuple{Vararg{SVector{N, R}, ND}}) where {ND, P, N, R}
-#src    @ Muscade C:\Users\thsa\code\Muscade.jl\src\Taylor.jl:24

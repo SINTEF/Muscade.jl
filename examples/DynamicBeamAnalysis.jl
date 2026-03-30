@@ -75,34 +75,11 @@ nodeCoord   =   [
 
 # Create Muscade model
 model       = Model(:CatenaryRiser);
-
-# Lists with First and last node of each segment, etc.
-firstNode   = Vector{Muscade.NodID}(undef,nseg) 
-lastNode    = Vector{Muscade.NodID}(undef,nseg)
-nodeList  = Vector{Vector{Muscade.NodID}}(undef,nseg)
-global elementList = Vector{Muscade.EleID};
-# Populate lists for Segment 1
-nodid       = addnode!(model,nodeCoord[1])
-mesh        = hcat(nodid[1:nnodes[1]-1],nodid[2:nnodes[1]])
-elementList = addelement!(model,EulerBeam3D,mesh;mat=xSection[1],orient2=SVector(0.,1.,0.))
-firstNode[1] = nodid[1]
-lastNode[1]  = nodid[size(nodid,1)]
-nodeList[1]  = nodid;
-# Populate list for the other segments
-if nseg>=2
-    for segid ∈ 2:nseg
-        local nodid         = addnode!(model,nodeCoord[segid][2:end,:])
-        firstNode[segid]    = lastNode[segid-1]
-        lastNode[segid]     = nodid[size(nodid,1)]
-        local mesh          = hcat(nodid[1:(nnodes[segid]-2)],nodid[2:(nnodes[segid]-1)])
-        global elementList=vcat(elementList,addelement!(model,EulerBeam3D,[firstNode[segid],nodid[1]];  mat=xSection[segid],orient2=SVector(0.,1.,0.)))
-        global elementList=vcat(elementList,addelement!(model,EulerBeam3D,mesh;                         mat=xSection[segid],orient2=SVector(0.,1.,0.)))
-        nodeList[segid] = nodid
-    end
-end
+topNode     = addnode!(model,[0,0,0])
+nodeList, elementList, nodeCoord = MeshLine!(model, topNode, π, EulerBeam3D, xSection, segLength, nel);
 
 # Fix lower extremity
-[addelement!(model,Hold,[firstNode[1]]  ;field)             for field∈[:t1,:t2,:t3,:r1]]; 
+[addelement!(model,Hold,[nodeList[1][1]]  ;field)  for field∈[:t1,:t2,:t3,:r1]]; 
 
 # Loading procedure for the static analysis is as follows
 # 1) start by elongating the line to create geometric stiffness
@@ -111,29 +88,21 @@ end
 # 4) contact forces
 
 # Define the prescribed end displacements of the top extremity
-@functor with(xMotion) horizMove(x,t)= SVector( x[1]-(1.0 - exp(minimum([t,0]))*(181.0) + xMotion(t)) )
-@functor with(zMotion) vertMove(x,t) = SVector( x[1]-(exp(minimum([t,0]))*303.1         + zMotion(t)) )
-addelement!(model,DofConstraint,[lastNode[3]]; λclass=:X, xinod=(1,),xfield=(:t1,), λinod=(1,),λfield=(:λt1,), gap=horizMove, mode=equal)
-addelement!(model,DofConstraint,[lastNode[3]]; λclass=:X, xinod=(1,),xfield=(:t3,), λinod=(1,),λfield=(:λt3,), gap=vertMove , mode=equal);
+@functor with(xMotion) horizMove(x,t)= SVector( x[1]-(1.0 - clutch(t,-10.,0,0.,1.,3)*181.0 + xMotion(t)) )
+@functor with(zMotion) vertMove(x,t) = SVector( x[1]-(      clutch(t,-10.,0,0.,1.,3)*303.1 + zMotion(t)) )
+addelement!(model,DofConstraint,[nodeList[3][end]]; λclass=:X, xinod=(1,),xfield=(:t1,), λinod=(1,),λfield=(:λt1,), gap=horizMove, mode=equal)
+addelement!(model,DofConstraint,[nodeList[3][end]]; λclass=:X, xinod=(1,),xfield=(:t3,), λinod=(1,),λfield=(:λt3,), gap=vertMove , mode=equal);
 
 # Define the loading procedure for the weight (this should eventually be transfered to the element, involving the definition a tunable gravity field, work in progress)
-@functor with(x1_w,segLength,nel) weight1(t) = - ((min(t,-5.)+10)/5) * x1_w * segLength[1] / nel[1]; 
-@functor with(x2_w,segLength,nel) weight2(t) = - ((min(t,-5.)+10)/5) * x2_w * segLength[2] / nel[2]; 
-@functor with(x1_w,segLength,nel) weight3(t) = - ((min(t,-5.)+10)/5) * x1_w * segLength[3] / nel[3];
-for idxNod = 1:length(nodeList[1])
-    addelement!(model,DofLoad,[nodeList[1][idxNod]];field=:t3,value=weight1);  
-end
-for idxNod = 1:length(nodeList[2])
-    addelement!(model,DofLoad,[nodeList[2][idxNod]];field=:t3,value=weight2);  
-end
-for idxNod = 1:length(nodeList[3])
-    addelement!(model,DofLoad,[nodeList[3][idxNod]];field=:t3,value=weight3);  
-end
+@functor with(x1_w,segLength,nel) weight1(t) = - clutch(t,-10.,-5.,0.,1.,1) * x1_w * segLength[1] / nel[1]; 
+@functor with(x2_w,segLength,nel) weight2(t) = - clutch(t,-10.,-5.,0.,1.,1) * x2_w * segLength[2] / nel[2]; 
+@functor with(x1_w,segLength,nel) weight3(t) = - clutch(t,-10.,-5.,0.,1.,1) * x1_w * segLength[3] / nel[3];
+[addelement!(model,DofLoad,[nodeList[1][idxNod]];field=:t3,value=weight1) for idxNod = 1:length(nodeList[1])] 
+[addelement!(model,DofLoad,[nodeList[2][idxNod]];field=:t3,value=weight2) for idxNod = 1:length(nodeList[2])]
+[addelement!(model,DofLoad,[nodeList[3][idxNod]];field=:t3,value=weight3) for idxNod = 1:length(nodeList[3])];
 
-
-for idxNod = 1:length(nodeList[1])
-    addelement!(model,SoilContact,[nodeList[1][idxNod]],z₀=0.,Kh=1.0e3,Kv=1.0e4,Ch=0.,Cv=0.);  
-end
+# Contact elements for the bottom segment
+[addelement!(model,SoilContact,[nodeList[1][idxNod]],z₀=0.,Kh=1.0e3,Kv=1.0e4,Ch=0.,Cv=0.) for idxNod = 1:length(nodeList[1])];
    
 # Run the static analysis 
 initialstate    = initialize!(model);
@@ -144,8 +113,6 @@ staticStates           = solve(SweepX{0};initialstate,time=staticLoadSteps,verbo
 # Plot the static analysis sequence
 fig      = Figure(size = (1000,1000))
 ax = Axis3(fig[1,1])
-α = 2π*(0:19)/20
-circle = 0.05*[cos.(α) sin.(α)]'
 for stateIdx ∈ 1:nStaticLoadSteps
     draw!(ax,staticStates[stateIdx],EulerBeam3D=(;style=:shape))
 end

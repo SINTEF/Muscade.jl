@@ -20,12 +20,13 @@ Nodes and elements are generated along a straight line, contained in the (:t1,:t
 # Notes
 Assumes at least 2 segments.
 """
-function MeshLine(topNode, azimuth, eltype, xSection, segLength, nel)
+function MeshLine!(model, topNode, azimuth, eltype, xSection, segLength, nel)
     # Need to pass element arguments (orient2 for EulerBeam3D for example)
     nseg = length(nel)
     accLength = [0; cumsum(segLength)]
     nnodes = nel .+ 1
-    topNodeCoord = coord([topNode])[1]
+    @show typeof(model.nod[topNode])
+    topNodeCoord = coord([model.nod[topNode]])[1]
     bottomNodeCoord = topNodeCoord .+ [accLength[end] * cos(azimuth), accLength[end] * sin(azimuth), 0]
     nodeCoord = [
         hcat(bottomNodeCoord[1] .- cos(azimuth) .* (accLength[seg] .+ ((1:nnodes[seg]) .- 1) / (nnodes[seg] - 1) * segLength[seg]),
@@ -63,12 +64,12 @@ function MeshLine(topNode, azimuth, eltype, xSection, segLength, nel)
     # Populate list for last segment
     nodid = addnode!(model, nodeCoord[nseg][2:end-1, :])
     firstNode[nseg] = lastNode[nseg-1]
-    lastNode[nseg] = topNode.ID
+    lastNode[nseg] = topNode
     mesh = hcat(nodid[1:(nnodes[nseg]-3)], nodid[2:(nnodes[nseg]-2)])
     elementList = vcat(elementList, addelement!(model, eltype, [firstNode[nseg], nodid[1]]; mat=xSection[nseg]))
     elementList = vcat(elementList, addelement!(model, eltype, mesh; mat=xSection[nseg]))
-    elementList = vcat(elementList, addelement!(model, eltype, [nodid[end], topNode.ID]; mat=xSection[nseg]))
-    nodeList[nseg] = vcat(nodid, topNode.ID)
+    elementList = vcat(elementList, addelement!(model, eltype, [nodid[end], topNode]; mat=xSection[nseg]))
+    nodeList[nseg] = vcat(nodid, topNode)
 
     return nodeList, elementList, nodeCoord
 end

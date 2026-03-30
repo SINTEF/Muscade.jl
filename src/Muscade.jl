@@ -129,7 +129,7 @@ module Muscade
         export ExcentricRigidConnection
 
         include("../toolbox/MeshLine.jl")
-        export MeshLine
+        export MeshLine!
     end
 
 end
