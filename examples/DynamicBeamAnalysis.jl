@@ -16,6 +16,9 @@ zMotion = linear_interpolation(dynMotionT,dynMotionZ);
 const g=9.81
 const ρ=1025.;
 
+# Normalized gravity field, ramping up during static analysis
+@functor with() ramping_gravityField(t)= clutch(t,-9.,-5.,0.,1.,1) * SVector(0.,0.,-1.);
+
 # Define parameters for cross-section 1
 x1_D    = 0.429                     # Outer diameter [m]
 x1_t    = 0.022                     # Thickness [m]
@@ -35,7 +38,7 @@ x1_Ca₂  = 1.0 *         ρ * π*x1_Dh^2/4 # Transverse added mass coefficients
 x1_Ca₃  = 1.0 *         ρ * π*x1_Dh^2/4
 x1_Cq₂  = 1.0 *   0.5 * ρ * x1_Dh   # Transverse drag coefficients [N/m/(m/s)^2]
 x1_Cq₃  = 1.0 *   0.5 * ρ * x1_Dh
-x1_mat         = BeamCrossSection(EA=x1_EA, EI₂=x1_EI₂, EI₃=x1_EI₃, GJ=x1_GJ, μ=x1_μ, ι₁=x1_ι₁, Ca₂=x1_Ca₂, Cq₂=x1_Cq₂, Ca₃=x1_Ca₃, Cq₃=x1_Cq₃)
+x1_mat         = BeamCrossSection(EA=x1_EA, EI₂=x1_EI₂, EI₃=x1_EI₃, GJ=x1_GJ, μ=x1_μ, ι₁=x1_ι₁, w=x1_w, g̃=ramping_gravityField, Ca₂=x1_Ca₂, Cq₂=x1_Cq₂, Ca₃=x1_Ca₃, Cq₃=x1_Cq₃)
 
 # Define parameters for cross-section 2
 x2_D    = 0.441                     # Outer diameter [m]
@@ -56,7 +59,7 @@ x2_Ca₂  = 1.0 *         ρ * π*x2_Dh^2/4 # Transverse added mass coefficients
 x2_Ca₃  = 1.0 *         ρ * π*x2_Dh^2/4
 x2_Cq₂  = 1.0 *   0.5 * ρ * x2_Dh   # Transverse drag coefficients [N/m/(m/s)^2]
 x2_Cq₃  = 1.0 *   0.5 * ρ * x2_Dh
-x2_mat         = BeamCrossSection(EA=x2_EA, EI₂=x2_EI₂, EI₃=x2_EI₃, GJ=x2_GJ, μ=x2_μ, ι₁=x2_ι₁, Ca₂=x2_Ca₂, Cq₂=x2_Cq₂, Ca₃=x2_Ca₃, Cq₃=x2_Cq₃)
+x2_mat         = BeamCrossSection(EA=x2_EA, EI₂=x2_EI₂, EI₃=x2_EI₃, GJ=x2_GJ, μ=x2_μ, ι₁=x2_ι₁, w=x2_w, g̃=ramping_gravityField, Ca₂=x2_Ca₂, Cq₂=x2_Cq₂, Ca₃=x2_Ca₃, Cq₃=x2_Cq₃)
 
 # Model SCR, starting from the extremity located on seabed
 nel         = [60,      30,     10] # Number of elements per segment
@@ -84,14 +87,6 @@ nodeList, elementList, nodeCoord = MeshLine!(model, topNode, π, EulerBeam3D, xS
 @functor with(zMotion) vertMove(x,t) = SVector( x[1]-(      clutch(t,-10.,0,0.,1.,3)*303.1 + zMotion(t)) )
 addelement!(model,DofConstraint,[nodeList[3][end]]; λclass=:X, xinod=(1,),xfield=(:t1,), λinod=(1,),λfield=(:λt1,), gap=horizMove, mode=equal)
 addelement!(model,DofConstraint,[nodeList[3][end]]; λclass=:X, xinod=(1,),xfield=(:t3,), λinod=(1,),λfield=(:λt3,), gap=vertMove , mode=equal);
-
-# Define the loading procedure for the weight (this should eventually be transfered to the element, involving the definition a tunable gravity field, work in progress)
-@functor with(x1_w,segLength,nel) weight1(t) = - clutch(t,-10.,-5.,0.,1.,1) * x1_w * segLength[1] / nel[1]; 
-@functor with(x2_w,segLength,nel) weight2(t) = - clutch(t,-10.,-5.,0.,1.,1) * x2_w * segLength[2] / nel[2]; 
-@functor with(x1_w,segLength,nel) weight3(t) = - clutch(t,-10.,-5.,0.,1.,1) * x1_w * segLength[3] / nel[3];
-[addelement!(model,DofLoad,[nodeList[1][idxNod]];field=:t3,value=weight1) for idxNod = 1:length(nodeList[1])] 
-[addelement!(model,DofLoad,[nodeList[2][idxNod]];field=:t3,value=weight2) for idxNod = 1:length(nodeList[2])]
-[addelement!(model,DofLoad,[nodeList[3][idxNod]];field=:t3,value=weight3) for idxNod = 1:length(nodeList[3])];
 
 # Contact elements for the bottom segment
 [addelement!(model,SoilContact,[nodeList[1][idxNod]],z₀=0.,Kh=1.0e3,Kv=1.0e4,Ch=0.,Cv=0.) for idxNod = 1:length(nodeList[1])];

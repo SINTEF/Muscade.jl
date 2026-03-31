@@ -242,11 +242,12 @@ end
 ## Testing weight
 ## Beam bent upwards with uniform weight (along negative t3)  
 w = 10
+@functor with() g̃(t) = SVector(0.,0.,-1.)
 model           = Model(:TestModel)
 node1           = addnode!(model,𝕣[0,0,0])
 node2           = addnode!(model,𝕣[L,0,0])
 elnod           = [model.nod[n.inod] for n∈[node1,node2]]
-mat             = BeamCrossSection(EA=EA,EI₂=EI₂,EI₃=EI₃,GJ=GJ,μ=μ,ι₁=ι₁,   w=w)
+mat             = BeamCrossSection(EA=EA,EI₂=EI₂,EI₃=EI₃,GJ=GJ,μ=μ,ι₁=ι₁,   w=w, g̃=g̃)
 beam            = EulerBeam3D(elnod;mat,orient2=SVector(0.,1.,0.))
 x = SVector(0.,     0.,     0.,     0.,     w*L^3/(24*EI₂),     0.,            0.,    0.0,    0.,     0.,     -w*L^3/(24*EI₂),     0.); X = (x,)
 R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg) 

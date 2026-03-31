@@ -1,6 +1,7 @@
 # # Euler beam element
 
 using StaticArrays, LinearAlgebra, Muscade
+@functor with() g̃_default(t) = SVector(0.,0.,1.); 
 
 """
     BeamCrossSection 
@@ -16,13 +17,14 @@ Data structure containing the cross section material properties, for example to 
 
 # Optional argument to the constructor (all set to zero by default)
 -    `w   :: 𝕣` is the weight per unit length [N/m]
+-    `g̃   :: Functor` describes the gravity field divided by acceleration of gravity [-], function of time
 -    `Ca₁ :: 𝕣` is the tangential added mass per unit length [kg/m]
 -    `Cl₁ :: 𝕣` is the tangential linear damping coefficient per unit length [N/m/(m/s)]
 -    `Cq₁ :: 𝕣` is the tangential quadratic damping coefficient per unit length [N/m/(m/s)^2], for example from drag
 -    `Ca₂ :: 𝕣` is the transverse added mass per unit length [kg/m] for motions along second axis
 -    `Cl₂ :: 𝕣` is the transverse linear damping coefficient per unit length [N/m/(m/s)] for motions along second axis
 -    `Cq₂ :: 𝕣` is the transverse quadratic damping coefficient per unit length [N/m/(m/s)^2], for motions along second axis
--    `Ca₃ :: 𝕣` is the transverse added mass per unit length [kg/m] for motions along third axis
+-    `Ca₃ :: 𝕣` is the transverse added mass per unit length [kg/am] for motions along third axis
 -    `Cl₃ :: 𝕣` is the transverse linear damping coefficient per unit length [N/m/(m/s)] for motions along third axis
 -    `Cq₃ :: 𝕣` is the transverse quadratic damping coefficient per unit length [N/m/(m/s)^2], for motions along third axis
     
@@ -40,28 +42,28 @@ mat             = BeamCrossSection(EA=EA,EI₂=EI₂,EI₃=EI₃,GJ=GJ,μ=μ,ι�
 See also: [`EulerBeam3D`](@ref), [`AxisymmetricBarCrossSection`](@ref)
 """
 struct BeamCrossSection
-    EA  :: 𝕣 # Axial stiffness [N]
-    EI₂ :: 𝕣 # Bending stiffness [Nm/(1/m)] about second axis
-    EI₃ :: 𝕣 # Bending stiffness [Nm/(1/m)] about third axis
-    GJ  :: 𝕣 # Torsional stiffness [Nm/(rad/m)] about longitudinal axis
-    μ   :: 𝕣 # Mass per unit length [kg/m]
-    ι₁  :: 𝕣 # (Mass) moment of inertia about longitudial axis per unit length [kgm²/m]
-    w   :: 𝕣 # Weight per unit length [N/m]
-    Ca₁ :: 𝕣 # Tangential added mass per unit length [kg/m]
-    Cl₁ :: 𝕣 # Tangential linear damping coefficient per unit length [N/m/(m/s)]
-    Cq₁ :: 𝕣 # Tangential quadratic damping coefficient per unit length [N/m/(m/s)^2], for example from drag
-    Ca₂ :: 𝕣 # Tranvserse added mass per unit length [kg/m] for motions along second axis
-    Cl₂ :: 𝕣 # Transverse linear damping coefficient per unit length [N/m/(m/s)] for motions along second axis
-    Cq₂ :: 𝕣 # Transverse quadratic damping coefficient per unit length [N/m/(m/s)^2], for motions along second axis
-    Ca₃ :: 𝕣 # Tranvserse added mass per unit length [kg/m] for motions along third axis
-    Cl₃ :: 𝕣 # Transverse linear damping coefficient per unit length [N/m/(m/s)] for motions along third axis
-    Cq₃ :: 𝕣 # Transverse quadratic damping coefficient per unit length [N/m/(m/s)^2], for motions along third axis
-    # TODO: add gravity field to beam properties (time dependent), and use it to compute the weight. This to enable static analyses. 
+    EA  :: 𝕣 
+    EI₂ :: 𝕣 
+    EI₃ :: 𝕣 
+    GJ  :: 𝕣 
+    μ   :: 𝕣 
+    ι₁  :: 𝕣 
+    w   :: 𝕣 
+    g̃   :: Functor  
+    Ca₁ :: 𝕣  
+    Cl₁ :: 𝕣
+    Cq₁ :: 𝕣
+    Ca₂ :: 𝕣
+    Cl₂ :: 𝕣
+    Cq₂ :: 𝕣
+    Ca₃ :: 𝕣
+    Cl₃ :: 𝕣
+    Cq₃ :: 𝕣
 end
-BeamCrossSection(;EA,EI₂=EI₂,EI₃=EI₃,GJ=GJ,μ=μ,ι₁=ι₁,w=0.,Ca₁=0.,Cl₁=0.,Cq₁=0.,Ca₂=0.,Cl₂=0.,Cq₂=0.,Ca₃=0.,Cl₃=0.,Cq₃=0.) = BeamCrossSection(EA,EI₂,EI₃,GJ,μ,ι₁,w,Ca₁,Cl₁,Cq₁,Ca₂,Cl₂,Cq₂,Ca₃,Cl₃,Cq₃);
+BeamCrossSection(;EA,EI₂=EI₂,EI₃=EI₃,GJ=GJ,μ=μ,ι₁=ι₁,w=0.,g̃=g̃_default,Ca₁=0.,Cl₁=0.,Cq₁=0.,Ca₂=0.,Cl₂=0.,Cq₂=0.,Ca₃=0.,Cl₃=0.,Cq₃=0.) = BeamCrossSection(EA,EI₂,EI₃,GJ,μ,ι₁,w,g̃,Ca₁,Cl₁,Cq₁,Ca₂,Cl₂,Cq₂,Ca₃,Cl₃,Cq₃);
 
 # Resultant function that computes the internal loads from the strains and curvatures, and external loads on the element. 
-@espy function resultants(o::BeamCrossSection,ε,κ,xᵧ,rₛₘ,vᵢ) 
+@espy function resultants(o::BeamCrossSection,ε,κ,xᵧ,rₛₘ,vᵢ,t) 
     r₀  = ∂0(rₛₘ)  # orientation of the element's local refsys
     vᵢ₁ = ∂1(vᵢ)  # intrinsic rotation rate         of the element's local refsys
     vᵢ₂ = ∂2(vᵢ)  # intrinsic rotation acceleration of the element's local refsys
@@ -69,7 +71,7 @@ BeamCrossSection(;EA,EI₂=EI₂,EI₃=EI₃,GJ=GJ,μ=μ,ι₁=ι₁,w=0.,Ca₁=
     xₗ₁          = xᵧ₁ ∘₁ r₀
     xₗ₂          = xᵧ₂ ∘₁ r₀
     ## Weight
-    fw =  SVector(0,0,o.w)
+    fw = - o.w * o.g̃(t)
     ## Compute translational inertia force 
     fi = o.μ * xᵧ₂ 
     ## Compute added mass force 
@@ -199,7 +201,7 @@ end;
     gp                  = ntuple(ngp) do igp
         ☼x,☼κgp         = gpval[igp].x, gpval[igp].κ   
         x∂X₀,κ∂X₀       = gp∂X₀[igp].x, gp∂X₀[igp].κ
-        fᵢ,mᵢ,fₑ,mₑ     = ☼resultants(o.mat,ε,κgp,x,rₛₘ,vᵢ)          # call the "resultant" function to compute loads (local coordinates) from strains/curvatures/etc. using material properties. Note that output is dual of input. 
+        fᵢ,mᵢ,fₑ,mₑ     = ☼resultants(o.mat,ε,κgp,x,rₛₘ,vᵢ,t)          # call the "resultant" function to compute loads (local coordinates) from strains/curvatures/etc. using material properties. Note that output is dual of input. 
         fₑ              = Udof ? fₑ-∂0(U) : fₑ                    # U is per unit length
         R_              = (fᵢ ∘₀ ε∂X₀ + mᵢ ∘₁ κ∂X₀ + fₑ ∘₁ x∂X₀ + mₑ ∘₁ vₛₘ∂X₀) * o.dL[igp]     # Contribution to the local nodal load of this Gauss point  [nXdof] = scalar*[nXdof] + [ndim]⋅[ndim,nXdof] + [ndim]⋅[ndim,nXdof]
         @named(R_)
