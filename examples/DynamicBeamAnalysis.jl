@@ -63,20 +63,12 @@ nel         = [60,      30,     10] # Number of elements per segment
 segLength   = [300.,    300.,   80.] # Segment lengths
 xSection    = [x1_mat,  x2_mat, x1_mat]; # Cross-section type
 
-# For each segment, build a vector of (matrices describing node coordinates)
-nseg        = length(nel)
-accLength   = [0;cumsum(segLength)]
-nnodes      = nel.+1   
-nodeCoord   =   [
-    hcat( accLength[seg] .+ ((1:nnodes[seg]).-1)/(nnodes[seg]-1)*segLength[seg],
-    0 .+ zeros(Float64,nnodes[seg],1),
-    -300 .+ zeros(Float64,nnodes[seg],1)) for seg=1:nseg
-];
-
 # Create Muscade model
 model       = Model(:CatenaryRiser);
+
+# Create nodes, elements representing the SCR
 topNode     = addnode!(model,[0,0,0])
-nodeList, elementList, nodeCoord = MeshLine!(model, topNode, π, EulerBeam3D, xSection, segLength, nel);
+nodeList, elementList, nodeCoord = MeshLine!(model, topNode, π, EulerBeam3D, xSection, segLength, nel; orient2=SVector(0.,1,0));
 
 # Fix lower extremity
 [addelement!(model,Hold,[nodeList[1][1]]  ;field)  for field∈[:t1,:t2,:t3,:r1]]; 
