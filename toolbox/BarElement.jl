@@ -26,9 +26,7 @@ L₀ =  2.
 model           = Model(:TestModel)
 node1           = addnode!(model,𝕣[0,0,0])
 node2           = addnode!(model,𝕣[L₀,0,0])
-elnod           = [model.nod[n.inod] for n∈[node1,node2]]
 mat             = AxisymmetricBarCrossSection(EA=EA,μ=μ)
-bar             = Bar3D(elnod;mat)
 ```
 
 See also: [`Bar3D`](@ref), [`EulerBeam3D`](@ref)
@@ -76,7 +74,11 @@ in the as-meshed configuration, and hence has some transverse stiffness, which f
 EA = 10.
 L₀ =  2.
 μ = 1. 
+model           = Model(:TestModel)
+node1           = addnode!(model,𝕣[0,0,0])
+node2           = addnode!(model,𝕣[L₀,0,0])
 mat             = AxisymmetricBarCrossSection(EA=EA,μ=μ)
+addelement!(model,Bar3D,[node1 node2];mat)
 ```
 
 See also: [`AxisymmetricBarCrossSection`](@ref), [`EulerBeam3D`](@ref)
