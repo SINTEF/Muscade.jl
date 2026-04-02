@@ -118,9 +118,34 @@ yᵥ(ζ) =        ζ^2   - 1/4  # deflection due to differenttial rotation (bend
 
 # Data structure describing an EulerBeam3D element as meshed
 """
-    EulerBeam3D
+    EulerBeam3D <: AbstractElement
 
-An Euler beam element
+A three-dimensional Euler beam element, with two nodes, twelve X-dofs and three U-dofs.
+# Arguments to the constructor
+-   `nod   :: Vector{Node}` contains the element's nodes
+-   `mat   :: Mat` contains the material properties ([`BeamCrossSection`](@ref), for example)
+
+# Optional argument to the constructor
+-    `orient2 :: SVector{3,𝕣}` defines the direction of the first bending axis in the global coordinate system. 
+Default is `SVector(0.,1.,0.)`.
+
+# Example
+```
+EA = 10.
+EI₂ = 3.
+EI₃ = 3.
+GJ = 4.
+μ = 1.
+ι₁ = 1.0
+L = 5
+model = Model(:TestModel)
+node1 = addnode!(model,𝕣[0,0,0])
+node2 = addnode!(model,𝕣[L,0,0])
+mat = BeamCrossSection(EA=EA,EI₂=EI₂,EI₃=EI₃,GJ=GJ,μ=μ,ι₁=ι₁)
+addelement!(model,EulerBeam3D,[node1 node2];mat)
+```
+
+See also: [`BeamCrossSection`](@ref), [`Bar3D`](@ref)
 """
 struct EulerBeam3D{Mat,Uforce} <: AbstractElement
     cₘ       :: SVector{3,𝕣}     # Position of the middle of the element, as meshed
