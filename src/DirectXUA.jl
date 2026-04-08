@@ -221,6 +221,9 @@ function addin!{mission}(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::El
     if     mission==:matrices     P=2
     elseif mission==:vectors      P=1
     end
+    @show out
+    @show asm
+    @show scale
     u               = getsomedofs(U,SVector{Nu}(1:Nu-1))
     λ               = ∂0(U)[Nu]
     γ               = default{:γ}(SP,0.)

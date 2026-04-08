@@ -1,4 +1,4 @@
-#module TestElementCost
+module TestElementCost
 
 using Test,StaticArrays
 using Muscade
@@ -20,8 +20,7 @@ X = (SVector{Nx  }(1. for i=1:Nx),)
 U = (SVector{Nu,𝕣}(0. for i=1:Nu),)
 A =  SVector{Na  }(0. for i=1:Na)
 Λ∂,X∂,U∂,A∂ = revariate{1}((Λ,X,U,A))
-L,FB  = Muscade.lagrangian(el, Λ∂,X∂,U∂,A∂, 0.,nothing,(testall=true,))    # This does not test DirectXUA/addin!             
-
+L,FB  = Muscade.lagrangian(el, Λ∂,X∂,U∂,A∂, 0.,nothing,(testing=:testing,))    # This does not test DirectXUA/addin!             
 
 @testset "ElementCost" begin
      @test d == (inod = (1, 1, 1, 2, 2), class = (:X, :X, :X, :A, :A), field = (:tx1, :tx2, :rx3, :ΔL, :Δbuoyancy))
@@ -83,11 +82,11 @@ end
 
 req = @request λ,eleres(cr)
 
-L,FB,eleres  = Muscade.lagrangian(el, Λ+ΔΛ, X,U,A, 0.,nothing,(testall=true,),req)                 
+L,FB,eleres  = Muscade.lagrangian(el, Λ∂,X,U,A, 0.,nothing,(testall=true,),req)                 
 @testset "ElementConstraintResult" begin
      @test eleres.λ ≈ 1.
      @test eleres.eleres.cr ≈ 87.79184120068672
      @test eleres.eleres.Fh ≈ 438959.2060034336
 end
 
-#end
+end
