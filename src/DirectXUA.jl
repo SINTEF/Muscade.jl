@@ -169,8 +169,9 @@ function addin!{mission}(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::El
     end
     DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,OX,OU,IA}(out,asm,L,iele,Δt)
 end
-# Specialised to accelerate ElementCost and ElementConstraint
-function addin!{mission}(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::ElementCost,no_second_order::Val{false}, 
+
+# Specialised methods to accelerate ElementCost and ElementConstraint
+function addin!{mission}(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::ElementCost,no_second_order::Val{false}, # solving a dispatch corner problem
                                 Λ::NTuple{1  ,SVector{Nx}},
                                 X::NTuple{NDX,SVector{Nx}},
                                 U::NTuple{NDU,SVector{Nu}},
@@ -194,10 +195,11 @@ function addin!{mission}(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::El
         ∂X,∂U       = revariate{P-1}((;X,U ),(;X=scale.X,U=scale.U))
         R,FB,eleres = residual(eleobj.eleobj, ∂X,∂U,  A,t,SP,(dbg...,via=:ElementCostAccelerator),eleobj.req.eleres)  
     end
+
     Releres         = revariate{P}(eleres)
-    
     Rcost           = eleobj.cost(Releres,t,eleobj.costargs...)
     cost            = chainrule(Rcost,to_order{P}(eleres))
+
     L               = Λ[1] ∘₁ R + cost
     DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,OX,OU,IA}(out,asm,L,iele,Δt)
 end
@@ -213,7 +215,7 @@ function addin!{mission}(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::El
                                 X::NTuple{NDX,SVector{Nx}},
                                 U::NTuple{NDU,SVector{Nu}},
                                 A::           SVector{Na} ,t,Δt,SP,dbg) where{mission,OX,OU,IA,NDX,NDU,Nx,Nu,Na} 
-# TODO Specialised code to accelerate constraints in DirectXUA, but... it does not set FB, and DIrectXUA/solve has no line search...                                
+# TODO Specialised code to accelerate constraints in DirectXUA, but... it does not set FB, and DirectXUA/solve has no line search...                                
     @assert NDX==OX+1 @sprintf("got OX=%i and NDX=%i. Expected OX+1==NDX",OX,NDX)
     @assert NDU==OU+1 @sprintf("got OU=%i and NDU=%i. Expected OU+1==NDU",OU,NDU)
     if     mission==:matrices     P=2
@@ -224,15 +226,17 @@ function addin!{mission}(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::El
     γ               = default{:γ}(SP,0.)
     m               = eleobj.mode(t)
     if     IA == 1  # NB: compile-time condition
-        ∂X,∂U,∂A    = revariate{P-1}((X=X,U=U,A=A),(;X=scale.X,U=scale.U,A=scale.A))
+        ∂X,∂U,∂A    = revariate{P-1}((;X,U,A),(;X=scale.X,U=scale.U,A=scale.A))
         R,FB,eleres = residual(eleobj.eleobj, ∂X,∂U,∂A,t,SP,(dbg...,via=:ElementCoonstraintAccelerator),eleobj.req)  
     elseif IA == 0
-        ∂X,∂U       = revariate{P-1}((X=X,U=U    ),(;X=scale.X,U=scale.U))
+        ∂X,∂U       = revariate{P-1}((;X,U  ),(;X=scale.X,U=scale.U))
         R,FB,eleres = residual(eleobj.eleobj, ∂X,∂U,  A,t,SP,(dbg...,via=:ElementConstraintAccelerator),eleobj.req)  
     end
+
     Releres         = revariate{P}(eleres)
-    Rgap            = eleobj.gap(eleres,t,eleobj.gargs...)
+    Rgap            = eleobj.gap(Releres,t,eleobj.gargs...)
     gap             = chainrule(Rgap,to_order{P}(eleres))
+
     L               = Λ[1] ∘₁ R +   if      m==:equal;    -gap*λ   
                                     elseif  m==:positive; -KKT(λ,gap,γ) 
                                     elseif  m==:off;      -0.5λ^2 

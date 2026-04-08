@@ -1,4 +1,4 @@
-module TestElementCost
+#module TestElementCost
 
 using Test,StaticArrays
 using Muscade
@@ -14,16 +14,14 @@ el = ElementCost(model.nod;req=@request(Fh),cost,ElementType=AnchorLine,
 d  = Muscade.doflist(typeof(el))
 Nx,Nu,Na        = 3,0,2   
 Nz              = 2Nx+Nu+Na     
-iλ,ix,iu,ia     = Muscade.gradientpartition(Nx,Nx,Nu,Na) 
-ΔZ              = δ{1,Nz,𝕣}()                 
-ΔΛ,ΔX,ΔU,ΔA     = view(ΔZ,iλ),view(ΔZ,ix),view(ΔZ,iu),view(ΔZ,ia) 
-Λ =  SVector{Nx}(0. for i=1:Nx)
-X = (SVector{Nx}(1. for i=1:Nx),)
+
+Λ =  SVector{Nx  }(0. for i=1:Nx)
+X = (SVector{Nx  }(1. for i=1:Nx),)
 U = (SVector{Nu,𝕣}(0. for i=1:Nu),)
-A =  SVector{Na}(0. for i=1:Na)
+A =  SVector{Na  }(0. for i=1:Na)
+Λ∂,X∂,U∂,A∂ = revariate{1}((Λ,X,U,A))
+L,FB  = Muscade.lagrangian(el, Λ∂,X∂,U∂,A∂, 0.,nothing,(testall=true,))    # This does not test DirectXUA/addin!             
 
-
-L,FB  = Muscade.lagrangian(el, Λ+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A+ΔA, 0.,nothing,(testall=true,))                 
 
 @testset "ElementCost" begin
      @test d == (inod = (1, 1, 1, 2, 2), class = (:X, :X, :X, :A, :A), field = (:tx1, :tx2, :rx3, :ΔL, :Δbuoyancy))
@@ -68,15 +66,14 @@ el = ElementConstraint(model.nod;req=@request(Fh),gap,ElementType=AnchorLine,λi
 d               = Muscade.doflist(typeof(el))
 Nx,Nu,Na        = 3,0+1,2   
 Nz              = 2Nx+Nu+Na     
-iλ,ix,iu,ia     = Muscade.gradientpartition(Nx,Nx,Nu,Na) 
-ΔZ              = δ{1,Nz,𝕣}()                 
-ΔΛ,ΔX,ΔU,ΔA     = view(ΔZ,iλ),view(ΔZ,ix),view(ΔZ,iu),view(ΔZ,ia) 
 Λ =  SVector{Nx}(0. for i=1:Nx)
 X = (SVector{Nx}(1. for i=1:Nx),)
 U = (SVector{Nu}(1. for i=1:Nu),)
 A =  SVector{Na}(0. for i=1:Na)
+Λ∂,X∂,U∂,A∂ = revariate{1}((Λ,X,U,A))
+L,FB  = Muscade.lagrangian(el, Λ∂,X∂,U∂,A∂, 0.,nothing,(testall=true,))                 
 
-L,FB  = Muscade.lagrangian(el, Λ+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A+ΔA, 0.,nothing,(testall=true,))                 
+
 
 @testset "ElementConstraint" begin
      @test d == (inod = (1, 1, 1, 2, 2, 1), class = (:X, :X, :X, :A, :A, :U), field = (:tx1, :tx2, :rx3,  :ΔL, :Δbuoyancy, :λ))
@@ -93,4 +90,4 @@ L,FB,eleres  = Muscade.lagrangian(el, Λ+ΔΛ, X,U,A, 0.,nothing,(testall=true,)
      @test eleres.eleres.Fh ≈ 438959.2060034336
 end
 
-end
+#end

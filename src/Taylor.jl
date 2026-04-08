@@ -113,20 +113,31 @@ multivariate_𝕣{0,N}(a::𝕣,i,scale) where{  N}          = a
 The variable `V` is a nested structure `NamedTuple`s, `Tuple`s and `SArrays` of 
 `Real`s (possibly: `∂ℝ`s).
 
-`V` is stripped of its partials, an revariated to 
-order `P`.
+`V` is stripped of its partials (if any), an [re]variated to 
+order `P`, with npartial `N` equal the "flat length" of `V`.   
 
     TV = revariate(VX)
 
 revariates to the order `precedence(V)`.  
 
-`revariate`, in conjunction with `chainrule` can be used to improve performance when the length of 
-`V` is smaller than the length of its partials.
-
 Be extremely careful never to mix any variable that is a function of `V` with any other variables
 containing  `∂ℝ`s but not produced by the same `revariate`.
 
-A special version of `revariate`
+# Optimizing performance of automatic differentiation
+
+`revariate`, in conjunction with `chainrule` can be used to improve performance when the length of 
+`V` is smaller than the length of its partials.
+
+See also: [`chainrule`](@ref), [`Taylor`](@ref), [`McLaurin`](@ref), [`fast`](@ref) 
+
+# Relation to `variate`
+
+`revariate` differs from [`variate`](@ref) in two ways:
+1) `variate` does not strip its input of partials. It wraps the input with new partials.
+2) `variate` can only handle `SVector` inputs.  `revariate` can handle a broader variety of inputs
+   which makes it convenient to differentiate with resepct to a collection of `SVector`.
+
+# Scaling
 
     V = (;X,U,A)
     S = (X=scale.X,U=scale.U,A=scale.A)
@@ -138,7 +149,7 @@ have the same structure, with the important exception that `Tuple`s in `V` must 
 a variable of type `T` in `V`. Put simply: the same scale `scale.X` will be applied
 to `∂0[X]`, `∂1[X]` and `∂2[X]`. 
 
-See also: [`chainrule`](@ref)
+See also: [`chainrule`](@ref), [`to_order`](@ref)
 """
 struct revariate{P,N,Z}   end
 revariate(a)                                               = revariate{precedence(a)}(a)
@@ -165,6 +176,7 @@ revariate{P,N,Z       }(a::SArray{S}    ,i,s::SArray{S,𝕣}) where{P,N,Z,S} = S
 revariate{P,N,:δ      }(a::ℝ            ,i,s::𝕣          ) where{P,N  }   = multivariate_𝕣{P,N}(zero( a),i,s)
 revariate{P,N,:variate}(a::ℝ            ,i,s::𝕣          ) where{P,N  }   = multivariate_𝕣{P,N}(VALUE(a),i,s)
 
+# create an "increment" δ (same as revariate, but value set to zero)
 struct reδ{P} end
 reδ{P}(a  ) where{P} = revariate{P,flat_length(a),:δ}(a,1  )
 reδ{P}(a,s) where{P} = revariate{P,flat_length(a),:δ}(a,1,s)
@@ -287,12 +299,12 @@ Be extremely careful with closures, making sure that `f` does not capture variab
 Wrapper function of [`revariate`](@ref) and [`McLaurin`](@ref)      
 """
 fast(      f,x) = apply{:chainrule}(f,x)    
-justinvoke(f,x) = apply{:direct}( f,x)    
+justinvoke(f,x) = apply{:direct   }(f,x)    
 
 
 struct apply{Mode} end
 apply{:chainrule}(f,x) = chainrule(f(revariate(x)),x)
-apply{:direct}( f,x) = f(x)
+apply{:direct   }(f,x) = f(x)
 
 """
     composevalue{P,ND}(Ty,X_)

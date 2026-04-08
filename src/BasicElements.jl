@@ -133,6 +133,7 @@ function ElementCost(nod::Vector{Node};req,cost::Functor,costargs=(),ElementType
     return ElementCost(eleobj,(eleres=req,),cost,costargs)
 end
 doflist( ::Type{<:ElementCost{Teleobj}}) where{Teleobj} = doflist(Teleobj)
+# IMPORTANT some solvers (DirectXUA) have a specialised addin! for this element, bypassing this lagrangian
 @espy function lagrangian(o::ElementCost, Λ,X,U,A,t,SP,dbg)
     L,FB,eleres  = getlagrangian(o.eleobj,Λ,X,U,A,t,SP,(dbg...,via=ElementCost),o.req.eleres)
     cost         = o.cost(eleres,t,o.costargs...) 
@@ -604,6 +605,7 @@ doflist( ::Type{<:ElementConstraint{Teleobj,λinod,λfield}}) where{Teleobj,λin
     (inod =(doflist(Teleobj).inod... ,λinod),
      class=(doflist(Teleobj).class...,:U),
      field=(doflist(Teleobj).field...,λfield))
+# IMPORTANT some solvers (DirectXUA) have a specialised addin! for this element, bypassing this lagrangian
 @espy function lagrangian(o::ElementConstraint{Teleobj,λinod,λfield,Nu}, Λ,X,U,A,t,SP,dbg) where{Teleobj,λinod,λfield,Nu} 
     req        = mergerequest(o.req)
     γ          = default{:γ}(SP,0.)
