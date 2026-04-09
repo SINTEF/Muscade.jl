@@ -34,14 +34,15 @@
     show(io::IO,x::Unit) = write(io,string(x))
 
     # Basic units
-    public const m        = metre    = Unit([1.,0.,0.,0.,0.,0.,0.,0.])
-    public const kg       = kilogram = Unit([0.,1.,0.,0.,0.,0.,0.,0.])
-    public const s        = second   = Unit([0.,0.,1.,0.,0.,0.,0.,0.])
-    public const A        = Ampere   = Unit([0.,0.,0.,1.,0.,0.,0.,0.])
-    public const K        = Kelvin   = Unit([0.,0.,0.,0.,1.,0.,0.,0.])
-    public const Cd       = candela  = Unit([0.,0.,0.,0.,0.,1.,0.,0.])
-    public const mol      = mole     = Unit([0.,0.,0.,0.,0.,0.,1.,0.])
-    public const nat      = nit      = Unit([0.,0.,0.,0.,0.,0.,0.,1.]) # ... yes, but this *should* be a SI Unit!
+    public m,metre,kg,kilogram,s,second,A,Ampere,K,Kelvin,Cd,candela,mol,mole,nat,nit
+    const m        = metre    = Unit([1.,0.,0.,0.,0.,0.,0.,0.])
+    const kg       = kilogram = Unit([0.,1.,0.,0.,0.,0.,0.,0.])
+    const s        = second   = Unit([0.,0.,1.,0.,0.,0.,0.,0.])
+    const A        = Ampere   = Unit([0.,0.,0.,1.,0.,0.,0.,0.])
+    const K        = Kelvin   = Unit([0.,0.,0.,0.,1.,0.,0.,0.])
+    const Cd       = candela  = Unit([0.,0.,0.,0.,0.,1.,0.,0.])
+    const mol      = mole     = Unit([0.,0.,0.,0.,0.,0.,1.,0.])
+    const nat      = nit      = Unit([0.,0.,0.,0.,0.,0.,0.,1.]) # ... yes, but this *should* be a SI Unit!
 
     # Prefixes
     public const yocto    = Unit(1e-24)

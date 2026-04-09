@@ -1,24 +1,24 @@
-    struct unit
+    struct Unit
         phydim :: Vector{Float64}
         ct     :: Float64
     end
-    unit(phydim :: Vector{Float64})    = unit(phydim,1.)
-    unit(ct     :: Float64 )           = unit([0.,0.,0.,0.,0.,0.,0.,0.],ct)
+    Unit(phydim :: Vector{Float64})    = Unit(phydim,1.)
+    Unit(ct     :: Float64 )           = Unit([0.,0.,0.,0.,0.,0.,0.,0.],ct)
 
-    Base.:(*)(a::unit  ,b::unit)       = unit( a.phydim+b.phydim,a.ct*b.ct)
-    Base.:(*)(a::Number,b::unit)       = unit(          b.phydim,a   *b.ct)
-    Base.:(*)(a::unit  ,b::Number)     = unit( a.phydim         ,a.ct*b   )
-    Base.:(/)(a::unit  ,b::unit)       = unit( a.phydim-b.phydim,a.ct/b.ct)
-    Base.:(/)(a::Number,b::unit)       = unit(         -b.phydim,a   /b.ct)
-    Base.:(/)(a::unit  ,b::Number)     = unit( a.phydim         ,a.ct/b   )
-    Base.:(^)(a::unit  ,b::Integer)    = unit( a.phydim*b       ,a.ct^b   )
-    Base.:(^)(a::unit  ,b::Real)       = unit( a.phydim*b       ,a.ct^b   )
-    Base.inv(a::unit)                  = unit(-a.phydim         ,1.  /a.ct)
-    ←(a::Number,b::unit)               =                        a   *b.ct
-    ←(a       ,b::unit)                =                        a  .*b.ct
-    →(a::Number,b::unit)               =                        a   /b.ct
-    →(a        ,b::unit)               =                        a  ./b.ct
-    function Base.string(a::unit)
+    Base.:(*)(a::Unit  ,b::Unit)       = Unit( a.phydim+b.phydim,a.ct*b.ct)
+    Base.:(*)(a::Number,b::Unit)       = Unit(          b.phydim,a   *b.ct)
+    Base.:(*)(a::Unit  ,b::Number)     = Unit( a.phydim         ,a.ct*b   )
+    Base.:(/)(a::Unit  ,b::Unit)       = Unit( a.phydim-b.phydim,a.ct/b.ct)
+    Base.:(/)(a::Number,b::Unit)       = Unit(         -b.phydim,a   /b.ct)
+    Base.:(/)(a::Unit  ,b::Number)     = Unit( a.phydim         ,a.ct/b   )
+    Base.:(^)(a::Unit  ,b::Integer)    = Unit( a.phydim*b       ,a.ct^b   )
+    Base.:(^)(a::Unit  ,b::Real)       = Unit( a.phydim*b       ,a.ct^b   )
+    Base.inv(a::Unit)                  = Unit(-a.phydim         ,1.  /a.ct)
+    ←(a::Number,b::Unit)               =                        a   *b.ct
+    ←(a       ,b::Unit)                =                        a  .*b.ct
+    →(a::Number,b::Unit)               =                        a   /b.ct
+    →(a        ,b::Unit)               =                        a  ./b.ct
+    function Base.string(a::Unit)
         fundamental = ["m","kg","s","A","K","cd","mol","bit"]
         dsc =  a.ct == 1 ? "" : "$(a.ct) "
         for (i,d) in enumerate(a.phydim)
@@ -31,40 +31,41 @@
         if dsc[end]=='*' dsc = dsc[1:end-1] end
         return dsc
     end
-    show(io::IO,x::unit) = write(io,string(x))
+    show(io::IO,x::Unit) = write(io,string(x))
 
     # Basic units
-    public const m        = metre    = unit([1.,0.,0.,0.,0.,0.,0.,0.])
-    public const kg       = kilogram = unit([0.,1.,0.,0.,0.,0.,0.,0.])
-    public const s        = second   = unit([0.,0.,1.,0.,0.,0.,0.,0.])
-    public const A        = Ampere   = unit([0.,0.,0.,1.,0.,0.,0.,0.])
-    public const K        = Kelvin   = unit([0.,0.,0.,0.,1.,0.,0.,0.])
-    public const Cd       = candela  = unit([0.,0.,0.,0.,0.,1.,0.,0.])
-    public const mol      = mole     = unit([0.,0.,0.,0.,0.,0.,1.,0.])
-    public const nat      = nit      = unit([0.,0.,0.,0.,0.,0.,0.,1.]) # ... yes, but this *should* be a SI unit!
+    public m,metre,kg,kilogram,s,second,A,Ampere,K,Kelvin,Cd,candela,mol,mole,nat,nit
+    const m        = metre    = Unit([1.,0.,0.,0.,0.,0.,0.,0.])
+    const kg       = kilogram = Unit([0.,1.,0.,0.,0.,0.,0.,0.])
+    const s        = second   = Unit([0.,0.,1.,0.,0.,0.,0.,0.])
+    const A        = Ampere   = Unit([0.,0.,0.,1.,0.,0.,0.,0.])
+    const K        = Kelvin   = Unit([0.,0.,0.,0.,1.,0.,0.,0.])
+    const Cd       = candela  = Unit([0.,0.,0.,0.,0.,1.,0.,0.])
+    const mol      = mole     = Unit([0.,0.,0.,0.,0.,0.,1.,0.])
+    const nat      = nit      = Unit([0.,0.,0.,0.,0.,0.,0.,1.]) # ... yes, but this *should* be a SI Unit!
 
     # Prefixes
-    public const yocto    = unit(1e-24)
-    public const zepto    = unit(1e-21)
-    public const atto     = unit(1e-18)
-    public const femto    = unit(1e-15)
-    public const pico     = unit(1e-12)
-    public const nano     = unit(1e-9)
-    public const micro    = unit(1e-6)
-    public const milli    = unit(1e-3)
-    public const centi    = unit(1e-2)
-    public const deci     = unit(1e-1)
-    public const dimensionless = ena = unit(1e0)
-    public const deca     = unit(1e1)
-    public const hecto    = unit(1e2)
-    public const kilo     = unit(1e3)
-    public const mega     = unit(1e6)
-    public const giga     = unit(1e9)
-    public const tera     = unit(1e12)
-    public const peta     = unit(1e15)
-    public const exa      = unit(1e18)
-    public const zetta    = unit(1e21)
-    public const yotta    = unit(1e24)
+    public const yocto    = Unit(1e-24)
+    public const zepto    = Unit(1e-21)
+    public const atto     = Unit(1e-18)
+    public const femto    = Unit(1e-15)
+    public const pico     = Unit(1e-12)
+    public const nano     = Unit(1e-9)
+    public const micro    = Unit(1e-6)
+    public const milli    = Unit(1e-3)
+    public const centi    = Unit(1e-2)
+    public const deci     = Unit(1e-1)
+    public const dimensionless = ena = Unit(1e0)
+    public const deca     = Unit(1e1)
+    public const hecto    = Unit(1e2)
+    public const kilo     = Unit(1e3)
+    public const mega     = Unit(1e6)
+    public const giga     = Unit(1e9)
+    public const tera     = Unit(1e12)
+    public const peta     = Unit(1e15)
+    public const exa      = Unit(1e18)
+    public const zetta    = Unit(1e21)
+    public const yotta    = Unit(1e24)
 
     # Engineering
     public const Å        = Angstrom = 1e-10metre

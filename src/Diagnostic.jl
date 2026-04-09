@@ -1,4 +1,3 @@
-
 ##################  describe
 """
     describe(model,spec)
@@ -951,26 +950,4 @@ end
 
 
 
-"""
-    Muscade.spy(M::SparseMatrixCSC;pixels=500,title=nothing,markersize=3,tol=1e-9)
-
-Opens a GLMakie window and displays the sparsity structure of `M`.
-"""     
-function spy(M::SparseMatrixCSC;pixels=500,title=nothing,markersize=2,tol=1e-9)
-    (i,j,v)  = findnz(M)
-    s  = size(M)
-    i .= s[1].-i.+1
-    j .= s[2].-j.+1
-    nz = findall(abs.(v).>tol)
-    if title==nothing
-        title = @sprintf("nnz=%i (structural),nnz=%i (actual)",nnz(M),length(nz))
-    end
-    fig      = Figure(;size=(pixels,pixels))
-    display(fig) # open interactive window (gets closed down by "save")
-    axe      = Axis(fig[1,1];title,xticksvisible=true,yticksvisible=true,yreversed=true,aspect=DataAspect())
-    scatter!(axe,i,j;color=:red,markersize)
-    scatter!(axe,i[nz],j[nz];color=:green,markersize=2*markersize)
-    #hidespines!(axe)
-    return fig
-end
 

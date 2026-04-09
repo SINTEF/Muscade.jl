@@ -28,18 +28,19 @@ module Muscade
 
     include("Taylor.jl")
     export  motion,motion⁻¹,revariate,chainrule,apply,composevalue,composeJacobian 
-    public fast,justinvoke
+    public  fast,justinvoke
 
     include("Functors.jl")
-    export Functor, @functor
+    export @functor, Functor
+    public FunctionFromVector
 
     include("Dots.jl")
-    export dots,∘₀,∘₁,∘₂,⊗
+    export ∘₀,∘₁,∘₂,⊗
+    public dots
 
     include("Espy.jl") 
-    export @request
-    public mergerequest
-    export @espy,@espydbg
+    export @request,@espy
+    public mergerequest,@espydbg
 
     include("Exceptions.jl")
     export muscadeerror
@@ -47,8 +48,9 @@ module Muscade
     include("ModelDescription.jl")
     export AbstractElement
     export Model,addnode!,addelement!,setscale!,initialize!
-    public Node
-    export getndof
+    export Node
+    export getndof  
+    public get # TODO does this get doc'ed?
 
     include("ElementAPI.jl")
     export coord,∂0,∂1,∂2,getsomedofs
@@ -65,7 +67,6 @@ module Muscade
     public QuickFix
 
     include("Assemble.jl")
-    #export Assembly
 
     include("Solve.jl")
     export solve
@@ -94,14 +95,12 @@ module Muscade
     export FreqXU
 
     include("Diagnostic.jl")
-    export describe
-    public study_scale,study_singular,plot_matrix_sparsity,spy   # <<<<<<<<<<<<<<<<<<
+    export describe  
+    public study_scale,study_singular,plot_matrix_sparsity
     public plot_block_matrix_sparsity,print_nz,Monitor,@typeof,print_element_array,diffed_lagrangian,diffed_residual
 
-# REPRISE
-
     include("Output.jl")
-    export setdof!,getdof,getresult,findlastassigned,eletyp
+    export setdof!,getdof,getresult,findlastassigned
 
     include("SelfDraw.jl")
     export draw!,request2draw
@@ -125,7 +124,7 @@ module Muscade
         export Position3D  
         include("../toolbox/SoilContact.jl")
         export SoilContact  
-        include("Unit.jl")
+        include("../toolbox/Unit.jl") # TODO doc this!
         export ←,→
     end
 

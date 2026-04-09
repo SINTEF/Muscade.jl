@@ -1,12 +1,3 @@
-
-
-"""
-    et = eletyp(model)
-
-Return a vector of the concrete types of elements in the model. 
-"""
-eletyp(model::Model) = eltype.(model.eleobj)
-
 ## Nodal results
 """
     dofres = getdof(state;[class=:X],field=:somefield,nodID=[nodids...],[order=0])

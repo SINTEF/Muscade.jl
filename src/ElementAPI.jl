@@ -48,7 +48,7 @@ See also: [`∂0`](@ref),[`∂1`](@ref),[`getsomedofs`](@ref)
 ∂n(y,ider) = length(y) ≥ider+1 ? y[ider+1] : zilch(y[1]) # slow
 
 """
-    rotations = getsomedofs(X,[3,6])
+    rotations = getsomedofs(X,SVector(3,6))
 
 Used by elements' `residual` or `lagrangian` to some degrees of freedom, and their
 time derivatives, from the variables `X` and `U`. 

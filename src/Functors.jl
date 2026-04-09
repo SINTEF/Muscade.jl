@@ -19,8 +19,17 @@ function (f::FunctionFromVector)(x)
 end
 
 
-#
+"""
+    function MyElement(nod::Vector{Node}; ... foo::Functor ...) 
 
+`@functor` returns an object of type `Functor`. `Functor` is a subtype of the abstract type `Function`.
+
+In an element constructor, requiring a function-like input to be a `Functor` forces the user of the 
+element to use the `@functor` macro to define functions provided as input to an element.  This is designed
+to safeguard the user from some arguably unintuitive behaviour of closures.    
+
+See also: [`@functor`](@ref)
+"""
 struct Functor{name,Ta} <: Function
     captured::Ta
     function Functor{name}(;kwargs...) where{name}
@@ -42,6 +51,8 @@ or
     @functor with(a,e)    f(x::Real)=a*x^e
     @functor with()       f(x::Real)=x^2
 
+Creates a function-like object, of type `Functor`.
+
 This is roughly equivalent to a closure defined as
 
     f(x::Real)=a*x^e
@@ -57,10 +68,7 @@ a closure) in a script:
 
 It is not possible to associate multiple methods to a functor.
 
-`Functor` is a subtype of the abstract type `Function`: functions that accept a `arg::Function` as an 
-input will accept `arg` to be a `Functor`.  Functions that require `arg:Functor` will not accept a classical
-`Function`, thus enforcing capture by value etc.
-
+See also: [`Functor`](@ref)
 """
 macro functor(capture,foo)
     # to debug, use 'Base.dump' on expressions
