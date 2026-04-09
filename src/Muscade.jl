@@ -15,7 +15,8 @@ module Muscade
     export ℝ1,ℤ1,𝕣1,𝕫1,𝔹1,𝕓1
     export ℝ2,ℤ2,𝕣2,𝕫2,𝔹2,𝕓2
     export ℝ11,ℤ11,𝕣11,𝕫11,𝔹11,𝕓11
-    public toggle,default,mod_onebased
+    export default
+    public toggle,mod_onebased
 
     include("OffsetVector.jl")
 
@@ -39,8 +40,8 @@ module Muscade
     public dots
 
     include("Espy.jl") 
-    export @request,@espy
-    public mergerequest,@espydbg
+    export @request,@espy,mergerequest
+    public @espydbg
 
     include("Exceptions.jl")
     export muscadeerror
@@ -111,6 +112,7 @@ module Muscade
 
     include("Eigenmodes.jl")
 
+    public Toolbox
     module Toolbox
         include("../toolbox/Rotations.jl")
         public Rodrigues, Rodrigues⁻¹, adjust, scac, sinc1, sinc1′,sinc1″, sinc1‴, sinc1⁗, intrinsicrotationrates

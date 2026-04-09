@@ -446,7 +446,7 @@ function solve(::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
     #  Mostly constants
     local LU
     nexp,nstep,Δt         = length(time),length.(time),step.(time)
-    length(initialstate)== nexp || muscadeerror("initialstate and time must be of the same length") 
+    length(initialstate)== nexp || muscadeerror("initialstate and time must be of the same length=number of experiments") 
     γ                     = 0.
     nder                  = (1,OX+1,OU+1,IA)
     model,dis             = initialstate[1].model, initialstate[1].dis

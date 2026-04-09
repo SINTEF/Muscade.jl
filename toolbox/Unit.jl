@@ -45,125 +45,139 @@
     const nat      = nit      = Unit([0.,0.,0.,0.,0.,0.,0.,1.]) # ... yes, but this *should* be a SI Unit!
 
     # Prefixes
-    public const yocto    = Unit(1e-24)
-    public const zepto    = Unit(1e-21)
-    public const atto     = Unit(1e-18)
-    public const femto    = Unit(1e-15)
-    public const pico     = Unit(1e-12)
-    public const nano     = Unit(1e-9)
-    public const micro    = Unit(1e-6)
-    public const milli    = Unit(1e-3)
-    public const centi    = Unit(1e-2)
-    public const deci     = Unit(1e-1)
-    public const dimensionless = ena = Unit(1e0)
-    public const deca     = Unit(1e1)
-    public const hecto    = Unit(1e2)
-    public const kilo     = Unit(1e3)
-    public const mega     = Unit(1e6)
-    public const giga     = Unit(1e9)
-    public const tera     = Unit(1e12)
-    public const peta     = Unit(1e15)
-    public const exa      = Unit(1e18)
-    public const zetta    = Unit(1e21)
-    public const yotta    = Unit(1e24)
+    public yocto,zepto,atto,femto,pico,nano,micromilli,centi,deci
+    const yocto    = Unit(1e-24)
+    const zepto    = Unit(1e-21)
+    const atto     = Unit(1e-18)
+    const femto    = Unit(1e-15)
+    const pico     = Unit(1e-12)
+    const nano     = Unit(1e-9)
+    const micro    = Unit(1e-6)
+    const milli    = Unit(1e-3)
+    const centi    = Unit(1e-2)
+    const deci     = Unit(1e-1)
+    public dimensionless,ena,deca,hecto,kilo,mega,giga,tera,peta,exa,zetta,yotta
+    const dimensionless = ena = Unit(1e0)
+    const deca     = Unit(1e1)
+    const hecto    = Unit(1e2)
+    const kilo     = Unit(1e3)
+    const mega     = Unit(1e6)
+    const giga     = Unit(1e9)
+    const tera     = Unit(1e12)
+    const peta     = Unit(1e15)
+    const exa      = Unit(1e18)
+    const zetta    = Unit(1e21)
+    const yotta    = Unit(1e24)
 
     # Engineering
-    public const Å        = Angstrom = 1e-10metre
-    public const μm       = micrometre = micro*metre
-    public const mm       = milli*metre
-    public const cm       = centi*metre
-    public const dm       = deci*metre
-    public const km       = kilo*metre
-    public const are      = hecto*metre^2
-    public const ha       = hectare = hecto*are
-    public const l        = litre   = milli*metre^3
-    public const g        = gram    = milli*kilogram
-    public const Mg       = tonne = mega*gram
-    public const N        = Newton = m*kg/s^2
-    public const kN       = kilo*Newton
-    public const MN       = mega*Newton
-    public const GN       = giga*Newton
-    public const Pa       = Pascal = N/m^2
-    public const kPa      = kilo*Pascal
-    public const MPa      = mega*Pascal
-    public const GPa      = giga*Pascal
-    public const J        = Joule = N*m
-    public const W        = Watt = J/s
-    public const V        = Volt  = W/A #m^2*kg/s^3/A
-    public const mV       = milli*Volt
-    public const ε        = strain = dimensionless
-    public const με       = microstrain = micro
-    public const event    = dimensionless
-    public const Hz       = Hertz = 1/s
-    public const rad      = radian = dimensionless
-    public const period   = turn = 2π*dimensionless
-    public const deg      = degree = period/360
-    public const sr       = steradian = dimensionless
-    public const sphere   = 4π*sr
-    public const Coulomb  = C = A*s
-    public const Ohm      = Ω = V/A
+    public Å,Angstrom,μm,micrometre,mm,millimetre,cm,centimetre,dm,decimetre,km,kilometre
+    const Å        = Angstrom = 1e-10metre
+    const μm       = micrometre = micro*metre
+    const mm       = milli*metre
+    const cm       = centi*metre
+    const dm       = deci*metre
+    const km       = kilo*metre
+    public are,ha,hectare,l,litre,g,gram,Mg,tonne,N,Newton,kN,MN,GN
+    const are      = hecto*metre^2
+    const ha       = hectare = hecto*are
+    const l        = litre   = milli*metre^3
+    const g        = gram    = milli*kilogram
+    const Mg       = tonne = mega*gram
+    const N        = Newton = m*kg/s^2
+    const kN       = kilo*Newton
+    const MN       = mega*Newton
+    const GN       = giga*Newton
+    public Pa,Pascal,kPa,MPa,GPa,J,Joule,W,Watt,V,Volt,mV,ε,strain,με,microstrain
+    const Pa       = Pascal = N/m^2
+    const kPa      = kilo*Pascal
+    const MPa      = mega*Pascal
+    const GPa      = giga*Pascal
+    const J        = Joule = N*m
+    const W        = Watt = J/s
+    const V        = Volt  = W/A #m^2*kg/s^3/A
+    const mV       = milli*Volt
+    const ε        = strain = dimensionless
+    const με       = microstrain = micro
+    public event,Hz,Hertz,rad,radian,period,turn,deg,degree,sr,steradian,sphere,Coulomb,C,Ohm,Ω
+    const event    = dimensionless
+    const Hz       = Hertz = 1/s
+    const rad      = radian = dimensionless
+    const period   = turn = 2π*dimensionless
+    const deg      = degree = period/360
+    const sr       = steradian = dimensionless
+    const sphere   = 4π*sr
+    const Coulomb  = C = A*s
+    const Ohm      = Ω = V/A
 
     # Physical constants
-    public const c        = 299792458m/s
-    public const G        = 9.80665m/s^2
-    public const elementarycharge = e = 1.602176620898e-19C
-    public const Avogadro = Nₐ = 6.02214086e23/mol
-    public const Faraday  = F  = e*Nₐ
-    public const gasconst = R  = 8.314459848J/mol/K
-    public const Boltzman = kᵦ = R/Nₐ
-    public const Planck   = h  = 6.62601015e-35J*s
-    public const rPlanck  = ħ  = h/2π
+    public c,G,elementarycharge,e,Avogadro,Nₐ,Faraday,F,gasconst,R,Boltzman,kᵦ,Planck,h,rPlanck,ħ
+    const c        = 299792458m/s
+    const G        = 9.80665m/s^2
+    const elementarycharge = e = 1.602176620898e-19C
+    const Avogadro = Nₐ = 6.02214086e23/mol
+    const Faraday  = F  = e*Nₐ
+    const gasconst = R  = 8.314459848J/mol/K
+    const Boltzman = kᵦ = R/Nₐ
+    const Planck   = h  = 6.62601015e-35J*s
+    const rPlanck  = ħ  = h/2π
 
     # data/probability
-    public const bit      = Shannon       = log( 2)nit
-    public const ban      = dit = Hartley = log(10)nit
-    public const octet    = byte = 8bit
+    public bit,Shannon,ban,dit,Hartely,octet,byte
+    const bit      = Shannon       = log( 2)nit
+    const ban      = dit = Hartley = log(10)nit
+    const octet    = byte = 8bit
 
     # Imperial and other non SI
-    public const minute   = 60s
-    public const hour     = 60minute
-    public const day      = 24hour
-    public const week     = 7day
-    public const year     = 365.25day
-    public const month    = year/12
-    public const kmh      = km/h
+    public minute,hour,day,week,year,month,kmh
+    const minute   = 60s
+    const hour     = 60minute
+    const day      = 24hour
+    const week     = 7day
+    const year     = 365.25day
+    const month    = year/12
+    const kmh      = km/h
 
-    public const eV       = elementarycharge*V
-    public const inch     = 25.4mm
-    public const foot     = 12inch
-    public const yard     = 3foot
-    public const fathom   = 2yard
-    public const furlong  = 110fathom
-    public const cable    = 120fathom
-    public const mils     = thou = milli*inch
-    public const nautical = 1852m
-    public const mile     = 1760yard
-    public const USacre   = 43560foot^2
-    public const mål      = 1000m^2
-    public const ounce    = 28.349523125g
-    public const pound    = 16ounce
-    public const shortton = 2kilo*pound
-    public const poundforce = pound*G
-    public const kip      = 1e3poundforce
-    public const cmil     = pi/4*mils^2
-    public const kcmil    = MCM = kilo*cmil
-    public const kgf      = kilogram*G
-    public const horsepower = 75kgf*m/s
-    public const knot     = nautical/hour
-    public const USpint   = 28.875*inch^3
-    public const USgallon = 8USpint
-    public const USfloz   = USpint/16
-    public const barrel   = 42USgallon
-    public const hogshead = 63USgallon
-    public const psi      = poundforce/inch^2
-    public const ksi      = kilo*psi
-    public const bar      = 1e5Pa
-    public const atm      = 101325Pa
-    public const mmHg     = 133.322387415Pa
-    public const torr     = (1/760)atm
-    public const BTU      = 1.0545e3J
-    public const calorie  = 4.184J
-    public const kgTNT    = 1e6calorie
-    public const alen     = 622.77cm
-    public const kWh      = 1e3W*hour
-    public const denier   = 1g/9000m
+    public eV,inch,foot,yard,fathom,furlong,cable,mils,thou,nautical,mile,alen
+    const eV       = elementarycharge*V
+    const inch     = 25.4mm
+    const foot     = 12inch
+    const yard     = 3foot
+    const fathom   = 2yard
+    const furlong  = 110fathom
+    const cable    = 120fathom
+    const mils     = thou = milli*inch
+    const nautical = 1852m
+    const mile     = 1760yard
+    const alen     = 622.77cm
+    public USacre,mål,ouce,pound,shortton,poundforce,kip,cmil,kcmil,MCM
+    const USacre   = 43560foot^2
+    const mål      = 1000m^2
+    const ounce    = 28.349523125g
+    const pound    = 16ounce
+    const shortton = 2kilo*pound
+    const poundforce = pound*G
+    const kip      = 1e3poundforce
+    const cmil     = pi/4*mils^2
+    const kcmil    = MCM = kilo*cmil
+    public kgf,horsepower,knot,USpint,USgallon,USfloz,barrel,hogshead
+    const kgf      = kilogram*G
+    const horsepower = 75kgf*m/s
+    const knot     = nautical/hour
+    const USpint   = 28.875*inch^3
+    const USgallon = 8USpint
+    const USfloz   = USpint/16
+    const barrel   = 42USgallon
+    const hogshead = 63USgallon
+    public psi,ksi,bar,atm,mmHg,torr
+    const psi      = poundforce/inch^2
+    const ksi      = kilo*psi
+    const bar      = 1e5Pa
+    const atm      = 101325Pa
+    const mmHg     = 133.322387415Pa
+    const torr     = (1/760)atm
+    public BTU,calorie,kgTNT,KWh,denier
+    const BTU      = 1.0545e3J
+    const calorie  = 4.184J
+    const kgTNT    = 1e6calorie
+    const kWh      = 1e3W*hour
+    const denier   = 1g/9000m
