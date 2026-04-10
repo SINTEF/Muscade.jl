@@ -94,7 +94,7 @@ With a few exceptions for testing and demonstration, `Muscade` does not provide 
 
 [`Hold`](@ref) provides a simplified syntax to set a single ``X``-dof to zero.
 
-[`QuickFix`](@ref) allows to rapidly create a simple element, with limitations in functionality. 
+[`Muscade.QuickFix`](@ref) allows to rapidly create a simple element, with limitations in functionality. 
 
 When using `xxxCost` elements to introduce measured time series, consider using [`DataInterpolations.jl`](https://github.com/SciML/DataInterpolations.jl).
 
@@ -143,7 +143,7 @@ runtime overhead, and allow to verify code for unit consistency (`Muscade` does 
 
 ## Drawing
 
-### Generating figures with `Draw!`
+### Generating figures with `draw!`
 
 To create a snapshot of a `State`, either the initialised model, or a step from an analysis, one can use [`draw!`](@ref):
 ```julia
@@ -165,6 +165,6 @@ Second, while `Muscade` is tested with [`GLMakie.jl`](https://docs.makie.org/), 
 
 ### Interactive exploration with `GUI`
 
-The function [`GUI`](@ref) can be called with a `Vector` of `State`s.  This allows to explore a sequence of steps interactively, and allows to scale results for visualisation, 
+The function [`Muscade.GUI`](@ref) can be called with a `Vector` of `State`s.  This allows to explore a sequence of steps interactively, and allows to scale results for visualisation, 
 
 
