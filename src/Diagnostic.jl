@@ -673,7 +673,7 @@ function plot_block_matrix_sparsity(pattern::AbstractMatrix{SparseMatrixCSC{Tv,T
     return fig
 end
 """
-    print_nz(S::SparseMatrixCSC)
+    Muscade.print_nz(S::SparseMatrixCSC)
 
 List the structuraly non-zero entries of the sparse matrix.    
 """

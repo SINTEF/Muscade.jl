@@ -426,7 +426,7 @@ e1              = addelement!(model,DofConstraint,[n1],λclass=:X,
                               xinod=(1,),xfield=(:t1,),
                               gap=gap,
                               mode=positive)
-e2              = addelement!(model,QuickFix  ,[n1],inod=(1,),field=(:t1,),
+e2              = addelement!(model,Muscade.QuickFix  ,[n1],inod=(1,),field=(:t1,),
                               res=res
 initialstate    = initialize!(model)
 setdof!(initialstate,1.;field=:λ1)
@@ -635,7 +635,7 @@ display_drawing!(axis,::Type{<:ElementConstraint{Teleobj}},obs,opt)             
 #-------------------------------------------------
 
 """
-    QuickFix <: AbstractElement
+    Muscade.QuickFix <: AbstractElement
 
 An element for creating simple elements with "one line" of code.  
 Elements thus created have several limitations:
@@ -656,7 +656,7 @@ model = Model(:TestModel)
 node1  = addnode!(model,𝕣[0])
 node2  = addnode!(model,𝕣[1])
 @functor with() res(x,u,a,t)=0.4x.+.08+.5x.^2) 
-e = addelement!(model,QuickFix,[node1,node2];inod=(1,2),field=(:tx1,:tx1),res=res)
+e = addelement!(model,Muscade.QuickFix,[node1,node2];inod=(1,2),field=(:tx1,:tx1),res=res)
 
 # output
 

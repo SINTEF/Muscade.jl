@@ -62,8 +62,26 @@ function Base.convert(::Type{∂ℝ{Pa,Na,Ra}},b::∂ℝ{Pb,Nb,Rb}) where{Pa,Pb,
 end
 
 # Pack and unpack
+"""
+    Muscade.precedence(a::∂ℝ{P,N,R}) → P
+    Muscade.precedence(typeof(a)) → P
+
+Also handles static arrays and tuples.    
+
+See also: [`npartial`](@ref)
+
+"""    
 precedence( ::Type{Union{}})                              = 0
 precedence( ::Type{<:∂ℝ{P,N,R}}) where{P,N,R<:ℝ}          = P
+"""
+    Muscade.npartial(a::∂ℝ{P,N,R}) → N
+    Muscade.npartial(typeof(a)) → N
+
+Also handle static arrays and tuples.    
+
+See also: [`precedence`](@ref)
+
+"""    
 npartial(   ::Type{<:∂ℝ{P,N,R}}) where{P,N,R<:ℝ}          = N
 precedence( ::Type{<:ℝ})                                  = 0
 npartial(   ::Type{<:ℝ})                                  = 0

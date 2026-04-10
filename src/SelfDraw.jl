@@ -202,7 +202,7 @@ GLMakie.scatter!(axis::SpyAxis,args...;kwargs...) = push!(axis.call,(fun=:scatte
 GLMakie.mesh!(   axis::SpyAxis,args...;kwargs...) = push!(axis.call,(fun=:mesh!   ,args=args,kwargs=kwargs))
 
 """
-    GUI(state,refstate=state[1];dim=3,kwargs...)
+    Muscade.GUI(state,refstate=state[1];dim=3,kwargs...)
 
 Taking `state`, a `Vector` of `State`s output by various solvers, provide
 a GUI to explore the results.

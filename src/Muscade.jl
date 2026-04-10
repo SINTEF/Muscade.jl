@@ -25,12 +25,12 @@ module Muscade
     export  variate,δ,directional # \delta
     export  value,VALUE,∂,value_∂ # \partial, \nabla
     export  constants
-    public  precedence,npartial,norm
+    public  precedence,npartial #,norm
 
     include("Taylor.jl")
-    export  motion,motion⁻¹,revariate,chainrule,apply,composevalue,composeJacobian 
-    public  fast,justinvoke
-
+    export  motion,motion⁻¹,revariate,chainrule,apply
+    export composevalue,composeJacobian 
+    
     include("Functors.jl")
     export @functor, Functor
     public FunctionFromVector
@@ -73,7 +73,7 @@ module Muscade
     export solve
 
     include("SparseTools.jl")
-    public prepare,cat!,addin!,zero!,getblock
+    public prepare,addin!
     
     include("FiniteDifferences.jl")
 
@@ -108,14 +108,15 @@ module Muscade
     public GUI
 
     include("FFT.jl")
-    public getδf,getδt,𝔉𝕣,𝔉𝕣⁻¹
+    public getδω,getδt,𝔉,𝔉⁻¹
 
     include("Eigenmodes.jl")
 
     public Toolbox
     module Toolbox
         include("../toolbox/Rotations.jl")
-        public Rodrigues, Rodrigues⁻¹, adjust, scac, sinc1, sinc1′,sinc1″, sinc1‴, sinc1⁗, intrinsicrotationrates
+        public scac, sinc1, sinc1′,sinc1″, sinc1‴, sinc1⁗
+        public spin,spin⁻¹,Rodrigues, Rodrigues⁻¹, adjust , intrinsicrotationrates
         include("../toolbox/BarElement.jl")
         export Bar3D, AxisymmetricBarCrossSection
         include("../toolbox/BeamElement.jl")

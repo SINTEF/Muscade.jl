@@ -391,7 +391,7 @@ macro espy(ex)
 end
 
 """
-    @espydbg function ... end
+    Muscade.@espydbg function ... end
 
 Generate the same code as [`@espy`](@ref) and print it (for debug purposes).
 

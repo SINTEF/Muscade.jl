@@ -1,5 +1,5 @@
 """
-    f  = FunctionFromVector(xs::AbstractRange,ys::AbstractVector)
+    f  = Muscade.FunctionFromVector(xs::AbstractRange,ys::AbstractVector)
     y  = f(x)
 
     Linear interpolation.  Fails if `x` is outside the range `xs`

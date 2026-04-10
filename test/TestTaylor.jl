@@ -83,8 +83,8 @@ X₀   = SVector(0.,0.,1.)
 vX₀  = variate{1,3}(X₀)
 
 @testset "Muscade.fast" begin
-    @test Muscade.fast(w, X₀) === w( X₀)
-    @test Muscade.fast(w,vX₀) === w(vX₀)
+    @test Muscade.apply{:chainrule}(w, X₀) === w( X₀)
+    @test Muscade.apply{:chainrule}(w,vX₀) === w(vX₀)
 end
 
 yy    = Muscade.to_order{1}((revariate{1}(SVector(4.,5.,6.)),revariate{2}(SVector(7.,8.,9.)) ))  

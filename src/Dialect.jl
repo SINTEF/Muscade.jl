@@ -155,7 +155,7 @@ constructor(T::DataType)               = T.name.wrapper
 constructor(x::T) where{T}             = T.name.wrapper
 """
 
-    toggle(condition,a,b)
+    Muscade.toggle(condition,a,b)
 
 Typestable equivalent of `condition ? a : b`.  
 Returns a value converted to `promote_type(typeof(a),typeof(b))`
@@ -257,7 +257,7 @@ const  idmult = IdMult()
 
 
 """
-    mod_onebased(i,n) = mod(i-1,n)+1
+    Muscade.mod_onebased(i,n) = mod(i-1,n)+1
 
 For `i::ℤ`, returns a value in `{1,...n}`.  This differs
 from `mod` which return a value in `[0,n[`   

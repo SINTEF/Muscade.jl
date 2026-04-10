@@ -99,7 +99,7 @@ See also: [`Muscade.lagrangian`](@ref), [`Muscade.residual`](@ref), [`Muscade.no
 doflist(     ::Type{E}) where{E<:AbstractElement}  = muscadeerror(@sprintf("method 'Muscade.doflist' must be provided for elements of type '%s'\n",E))
 
 """
-    no_second_order(::Type{E<:AbstractElement})
+    Muscade.no_second_order(::Type{E<:AbstractElement})
 
 Elements that define `residual` are normaly mostly differentiated only to the first order, to avoid
 excessive compilation and/or execution time.
