@@ -141,7 +141,8 @@ Only the `X`-dofs of the model are solved for, while `U`-dofs and `A`-dofs are u
 - `SweepX{1}` is a first order variant of Newmark-β with Newton-Raphson iterations. 
 - `SweepX{2}` is Newmark-β, with Newton-Raphson iterations.
 
-IMPORTANT NOTE: Muscade does not allow elements to have state variables, for example, plastic strain,
+# Important:
+Muscade does not allow elements to have state variables, for example, plastic strain,
 or shear-free position for dry friction.  Where the element implements such physics, this 
 is implemented by introducing the state as a degree of freedom of the element, and solving
 for its evolution, *even in a quasi-static problem*, requires the use of `OX≥1`.
@@ -157,7 +158,8 @@ states           = solve(SweepX{2};initialstate=initialstate,time=0:10)
 - `dbg=(;)`           a named tuple to trace the call tree (for debugging)
 - `verbose=true`      set to false to suppress printed output (for testing)
 - `silenterror=false` set to true to suppress print out of error (for testing) 
-- `initialstate`      a `State`, obtain from `ìnitialize!` or `SweepX`.
+- `initialstate`      a `State`, obtain from `ìnitialize!` or `SweepX`, describing the 
+                      initial conditions of the problem.  
 - `time`              maximum number of Newton-Raphson iterations 
 - `β=1/4`,`γ=1/2`     parameters to the Newmark-β algorithm. 
                       `β` is dummy if `OX<2`.

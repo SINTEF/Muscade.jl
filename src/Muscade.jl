@@ -28,8 +28,9 @@ module Muscade
     public  precedence,npartial #,norm
 
     include("Taylor.jl")
-    export  motion,motion⁻¹,revariate,chainrule,apply
+    export motion,motion⁻¹,revariate,chainrule,apply
     export composevalue,composeJacobian 
+    public Taylor,McLaurin
     
     include("Functors.jl")
     export @functor, Functor
@@ -99,6 +100,7 @@ module Muscade
     export describe  
     public study_scale,study_singular,plot_matrix_sparsity
     public plot_block_matrix_sparsity,print_nz,Monitor,@typeof,print_element_array,diffed_lagrangian,diffed_residual
+    public SpyAxis
 
     include("Output.jl")
     export setdof!,getdof,getresult,findlastassigned

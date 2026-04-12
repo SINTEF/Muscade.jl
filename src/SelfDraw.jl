@@ -74,7 +74,7 @@ Application developers can implement methods [`Muscade.allocate_drawing`](@ref),
 `els` specifies which elements to draw and can be either
 - a vector of `EleID`s (obtained from [`addelement!`](@ref)`), all corresponding
   to the same concrete element type
-- a concrete element type (see [`eletyp`](@ref)).
+- a concrete element type (see [`describe`](@ref)).
 - omitted: all the element of the model are drawn.
 `kwargs...` is any additional key words arguments that will be passed to the `draw` method of each element, 
 for example to specify colors, etc.  See the elements' documentation.
@@ -174,32 +174,6 @@ function draw!(graphic::Graphic,state::State,::Type{E};kwargs...) where{E<:Abstr
     return graphic
 end    
 
-"""
-    axis = Muscade.SpyAxis()
-
-Spoof a [`GLMakie.jl`](https://docs.makie.org/) `Axis`/`Axis3` object so that calls like
-
-    lines!(  axis,args...;kwargs...) 
-    
-result in `args` and `kwargs` being stored in `axis`, allowing to test functions that generate plots.
-Results are accessed by for example
-
-    axis.call[3].fun        
-    axis.call[3].args[2]
-
-To get the name of the 3rd [`GLMakie.jl`](https://docs.makie.org/) function that was called, and the
-2nd input argument of this call.
-
-Only `lines!`, `scatter!` and `mesh!` logging functions are implemented for now, but more functions can
-easily be added.
-"""
-struct SpyAxis
-    call::Vector{Any}
-end
-SpyAxis() = SpyAxis(Any[])
-GLMakie.lines!(  axis::SpyAxis,args...;kwargs...) = push!(axis.call,(fun=:lines!  ,args=args,kwargs=kwargs))
-GLMakie.scatter!(axis::SpyAxis,args...;kwargs...) = push!(axis.call,(fun=:scatter!,args=args,kwargs=kwargs))
-GLMakie.mesh!(   axis::SpyAxis,args...;kwargs...) = push!(axis.call,(fun=:mesh!   ,args=args,kwargs=kwargs))
 
 """
     Muscade.GUI(state,refstate=state[1];dim=3,kwargs...)

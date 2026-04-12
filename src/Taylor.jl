@@ -209,11 +209,10 @@ to_order{Pa}(a) where{Pa}= to_order{Pa,npartial(a)}(a)
 #########################
 
 """
-    McLaurin(Ty,x)
+    McLaurin(Ty,Δx)
 
 `Ty::∂ℝ` has partials to arbitrary order with respect to a variable `x`. These
-partials define a McLaurin expansion, which `McLaurin` evaluates at value `x`, 
-as if `Ty` had been computed at 0.
+partials define a McLaurin expansion, which `McLaurin` evaluates at value `Δx`.
 
 `McLaurin` handles nested structures of `Tuple`s and `SVector`s of `∂ℝ`, applying the
 expansion to each element.

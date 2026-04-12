@@ -22,7 +22,7 @@ function normalize∞!(vec) # ensures that the largest term is 1 (with zero ℑ 
 end
 
 """
-    λ,v,ncv = geneig{ALGO}(A,B,neig=5)
+    λ,v,ncv = Muscade.geneig{ALGO}(A,B,neig=5)
 
 Solves `(A-λ*B)*v=0`, finding the `neig` lowest eigenvalues `λ` (in absolute value) and the corresponding eigenvectors `v` (a `Vector{Vector}`)
 
