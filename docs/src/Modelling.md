@@ -119,17 +119,39 @@ These element-results are not stored in the `State`, and tagging variables does 
 
 ## Units
 
-`Muscade` provides functionality to transform quantities to and from basic SI units.
+`Muscade` provides functionality to transform quantities to and from basic SI units. The SI system has here been extended to include the [nat](https://en.wikipedia.org/wiki/Nat_(unit)).
 
 ```julia
 using Muscade, Printf
-using Muscade: m, kg, pound, foot
-rho          = 3←(pound/foot^3)                      # convert to SI
-vieuxquintal = 1000*pound                            # define new unit
+using Muscade.Toolbox # get ← and → operators
+using Muscade.Toolbox: m, kg, pound, foot
+rho          = 3←(pound/foot^3)                       # convert to SI
+vieuxquintal = 1000*pound                             # define new unit
 @printf("Density [pound/foot^3] %f",rho→pound/foot^3) # convert from SI
 ```
 
+`pound/foot^3` and `vieuxquintal` are `Unit`s, while `rho` is a `Float64`.
+
 Arrays can be converted in the same way: `[200,300,24]←mm`.
+
+The following units and constants are available:
+m, metre, kg, kilogram, s, second, A, Ampere, K, Kelvin, Cd, candela, mol, mole, nat, nit, 
+yocto, zepto, atto, femto, pico, nano, micro,milli, centi, deci,  
+dimensionless, ena, deca, hecto, kilo, mega, giga, tera, peta, exa, zetta, yotta,  
+Å,  Angstrom,  μm,  micrometre, mm, millimetre, cm, centimetre, dm, decimetre, km, kilometre, 
+are, ha, hectare, l, litre, g, gram, Mg, tonne, N, Newton, kN, MN, GN, 
+Pa, Pascal, kPa, MPa, GPa, J, Joule, W, Watt, V, Volt, mV, ε, strain, με, microstrain, 
+event, Hz, Hertz, rad, radian, period, turn, deg, degree, sr, steradian, sphere, Coulomb, C, Ohm, Ω, 
+c, G, elementarycharge, e, Avogadro, Nₐ, Faraday, F, gasconst, R, Boltzman, kᵦ, Planck, h, rPlanck, ħ, 
+bit, Shannon, ban, dit, Hartely, octet, byte, 
+minute, hour, day, week, year, month, kmh, 
+eV, inch, foot, yard, fathom, furlong, cable, mils, thou, nautical, mile, alen, 
+USacre, mål, ouce, pound, shortton, poundforce, kip, cmil, kcmil, MCM, 
+kgf, horsepower, knot, USpint, USgallon, USfloz, barrel, hogshead, 
+psi, ksi, bar, atm, mmHg, torr, 
+BTU, calorie, kgTNT, KWh, denier.
+
+To verify what a unit is, import it `julia> using Muscade.Toolbox: kcmil` then display it `julia> kcmil`.
 
 A guideline for handling units without [problems](https://en.wikipedia.org/wiki/Mars_Climate_Orbiter) is:
 
@@ -139,7 +161,7 @@ A guideline for handling units without [problems](https://en.wikipedia.org/wiki/
 - **Users** convert Muscade outputs just before printing them out `printf("stress [MPa] %f",stress → MPa)`.
 
 Excellent packages exist for the handling of units ([`Unitful.jl`](https://painterqubits.github.io/Unitful.jl/stable/) ).  These packages have zero
-runtime overhead, and allow to verify code for unit consistency (`Muscade` does not provide this). However, it is arguably not possible to make these packages work with `Muscade`: In `Muscade`, `3←(pound/foot^3)` is of type `Float64`.  A comparable operation in [`Unitful.jl`](https://painterqubits.github.io/Unitful.jl/stable/) would output a variable with a *type* containing data about dimensionality. `Muscade` handles various arrays of quantities with different dimensionality: such a solution would result in arrays of heterogeneous types. `Muscade` does not allow this, as this would result in catastrophic loss of performance due to [type instability](@ref typestab).
+runtime overhead, and allow to verify code for unit consistency (something `Muscade` does not provide). However, it is arguably not possible to make these packages work with `Muscade`: In `Muscade`, `3←(pound/foot^3)` is of type `Float64`.  A comparable operation in [`Unitful.jl`](https://painterqubits.github.io/Unitful.jl/stable/) would output a variable with a *type* containing data about dimensionality. `Muscade` handles various arrays of quantities with different dimensionality: such a solution would result in arrays of heterogeneous types. `Muscade` does not allow this, as this would result in catastrophic loss of performance due to [type instability](@ref typestab).
 
 ## Drawing
 

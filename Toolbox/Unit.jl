@@ -1,3 +1,5 @@
+    using Printf
+
     struct Unit
         phydim :: Vector{Float64}
         ct     :: Float64
@@ -19,7 +21,7 @@
     →(a::Number,b::Unit)               =                        a   /b.ct
     →(a        ,b::Unit)               =                        a  ./b.ct
     function Base.string(a::Unit)
-        fundamental = ["m","kg","s","A","K","cd","mol","bit"]
+        fundamental = ["m","kg","s","A","K","cd","mol","nat"]
         dsc =  a.ct == 1 ? "" : "$(a.ct) "
         for (i,d) in enumerate(a.phydim)
             if d==0.  continue end
@@ -31,7 +33,7 @@
         if dsc[end]=='*' dsc = dsc[1:end-1] end
         return dsc
     end
-    show(io::IO,x::Unit) = write(io,string(x))
+    Base.show(io::IO,x::Unit) = write(io,@sprintf("Unit: %s",string(x)))
 
     # Basic units
     public m,metre,kg,kilogram,s,second,A,Ampere,K,Kelvin,Cd,candela,mol,mole,nat,nit
@@ -45,7 +47,7 @@
     const nat      = nit      = Unit([0.,0.,0.,0.,0.,0.,0.,1.]) # ... yes, but this *should* be a SI Unit!
 
     # Prefixes
-    public yocto,zepto,atto,femto,pico,nano,micromilli,centi,deci
+    public yocto,zepto,atto,femto,pico,nano,micro,milli,centi,deci
     const yocto    = Unit(1e-24)
     const zepto    = Unit(1e-21)
     const atto     = Unit(1e-18)
