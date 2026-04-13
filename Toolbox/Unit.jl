@@ -124,7 +124,7 @@
     const rPlanck  = ħ  = h/2π
 
     # data/probability
-    public bit,Shannon,ban,dit,Hartely,octet,byte
+    public bit,Shannon,ban,dit,Hartley,octet,byte
     const bit      = Shannon       = log( 2)nit
     const ban      = dit = Hartley = log(10)nit
     const octet    = byte = 8bit
@@ -180,6 +180,6 @@
     public BTU,calorie,kgTNT,KWh,denier
     const BTU      = 1.0545e3J
     const calorie  = 4.184J
-    const kgTNT    = 1e6calorie
-    const kWh      = 1e3W*hour
+    const kgTNT    = mega*calorie
+    const kWh      = kilo*W*hour
     const denier   = 1g/9000m

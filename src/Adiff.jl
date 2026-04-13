@@ -340,4 +340,16 @@ function hasnan(a::AbstractArray)
     return false
 end
 
-
+# Print addifs
+const subscripts = ('₁','₂','₃','₄','₅','₆','₇','₈','₉')
+#const supscripts = ('¹','²','³','⁴','⁵','⁶','⁷','⁸','⁹')
+string_(a::Float64) = strip(@sprintf("%4.3g",a))
+string_(a::∂ℝ     ) = string(a)
+function Base.string(a::∂ℝ{P,N,R}) where{P,N,R}
+    dx = N==0 ? "" : @sprintf("%s",string_(a.dx[1]))
+    for i = 2:N
+       dx =   @sprintf("%s, %s",dx,string_(a.dx[i])) 
+    end
+    return @sprintf("%s + ∂%s⟨%s⟩",string_(a.x),subscripts[P],dx) # \partial \langle \rangle
+end
+Base.show(io::IO,x::∂ℝ) = write(io,@sprintf("%s",string(x)))

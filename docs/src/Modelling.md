@@ -135,16 +135,25 @@ vieuxquintal = 1000*pound                             # define new unit
 Arrays can be converted in the same way: `[200,300,24]←mm`.
 
 The following units and constants are available:
+
 m, metre, kg, kilogram, s, second, A, Ampere, K, Kelvin, Cd, candela, mol, mole, nat, nit, 
-yocto, zepto, atto, femto, pico, nano, micro,milli, centi, deci,  
+
+yocto, zepto, atto, femto, pico, nano, micro, milli, centi, deci,  
 dimensionless, ena, deca, hecto, kilo, mega, giga, tera, peta, exa, zetta, yotta,  
+
 Å,  Angstrom,  μm,  micrometre, mm, millimetre, cm, centimetre, dm, decimetre, km, kilometre, 
+
 are, ha, hectare, l, litre, g, gram, Mg, tonne, N, Newton, kN, MN, GN, 
 Pa, Pascal, kPa, MPa, GPa, J, Joule, W, Watt, V, Volt, mV, ε, strain, με, microstrain, 
+
 event, Hz, Hertz, rad, radian, period, turn, deg, degree, sr, steradian, sphere, Coulomb, C, Ohm, Ω, 
+
 c, G, elementarycharge, e, Avogadro, Nₐ, Faraday, F, gasconst, R, Boltzman, kᵦ, Planck, h, rPlanck, ħ, 
-bit, Shannon, ban, dit, Hartely, octet, byte, 
+
+bit, Shannon, ban, dit, Hartley, octet, byte, 
+
 minute, hour, day, week, year, month, kmh, 
+
 eV, inch, foot, yard, fathom, furlong, cable, mils, thou, nautical, mile, alen, 
 USacre, mål, ouce, pound, shortton, poundforce, kip, cmil, kcmil, MCM, 
 kgf, horsepower, knot, USpint, USgallon, USfloz, barrel, hogshead, 
