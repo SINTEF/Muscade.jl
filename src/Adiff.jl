@@ -342,10 +342,9 @@ end
 
 # Print addifs
 const subscripts = ('₁','₂','₃','₄','₅','₆','₇','₈','₉')
-#const supscripts = ('¹','²','³','⁴','⁵','⁶','⁷','⁸','⁹')
 string_(a::Float64) = strip(@sprintf("%4.3g",a))
 string_(a::∂ℝ     ) = string(a)
-function Base.string(a::∂ℝ{P,N,R}) where{P,N,R}
+function string_(a::∂ℝ{P,N,R}) where{P,N,R}
     p = subscripts[P]
     x = string_(a.x)
     dx = N==0 ? "" : @sprintf("%s",string_(a.dx[1]))
@@ -353,7 +352,5 @@ function Base.string(a::∂ℝ{P,N,R}) where{P,N,R}
        dx =   @sprintf("%s, %s",dx,string_(a.dx[i])) 
     end
     return @sprintf("%s + ∂%s⟨%s⟩",x,p,dx) # \partial \langle \rangle mathematicaly-explicit
-#    return @sprintf("%s⟨%s | %s⟩",p,x,dx) #  \langle \rangle data structure-explicit
 end
-#Base.show(io::IO,x::∂ℝ) = write(io,@sprintf("%s",string(x)))
-Base.show(io::IO,x::∂ℝ) = write(io,string(x))
+Base.show(io::IO,x::∂ℝ) = print(io,string_(x))

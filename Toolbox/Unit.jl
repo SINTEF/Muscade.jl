@@ -20,20 +20,19 @@
     ←(a       ,b::Unit)                =                        a  .*b.ct
     →(a::Number,b::Unit)               =                        a   /b.ct
     →(a        ,b::Unit)               =                        a  ./b.ct
-    function Base.string(a::Unit)
+    function Base.show(io::IO,a::Unit)
         fundamental = ["m","kg","s","A","K","cd","mol","nat"]
-        dsc =  a.ct == 1 ? "" : "$(a.ct) "
+        dsc =  a.ct == 1 ? "" : @sprintf("%g ",a.ct)
         for (i,d) in enumerate(a.phydim)
             if d==0.  continue end
-            if d==1.  dsc = "$dsc$(fundamental[i])*"
-            else      dsc = "$dsc$(fundamental[i])^$(d)*"
+            if d==1.  dsc = @sprintf("%s%s ",dsc,fundamental[i])
+            else      dsc = @sprintf("%s%s^%g ",dsc,fundamental[i],d)
             end
         end
         if length(dsc)==0 dsc = "." end
-        if dsc[end]=='*' dsc = dsc[1:end-1] end
-        return dsc
+        if dsc[end]==' ' dsc = dsc[1:end-1] end
+        print(io,@sprintf("[%s]",dsc))
     end
-    Base.show(io::IO,x::Unit) = write(io,@sprintf("Unit: %s",string(x)))
 
     # Basic units
     public m,metre,kg,kilogram,s,second,A,Ampere,K,Kelvin,Cd,candela,mol,mole,nat,nit
