@@ -1,7 +1,7 @@
 # # 3D rotations
 using LinearAlgebra, StaticArrays
 """
-    sinc1(x)
+    Muscade.sinc1(x)
 
 `sinc1(x) = sin(x)/x` - but  `sinc1(0.) = 1.`.  The function can be differentiated
 to the fourth order.
@@ -11,6 +11,11 @@ This differs from Julia's `sinc(x) = sin(π*x)/(π*x)`.
 See also [`Toolbox.scac`](@ref)
 """
 sinc1(x) = sinc(x/π) 
+"""
+    Toolbox.sinc1′(x)
+
+first derivative of [`Toolbox.sinc1(x)`](@ref).
+"""
 function sinc1′(x)
     if abs(x)>1e-3
         s,c=sincos(x)
@@ -20,6 +25,11 @@ function sinc1′(x)
         x*(-1/3 +x²/30) 
     end
 end
+"""
+    Toolbox.sinc1″(x)
+
+second derivative of [`Toolbox.sinc1(x)`](@ref).
+"""
 function sinc1″(x)
     if abs(x)>1e-1
         s,c=sincos(x)
@@ -29,6 +39,11 @@ function sinc1″(x)
         -1/3 +x²*(1/10 +x²*(-1/168 +x²*(1/6480))) 
     end
 end
+"""
+    Toolbox.sinc1‴(x)
+
+third derivative of [`Toolbox.sinc1(x)`](@ref).
+"""
 function sinc1‴(x)
     if abs(x)>0.4
         s,c=sincos(x)
@@ -38,6 +53,11 @@ function sinc1‴(x)
         x*(1/5 +x²*(-1/42 +x²*(1/1080 +x²*(-1/55440 +x²*(1/4717440)))))
     end
 end
+"""
+    Toolbox.sinc1⁗(x)
+
+fourth derivative of [`Toolbox.sinc1(x)`](@ref).
+"""
 function sinc1⁗(x) 
     x² = x*x
     1/5 +x²*(-1/14 +x²*(1/216 +x²*(-1/7920 +x²*(1/524160 +x²*(-1/54432000 +x²*(1/54432000 +x²*(-1/8143027200 +x²*(1/1656387532800))))))))
@@ -51,7 +71,7 @@ Muscade.@DiffRule1(sinc1‴,              sinc1⁗( a.x)                * a.dx )
 Muscade.@DiffRule1(sinc1⁗,              sinc1⁗′(a.x)                * a.dx )
 
 """
-    scac(x)
+    Toolboxscac(x)
 
 `scac(x) = sinc1(acos(x)),`  The function can be differentiated
 to the fourth order over ]-1,1] .
@@ -71,7 +91,7 @@ const Mat33{R}   = SMatrix{3,3,R,9}
 const Vec3{R}    = SVector{3,R}
 
 """
-    spin(v::SVector{3})
+    Toolbox.spin(v::SVector{3})
 
 Transform a rotation vector `v` into the cross product matrix `M`, such that
 `M ∘₁ a = v × a`.
@@ -80,7 +100,7 @@ See also [`Toolbox.spin⁻¹`](@ref), [`Toolbox.Rodrigues`](@ref), [`Toolbox.Rod
 """
 spin(  v::Vec3 ) = SMatrix{3,3}(0,v[3],-v[2],-v[3],0,v[1],v[2],-v[1],0)
 """
-    spin⁻¹(M::SMatrix{3,3})
+    toolbox.spin⁻¹(M::SMatrix{3,3})
 
 Transform a cross product matrix `M` into the rotation vector `v`, such that
 `v × a = M ∘₁ a`.
@@ -95,7 +115,7 @@ Computes the trace of a matrix.
 """
 trace( m::Mat33) = m[1,1]+m[2,2]+m[3,3] 
 """
-    Rodrigues⁻¹(v::SVector{3})
+    Toolbox.Rodrigues⁻¹(v::SVector{3})
 
 Transform a rotation matrix `M` into the rotation vector `v`, such that
 `|v| < π`. Undefined for rotations of angle `π`
@@ -122,7 +142,7 @@ function spin²(S)
 end     
 
 """
-    Rodrigues(v::SVector{3})
+    Toolbox.Rodrigues(v::SVector{3})
 
 Transform a rotation vector `v` into the rotation matrix `M`.
 
@@ -152,7 +172,7 @@ end
 #                         -A*b+B*ca,    A*a*B*bc, 1-B*(a²+b²))
 # end
 """
-    adjust(u::SVector{3},v::SVector{3})
+    Toolbox.adjust(u::SVector{3},v::SVector{3})
 
 Compute the matrix of the rotation with smallest angle that transforms `u` into a vector colinear with v.  
 Fails if |u|=0, |v|=0 or if the angle of the rotation is π.
@@ -167,7 +187,7 @@ function adjust(u::Vec3{R},v::Vec3{R}) where{R}
     return w/sinc1(θ)
 end
 """
-    intrinsicrotationrates(rₑ::NTuple{ND,SMatrix{3,3}}) where{ND}
+    Toolbox.intrinsicrotationrates(rₑ::NTuple{ND,SMatrix{3,3}}) where{ND}
 
 Transform a `NTuple` containing a rotation matrix and its extrinsic time derivatives,
 into a `NTuple` containing a (zero) rotation vector and its intrinsic time derivatives.
