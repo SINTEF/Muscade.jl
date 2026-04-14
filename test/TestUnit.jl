@@ -17,6 +17,6 @@ dou   = 2m
     @test ( [[1,2],3]←dou)≈ [[2.,4.],6.]
     @test ( (2←imp)→pound/foot^3 )≈ 2.
     @test (2+2→imp )≈ (4→imp)
-    @test string(imp )== "16.018463373960145 m^-3.0*kg"
+    @test string(imp )== "[16.0185 m^-3 kg]"
 end
 end
