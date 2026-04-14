@@ -209,18 +209,17 @@ to_order{Pa}(a) where{Pa}= to_order{Pa,npartial(a)}(a)
 #########################
 
 """
-    McLaurin(Ty,x)
+    McLaurin(Ty,Δx)
 
 `Ty::∂ℝ` has partials to arbitrary order with respect to a variable `x`. These
-partials define a McLaurin expansion, which `McLaurin` evaluates at value `x`, 
-as if `Ty` had been computed at 0.
+partials define a McLaurin expansion, which `McLaurin` evaluates at value `Δx`.
 
 `McLaurin` handles nested structures of `Tuple`s and `SVector`s of `∂ℝ`, applying the
 expansion to each element.
 
 `McLaurin` is a utility function behind [`chainrule`](@ref) and [`Taylor`](@ref)
 
-See also: [`chainrule`](@ref), [`Taylor`](@ref), [`revariate`](@ref), [`fast`](@ref)    
+See also: [`chainrule`](@ref), [`Taylor`](@ref), [`revariate`](@ref), [`apply`](@ref)    
 """
 McLaurin(y::Tuple,Δx)                          = tuple(McLaurin(first(y),Δx),McLaurin(Base.tail(y),Δx)...) 
 McLaurin( ::Tuple{},Δx)                        = tuple() 
@@ -251,7 +250,7 @@ partials define a Taylor expansion, which `Taylor` evaluates at value `x`
 `Taylor` handles nested structures of `Tuple`s and `SVector`s of `∂ℝ`, applying the
 expansion to each element.
 
-See also: [`chainrule`](@ref), [`McLaurin`](@ref), [`revariate`](@ref), [`fast`](@ref)    
+See also: [`chainrule`](@ref), [`McLaurin`](@ref), [`revariate`](@ref), [`apply`](@ref)    
 """
 Taylor(y::Tuple,x₀,x) = McLaurin(y,x-x₀)
 
@@ -266,7 +265,7 @@ is faster than
     y  = f(x)
 if the length of `x` is smaller than the length of its partials.
 
-See also: [`revariate`](@ref), [`fast`](@ref)    
+See also: [`revariate`](@ref), [`apply`](@ref)    
 """
 function chainrule(Ty,x) 
     fx = flatten(x)
@@ -274,25 +273,26 @@ function chainrule(Ty,x)
 end
 
 """
-    y,... = fast(f,x)
+    y,... = apply{:chainrule}(f,x)
+    y,... = apply{:direct   }(f,x)
 
-In the context of forward automatic differentiation using `∂ℝ`, accelerate the evaluation of
-`y,...= f(x)` if the length of `x` is smaller than the length of its partials.
+In the context of forward automatic differentiation using `∂ℝ`, `apply{:chainrule}`
+accelerates the evaluation of `y,...= f(x)` if the length of `x` is smaller than 
+the length of its partials.
 
-Also work where `x` is a nested structure of `Tuple`s and `NamedTuple`s where the leaves
+`apply{:direct}` simply executes `f(x)` (no chain rule is applied)
+
+Also works where `x` is a nested structure of `Tuple`s and `NamedTuple`s where the leaves
 are `ℝ` or `SArray{S,R} where {S,R<:ℝ}`.    
 
-Be extremely careful with closures, making sure that `f` does not capture variables of type `∂ℝ`.
+Be extremely careful if `f` is a closure, making sure that `f` does not capture variables of type `∂ℝ`.
 
-Wrapper function of [`revariate`](@ref) and [`McLaurin`](@ref)      
+Wrapper function of [`revariate`](@ref) and [`chainrule`](@ref) 
+
 """
-fast(      f,x) = apply{:chainrule}(f,x)    
-justinvoke(f,x) = apply{:direct}( f,x)    
-
-
 struct apply{Mode} end
 apply{:chainrule}(f,x) = chainrule(f(revariate(x)),x)
-apply{:direct}( f,x) = f(x)
+apply{:direct   }(f,x) = f(x)
 
 """
     composevalue{P,ND}(Ty,X_)

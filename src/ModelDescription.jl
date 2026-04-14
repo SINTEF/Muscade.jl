@@ -451,3 +451,10 @@ function Base.get(model::Model,dofID::DofID)
 
     return (class=doftyp.class,field=doftyp.field,nodID=nodID,scale=doftyp.scale,eles=eles)
 end
+
+"""
+    et = eletyp(model)
+
+Return a vector of the concrete types of elements in the model. 
+"""
+eletyp(model::Model) = eltype.(model.eleobj)

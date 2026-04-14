@@ -116,7 +116,7 @@ function basic_irfft!(A::AbstractVector{Complex{R}},brp,iW,pc) where{R<:Real}
     basic_fft!(A,brp,pc,1)  
 end
 """
-    X = 𝔉(x,δt)  # typeset with \\mfrakF\\Bbbr
+    X = Muscade.𝔉(x,δt)  # typeset with \\mfrakF\\Bbbr
 
 Fourrier transform of a real time series x stored at time steps `δt` and length `2N = 2*2^p`
 into a complex spectre X stored at frequency intervals `δω=getδω(2N,δt)=2π/(2N*δt)`.  
@@ -172,7 +172,7 @@ function 𝔉!(A::AbstractMatrix{Complex{R}},δt::ℝ) where{R<:Real} #\mfrakF
     return A
 end
 """
-    x = 𝔉⁻¹(X,δω)  # typeset with \\mfrakF\\^-\\^1
+    x = Muscade.𝔉⁻¹(X,δω)  # typeset with \\mfrakF\\^-\\^1
 
 See [`𝔉`](@ref)    
 
@@ -218,13 +218,13 @@ function 𝔉⁻¹!(A::AbstractMatrix{Complex{R}},δω::ℝ) where{R<:Real} #\mf
 end
 
 """
-    δω=getδω(n,δt) = 2π/(n*δt)
+    δω=Muscade.getδω(n,δt) = 2π/(n*δt)
 
     `n` is the length of the time series
 """
 getδω(n,δt)    =  2π/(n*δt)
 """
-    getδt(n,δω) = 2π/(n*δω)
+    Muscade.getδt(n,δω) = 2π/(n*δω)
  
     `n` is the length of the time series
 

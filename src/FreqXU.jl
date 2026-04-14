@@ -39,7 +39,7 @@ it at times `t=range(start=t₀,step=Δt,length=2^p)`. The return
 - `dbg=(;)`           a named tuple to trace the call tree (for debugging).
 - `verbose=true`      set to false to suppress printed output (for testing).
 - `silenterror=false` set to true to suppress print out of error (for testing) .
-- `initialstate`      a `State`.
+- `initialstate`      a `State` at which the problem is linearized.
 - `t₀=0.`             time of first step.                      
 - `Δt`                time step.
 - `p`                 `2^p` steps will be analysed.      

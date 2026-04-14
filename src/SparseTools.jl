@@ -19,7 +19,7 @@
 
 
 """
-    bigmat,bigmatasm,bigvecasm,bigvecdis = prepare(pattern)
+    bigmat,bigmatasm,bigvecasm,bigvecdis = Muscade.prepare(pattern)
 
 Prepare for the assembly of sparse blocks into a large sparse matrix. 
 `bigmat` is allocated, with the correct sparsity structure, but its `nzval` undef'ed.    
@@ -93,7 +93,7 @@ function prepare(pattern::SparseMatrixCSC{SparseMatrixCSC{Tv,𝕫},𝕫}) where{
     return    bigmat,bigmatasm,pgr,pgc    
 end
 """
-    addin!(asm,global,block,ibr,ibc,factor=1.)
+    Muscade.addin!(asm,global,block,ibr,ibc,factor=1.)
 
 Add a sparse `block` into a large `out` sparse matrix, at block-row and -column `ibr` and `ibc`.  
    Use [`prepare`](@ref) to allocate memory for `global` and build the assembler `asm`.

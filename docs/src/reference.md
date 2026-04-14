@@ -1,41 +1,16 @@
 # [Reference](@id reference)
 
-## Constants
+## Muscade
 
 ```@autodocs
 Modules = [Muscade]
-Order   = [:constant]
+Private = false
 ```
 
-## Types
-
-```@autodocs
-Modules = [Muscade]
-Order   = [:type]
-```
-
-## Functions
-
-```@autodocs
-Modules = [Muscade]
-Order   = [:function]
-```
-
-## Macros
-
-```@autodocs
-Modules = [Muscade]
-Order   = [:macro]
-```
-
-## Toolbox
+## Muscade.Toolbox
 
 ```@autodocs
 Modules = [Muscade.Toolbox]
+Private = false
 ```
 
-
-## Index
-
-```@index
-```

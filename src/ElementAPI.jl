@@ -48,7 +48,7 @@ See also: [`∂0`](@ref),[`∂1`](@ref),[`getsomedofs`](@ref)
 ∂n(y,ider) = length(y) ≥ider+1 ? y[ider+1] : zilch(y[1]) # slow
 
 """
-    rotations = getsomedofs(X,[3,6])
+    rotations = getsomedofs(X,SVector(3,6))
 
 Used by elements' `residual` or `lagrangian` to some degrees of freedom, and their
 time derivatives, from the variables `X` and `U`. 
@@ -99,7 +99,7 @@ See also: [`Muscade.lagrangian`](@ref), [`Muscade.residual`](@ref), [`Muscade.no
 doflist(     ::Type{E}) where{E<:AbstractElement}  = muscadeerror(@sprintf("method 'Muscade.doflist' must be provided for elements of type '%s'\n",E))
 
 """
-    no_second_order(::Type{E<:AbstractElement})
+    Muscade.no_second_order(::Type{E<:AbstractElement})
 
 Elements that define `residual` are normaly mostly differentiated only to the first order, to avoid
 excessive compilation and/or execution time.
