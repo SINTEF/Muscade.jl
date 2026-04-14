@@ -343,7 +343,6 @@ end
 # Print addifs
 const subscripts = ('₁','₂','₃','₄','₅','₆','₇','₈','₉')
 string_(a::Float64) = strip(@sprintf("%4.3g",a))
-string_(a::∂ℝ     ) = string(a)
 function string_(a::∂ℝ{P,N,R}) where{P,N,R}
     p = subscripts[P]
     x = string_(a.x)
