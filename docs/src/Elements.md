@@ -472,9 +472,9 @@ Some advanced elements (in particular, elements with co-rotated element systems)
 
 Helper functions [`motion`](@ref) and [`motion⁻¹`](@ref) allow to transform a `tuple` of `SVectors`, like the input `X` given to `residual` and `lagrangian`, into a an automatic differentiation structure, so that functions of `∂0(X)` only can be differentiated with respect to time. 
 
-It is sometimes possible to improve performance by identifying a part of `residual` or `lagrangian` which takes a single, `SVector` as an input: A vector shorter than the list of dofs differentiated by the solver allow to accelerate computations, by using [`fast`](@ref), or for more adbanced usage, [`revariate`](@ref) in combination with [`chainrule`](@ref). 
+It is sometimes possible to improve performance by identifying a part of `residual` or `lagrangian` which takes a single, `SVector` as an input: A vector shorter than the list of dofs differentiated by the solver allow to accelerate computations, by using [`apply`](@ref), or for more advanced usage, [`revariate`](@ref) in combination with [`chainrule`](@ref). 
 
-In [`toolbox/BeamElement.jl`](StaticBeamAnalysis.md), in function `kinematics`, [`fast`](@ref) is applied to accelerate a process of differentiation to the 2nd order.  In `residual`, [`revariate`](@ref) and [`chainrule`](@ref) in order to differentiate `kinematics` and accelerate computations by exploiting the fact that `kinematic` is a function of `∂0(X)` only.
+In [`toolbox/BeamElement.jl`](StaticBeamAnalysis.md), in function `kinematics`, [`apply`](@ref) is applied to accelerate a process of differentiation to the 2nd order.  In `residual`, [`revariate`](@ref) and [`chainrule`](@ref) in order to differentiate `kinematics` and accelerate computations by exploiting the fact that `kinematic` is a function of `∂0(X)` only.
 
 
 

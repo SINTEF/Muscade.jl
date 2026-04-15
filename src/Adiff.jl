@@ -62,8 +62,26 @@ function Base.convert(::Type{∂ℝ{Pa,Na,Ra}},b::∂ℝ{Pb,Nb,Rb}) where{Pa,Pb,
 end
 
 # Pack and unpack
+"""
+    Muscade.precedence(a::∂ℝ{P,N,R}) → P
+    Muscade.precedence(typeof(a)) → P
+
+Also handles static arrays and tuples.    
+
+See also: [`npartial`](@ref)
+
+"""    
 precedence( ::Type{Union{}})                              = 0
 precedence( ::Type{<:∂ℝ{P,N,R}}) where{P,N,R<:ℝ}          = P
+"""
+    Muscade.npartial(a::∂ℝ{P,N,R}) → N
+    Muscade.npartial(typeof(a)) → N
+
+Also handle static arrays and tuples.    
+
+See also: [`precedence`](@ref)
+
+"""    
 npartial(   ::Type{<:∂ℝ{P,N,R}}) where{P,N,R<:ℝ}          = N
 precedence( ::Type{<:ℝ})                                  = 0
 npartial(   ::Type{<:ℝ})                                  = 0
@@ -322,4 +340,16 @@ function hasnan(a::AbstractArray)
     return false
 end
 
-
+# Print addifs
+const subscripts = ('₁','₂','₃','₄','₅','₆','₇','₈','₉')
+string_(a::Float64) = strip(@sprintf("%4.3g",a))
+function string_(a::∂ℝ{P,N,R}) where{P,N,R}
+    p = subscripts[P]
+    x = string_(a.x)
+    dx = N==0 ? "" : @sprintf("%s",string_(a.dx[1]))
+    for i = 2:N
+       dx =   @sprintf("%s, %s",dx,string_(a.dx[i])) 
+    end
+    return @sprintf("%s + ∂%s⟨%s⟩",x,p,dx) # \partial \langle \rangle mathematicaly-explicit
+end
+Base.show(io::IO,x::∂ℝ) = print(io,string_(x))

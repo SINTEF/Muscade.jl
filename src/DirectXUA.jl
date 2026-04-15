@@ -410,7 +410,10 @@ The solver does not yet support interior point methods.
 - `dbg=(;)`           a named tuple to trace the call tree (for debugging).
 - `verbose=true`      set to false to suppress printed output (for testing).
 - `silenterror=false` set to true to suppress print out of error (for testing) .
-- `initialstate`      an `AbstractVector` of `State`: one initial state for each experiment
+- `initialstate`      an `AbstractVector` of `State`: one initial state for each experiment.
+                      `initialstate` must be with zero time derivatives.  It does not
+                      provide initial conditions for the problem, but an initial guess
+                      for the iterative solver.        
 - `time`              an `AbstractVector` (of same length as `initialstate`) of `AbstractRange` 
                       of times at which to compute the steps.  Example: 0:0.1:5.                       
 - `maxiter=50`        maximum number of Newton-Raphson iterations. 
@@ -446,7 +449,7 @@ function solve(::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
     #  Mostly constants
     local LU
     nexp,nstep,Δt         = length(time),length.(time),step.(time)
-    length(initialstate)== nexp || muscadeerror("initialstate and time must be of the same length") 
+    length(initialstate)== nexp || muscadeerror("initialstate and time must be of the same length=number of experiments") 
     γ                     = 0.
     nder                  = (1,OX+1,OU+1,IA)
     model,dis             = initialstate[1].model, initialstate[1].dis

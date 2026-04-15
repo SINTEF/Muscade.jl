@@ -90,7 +90,6 @@ mergerequest(::Nothing, ::Nothing) = nothing
         :($key = $v) 
     end
     return code_tuple(t...)
-    return c
 end
 Base.haskey(::Nothing,a) = false
 
@@ -392,7 +391,7 @@ macro espy(ex)
 end
 
 """
-    @espydbg function ... end
+    Muscade.@espydbg function ... end
 
 Generate the same code as [`@espy`](@ref) and print it (for debug purposes).
 

@@ -55,6 +55,7 @@ makedocs(sitename ="Muscade.jl",
                         "Examples" => [@sprintf("%s.md",ex) for ex∈examples], 
                         "Diagnostic.md",
                         "reference.md",
+                        "internals.md",
                         "Appendix" => [
                                                 "TypeStable.md",
                                                 "Memory.md",

@@ -9,13 +9,13 @@ nrow = 3
 ncol = 2
 block        = sparse([1,1,2,3,3],[1,2,2,2,3],randn(5))  # block
 pattern      = sparse([1,2,2,3,3],[2,1,2,1,2],[block,block,block,block,block]) # pattern of the blocks in bigsparse
-bigsparse,bigsparseasm,bigveca   = prepare(pattern)
+bigsparse,bigsparseasm,bigveca   = Muscade.prepare(pattern)
 
 
-zero!(bigsparse)
+Muscade.zero!(bigsparse)
 for irow = 1:nrow, icol = 1:ncol
     if irow>1 || icol>1
-        addin!(bigsparseasm,bigsparse,block,irow,icol)
+        Muscade.addin!(bigsparseasm,bigsparse,block,irow,icol)
     end
 end
 
@@ -31,7 +31,7 @@ nrow = 3
 ncol = 3
 block        = sparse([1,1,1,2,3,4],[1,2,4,2,3,4],ones(6))  # block
 pattern      = sparse([1,2,3],[1,2,3],[block,block,block]) # pattern of the blocks in bigsparse
-bigsparse,bigsparseasm,bigvecasm,bigvecdis   = prepare(pattern)
+bigsparse,bigsparseasm,bigvecasm,bigvecdis   = Muscade.prepare(pattern)
 
 @testset "bigsparseasm 2" begin
     @test bigsparseasm.colptr == [1,2,3,4]
@@ -42,10 +42,10 @@ bigsparse,bigsparseasm,bigvecasm,bigvecdis   = prepare(pattern)
 end
 
 
-zero!(bigsparse)
+Muscade.zero!(bigsparse)
 (i,j,v) = findnz(pattern)
 for k = 1:nnz(pattern) 
-    addin!(bigsparseasm,bigsparse,block,i[k],j[k])
+    Muscade.addin!(bigsparseasm,bigsparse,block,i[k],j[k])
 end
 
 big2 = Matrix(bigsparse)

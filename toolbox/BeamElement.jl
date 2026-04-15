@@ -375,7 +375,7 @@ function Muscade.update_drawing(axis,o::AbstractVector{EulerBeam3D{Tmat,Udof}},o
         end
     elseif opt.style==:solid
         ζ = range(-1/2,1/2,opt.nseg+1)
-        idx(iel,iseg,isec) = mod_onebased(isec,opt.nsec)+opt.nsec*(iseg-1+(opt.nseg+1)*(iel-1)) # 1st index into rvertex
+        idx(iel,iseg,isec) = Muscade.mod_onebased(isec,opt.nsec)+opt.nsec*(iseg-1+(opt.nseg+1)*(iel-1)) # 1st index into rvertex
         if opt.Udof         ucrest         = reshape(mut.ucrest       ,(3,5          ,opt.nel)) end
         if opt.draw_marking solid_mark     = reshape(mut.solid_mark  ,(3,opt.nseg+2 ,opt.nel)) end
         solid_face                         = reshape(mut.solid_face  ,(2,opt.nsec, opt.nseg   ,opt.nel,3))

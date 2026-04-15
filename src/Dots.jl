@@ -5,6 +5,7 @@
     c = a⊗b
 
 Compute the exterior product of two arrays, so that `cᵢⱼ=aᵢ bⱼ` where `i` and `j` can be multiple indices.
+A synonym is `∘₀`.
 
 See also: [`∘₁`](@ref),[`∘₂`](@ref)
 """     
@@ -30,6 +31,12 @@ See also: [`∘₁`](@ref),[`⊗`](@ref)
 
 
 # Arrays, Views, etc. but not StaticArrays
+"""
+    c = Muscade.dots(a,b,Val(N))
+
+Compute the N-dot product of two arrays. `N=0`, `N=1` and `N=2` respectively correspond 
+to [`⊗`](@ref), [`∘₁`](@ref) and [`∘₂`](@ref).
+"""    
 @generated function dots(a::AbstractArray{Ta,Na},b::AbstractArray{Tb,Nb},::Val{ndot}) where {Ta,Tb,Na,Nb,ndot}
     # "Elrod", on Discourse/Julia, is acknowledged for the forerunner to this code
     Nar    = Na - ndot

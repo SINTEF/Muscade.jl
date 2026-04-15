@@ -85,8 +85,8 @@ nodeList, elementList, nodeCoord = MeshLine!(model, topNode, π, EulerBeam3D, xS
 # Define the prescribed end displacements of the top extremity
 @functor with(xMotion) horizMove(x,t)= SVector( x[1]-(1.0 - clutch(t,-10.,0,0.,1.,3)*181.0 + xMotion(t)) )
 @functor with(zMotion) vertMove(x,t) = SVector( x[1]-(      clutch(t,-10.,0,0.,1.,3)*303.1 + zMotion(t)) )
-addelement!(model,DofConstraint,[nodeList[3][end]]; λclass=:X, xinod=(1,),xfield=(:t1,), λinod=(1,),λfield=(:λt1,), gap=horizMove, mode=equal)
-addelement!(model,DofConstraint,[nodeList[3][end]]; λclass=:X, xinod=(1,),xfield=(:t3,), λinod=(1,),λfield=(:λt3,), gap=vertMove , mode=equal);
+addelement!(model,DofConstraint,[nodeList[3][end]]; λclass=:X, xinod=(1,),xfield=(:t1,), λinod=(1,),λfield=(:λt1,), gap=horizMove, mode=Muscade.equal)
+addelement!(model,DofConstraint,[nodeList[3][end]]; λclass=:X, xinod=(1,),xfield=(:t3,), λinod=(1,),λfield=(:λt3,), gap=vertMove , mode=Muscade.equal);
 
 # Contact elements for the bottom segment
 [addelement!(model,SoilContact,[nodeList[1][idxNod]],z₀=0.,Kh=1.0e3,Kv=1.0e4,Ch=0.,Cv=0.) for idxNod = 1:length(nodeList[1])];
