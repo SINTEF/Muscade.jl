@@ -34,3 +34,6 @@ include(joinpath(workingDir,"DryFriction.jl"))
 workingDir = joinpath(muscadeDir,"docs")
 devMuscadeIn(workingDir,muscadeDir)
 include(joinpath(workingDir,"make.jl"))
+
+# back to test/ directory
+cd(joinpath(muscadeDir,"test"))

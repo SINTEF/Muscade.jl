@@ -1,4 +1,4 @@
-module TestStrainGaugeOnEulerBeam3D
+module TestEulerBeam3DwithStrainGauge
 
 using Test, Muscade, Muscade.Toolbox, StaticArrays, LinearAlgebra
 
@@ -10,7 +10,7 @@ mat              = BeamCrossSection(EA=10.,EI₂=3.,EI₃=3.,GJ=4.,μ=1.,ι₁=1
 P                = SMatrix{3,5}(0.,.5,0.,  0.,0,.5,   0.,-.5,0.,  0.,0,-.5,  0.,.5,0.   )
 D                = SMatrix{3,5}(1.,0.,0.,  1.,0.,0.,  1.,0.,0.,   1.,0.,0.,  1/√2,0,1/√2)
 L                = 0.1
-instrumentedbeam = StrainGaugeOnEulerBeam3D(elnod;P,D,elementkwargs=(mat=mat,orient2=SVector(0.,1.,0.)))
+instrumentedbeam = EulerBeam3DwithStrainGauge(elnod;P,D,elementkwargs=(mat=mat,orient2=SVector(0.,1.,0.)))
 @testset "constructor" begin
     @test instrumentedbeam.eleobj.cₘ    ≈ [2.0, 0.0, 0.0]
     @test instrumentedbeam.eleobj.rₘ    ≈ I
@@ -23,7 +23,7 @@ instrumentedbeam = StrainGaugeOnEulerBeam3D(elnod;P,D,elementkwargs=(mat=mat,ori
     @test instrumentedbeam.K1           ≈ SVector(0.,0.,0.,0.,.25) 
     @test instrumentedbeam.K2           ≈ SVector(-0.5, 0, 0.5, 0,-.25)
     @test instrumentedbeam.K3           ≈ SVector(0, -0.5, 0, 0.5,0) 
-    @test typeof(instrumentedbeam)      ==  StrainGaugeOnEulerBeam3D{5, EulerBeam3D{BeamCrossSection, false}, @NamedTuple{strain::@NamedTuple{ε::Nothing, κ::Nothing}}}
+    @test typeof(instrumentedbeam)      ==  EulerBeam3DwithStrainGauge{5, EulerBeam3D{BeamCrossSection, false}, @NamedTuple{strain::@NamedTuple{ε::Nothing, κ::Nothing}}}
 end
 
 Λ   =  SVector(0,0,0, 0,.1,0, 0,0,0, 0,-.1,0)
@@ -75,7 +75,7 @@ Am      = map(Aᵢ->reshape(Aᵢ,(length(Aᵢ),1)),A)
 α       = 2π*(0:19)/20
 circle  = 0.5*[cos.(α) sin.(α)]'
 mut,opt = Muscade.allocate_drawing(axis,[instrumentedbeam];EulerBeam3D=(;style=:solid, nseg=1, section=circle, marking=true, Udof=false, Uscale=0.1),
-                                                           StrainGaugeOnEulerBeam3D = (;L=L)) 
+                                                           EulerBeam3DwithStrainGauge = (;L=L)) 
 mut     = Muscade.update_drawing(  axis,[instrumentedbeam],mut,opt, Λm,Xm,Um,Am,0.,nothing,(;)) 
 _       = Muscade.display_drawing!(axis,typeof(instrumentedbeam),mut,opt)                          
 
@@ -99,7 +99,7 @@ end
 costedbeam =  ElementCost(elnod;
                             req = @request(ε),
                             cost=straincost,
-                            ElementType=StrainGaugeOnEulerBeam3D,
+                            ElementType=EulerBeam3DwithStrainGauge,
                             elementkwargs = (P,D,
                                               elementkwargs=(mat=mat,orient2=SVector(0.,1.,0.))))
 

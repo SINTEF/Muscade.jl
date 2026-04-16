@@ -116,19 +116,33 @@ module Muscade
 
     public Toolbox
     module Toolbox
+        include("../toolbox/Basics.jl")
+        export clutch        
+
         include("../toolbox/Rotations.jl")
         public scac, sinc1, sinc1′,sinc1″, sinc1‴, sinc1⁗
         public spin,spin⁻¹,Rodrigues, Rodrigues⁻¹, adjust , intrinsicrotationrates
         include("../toolbox/BarElement.jl")
         export Bar3D, AxisymmetricBarCrossSection
+        
         include("../toolbox/BeamElement.jl")
         export EulerBeam3D, BeamCrossSection
+        
         include("../toolbox/StrainGaugeOnBeamElement.jl")
-        export StrainGaugeOnEulerBeam3D
+        export EulerBeam3DwithStrainGauge
+        
         include("../toolbox/PositionElement.jl")
         export Position3D  
+        
         include("../toolbox/SoilContact.jl")
-        export SoilContact  
+        export SoilContact
+
+        include("../toolbox/RigidBodyKinematics.jl")
+        export ExcentricRigidConnection
+
+        include("../toolbox/MeshLine.jl")
+        export MeshLine!
+
         include("../toolbox/Unit.jl") 
         export ←,→
     end
