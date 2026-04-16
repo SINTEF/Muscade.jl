@@ -129,7 +129,7 @@ module Muscade
         export EulerBeam3D, BeamCrossSection
         
         include("../toolbox/StrainGaugeOnBeamElement.jl")
-        export StrainGaugeOnEulerBeam3D
+        export EulerBeam3DwithStrainGauge
         
         include("../toolbox/PositionElement.jl")
         export Position3D  

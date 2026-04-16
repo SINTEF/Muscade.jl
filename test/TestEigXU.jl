@@ -55,7 +55,7 @@ addelement!(model,EulerBeam3D{hasU},nakedmesh;mat=mat,orient2=SVector(0.,0.,1.))
 addelement!(model,ElementCost,strainmesh;
                         req           = @request(ε),
                         cost          = costStrain,
-                        ElementType   = StrainGaugeOnEulerBeam3D,
+                        ElementType   = EulerBeam3DwithStrainGauge,
                         elementkwargs = (P             = SMatrix{3,4}(0.,0.,.05, 0.,0.05,0.,  0.,0.,-.05,  0.,-.05,0.),
                                          D             = SMatrix{3,4}(1.,0.,0.,  1.,0.,0.,    1.,0.,0.,    1.,0.,0.  ),
                                          ElementType   = EulerBeam3D{true},
@@ -144,9 +144,9 @@ nα                = 32
 α                 = 2π*(1:nα)/nα
 circle            = 0.05*[cos.(α) sin.(α)]'
 GUI(initialstate,eigincXU;shadow = (;EulerBeam3D              = (;style=:shape,line_color=:grey,Udof=false),
-                                    StrainGaugeOnEulerBeam3D  = (;gauge_color=:transparent)         ),
+                                    EulerBeam3DwithStrainGauge  = (;gauge_color=:transparent)         ),
                           model  = (;EulerBeam3D              = (;style=:solid,section=circle),
-                                     StrainGaugeOnEulerBeam3D = (;L=0.03),
+                                     EulerBeam3DwithStrainGauge = (;L=0.03),
                                      Position3D               = (;L=.03)) ) 
 
 
