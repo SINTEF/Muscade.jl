@@ -414,6 +414,10 @@ The solver does not yet support interior point methods.
                       `initialstate` must be with zero time derivatives.  It does not
                       provide initial conditions for the problem, but an initial guess
                       for the iterative solver.        
+- `initialtrajectory` an `AbstractVector` of Vector{`State`}: one initial trajectory for each experiment.
+                      `initialtrajectory` elements are also initial guess for the iterative solver, representing a time-dependant trajectory.
+                      its elements must then match the specific timerange respective to the experiment they refer to.
+                      If not specified, initialstate is copied for each timestep to create the initial guess.       
 - `time`              an `AbstractVector` (of same length as `initialstate`) of `AbstractRange` 
                       of times at which to compute the steps.  Example: 0:0.1:5.                       
 - `maxiter=50`        maximum number of Newton-Raphson iterations. 
@@ -441,6 +445,7 @@ struct DirectXUA{OX,OU,IA} <: AbstractSolver end
 function solve(::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
     time::AbstractVector{AR},
     initialstate::AbstractVector{STATE},
+    initialtrajectory::Union{Nothing,AbstractVector}=nothing,
     maxiter::ℤ=50,
     maxΔλ::ℝ=1e-5,maxΔx::ℝ=1e-5,maxΔu::ℝ=1e-5,maxΔa::ℝ=1e-5,
     saveiter::𝔹=false,
@@ -461,12 +466,23 @@ function solve(::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
     S                     = State{1,OX+1,OU+1,@NamedTuple{γ::Float64,iter::Int64}}
     state                 = [Vector{S}(undef,nstep[iexp]) for iexp=1:nexp] # state[iexp][istep]
     s                     = initialstate[1]
-    for (iexp,initialstateᵢ) ∈ enumerate(initialstate)
-        for (istep,timeᵢ) = enumerate(time[iexp])
-            state[iexp][istep] = State{1,OX+1,OU+1}(timeᵢ,deepcopy(initialstateᵢ.Λ),deepcopy(initialstateᵢ.X),deepcopy(initialstateᵢ.U),s.A,(γ=0.,iter=1),s.model,s.dis) # all state[iexp][istep].A are === 
+    if isnothing(initialtrajectory)
+        for (iexp,initialstateᵢ) ∈ enumerate(initialstate)
+            for (istep,timeᵢ) = enumerate(time[iexp])
+                state[iexp][istep] = State{1,OX+1,OU+1}(timeᵢ,deepcopy(initialstateᵢ.Λ),deepcopy(initialstateᵢ.X),deepcopy(initialstateᵢ.U),s.A,(γ=0.,iter=1),s.model,s.dis) # all state[iexp][istep].A are === 
+            end
+        end
+    else
+        length(initialtrajectory)== nexp || muscadeerror("initialtrajectory and time must be of the same length")
+        Ashared = initialtrajectory[1][1].A
+        for (iexp,trajexp) ∈ enumerate(initialtrajectory)
+            length(trajexp)== nstep[iexp] || muscadeerror("initialtrajectory must match the time grid")
+            for (istep,timeᵢ) = enumerate(time[iexp])
+                trajstate = trajexp[istep]
+                state[iexp][istep] = State{1,OX+1,OU+1}(timeᵢ,deepcopy(trajstate.Λ),deepcopy(trajstate.X),deepcopy(trajstate.U),Ashared,(γ=0.,iter=1),s.model,s.dis)
+            end
         end
     end
-
     if saveiter
         stateiter         = Vector{Vector{Vector{S}}}(undef,maxiter) # stateiter[iiter][iexp][istep] 
         pstate[]          = stateiter
