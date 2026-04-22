@@ -103,11 +103,12 @@ end
 
 # Testing weight
 w = 10
+@functor with() g̃(t) = SVector(0.,0.,-1.)
 model           = Model(:TestModel)
 node1           = addnode!(model,𝕣[0,0,0])
 node2           = addnode!(model,𝕣[L₀,0,0])
 elnod           = [model.nod[n.inod] for n∈[node1,node2]]
-mat             = AxisymmetricBarCrossSection(EA=EA,μ=μ,w=w)
+mat             = AxisymmetricBarCrossSection(EA=EA,μ=μ,w=w,g̃=g̃)
 bar            =  Bar3D(elnod;mat)
 x = SVector(0.,     0.,     0.,     0.,    0.,    0.); X = (x,)
 R,FB=Muscade.residual(bar,   X,U,A,t,SP,dbg) 

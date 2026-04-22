@@ -1,6 +1,7 @@
 # # Bar element
 
 using StaticArrays, LinearAlgebra, Muscade
+@functor with() g̃_default(t) = SVector(0.,0.,1.); 
 
 """
     AxisymmetricBarCrossSection 
@@ -11,6 +12,8 @@ Data structure containing the cross section material properties, for example to 
 -    `μ   :: 𝕣` is the mass per unit length [kg/m]
 
 # Optional argument to the constructor (all set to zero by default)
+-    `w   :: 𝕣` is the weight per unit length [N/m]
+-    `g̃   :: Functor` describes the gravity field divided by acceleration of gravity [-], function of time, set to SVector(0.,0.,1.) by default
 -    `Caₜ :: 𝕣` is the tangential added mass per unit length [kg/m]
 -    `Clₜ :: 𝕣` is the tangential linear damping coefficient per unit length [N/m/(m/s)]
 -    `Cqₜ :: 𝕣` is the tangential quadratic damping coefficient per unit length [N/m/(m/s)^2], for example from drag
@@ -32,18 +35,18 @@ mat             = AxisymmetricBarCrossSection(EA=EA,μ=μ)
 See also: [`Bar3D`](@ref), [`EulerBeam3D`](@ref)
 """
 struct AxisymmetricBarCrossSection
-    EA  :: 𝕣 # Axial stiffness [N]
-    μ   :: 𝕣 # Mass per unit length [kg/m]
-    w   :: 𝕣 # Weight per unit length [N/m]
-    Caₜ :: 𝕣 # Tangential added mass per unit length [kg/m]
-    Clₜ :: 𝕣 # Tangential linear damping coefficient per unit length [N/m/(m/s)]
-    Cqₜ :: 𝕣 # Tangential quadratic damping coefficient per unit length [N/m/(m/s)^2], for example from drag
-    Caₙ :: 𝕣 # Normal added mass per unit length [kg/m] 
-    Clₙ :: 𝕣 # Normal linear damping coefficient per unit length [N/m/(m/s)] 
-    Cqₙ :: 𝕣 # Normal quadratic damping coefficient per unit length [N/m/(m/s)^2], 
-    # TODO: add gravity field to bar properties (time dependent), and use it to compute the weight. This to enable static analyses. 
+    EA  :: 𝕣 
+    μ   :: 𝕣 
+    w   :: 𝕣 
+    g̃   :: Functor  
+    Caₜ :: 𝕣 
+    Clₜ :: 𝕣 
+    Cqₜ :: 𝕣 
+    Caₙ :: 𝕣 
+    Clₙ :: 𝕣 
+    Cqₙ :: 𝕣 
 end
-AxisymmetricBarCrossSection(;EA,μ,w=0.,Caₜ=0.,Clₜ=0.,Cqₜ=0.,Caₙ=0.,Clₙ=0.,Cqₙ=0.) = AxisymmetricBarCrossSection(EA,μ,w,Caₜ,Clₜ,Cqₜ,Caₙ,Clₙ,Cqₙ);
+AxisymmetricBarCrossSection(;EA,μ,w=0.,g̃=g̃_default,Caₜ=0.,Clₜ=0.,Cqₜ=0.,Caₙ=0.,Clₙ=0.,Cqₙ=0.) = AxisymmetricBarCrossSection(EA,μ,w,g̃,Caₜ,Clₜ,Cqₜ,Caₙ,Clₙ,Cqₙ);
 
 const ngp        = 4 # Number of Gauss points
 const ndim       = 3 # Number of dimensions
@@ -137,8 +140,8 @@ end;
     v,a      = ∂1(x),∂2(x)    
     # Inertia force
     fi      = o.μ * a
-    # Weight (applied progressively from t=-10 to t=-5)
-    fw =  SVector(0,0,(min(t,-5.)+10)/5 * o.w) 
+    # Weight 
+    fw = - o.w * o.g̃(t) 
     # Added mass
     aₜ = a ∘₁ δ         # Tangential acceleration (scalar)
     aₙ = a - aₜ * δ     # Normal acceleration (vector)

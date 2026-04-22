@@ -28,5 +28,5 @@ function ExcentricRigidConnection(nod::Vector{Node})
                         (1,1,1,2,2),(:t1,:t2,:r3,:t1,:t2),
                         (),   (),    
                         (),   (),    
-                        typeof(gap),typeof((r₀,θ₀)),typeof(equal)}(gap,(r₀,θ₀),equal)
+                        typeof(gap),typeof((r₀,θ₀)),typeof(Muscade.equal)}(gap,(r₀,θ₀),Muscade.equal)
 end

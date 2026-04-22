@@ -17,7 +17,7 @@ Data structure containing the cross section material properties, for example to 
 
 # Optional argument to the constructor (all set to zero by default)
 -    `w   :: 𝕣` is the weight per unit length [N/m]
--    `g̃   :: Functor` describes the gravity field divided by acceleration of gravity [-], function of time
+-    `g̃   :: Functor` describes the gravity field divided by acceleration of gravity [-], function of time, set to SVector(0.,0.,1.) by default
 -    `Ca₁ :: 𝕣` is the tangential added mass per unit length [kg/m]
 -    `Cl₁ :: 𝕣` is the tangential linear damping coefficient per unit length [N/m/(m/s)]
 -    `Cq₁ :: 𝕣` is the tangential quadratic damping coefficient per unit length [N/m/(m/s)^2], for example from drag
