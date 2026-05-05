@@ -15,8 +15,8 @@ e     = addelement!(model,ExcentricRigidConnection,[MasterNode EmissaryNode])
 See also:  [`Hold`](@ref), [`DofConstraint`](@ref)
 """
 struct ExcentricRigidConnection <: AbstractElement end  
-@functor  with() gap(v,t,θ₀,r₀)= SVector(   v[4] - (v[1] + r₀*(cos(θ₀+v[3])-cos(θ₀))), 
-                                            v[5] - (v[2] + r₀*(sin(θ₀+v[3])-sin(θ₀))))
+@functor  with() compatibility(v,t,θ₀,r₀)= SVector( v[4] - (v[1] + r₀*(cos(θ₀+v[3])-cos(θ₀))), 
+                                                    v[5] - (v[2] + r₀*(sin(θ₀+v[3])-sin(θ₀))))
 function ExcentricRigidConnection(nod::Vector{Node}) 
     c  = coord(nod)
     xₘ = SVector{3}(c[1]) # coordinates of the master node
@@ -28,5 +28,5 @@ function ExcentricRigidConnection(nod::Vector{Node})
                         (1,1,1,2,2),(:t1,:t2,:r3,:t1,:t2),
                         (),   (),    
                         (),   (),    
-                        typeof(gap),typeof((θ₀,r₀)),typeof(Muscade.equal)}(gap,(θ₀,r₀),Muscade.equal)
+                        typeof(compatibility),typeof((θ₀,r₀)),typeof(Muscade.equal)}(compatibility,(θ₀,r₀),Muscade.equal)
 end

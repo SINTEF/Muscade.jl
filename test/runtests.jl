@@ -77,6 +77,8 @@ module Runtest
         @testset "TestElementTestTools" begin
             include("TestElementTestTools.jl")
         end
+
+
         @testset "TestBarElement" begin
             include("TestBarElement.jl")
         end
@@ -91,6 +93,9 @@ module Runtest
         end
         @testset "TestPositionElement" begin
             include("TestPositionElement.jl")
+        end
+        @testset "TestRigidBodyKinematics.jl" begin
+            include("TestRigidBodyKinematics.jl")
         end
     end
 end
