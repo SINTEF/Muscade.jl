@@ -63,7 +63,7 @@ end
 ###
 
 @functor with() gap(eleres,t) = eleres.Fh^2
-el = ElementConstraint(model.nod;req=@request(Fh),gap,ElementType=AnchorLine,λinod=1,λfield=:λ,mode=equal, 
+el = ElementConstraint(model.nod;req=@request(Fh),gap,ElementType=AnchorLine,λinod=1,λfield=:λ,mode=Muscade.equal, 
                  elementkwargs=(Δxₘtop=[5.,0,0], xₘbot=[250.,0], L=290., buoyancy=-5e3))
 d               = Muscade.doflist(typeof(el))
 Nx,Nu,Na        = 3,0+1,2   

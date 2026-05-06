@@ -4,7 +4,7 @@ The recommended approach is to always do things right the first time.  For those
 
 ## Creating models
 
-[`describe`](@ref) allows to study various aspects of the model being constructed.  It can also be used to display a `State` (for models of small size).
+[`Muscade.describe`](@ref) allows to study various aspects of the model being constructed.  It can also be used to display a `State` (for models of small size).
 
 [`Muscade.study_scale`](@ref) looks at the order of magnitudes of the gradient and Jacobian of a model, by doftype. This can help to chose an adequate scaleing.
 

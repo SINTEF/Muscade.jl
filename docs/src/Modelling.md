@@ -47,7 +47,7 @@ The definition of a model is done in three phases:
 
 Note that two `Function`s, `load` and `res` are defined in the script, and then passed as argument to element constructors. Elements require that the function has been defined by using the macro [`@functor`](@ref).  The first argument is a list of parameters captured by the function. The macro ensures that the *values* of the parameters are captured. The second argument is the function definition.  The macro prevents the function to be re-parsed if unchanged, which in turn prevents unnecessary recompilations of Muscade when the script is runned multiple times in a session. 
 
-The model - either finitialized or under construction, can be examined using [`describe`](@ref) and [`getndof`](@ref).  
+The model - either finitialized or under construction, can be examined using [`Muscade.describe`](@ref) and [`getndof`](@ref).  
 
 Optionaly, one can also use [`setscale!`](@ref) (with the help of [`Muscade.study_scale`](@ref)) to scale the variables and thus improve the conditioning of the problem. 
 
@@ -94,7 +94,7 @@ With a few exceptions for testing and demonstration, `Muscade` does not provide 
 
 [`Hold`](@ref) provides a simplified syntax to set a single ``X``-dof to zero.
 
-[`QuickFix`](@ref) allows to rapidly create a simple element, with limitations in functionality. 
+[`Muscade.QuickFix`](@ref) allows to rapidly create a simple element, with limitations in functionality. 
 
 When using `xxxCost` elements to introduce measured time series, consider using [`DataInterpolations.jl`](https://github.com/SciML/DataInterpolations.jl).
 
@@ -103,7 +103,7 @@ When using `xxxCost` elements to introduce measured time series, consider using 
 
 [`solve`](@ref) is then called with the name of the solver to be used (here [`SweepX{0}`](@ref)), and any named parameters required by the solver. The return value `state` can have different structures, depending on the solver.  For [`SweepX{0}`](@ref), `state` is a vector (over the time steps) of `State`s.
 
-[`describe`](@ref) can also be used to inspect `State`s.
+[`Muscade.describe`](@ref) can also be used to inspect `State`s.
 
 Analyses may fail due to singular matrix.  The source of the singularity can be challenging to diagnose. [`Muscade.study_singular`](@ref) can help determine the null-space of an incremental matrix, for small problems.
 
@@ -119,17 +119,48 @@ These element-results are not stored in the `State`, and tagging variables does 
 
 ## Units
 
-`Muscade` provides functionality to transform quantities to and from basic SI units.
+`Muscade` provides functionality to transform quantities to and from basic SI units. The SI system has here been extended to include the [nat](https://en.wikipedia.org/wiki/Nat_(unit)).
 
 ```julia
 using Muscade, Printf
-using Muscade: m, kg, pound, foot
-rho          = 3←(pound/foot^3)                      # convert to SI
-vieuxquintal = 1000*pound                            # define new unit
+using Muscade.Toolbox # get ← and → operators
+using Muscade.Toolbox: m, kg, pound, foot
+rho          = 3←(pound/foot^3)                       # convert to SI
+vieuxquintal = 1000*pound                             # define new unit
 @printf("Density [pound/foot^3] %f",rho→pound/foot^3) # convert from SI
 ```
 
+`pound/foot^3` and `vieuxquintal` are `Unit`s, while `rho` is a `Float64`.
+
 Arrays can be converted in the same way: `[200,300,24]←mm`.
+
+The following units and constants are available:
+
+m, metre, kg, kilogram, s, second, A, Ampere, K, Kelvin, Cd, candela, mol, mole, nat, nit, 
+
+yocto, zepto, atto, femto, pico, nano, micro, milli, centi, deci,  
+dimensionless, ena, deca, hecto, kilo, mega, giga, tera, peta, exa, zetta, yotta,  
+
+Å,  Angstrom,  μm,  micrometre, mm, millimetre, cm, centimetre, dm, decimetre, km, kilometre, 
+
+are, ha, hectare, l, litre, g, gram, Mg, tonne, N, Newton, kN, MN, GN, 
+Pa, Pascal, kPa, MPa, GPa, J, Joule, W, Watt, V, Volt, mV, ε, strain, με, microstrain, 
+
+event, Hz, Hertz, rad, radian, period, turn, deg, degree, sr, steradian, sphere, Coulomb, C, Ohm, Ω, 
+
+c, G, elementarycharge, e, Avogadro, Nₐ, Faraday, F, gasconst, R, Boltzman, kᵦ, Planck, h, rPlanck, ħ, 
+
+bit, Shannon, ban, dit, Hartley, octet, byte, 
+
+minute, hour, day, week, year, month, kmh, 
+
+eV, inch, foot, yard, fathom, furlong, cable, mils, thou, nautical, mile, alen, 
+USacre, mål, ouce, pound, shortton, poundforce, kip, cmil, kcmil, MCM, 
+kgf, horsepower, knot, USpint, USgallon, USfloz, barrel, hogshead, 
+psi, ksi, bar, atm, mmHg, torr, 
+BTU, calorie, kgTNT, KWh, denier.
+
+To verify what a unit is, import it `julia> using Muscade.Toolbox: kcmil` then display it `julia> kcmil`.
 
 A guideline for handling units without [problems](https://en.wikipedia.org/wiki/Mars_Climate_Orbiter) is:
 
@@ -139,11 +170,11 @@ A guideline for handling units without [problems](https://en.wikipedia.org/wiki/
 - **Users** convert Muscade outputs just before printing them out `printf("stress [MPa] %f",stress → MPa)`.
 
 Excellent packages exist for the handling of units ([`Unitful.jl`](https://painterqubits.github.io/Unitful.jl/stable/) ).  These packages have zero
-runtime overhead, and allow to verify code for unit consistency (`Muscade` does not provide this). However, it is arguably not possible to make these packages work with `Muscade`: In `Muscade`, `3←(pound/foot^3)` is of type `Float64`.  A comparable operation in [`Unitful.jl`](https://painterqubits.github.io/Unitful.jl/stable/) would output a variable with a *type* containing data about dimensionality. `Muscade` handles various arrays of quantities with different dimensionality: such a solution would result in arrays of heterogeneous types. `Muscade` does not allow this, as this would result in catastrophic loss of performance due to [type instability](@ref typestab).
+runtime overhead, and allow to verify code for unit consistency (something `Muscade` does not provide). However, it is arguably not possible to make these packages work with `Muscade`: In `Muscade`, `3←(pound/foot^3)` is of type `Float64`.  A comparable operation in [`Unitful.jl`](https://painterqubits.github.io/Unitful.jl/stable/) would output a variable with a *type* containing data about dimensionality. `Muscade` handles various arrays of quantities with different dimensionality: such a solution would result in arrays of heterogeneous types. `Muscade` does not allow this, as this would result in catastrophic loss of performance due to [type instability](@ref typestab).
 
 ## Drawing
 
-### Generating figures with `Draw!`
+### Generating figures with `draw!`
 
 To create a snapshot of a `State`, either the initialised model, or a step from an analysis, one can use [`draw!`](@ref):
 ```julia
@@ -165,6 +196,6 @@ Second, while `Muscade` is tested with [`GLMakie.jl`](https://docs.makie.org/), 
 
 ### Interactive exploration with `GUI`
 
-The function [`GUI`](@ref) can be called with a `Vector` of `State`s.  This allows to explore a sequence of steps interactively, and allows to scale results for visualisation, 
+The function [`Muscade.GUI`](@ref) can be called with a `Vector` of `State`s.  This allows to explore a sequence of steps interactively, and allows to scale results for visualisation, 
 
 

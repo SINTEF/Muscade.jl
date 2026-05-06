@@ -1,12 +1,3 @@
-
-
-"""
-    et = eletyp(model)
-
-Return a vector of the concrete types of elements in the model. 
-"""
-eletyp(model::Model) = eltype.(model.eleobj)
-
 ## Nodal results
 """
     dofres = getdof(state;[class=:X],field=:somefield,nodID=[nodids...],[order=0])
@@ -148,12 +139,12 @@ Obtain an array of nested `NamedTuples` and `NTuples` of element results.
 `els` can be either
 - a vector of `EleID`s (obtained from `addelement!`) all corresponding
   to the same concrete element type
-- a concrete element type (see [`eletyp`](@ref)).
+- a concrete element type (see [`describe`](@ref)).
 
 If `state` is a vector, the output `dofres` has size `(nele,nstate)`.
 If `state` is a scalar, the output `dofres` has size `(nele)`.
 
-See also: [`getdof`](@ref), [`@request`](@ref), [`@espy`](@ref), [`addelement!`](@ref), [`solve`](@ref), [`eletyp`](@ref)
+See also: [`getdof`](@ref), [`@request`](@ref), [`@espy`](@ref), [`addelement!`](@ref), [`solve`](@ref), [`describe`](@ref)
 """
 function getresult(state::Vector{S},req,eleID::Vector{EleID})where {S<:State}
     # Some elements all of same type, multisteps

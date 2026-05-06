@@ -86,7 +86,7 @@ the ΛXU-eigenvalue problem at frequencies ωᵢ = Δω*i with i∈{0,...,2ᵖ-1
 # Named arguments
 - `dbg=(;)`           a named tuple to trace the call tree (for debugging).
 - `verbose=true`      set to false to suppress printed output (for testing).
-- `initialstate`      a `State`.
+- `initialstate`      a `State`, at which the problem is linearized.
 - `nmod`              the number of eigen-modes to identusy
 - `Δω`                frequency step
 - `p`                 `2^p` steps will be analysed.      
@@ -229,7 +229,7 @@ function visualincrement(initialstate,eiginc::EigXUincrement,iω::𝕫,imod::�
 end
 """
 
-    GUI(eiginc,initialstate;[draw_shadow=true],[shadow=...],[model=...])
+    Muscade.GUI(eiginc,initialstate;[draw_shadow=true],[shadow=...],[model=...])
 
 Taking the output `eiginc` obtained from an `EigXU`, and the state `initstate` provided to `EigXU`, provide
 a GUI to explore the results.

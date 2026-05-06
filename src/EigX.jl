@@ -7,7 +7,7 @@ Given an initial (typicaly static) state `initialstate`, computes the lowest `nm
 The data structure `eiginc` can be passed to `increment` to obtain dynamic states superimposing mode shapes.
 
 # Input
-- `initialstate` - a `State`
+- `initialstate` - a `State`, at which the problem is linearized.
 - `nmod=5` - the number of eigenmodes to identify
 - `droptol=1e-9` - in the stiffness and mass matrix, the magnitude of a term relative to the largest term in the matrix
         under which the term is set to zero.
@@ -17,7 +17,7 @@ The data structure `eiginc` can be passed to `increment` to obtain dynamic state
 - an object of type `EigXℝincrement` or `EigXℂincrement`, for use with [`increment`](@ref) to create a snapshot of the
   oscillating system.
 
-See also: [`solve`](@ref), [`initialize!`](@ref), [`increment`](@ref), [`geneig`](@ref)
+See also: [`solve`](@ref), [`initialize!`](@ref), [`increment`](@ref)
 """
 struct EigX{T} <: AbstractSolver end
 

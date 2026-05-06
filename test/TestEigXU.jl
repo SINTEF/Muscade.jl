@@ -20,11 +20,6 @@ xn         = 1.
 λn         = 1e3
 un         = 1e3
 
-## beam in space
-# include("../toolbox/BeamElement.jl")
-# include("../examples/StrainGaugeOnBeamElement.jl")
-# include("../examples/PositionElement.jl")
-
 L    = 1;    # Beam length [m]
 q    = 0.0;  # Uniform lateral load [N/m]
 EI₂  = 1;    # Bending stiffness [Nm²]
@@ -46,7 +41,7 @@ mat         = BeamCrossSection(;EA,EI₂,EI₃,GJ,μ,ι₁)
 model       = Model(:TestModel)
 Xnod        = addnode!(model,XnodeCoord)
 Unod        = addnode!(model,UnodeCoord)
-mesh        = hcat(Xnod,Xnod[mod_onebased.(iels.+1,nel)],Unod)
+mesh        = hcat(Xnod,Xnod[Muscade.mod_onebased.(iels.+1,nel)],Unod)
 nakedmesh   = mesh[inaked,:]
 strainmesh  = mesh[istrain,:]
 accmesh     = reshape(Xnod[iacc],(length(iacc),1))
@@ -60,7 +55,7 @@ addelement!(model,EulerBeam3D{hasU},nakedmesh;mat=mat,orient2=SVector(0.,0.,1.))
 addelement!(model,ElementCost,strainmesh;
                         req           = @request(ε),
                         cost          = costStrain,
-                        ElementType   = StrainGaugeOnEulerBeam3D,
+                        ElementType   = EulerBeam3DwithStrainGauge,
                         elementkwargs = (P             = SMatrix{3,4}(0.,0.,.05, 0.,0.05,0.,  0.,0.,-.05,  0.,-.05,0.),
                                          D             = SMatrix{3,4}(1.,0.,0.,  1.,0.,0.,    1.,0.,0.,    1.,0.,0.  ),
                                          ElementType   = EulerBeam3D{true},
@@ -148,11 +143,11 @@ eigincXU          = solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=true,v
 nα                = 32
 α                 = 2π*(1:nα)/nα
 circle            = 0.05*[cos.(α) sin.(α)]'
-GUI(initialstate,eigincXU;shadow = (;EulerBeam3D              = (;style=:shape,line_color=:grey,Udof=false),
-                                    StrainGaugeOnEulerBeam3D  = (;gauge_color=:transparent)         ),
-                          model  = (;EulerBeam3D              = (;style=:solid,section=circle),
-                                     StrainGaugeOnEulerBeam3D = (;L=0.03),
-                                     Position3D               = (;L=.03)) ) 
+Muscade.GUI(initialstate,eigincXU;shadow = (;EulerBeam3D                = (;style=:shape,line_color=:grey,Udof=false),
+                                            EulerBeam3DwithStrainGauge  = (;gauge_color=:transparent)         ),
+                                  model  = (;EulerBeam3D                = (;style=:solid,section=circle),
+                                             EulerBeam3DwithStrainGauge = (;L=0.03),
+                                             Position3D                 = (;L=.03)) ) 
 
 
 # using SnoopCompileCore, SnoopCompile, AbstractTrees, ProfileView

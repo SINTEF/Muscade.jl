@@ -82,9 +82,9 @@ w(X) = (f(X),g(X),h(X),k(X))
 X₀   = SVector(0.,0.,1.)
 vX₀  = variate{1,3}(X₀)
 
-@testset "fast" begin
-    @test fast(w, X₀) === w( X₀)
-    @test fast(w,vX₀) === w(vX₀)
+@testset "Muscade.fast" begin
+    @test Muscade.apply{:chainrule}(w, X₀) === w( X₀)
+    @test Muscade.apply{:chainrule}(w,vX₀) === w(vX₀)
 end
 
 yy    = Muscade.to_order{1}((revariate{1}(SVector(4.,5.,6.)),revariate{2}(SVector(7.,8.,9.)) ))  
@@ -109,7 +109,7 @@ cost(eleres) = sum(eleres.part.ε)+eleres.y
 
 Neleres = Muscade.flat_length(eleres)
 Teleres = Muscade.flat_eltype(eleres)
-Peleres = precedence(eleres)
+Peleres = Muscade.precedence(eleres)
 Feleres = Muscade.flatten(eleres)
 
 @testset "flatten" begin
@@ -118,7 +118,7 @@ Feleres = Muscade.flatten(eleres)
     @test Peleres               == 1
     @test length(Feleres)       == 10
     @test eltype(Feleres)       == ∂ℝ{1,4,𝕣}
-    @test precedence(Feleres)   == 1
+    @test Muscade.precedence(Feleres)   == 1
 end
 
 # eleres, P=1 comes from the element

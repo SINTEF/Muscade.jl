@@ -6,7 +6,9 @@ model           = Model(:TestModel)
 node1           = addnode!(model,𝕣[0,0,0])
 #elnod           = model.nod
 
-uload = SingleUdof(model.nod;Xfield=:Xdof,Ufield=:Udof,cost=(u,t)->.5*u^2)
+@functor with() cost(u,t)=.5*u^2
+
+uload = SingleUdof(model.nod;Xfield=:Xdof,Ufield=:Udof,cost)
 @functor with() value(t) = cos(t)
 rload = DofLoad(model.nod;field=:Xdof,value=value)
 

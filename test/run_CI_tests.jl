@@ -25,6 +25,7 @@ include(joinpath(workingDir,"runtests.jl"));
 workingDir = joinpath(muscadeDir,"examples")
 devMuscadeIn(workingDir,muscadeDir)
 include(joinpath(workingDir,"StaticBeamAnalysis.jl"))
+include(joinpath(workingDir,"ModalBeamAnalysis.jl"))
 include(joinpath(workingDir,"DynamicBeamAnalysis.jl"))
 include(joinpath(workingDir,"DecayAnalysis.jl"))
 include(joinpath(workingDir,"DryFriction.jl"))
@@ -33,3 +34,6 @@ include(joinpath(workingDir,"DryFriction.jl"))
 workingDir = joinpath(muscadeDir,"docs")
 devMuscadeIn(workingDir,muscadeDir)
 include(joinpath(workingDir,"make.jl"))
+
+# back to test/ directory
+cd(joinpath(muscadeDir,"test"))

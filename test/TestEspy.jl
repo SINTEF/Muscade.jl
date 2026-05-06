@@ -275,11 +275,11 @@ exmerge_ = quote
 end
 
 @testset "Transformed codes" begin
-    @test prettify(exresidual)   == prettify(exresidual_)
-    @test prettify(exmaterial)   == prettify(exmaterial_)
-    @test prettify(exlagrangian) == prettify(exlagrangian_)
-    @test prettify(exbar)        == prettify(exbar_)
-    @test prettify(exmerge)      == prettify(exmerge_)
+    @test MacroTools.prettify(exresidual)   == MacroTools.prettify(exresidual_)
+    @test MacroTools.prettify(exmaterial)   == MacroTools.prettify(exmaterial_)
+    @test MacroTools.prettify(exlagrangian) == MacroTools.prettify(exlagrangian_)
+    @test MacroTools.prettify(exbar)        == MacroTools.prettify(exbar_)
+    @test MacroTools.prettify(exmerge)      == MacroTools.prettify(exmerge_)
 end
 
 r1 = @request (a,b,c)

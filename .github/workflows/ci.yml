@@ -1,4 +1,4 @@
-name: Running tests on all platforms
+name: Running tests on Linux
 on:
   push: 
     branches:
@@ -18,9 +18,8 @@ jobs:
       matrix:
         version:
           # - 'lts'
-          - '1.11'
           - '1.12'
-          # - 'pre'
+          - 'pre'
         os:
           - ubuntu-latest
           #- macOS-latest

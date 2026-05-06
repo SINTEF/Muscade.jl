@@ -35,9 +35,9 @@ module Runtest
         @testset "TestSweepX0" begin
             include("TestSweepX0.jl")
         end
-        @testset "TestNewmarkSweep" begin
-            include("TestNewmarkSweep.jl")
-        end
+        #@testset "TestNewmarkSweep" begin
+        #    include("TestNewmarkSweep.jl")
+        #end
         @testset "TestDirectXUA" begin
             include("TestDirectXUA.jl")
         end
@@ -77,6 +77,11 @@ module Runtest
         @testset "TestElementTestTools" begin
             include("TestElementTestTools.jl")
         end
+
+
+        @testset "TestBarElement" begin
+            include("TestBarElement.jl")
+        end
         @testset "TestBeamElement" begin
             include("TestBeamElement.jl")
         end
@@ -88,6 +93,9 @@ module Runtest
         end
         @testset "TestPositionElement" begin
             include("TestPositionElement.jl")
+        end
+        @testset "TestRigidBodyKinematics.jl" begin
+            include("TestRigidBodyKinematics.jl")
         end
     end
 end

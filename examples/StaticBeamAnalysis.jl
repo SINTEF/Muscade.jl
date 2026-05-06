@@ -156,4 +156,4 @@ if occursin("build", currentDir)
 elseif occursin("examples", currentDir)
     save(normpath(joinpath(currentDir,"StaticBeamAnalysis3.png")),fig)
 end
-#![Result](assets/StaticBeamAnalysis3.png)
+# ![Result](assets/StaticBeamAnalysis3.png)

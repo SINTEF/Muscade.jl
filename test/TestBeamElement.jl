@@ -3,31 +3,6 @@ module TestBeamElement
 using Test, Muscade, StaticArrays, LinearAlgebra
 using Muscade.Toolbox
 
-a = SA[1,0,0]
-b = SA[0,1,1]
-r = adjust(a,b)
-R = Rodrigues(r)
-u = R*a
-
-# v1      = variate{1,3}(SA[.1,.2,.3])
-# M1      = Rodrigues(v1)
-# w1,w∂v1 = value_∂{1,3}(Rodrigues⁻¹(M1))
-
-# v2      = variate{1,3}(SA[1e-7,2e-7,1e-8])
-# M2      = Rodrigues(v2)
-# w2,w∂v2 = value_∂{1,3}(Rodrigues⁻¹(M2))
-
-
-# @testset "rotations" begin
-#     @test r ≈ [0.0, -1.1107207345395913, 1.1107207345395913]
-#     @test u ≈ [2.220446049250313e-16, 0.7071067811865476, 0.7071067811865476]
-#     @test v1 ≈ w1
-#     @test w∂v1 ≈ LinearAlgebra.I#[1 0 0;0 1 0;0 0 1]
-#     @test v2 ≈ w2
-#     @test w∂v2 ≈ LinearAlgebra.I#[1 0 0;0 1 0;0 0 1]
-# end
-
-###
 L               = 5
 model           = Model(:TestModel)
 node1           = addnode!(model,𝕣[0,0,0])
@@ -40,19 +15,19 @@ beam            = EulerBeam3D(elnod;mat,orient2=SVector(0.,1.,0.))
 @testset "constructor" begin
     @test beam.cₘ    ≈ [2.0, 1.5, 0.0]
     @test beam.rₘ    ≈ [0.8 -0.6 0.0; 0.6 0.8 -0.0; 0.0 0.0 1.0]
-    # @test beam.ζgp   ≈ [-0.2886751345948129, 0.2886751345948129]
+    @test beam.ζgp   ≈ [-0.4305681557970263, -0.16999052179242816, 0.16999052179242816, 0.4305681557970263]
     @test beam.ζnod  ≈ [-0.5, 0.5]
     @test beam.tgₘ   ≈ [4.0, 3.0, 0.0]
     @test beam.tgₑ   ≈ [5.0, 0.0, 0.0]
 
-    # @test beam.yₐ    ≈ [-1/√3,1/√3]
-    # @test beam.yᵤ    ≈ [-0.7698003589195012,0.7698003589195012]
-    # @test beam.yᵥ    ≈ [-1/6,-1/6]
-    # @test beam.κₐ    ≈ [2/L,2/L]
-    # @test beam.κᵤ    ≈ [0.2771281292110204,-0.2771281292110204]
-    # @test beam.κᵥ    ≈ [2/L,2/L]
+    @test beam.yₐ    ≈ [ -0.8611363115940526, -0.3399810435848563,   0.3399810435848563,   0.8611363115940526]
+    @test beam.yᵤ    ≈ [ -0.972414176921822,  -0.49032285223640754,  0.49032285223640754,  0.972414176921822]
+    @test beam.yᵥ    ≈ [ -0.0646110632135477, -0.221103222500738,   -0.221103222500738,  -0.0646110632135477]*L
+    @test beam.κₐ    ≈ [2.0,2.0,2.0,2.0]/L
+    @test beam.κᵤ    ≈ [  10.333635739128631,   4.079772523018276,   -4.079772523018276,  -10.333635739128631]/L^2
+    @test beam.κᵥ    ≈ [2.0,2.0,2.0,2.0]/L
 
-    # @test beam.dL    ≈ [2.5, 2.5]
+    @test beam.dL    ≈ [ 0.17392742256872692, 0.3260725774312731,  0.3260725774312731,  0.17392742256872692]*L
 end
 
 
@@ -263,6 +238,96 @@ end
     @test norm(M[12,[1,3,4,5,7,9,10,11]])       ≈ 0.
 end
 ;
+
+## Testing weight
+## Beam bent upwards with uniform weight (along negative t3)  
+w = 10
+@functor with() g̃(t) = SVector(0.,0.,-1.)
+model           = Model(:TestModel)
+node1           = addnode!(model,𝕣[0,0,0])
+node2           = addnode!(model,𝕣[L,0,0])
+elnod           = [model.nod[n.inod] for n∈[node1,node2]]
+mat             = BeamCrossSection(EA=EA,EI₂=EI₂,EI₃=EI₃,GJ=GJ,μ=μ,ι₁=ι₁,   w=w, g̃=g̃)
+beam            = EulerBeam3D(elnod;mat,orient2=SVector(0.,1.,0.))
+x = SVector(0.,     0.,     0.,     0.,     w*L^3/(24*EI₂),     0.,            0.,    0.0,    0.,     0.,     -w*L^3/(24*EI₂),     0.); X = (x,)
+R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg) 
+@testset "residual weight" begin
+    @test R        ≈  [ 0.0, 0.0, w*L/2, 0.0, 0.0, 0.0, 0.0, 0.0, w*L/2, 0.0, 0.0, 0.0 ]
+end
+
+## Testing added mass
+Ca₁ = 1.
+Ca₂ = 2.
+Ca₃ = 3.
+μ = 1. 
+a1,a2,a3 = 4.0,3.0,2.0;
+model           = Model(:TestModel)
+node1           = addnode!(model,𝕣[0,0,0])
+node2           = addnode!(model,𝕣[L,0,0])
+elnod           = [model.nod[n.inod] for n∈[node1,node2]]
+mat             = BeamCrossSection(EA=EA ,EI₂=EI₂,EI₃=EI₃,GJ=GJ,μ=μ,ι₁=ι₁,   Ca₁=Ca₁, Ca₂=Ca₂,Ca₃=Ca₃)
+beam            = EulerBeam3D(elnod;mat,orient2=SVector(0.,1.,0.))
+velocity        =  SVector(0.,0.,0.,0.,0.,0.,  0.,0.,0.,0.,0.,0.); 
+
+@testset "residual addded mass" begin
+    displacement    =  SVector(0.,0.,0.,0.,0.,0.,  0.,0.,0.,0.,0.,0.); 
+    acceleration =  SVector(a1,0.,0.,0.,0.,0.,  a1,0.,0.,0.,0.,0.); 
+    X = (displacement,velocity,acceleration); 
+    R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg)     
+    @test R        ≈  [ (μ+Ca₁)*a1*L/2, 0., 0.,    0.0, 0.0, 0.0,  (μ+Ca₁)*a1*L/2, 0., 0.,  0.0, 0.0, 0.0 ]
+
+    displacement =  SVector(0.,     0.,     0.,     0.,     0.,     -(μ+Ca₂)*a2*L^3/(24*EI₃),     0.,    0.,    0.,     0.,      0.,      (μ+Ca₂)*a2*L^3/(24*EI₃))
+    acceleration =  SVector(0.,a2,0.,0.,0.,0.,  0.,a2,0.,0.,0.,0.); 
+    X = (displacement,velocity,acceleration); 
+    R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg) 
+    @test R        ≈  [ 0., (μ+Ca₂)*a2*L/2, 0.,    0.0, 0.0, 0.0,  0., (μ+Ca₂)*a2*L/2, 0.,  0.0, 0.0, 0.0 ]
+
+    displacement =  SVector(0.,     0.,     0.,     0.,     (μ+Ca₃)*a3*L^3/(24*EI₂),     0.,     0.,    0.,    0.,     0.,      -(μ+Ca₃)*a3*L^3/(24*EI₂),      0.)
+    acceleration =  SVector(0.,0.,a3,0.,0.,0.,  0.,0.,a3,0.,0.,0.); 
+    X = (displacement,velocity,acceleration); 
+    R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg) 
+    @test R        ≈  [ 0., 0., (μ+Ca₃)*a3*L/2,    0.0, 0.0, 0.0,  0., 0., (μ+Ca₃)*a3*L/2,  0.0, 0.0, 0.0 ]
+
+end
+
+## Testing damping
+Cl₁ = 1.
+Cl₂ = 2.
+Cl₃ = 3.
+Cq₁ = .1
+Cq₂ = .2
+Cq₃ = .3
+μ = 1. 
+v1,v2,v3 = 1.0,1.1,0.1;
+model           = Model(:TestModel)
+node1           = addnode!(model,𝕣[0,0,0])
+node2           = addnode!(model,𝕣[L,0,0])
+elnod           = [model.nod[n.inod] for n∈[node1,node2]]
+mat             = BeamCrossSection(EA=EA ,EI₂=EI₂,EI₃=EI₃,GJ=GJ,μ=μ,ι₁=ι₁,   Cl₁=Cl₁, Cl₂=Cl₂,Cl₃=Cl₃, Cq₁=Cq₁, Cq₂=Cq₂,Cq₃=Cq₃)
+beam            = EulerBeam3D(elnod;mat,orient2=SVector(0.,1.,0.))
+acceleration =  SVector(0,0.,0.,0.,0.,0.,  0.,0.,0.,0.,0.,0.); 
+@testset "residual damping" begin
+    displacement    =  SVector(0.,0.,0.,0.,0.,0.,  0.,0.,0.,0.,0.,0.); 
+    velocity        =  SVector(v1,0.,0.,0.,0.,0.,  v1,0.,0.,0.,0.,0.); 
+    X = (displacement,velocity,acceleration); 
+    R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg) 
+    @test R        ≈  [ (Cl₁+Cq₁*abs(v1))*v1*L/2, 0., 0.,    0.0, 0.0, 0.0,  (Cl₁+Cq₁*abs(v1))*v1*L/2, 0., 0.,  0.0, 0.0, 0.0 ]
+
+    displacement =  SVector(0.,     0.,     0.,     0.,     0.,     -(Cl₂+Cq₂*abs(v2))*v2*L^3/(24*EI₃),     0.,    0.,    0.,     0.,      0.,      (Cl₂+Cq₂*abs(v2))*v2*L^3/(24*EI₃))
+    velocity =      SVector(0.,v2,0.,0.,0.,0.,  0.,v2,0.,0.,0.,0.); 
+    X = (displacement,velocity,acceleration); 
+    R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg) 
+    @test R        ≈  [ 0., (Cl₂+Cq₂*abs(v2))*v2*L/2, 0.,    0.0, 0.0, 0.0,  0., (Cl₂+Cq₂*abs(v2))*v2*L/2, 0.,  0.0, 0.0, 0.0 ]
+
+    displacement =  SVector(0.,     0.,     0.,     0.,     (Cl₃+Cq₃*abs(v3))*v3*L^3/(24*EI₂),     0.,     0.,    0.,    0.,     0.,      -(Cl₃+Cq₃*abs(v3))*v3*L^3/(24*EI₂),      0.)
+    velocity =      SVector(0.,0.,v3,0.,0.,0.,  0.,0.,v3,0.,0.,0.); 
+    X = (displacement,velocity,acceleration); 
+    R,FB=Muscade.residual(beam,   X,U,A,t,SP,dbg)
+    @test R        ≈  [ 0., 0., (Cl₃+Cq₃*abs(v3))*v3*L/2,    0.0, 0.0, 0.0,  0., 0., (Cl₃+Cq₃*abs(v3))*v3*L/2,  0.0, 0.0, 0.0 ]
+end
+
+end
+
 # # using Profile,ProfileView,BenchmarkTools
 # # mission = :profile
 # # if  mission == :time
@@ -277,4 +342,3 @@ end
 # #     # code_warntype for the call represented by that bar.
 # # end
 # ;
-end

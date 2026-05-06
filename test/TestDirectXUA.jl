@@ -58,7 +58,7 @@ dis             = state0.dis
 wanted          = Muscade.Wanted{1,OX+1,OU+1,IA}(:all,:all)
 
 out,asm,dofgr = Muscade.prepare(Muscade.AssemblyDirect,model,dis,wanted)#;Uwhite=true,Xwhite=true,XUindep=true,UAindep=true,XAindep=true)
-zero!(out)
+Muscade.zero!(out)
 state           = [Muscade.State{1,OX+1,OU+1}(copy(state0,SP=(γ=0.,iter=1))) for i = 1:nstep]
 for i=1:nstep
     state[i].time = Δt*i
