@@ -28,13 +28,15 @@ struct EigXℝincrement
 end
 function solve(::Type{EigX{ℝ}},pstate,verbose,dbg; 
                    state::State, nmod::𝕫=5,droptol::𝕣=1e-9,kwargs...) 
-    OX,OU,IA         = 2,-1,0
+    OX,OU,IA         = 2,0,0
     model,dis        = state.model,state.dis
 
     verbose && @printf("\n    Assembling\n")
-    out,asm,dofgr    = prepare(AssemblyDirect{OX,OU,IA},model,dis,want_all_hessians(1,OX+1,OU+1,IA))  
+    wantK,wantM      = (ind.Λ,ind.X,1,1),(ind.Λ,ind.X,1,3)
+    wanted           = want_some_hessians(1,OX+1,OU+1,IA,wantK,wantM)
+    out,asm,dofgr    = prepare(AssemblyDirect{OX,OU,IA},model,dis,wanted)  
     nXdof            = getndof.(dofgr)[ind.X]
-    state₀           = State{1,OX+1,OU+1}(copy(state))   
+    state₀           = State{1,OX+1,OU+1}(copy(state)) 
     assemble!{:matrices}(out,asm,dis,model,state₀,idmult,(dbg...,solver=:EigXℝ))
     K                = out.L2[ind.Λ,ind.X][1,1]
     M                = out.L2[ind.Λ,ind.X][1,3]
@@ -104,7 +106,9 @@ function solve(::Type{EigX{ℂ}},pstate,verbose,dbg;
     model,dis        = state.model,state.dis
 
     verbose && @printf("\n    Assembing\n")
-    out,asm,dofgr    = prepare(AssemblyDirect{OX,OU,IA},model,dis,want_all_hessians(1,OX+1,0,0))  
+    wantK,wantC,wantM= (ind.Λ,ind.X,1,1),(ind.Λ,ind.X,1,2),(ind.Λ,ind.X,1,3)
+    wanted           = want_some_hessians(1,OX+1,OU+1,IA,wantK,wantC,wantM)
+    out,asm,dofgr    = prepare(AssemblyDirect{OX,OU,IA},model,dis,wanted)  
     nXdof            = getndof.(dofgr)[ind.X]
     state₀           = State{1,OX+1,OU+1}(copy(state))   
     assemble!{:matrices}(out,asm,dis,model,state₀,idmult,(dbg...,solver=:EigXℂ))

@@ -19,7 +19,7 @@ mutable struct AssemblyDirect{OX,OU,IA}  <:Assembly
     L1 :: Vector{Vector{𝕣1      }}    # L1[α  ][αder     ]  α∈ λ,x,u,a
     L2 :: Matrix{Matrix{Sparse𝕣2}}    # L2[α,β][αder,βder]
 end  
-function prepare(::Type{AssemblyDirect{OX,OU,IA}},model,dis,wantedhessiancomponents) where{OX,OU,IA}
+function prepare(::Type{AssemblyDirect{OX,OU,IA}},model,dis,wantedhessians) where{OX,OU,IA}
     dofgr    = (allΛdofs(model,dis),allXdofs(model,dis),allUdofs(model,dis),allAdofs(model,dis))
     ndof     = getndof.(dofgr)
     neletyp  = getneletyp(model)
@@ -40,7 +40,7 @@ function prepare(::Type{AssemblyDirect{OX,OU,IA}},model,dis,wantedhessiancompone
         nα,nβ = nder[α], nder[β]
         L2[α,β] = Matrix{Sparse𝕣2}(undef,nα,nβ)
         for αder=1:nα,βder=1:nβ
-            if wantedhessiancomponents[α,β][αder,βder] 
+            if wantedhessians[α,β][αder,βder] 
                 L2[α,β][αder,βder] = copy(am)
             end
         end
@@ -380,16 +380,55 @@ function decrementbig!(state,Δ²,Lvasm,dofgr,Δv,nder,Δt,nstep)
     end
 end
 
-# Mutable default: all Hessians of all derivatives of all classes are wanted
-# wahc[α,β][iαder,iβder]
-function want_all_hessians(NΛ,NX,NU,NA) 
-    nder = (NΛ,NX,NU,NA)
-    # wahc = Matrix{𝕓2}(undef,4,4)
-    # for α∈λxua, β∈λxua
-    #     wahc[α,β] = [~(α==β==ind.Λ) for i=1:nder[α],j=1:nder[β]]
-    # end
-    return [ [~(α==β==ind.Λ) for i=1:nder[α],j=1:nder[β]] for α∈λxua, β∈λxua]
+"""
+    wanted = want_all_hessians(NDΛ,NDX,NDU,NDA)
 
+Creates a datastructure `wanted[α,β][idα,idβ]::𝕓` to describe wether the Hessian
+of the model Lagrangian wrt the idα-1 derivative of α and the idβ-1 derivative of β, 
+where α and β are the dofclasses, are wanted. For example
+`wanted[ind.Λ,ind.X][1,1]` points to ∂²L/∂Λ₀∂X₀ which is the stiffness matrix, while
+`wanted[ind.X,ind.X][3,3]` is a cost on acceleration.
+
+`want_all_hessians(1,2,...)` sets
+- `wanted[ind.Λ,ind.X][1,1] = true`
+- `wanted[ind.Λ,ind.X][1,2] = true`
+- `wanted[ind.X,ind.X][1,1] = true`
+- `wanted[ind.X,ind.X][1,2] = true`
+- `wanted[ind.X,ind.X][2,1] = true`
+- `wanted[ind.X,ind.X][2,2] = true`
+- `wanted[ind.Λ,ind.Λ][1,1] = false` however, since the Lagrangian is linear in Λ.
+
+One does not have to use `want_all_hessians` to create such a datastructure, should
+one want to only specialised Hessians. Make sure the structure has enough derivatives
+for the order of the DIrectXUA solver!
+
+Or one can also do
+`wanted = want_all_hessians(NDΛ,NDX,NDU,NDA)` followed by
+`wanted[ind.X,ind.X][2,1]=false`.
+
+"""
+function want_all_hessians(NDΛ,NDX,NDU,NDA) 
+    nder = (NDΛ,NDX,NDU,NDA)
+    return [ [~(α==β==ind.Λ) for i=1:nder[α],j=1:nder[β]] for α∈λxua, β∈λxua]
+end
+"""
+    wanted = want_some_hessians(NDΛ,NDX,NDU,NDA,(α₁,β₁,α₁,β₁),...)
+
+Creates a datastructure `wanted[α,β][idα,idβ]::𝕓` where only specified `wanted[α₁,β₁][α₁,β₁]` etc, are true.
+
+## Example:
+`wanted = want_some_hessians(NDΛ,NDX,NDU,NDA,(ìnd.Λ,ind.X,1,1),(ìnd.Λ,ind.X,1,3))` sets
+- `wanted[ind.Λ,ind.X][1,1] = true` to get the stiffness matrix `K`
+- `wanted[ind.Λ,ind.X][1,3] = true` to get the mass matrix `M`
+
+"""
+function want_some_hessians(NDΛ,NDX,NDU,NDA,spec...) 
+    nder = (NDΛ,NDX,NDU,NDA)
+    wanted = [ falses(nder[α],nder[β]) for α∈λxua, β∈λxua]
+    for s ∈ spec
+        wanted[s[1],s[2]][s[3],s[4]] = true
+    end
+    return wanted
 end
 
 """
@@ -449,7 +488,7 @@ function solve(::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
     maxiter::ℤ=50,
     maxΔλ::ℝ=1e-5,maxΔx::ℝ=1e-5,maxΔu::ℝ=1e-5,maxΔa::ℝ=1e-5,
     saveiter::𝔹=false,
-    wantedhessiancomponents::Matrix{𝕓2}=want_all_hessians(1,OX+1,OU+1,IA)) where{OX,OU,IA,AR<:AbstractRange{𝕣},STATE<:State}
+    wantedhessians::Matrix{𝕓2}=want_all_hessians(1,OX+1,OU+1,IA)) where{OX,OU,IA,AR<:AbstractRange{𝕣},STATE<:State}
 
     #  Mostly constants
     local LU
@@ -481,7 +520,7 @@ function solve(::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
 
     # Prepare assembler
     verbose && @printf("\n    Preparing assembler\n")
-    out,asm,dofgr         = prepare(AssemblyDirect{OX,OU,IA},model,dis,wantedhessiancomponents)          # mem and assembler for system at any given step
+    out,asm,dofgr         = prepare(AssemblyDirect{OX,OU,IA},model,dis,wantedhessians)          # mem and assembler for system at any given step
     assemble!{:matrices}(out,asm,dis,model,state[1][1],idmult,(dbg...,solver=:DirectXUA,phase=:sparsity))    # create a sample "out" for preparebig
     Lvv,Lv,Lvvasm,Lvasm,Lvdis = preparebig(IA,nstep,out)                                   # mem and assembler for big system
     cLvv                  = copy(Lvv)
