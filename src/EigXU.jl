@@ -119,7 +119,8 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
     state₀                = State{1,OX+1,OU+1}(copy(initialstate))   
 
     verbose && @printf("    Preparing assembler\n")
-    out,asm,dofgr         = prepare(AssemblyDirect{OX,OU,IA},model,dis)   # model assembler for all arrays   
+    wanted                = Wanted{1,OX+1,OU+1,IA}(:all,:all) # TODO refine
+    out,asm,dofgr         = prepare(AssemblyDirect,model,dis,wanted)   # model assembler for all arrays   
 
     verbose && @printf("    Computing matrices\n")
     assemble!{:matrices}(out,asm,dis,model,state₀,idmult,(dbg...,solver=:EigXU,phase=:matrices))            # assemble all model matrices - in class-blocks

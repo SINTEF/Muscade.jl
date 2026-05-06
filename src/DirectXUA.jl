@@ -15,23 +15,74 @@ const nclass = length(ind)
 ## Assembly of sparse for a single time step
 arrnum(α  )  =          α
 arrnum(α,β)  = nclass + β + nclass*(α-1) 
+
+
+mutable struct Wanted{IΛ,NDX,NDU,IA}  
+    L1 :: Vector{Vector{𝕓}}    # L1[α  ][αder     ]  α∈ λ,x,u,a
+    L2 :: Matrix{Matrix{𝕓}}    # L2[α,β][αder,βder]
+end  
+function wantL1(vectors::Symbol,nder)
+    vectors==:all || muscadeerror("Invalid vector spec in Wanted")
+    return [ [true           for i=1:nder[α]] for α∈λxua]
+end
+function wantL1(vectors::Tuple,nder)
+    L1   = [ [false          for i=1:nder[α]] for α∈λxua]
+    for s ∈ vectors
+        L1[s[1]][s[2]] = true
+    end
+    return L1
+end
+function wantL2(matrices::Symbol,nder)
+    matrices==:all || muscadeerror("Invalid matrix spec Wanted")
+    return [ [~(α==β==ind.Λ) for i=1:nder[α],j=1:nder[β]] for α∈λxua, β∈λxua]
+end
+function wantL2(matrices::Tuple,nder)
+    L2   = [ [false          for i=1:nder[α],j=1:nder[β]] for α∈λxua, β∈λxua]
+    for s ∈ matrices
+        L2[s[1],s[2]][s[3],s[4]] = true
+    end
+    return L2
+end
+function Wanted{IΛ,NDX,NDU,IA}(vectors::Union{Symbol,Tuple},matrices::Union{Symbol,Tuple}) where{IΛ,NDX,NDU,IA} 
+    nder = (IΛ,NDX,NDU,IA)
+    return Wanted{IΛ,NDX,NDU,IA}(wantL1(vectors,nder),wantL2(matrices,nder))
+end
+# function Wanted{IΛ,NDX,NDU,IA}(all::Symbol) where{IΛ,NDX,NDU,IA}
+#     vectors==:all || muscadeerror("Invalid call to Wanted")
+#     nder = (IΛ,NDX,NDU,IA)
+#     L1   = [ [true           for i=1:nder[α]            ] for α∈λxua        ]
+#     L2   = [ [~(α==β==ind.Λ) for i=1:nder[α],j=1:nder[β]] for α∈λxua, β∈λxua]
+#     return Wanted{NDΛ,NDX,NDU,IA}(L1,L2)
+# end
+# function Wanted{IΛ,NDX,NDU,IA}(some::Symbol,spec...) where{IΛ,NDX,NDU,IA}
+#    some==:some || muscadeerror("Invalid call to Wanted")
+#     nder = (IΛ,NDX,NDU,IA)
+#     L1   = [ [true           for i=1:nder[α]            ] for α∈λxua        ]
+#     L2   = [ [false          for i=1:nder[α],j=1:nder[β]] for α∈λxua, β∈λxua]
+#     for s ∈ spec
+#         L2[s[1],s[2]][s[3],s[4]] = true
+#     end
+#     return Wanted{NDΛ,NDX,NDU,IA}(L1,L2)
+# end
 mutable struct AssemblyDirect{OX,OU,IA}  <:Assembly
     L1 :: Vector{Vector{𝕣1      }}    # L1[α  ][αder     ]  α∈ λ,x,u,a
     L2 :: Matrix{Matrix{Sparse𝕣2}}    # L2[α,β][αder,βder]
 end  
-function prepare(::Type{AssemblyDirect{OX,OU,IA}},model,dis,wantedhessians) where{OX,OU,IA}
+function prepare(::Type{AssemblyDirect},model,dis,wanted::Wanted{IΛ,NDX,NDU,IA}) where{IΛ,NDX,NDU,IA}
     dofgr    = (allΛdofs(model,dis),allXdofs(model,dis),allUdofs(model,dis),allAdofs(model,dis))
     ndof     = getndof.(dofgr)
     neletyp  = getneletyp(model)
     asm      = Matrix{𝕫2}(undef,nclass+nclass^2,neletyp) 
-    nder     = (1,OX+1,OU+1,IA)
-    L1       = Vector{Vector{Vector{𝕣}}}(undef,4)
+    nder     = (1,NDX,NDU,IA)
+    L1       = Vector{Vector{𝕣1}}(undef,4)
     for α∈λxua
         nα   = nder[α]
         av   = asmvec!(view(asm,arrnum(α),:),dofgr[α],dis)
-        L1[α] = Vector{Vector{𝕣}}(undef,nα)
+        L1[α] = Vector{𝕣1}(undef,nα)
         for αder = 1:nα 
-            L1[α][αder] = copy(av)
+            if wanted.L1[α][αder] 
+                L1[α][αder] = copy(av)
+            end
         end
     end
     L2    = Matrix{Matrix{Sparse𝕣2}}(undef,4,4)
@@ -40,12 +91,12 @@ function prepare(::Type{AssemblyDirect{OX,OU,IA}},model,dis,wantedhessians) wher
         nα,nβ = nder[α], nder[β]
         L2[α,β] = Matrix{Sparse𝕣2}(undef,nα,nβ)
         for αder=1:nα,βder=1:nβ
-            if wantedhessians[α,β][αder,βder] 
+            if wanted.L2[α,β][αder,βder] 
                 L2[α,β][αder,βder] = copy(am)
             end
         end
     end
-    out      = AssemblyDirect{OX,OU,IA}(L1,L2)
+    out      = AssemblyDirect{NDX-1,NDU-1,IA}(L1,L2)
     return out,asm,dofgr
 end
 function zero!(out::AssemblyDirect) 
@@ -380,56 +431,7 @@ function decrementbig!(state,Δ²,Lvasm,dofgr,Δv,nder,Δt,nstep)
     end
 end
 
-"""
-    wanted = want_all_hessians(NDΛ,NDX,NDU,NDA)
 
-Creates a datastructure `wanted[α,β][idα,idβ]::𝕓` to describe wether the Hessian
-of the model Lagrangian wrt the idα-1 derivative of α and the idβ-1 derivative of β, 
-where α and β are the dofclasses, are wanted. For example
-`wanted[ind.Λ,ind.X][1,1]` points to ∂²L/∂Λ₀∂X₀ which is the stiffness matrix, while
-`wanted[ind.X,ind.X][3,3]` is a cost on acceleration.
-
-`want_all_hessians(1,2,...)` sets
-- `wanted[ind.Λ,ind.X][1,1] = true`
-- `wanted[ind.Λ,ind.X][1,2] = true`
-- `wanted[ind.X,ind.X][1,1] = true`
-- `wanted[ind.X,ind.X][1,2] = true`
-- `wanted[ind.X,ind.X][2,1] = true`
-- `wanted[ind.X,ind.X][2,2] = true`
-- `wanted[ind.Λ,ind.Λ][1,1] = false` however, since the Lagrangian is linear in Λ.
-
-One does not have to use `want_all_hessians` to create such a datastructure, should
-one want to only specialised Hessians. Make sure the structure has enough derivatives
-for the order of the DIrectXUA solver!
-
-Or one can also do
-`wanted = want_all_hessians(NDΛ,NDX,NDU,NDA)` followed by
-`wanted[ind.X,ind.X][2,1]=false`.
-
-"""
-function want_all_hessians(NDΛ,NDX,NDU,NDA) 
-    nder = (NDΛ,NDX,NDU,NDA)
-    return [ [~(α==β==ind.Λ) for i=1:nder[α],j=1:nder[β]] for α∈λxua, β∈λxua]
-end
-"""
-    wanted = want_some_hessians(NDΛ,NDX,NDU,NDA,(α₁,β₁,α₁,β₁),...)
-
-Creates a datastructure `wanted[α,β][idα,idβ]::𝕓` where only specified `wanted[α₁,β₁][α₁,β₁]` etc, are true.
-
-## Example:
-`wanted = want_some_hessians(NDΛ,NDX,NDU,NDA,(ìnd.Λ,ind.X,1,1),(ìnd.Λ,ind.X,1,3))` sets
-- `wanted[ind.Λ,ind.X][1,1] = true` to get the stiffness matrix `K`
-- `wanted[ind.Λ,ind.X][1,3] = true` to get the mass matrix `M`
-
-"""
-function want_some_hessians(NDΛ,NDX,NDU,NDA,spec...) 
-    nder = (NDΛ,NDX,NDU,NDA)
-    wanted = [ falses(nder[α],nder[β]) for α∈λxua, β∈λxua]
-    for s ∈ spec
-        wanted[s[1],s[2]][s[3],s[4]] = true
-    end
-    return wanted
-end
 
 """
 	DirectXUA{OX,OU,IA}
@@ -488,7 +490,7 @@ function solve(::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
     maxiter::ℤ=50,
     maxΔλ::ℝ=1e-5,maxΔx::ℝ=1e-5,maxΔu::ℝ=1e-5,maxΔa::ℝ=1e-5,
     saveiter::𝔹=false,
-    wantedhessians::Matrix{𝕓2}=want_all_hessians(1,OX+1,OU+1,IA)) where{OX,OU,IA,AR<:AbstractRange{𝕣},STATE<:State}
+    wanted::Wanted=Wanted{1,OX+1,OU+1,IA}(:all,:all)) where{OX,OU,IA,AR<:AbstractRange{𝕣},STATE<:State}
 
     #  Mostly constants
     local LU
@@ -520,7 +522,7 @@ function solve(::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
 
     # Prepare assembler
     verbose && @printf("\n    Preparing assembler\n")
-    out,asm,dofgr         = prepare(AssemblyDirect{OX,OU,IA},model,dis,wantedhessians)          # mem and assembler for system at any given step
+    out,asm,dofgr         = prepare(AssemblyDirect,model,dis,wanted)          # mem and assembler for system at any given step
     assemble!{:matrices}(out,asm,dis,model,state[1][1],idmult,(dbg...,solver=:DirectXUA,phase=:sparsity))    # create a sample "out" for preparebig
     Lvv,Lv,Lvvasm,Lvasm,Lvdis = preparebig(IA,nstep,out)                                   # mem and assembler for big system
     cLvv                  = copy(Lvv)

@@ -55,9 +55,9 @@ FAST             = true
 Δt = 1.
 
 dis             = state0.dis
-wanted          = Muscade.want_all_hessians(1,OX+1,OU+1,IA)
+wanted          = Muscade.Wanted{1,OX+1,OU+1,IA}(:all,:all)
 
-out,asm,dofgr = Muscade.prepare(Muscade.AssemblyDirect{OX,OU,IA},model,dis,wanted)#;Uwhite=true,Xwhite=true,XUindep=true,UAindep=true,XAindep=true)
+out,asm,dofgr = Muscade.prepare(Muscade.AssemblyDirect,model,dis,wanted)#;Uwhite=true,Xwhite=true,XUindep=true,UAindep=true,XAindep=true)
 zero!(out)
 state           = [Muscade.State{1,OX+1,OU+1}(copy(state0,SP=(γ=0.,iter=1))) for i = 1:nstep]
 for i=1:nstep

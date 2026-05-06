@@ -57,7 +57,7 @@ function solve(::Type{FreqXU{OX,OU}},pstate,verbose::𝕓,dbg;
     Δt::𝕣, p::𝕫, t₀::𝕣=0.,tᵣ::𝕣=t₀, 
     initialstate::State,
     droptol::𝕣=1e-10,
-    wantedhessians::Matrix{𝕓2}=want_all_hessians(1,OX+1,OU+1,0)) where{OX,OU}
+    wanted::Wanted=Wanted{1,OX+1,OU+1,0}(:all,:all)) where{OX,OU}
 
     #  Mostly constants
     local LU
@@ -74,7 +74,7 @@ function solve(::Type{FreqXU{OX,OU}},pstate,verbose::𝕓,dbg;
 
     # Prepare assembler
     verbose && @printf("    Preparing assembler\n")
-    out,asm,dofgr         = prepare(AssemblyDirect{OX,OU,IA},model,dis,wantedhessians)   # model assembler for all arrays   
+    out,asm,dofgr         = prepare(AssemblyDirect,model,dis,wanted)   # model assembler for all arrays   
 
     verbose && @printf("    Computing matrices\n")
     assemble!{:matrices}(out,asm,dis,model,stateᵣ,Δt,(dbg...,solver=:FreqXU,phase=:matrices))            # assemble all model matrices - in class-blocks

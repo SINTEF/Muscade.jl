@@ -33,8 +33,8 @@ function solve(::Type{EigX{ℝ}},pstate,verbose,dbg;
 
     verbose && @printf("\n    Assembling\n")
     wantK,wantM      = (ind.Λ,ind.X,1,1),(ind.Λ,ind.X,1,3)
-    wanted           = want_some_hessians(1,OX+1,OU+1,IA,wantK,wantM)
-    out,asm,dofgr    = prepare(AssemblyDirect{OX,OU,IA},model,dis,wanted)  
+    wanted           = Wanted{1,OX+1,OU+1,IA}(:all,(wantK,wantM))
+    out,asm,dofgr    = prepare(AssemblyDirect,model,dis,wanted)  
     nXdof            = getndof.(dofgr)[ind.X]
     state₀           = State{1,OX+1,OU+1}(copy(state)) 
     assemble!{:matrices}(out,asm,dis,model,state₀,idmult,(dbg...,solver=:EigXℝ))
@@ -107,8 +107,8 @@ function solve(::Type{EigX{ℂ}},pstate,verbose,dbg;
 
     verbose && @printf("\n    Assembing\n")
     wantK,wantC,wantM= (ind.Λ,ind.X,1,1),(ind.Λ,ind.X,1,2),(ind.Λ,ind.X,1,3)
-    wanted           = want_some_hessians(1,OX+1,OU+1,IA,wantK,wantC,wantM)
-    out,asm,dofgr    = prepare(AssemblyDirect{OX,OU,IA},model,dis,wanted)  
+    wanted           = Wanted{1,OX+1,OU+1,IA}(:all,(wantK,wantC,wantM))
+    out,asm,dofgr    = prepare(AssemblyDirect,model,dis,wanted)  
     nXdof            = getndof.(dofgr)[ind.X]
     state₀           = State{1,OX+1,OU+1}(copy(state))   
     assemble!{:matrices}(out,asm,dis,model,state₀,idmult,(dbg...,solver=:EigXℂ))
