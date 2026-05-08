@@ -26,20 +26,28 @@ initialstate    = setdof!(initialstate,[x′];field=:tx1,nodID=[node],order=1)  
 Δt    = 0.1
 t     = Δt:Δt:100*Δt
 state0 = solve(SweepX{ 2};  initialstate,time= t,verbose=false,catcherror=true)
-state  = solve(SweepXA{2};  initialstate,time= t,verbose=true,catcherror=true,maxAiter=20,maxΔa=1e-10)
+state  = solve(SweepXA{2,2,2};  initialstate,time= t,verbose=true,catcherror=true,maxAiter=20,maxΔa=1e-10)
 
 @show state[1].A[1]
 
+using GLMakie
+fig      = Figure(size = (1000,800))
+axeX      = Axis(fig[1,1])
+x0 = [s.X[1][1] for s∈state0]
+#x = [s.X[1][1] for s∈state]
+lines!(axeX,t,x0,color=:red)
+#lines!(axeX,t,x,color=:black)
+display(fig)
+
 # using GLMakie
-# fig      = Figure(size = (1000,800))
-# axeX      = Axis(fig[1,1])
-# x0 = [s.X[1][1] for s∈state0]
-# x = [s.X[1][1] for s∈state]
-# lines!(axeX,t,x,color=:black)
-# lines!(axeX,t,x0,color=:red)
-# display(fig)
 
-
+# fig      = Figure(size = (600,450))
+# display(fig) # open interactive window (gets closed down by "save")
+# axe      = Axis(fig[1,1],title="Test",xlabel="t")
+# ox    = lines!(  axe,t,x    ,color = :black, linewidth = 1.)
+# #oλ    = lines!(  axe,t,λ/100,color = :red, linewidth = 1.)
+# #@show state[1].A[1]
+# ;#end
 
 ;
 #end

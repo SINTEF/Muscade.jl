@@ -47,24 +47,7 @@ function Wanted{IΛ,NDX,NDU,IA}(vectors::Union{Symbol,Tuple},matrices::Union{Sym
     nder = (IΛ,NDX,NDU,IA)
     return Wanted{IΛ,NDX,NDU,IA}(wantL1(vectors,nder),wantL2(matrices,nder))
 end
-# function Wanted{IΛ,NDX,NDU,IA}(all::Symbol) where{IΛ,NDX,NDU,IA}
-#     vectors==:all || muscadeerror("Invalid call to Wanted")
-#     nder = (IΛ,NDX,NDU,IA)
-#     L1   = [ [true           for i=1:nder[α]            ] for α∈λxua        ]
-#     L2   = [ [~(α==β==ind.Λ) for i=1:nder[α],j=1:nder[β]] for α∈λxua, β∈λxua]
-#     return Wanted{NDΛ,NDX,NDU,IA}(L1,L2)
-# end
-# function Wanted{IΛ,NDX,NDU,IA}(some::Symbol,spec...) where{IΛ,NDX,NDU,IA}
-#    some==:some || muscadeerror("Invalid call to Wanted")
-#     nder = (IΛ,NDX,NDU,IA)
-#     L1   = [ [true           for i=1:nder[α]            ] for α∈λxua        ]
-#     L2   = [ [false          for i=1:nder[α],j=1:nder[β]] for α∈λxua, β∈λxua]
-#     for s ∈ spec
-#         L2[s[1],s[2]][s[3],s[4]] = true
-#     end
-#     return Wanted{NDΛ,NDX,NDU,IA}(L1,L2)
-# end
-mutable struct AssemblyDirect{OX,OU,IA}  <:Assembly
+mutable struct AssemblyDirect{OΛ,OX,OU,IA}  <:Assembly
     L1 :: Vector{Vector{𝕣1      }}    # L1[α  ][αder     ]  α∈ λ,x,u,a
     L2 :: Matrix{Matrix{Sparse𝕣2}}    # L2[α,β][αder,βder]
 end  
@@ -73,7 +56,7 @@ function prepare(::Type{AssemblyDirect},model,dis,wanted::Wanted{IΛ,NDX,NDU,IA}
     ndof     = getndof.(dofgr)
     neletyp  = getneletyp(model)
     asm      = Matrix{𝕫2}(undef,nclass+nclass^2,neletyp) 
-    nder     = (1,NDX,NDU,IA)
+    nder     = (IΛ,NDX,NDU,IA)
     L1       = Vector{Vector{𝕣1}}(undef,4)
     for α∈λxua
         nα   = nder[α]
@@ -96,20 +79,18 @@ function prepare(::Type{AssemblyDirect},model,dis,wanted::Wanted{IΛ,NDX,NDU,IA}
             end
         end
     end
-    out      = AssemblyDirect{NDX-1,NDU-1,IA}(L1,L2)
+    out      = AssemblyDirect{IΛ,NDX-1,NDU-1,IA}(L1,L2)
     return out,asm,dofgr
 end
 function zero!(out::AssemblyDirect) 
     for L1∈out.L1 
-        for ℓ1∈L1
-            zero!(ℓ1)
+        for i ∈ eachindex(L1)
+            isassigned(L1,i) && zero!(L1[i])
         end
     end
     for L2∈out.L2 
         for i ∈ eachindex(L2)
-            if isassigned(L2,i)
-                zero!(L2[i])
-            end
+            isassigned(L2,i) && zero!(L2[i])
         end
     end
 end
@@ -122,28 +103,28 @@ function addin!{mission}(out::AssemblyDirect,asm,iele,scale,eleobj::Acost,A::SVe
     ø   = nothing
     C,_ = lagrangian(eleobj,ø,ø,ø,∂A,ø,ø ,dbg)
     ∇ₐC = ∂{P,Na}(C)
-    add_value!(out.L1[ind.A][1],asm[arrnum(ind.A)],iele,∇ₐC)
+    isassigned(out.L1[ind.A],1) && add_value!(out.L1[ind.A][1],asm[arrnum(ind.A)],iele,∇ₐC)
     if mission==:matrices
-        add_∂!{1}(out.L2[ind.A,ind.A][1,1],asm[arrnum(ind.A,ind.A)],iele,∇ₐC)
+        isassigned(out.L2[ind.A,ind.A],1,1) && add_∂!{1}(out.L2[ind.A,ind.A][1,1],asm[arrnum(ind.A,ind.A)],iele,∇ₐC)
     end
 end
 addin!{mission}(out::AssemblyDirect,asm,iele,scale,eleobj::Eleobj,Λ,X,U,A,t,Δt,SP,dbg) where{Eleobj,mission} =
     addin!{mission}(out::AssemblyDirect,asm,iele,scale,eleobj,no_second_order(Eleobj),Λ,X,U,A,t,Δt,SP,dbg)
-function addin!{mission}(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::Eleobj,no_second_order::Val{true}, 
+function addin!{mission}(out::AssemblyDirect{IΛ,OX,OU,IA},asm,iele,scale,eleobj::Eleobj,no_second_order::Val{true}, 
                                 Λ::NTuple{1  ,SVector{Nx}},
                                 X::NTuple{NDX,SVector{Nx}},
                                 U::NTuple{NDU,SVector{Nu}},
-                                A::           SVector{Na} ,t,Δt,SP,dbg) where{mission,OX,OU,IA,NDX,NDU,Nx,Nu,Na,Eleobj} 
+                                A::           SVector{Na} ,t,Δt,SP,dbg) where{mission,IΛ,OX,OU,IA,NDX,NDU,Nx,Nu,Na,Eleobj} 
     @assert NDX==OX+1 @sprintf("got OX=%i and NDX=%i. Expected OX+1==NDX",OX,NDX)
     @assert NDU==OU+1 @sprintf("got OU=%i and NDU=%i. Expected OU+1==NDU",OU,NDU)
     ndof   = (Nx, Nx, Nu, Na)
-    nder   = (1,OX+1,OU+1,IA)
+    nder   = (IΛ,OX+1,OU+1,IA)
     if     mission==:matrices     P=1
     elseif mission==:vectors      P=0
     end
     if IA == 1
         ∂X,∂U,∂A = revariate{1}((;X,U,A),(;X=scale.X,U=scale.U,A=scale.A))
-        R,FB     = residual(eleobj, ∂X,∂U,∂A,t,SP,dbg)
+        R,FB     = residual(eleobj, ∂X,∂U,∂A,t,SP,dbg) # only elements with "residual" should set no_second_order=Val{true}
     else
         ∂X,∂U    = revariate{1}((;X,U  ),(;X=scale.X,U=scale.U))
         R,FB     = residual(eleobj, ∂X,∂U,  A,t,SP,dbg)
@@ -163,13 +144,13 @@ function addin!{mission}(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::El
         end
     end 
 end
-struct   DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,OX,OU,IA} end
-function DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,OX,OU,IA}(out,asm,L,iele,Δt) where{mission,Nx,Nu,Na,OX,OU,IA}
+struct   DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,IΛ,OX,OU,IA} end
+function DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,IΛ,OX,OU,IA}(out,asm,L,iele,Δt) where{mission,Nx,Nu,Na,IΛ,OX,OU,IA}
     if     mission==:matrices     P=2
     elseif mission==:vectors      P=1
     end
     ndof         = (Nx, Nx, Nu, Na)
-    nder         = (1,OX+1,OU+1,IA)
+    nder         = (IΛ,OX+1,OU+1,IA)
     Np           = Nx + Nx*(OX+1) + Nu*(OU+1) + Na*IA # number of partials
     λxua         = 1:4
     ∇L           = ∂{P,Np}(L)
@@ -190,14 +171,14 @@ function DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,OX,OU,IA}(out,asm,L,iel
         end
     end
 end    
-function addin!{mission}(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::Eleobj,no_second_order::Val{false}, 
+function addin!{mission}(out::AssemblyDirect{IΛ,OX,OU,IA},asm,iele,scale,eleobj::Eleobj,no_second_order::Val{false}, 
     Λ::NTuple{1  ,SVector{Nx}},
     X::NTuple{NDX,SVector{Nx}},
     U::NTuple{NDU,SVector{Nu}},
-    A::           SVector{Na} ,t,Δt,SP,dbg) where{mission,OX,OU,IA,NDX,NDU,Nx,Nu,Na,Eleobj} 
+    A::           SVector{Na} ,t,Δt,SP,dbg) where{mission,IΛ,OX,OU,IA,NDX,NDU,Nx,Nu,Na,Eleobj} 
 
-    @assert NDX==OX+1 @sprintf("got OX=%i and NDX=%i. Expected OX+1==NDX",OX,NDX)
-    @assert NDU==OU+1 @sprintf("got OU=%i and NDU=%i. Expected OU+1==NDU",OU,NDU)
+    # @assert NDX==OX+1 @sprintf("got OX=%i and NDX=%i. Expected OX+1==NDX",OX,NDX)
+    # @assert NDU==OU+1 @sprintf("got OU=%i and NDU=%i. Expected OU+1==NDU",OU,NDU)
     if     mission==:matrices     P=2
     elseif mission==:vectors      P=1
     end
@@ -208,23 +189,23 @@ function addin!{mission}(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::El
         ∂Λ,∂X,∂U    = revariate{P}((;Λ=Λ[1],X,U),(;Λ=scale.Λ,X=scale.X,U=scale.U))
         L,FB        = getlagrangian(eleobj, ∂Λ,∂X,∂U,A  ,t,SP,dbg)
     end
-    DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,OX,OU,IA}(out,asm,L,iele,Δt)
+    DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,IΛ,OX,OU,IA}(out,asm,L,iele,Δt)
 end
 # Specialised to accelerate ElementCost and ElementConstraint
-function addin!{mission}(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::ElementCost,no_second_order::Val{false}, 
+function addin!{mission}(out::AssemblyDirect{IΛ,OX,OU,IA},asm,iele,scale,eleobj::ElementCost,no_second_order::Val{false}, 
                                 Λ::NTuple{1  ,SVector{Nx}},
                                 X::NTuple{NDX,SVector{Nx}},
                                 U::NTuple{NDU,SVector{Nu}},
-                                A::           SVector{Na} ,t,Δt,SP,dbg) where{mission,OX,OU,IA,NDX,NDU,Nx,Nu,Na} 
+                                A::           SVector{Na} ,t,Δt,SP,dbg) where{mission,IΛ,OX,OU,IA,NDX,NDU,Nx,Nu,Na} 
          addin!{mission}(out,asm,iele,scale,eleobj,Val(true),Λ,X,U,A,t,Δt,SP,dbg) 
 end
-function addin!{mission}(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::ElementCost,no_second_order::Val{true}, 
+function addin!{mission}(out::AssemblyDirect{IΛ,OX,OU,IA},asm,iele,scale,eleobj::ElementCost,no_second_order::Val{true}, 
                                 Λ::NTuple{1  ,SVector{Nx}},
                                 X::NTuple{NDX,SVector{Nx}},
                                 U::NTuple{NDU,SVector{Nu}},
-                                A::           SVector{Na} ,t,Δt,SP,dbg) where{mission,OX,OU,IA,NDX,NDU,Nx,Nu,Na} 
-    @assert NDX==OX+1 @sprintf("got OX=%i and NDX=%i. Expected OX+1==NDX",OX,NDX)
-    @assert NDU==OU+1 @sprintf("got OU=%i and NDU=%i. Expected OU+1==NDU",OU,NDU)
+                                A::           SVector{Na} ,t,Δt,SP,dbg) where{mission,IΛ,OX,OU,IA,NDX,NDU,Nx,Nu,Na} 
+    # @assert NDX==OX+1 @sprintf("got OX=%i and NDX=%i. Expected OX+1==NDX",OX,NDX)
+    # @assert NDU==OU+1 @sprintf("got OU=%i and NDU=%i. Expected OU+1==NDU",OU,NDU)
     if     mission==:matrices     P=2
     elseif mission==:vectors      P=1
     end
@@ -240,23 +221,23 @@ function addin!{mission}(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::El
     Rcost           = eleobj.cost(Releres,t,eleobj.costargs...)
     cost            = chainrule(Rcost,to_order{P}(eleres))
     L               = Λ[1] ∘₁ R + cost
-    DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,OX,OU,IA}(out,asm,L,iele,Δt)
+    DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,IΛ,OX,OU,IA}(out,asm,L,iele,Δt)
 end
-function addin!{mission}(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::ElementConstraint,no_second_order::Val{false}, 
+function addin!{mission}(out::AssemblyDirect{IΛ,OX,OU,IA},asm,iele,scale,eleobj::ElementConstraint,no_second_order::Val{false}, 
                                 Λ::NTuple{1  ,SVector{Nx}},
                                 X::NTuple{NDX,SVector{Nx}},
                                 U::NTuple{NDU,SVector{Nu}},
-                                A::           SVector{Na} ,t,Δt,SP,dbg) where{mission,OX,OU,IA,NDX,NDU,Nx,Nu,Na} 
+                                A::           SVector{Na} ,t,Δt,SP,dbg) where{mission,IΛ,OX,OU,IA,NDX,NDU,Nx,Nu,Na} 
          addin!{mission}(out,asm,iele,scale,eleobj,Val(true),Λ,X,U,A,t,Δt,SP,dbg) 
 end
-function addin!{mission}(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::ElementConstraint,no_second_order::Val{true}, 
+function addin!{mission}(out::AssemblyDirect{IΛ,OX,OU,IA},asm,iele,scale,eleobj::ElementConstraint,no_second_order::Val{true}, 
                                 Λ::NTuple{1  ,SVector{Nx}},
                                 X::NTuple{NDX,SVector{Nx}},
                                 U::NTuple{NDU,SVector{Nu}},
-                                A::           SVector{Na} ,t,Δt,SP,dbg) where{mission,OX,OU,IA,NDX,NDU,Nx,Nu,Na} 
+                                A::           SVector{Na} ,t,Δt,SP,dbg) where{mission,IΛ,OX,OU,IA,NDX,NDU,Nx,Nu,Na} 
 # TODO Specialised code to accelerate constraints in DirectXUA, but... it does not set FB, and DIrectXUA/solve has no line search...                                
-    @assert NDX==OX+1 @sprintf("got OX=%i and NDX=%i. Expected OX+1==NDX",OX,NDX)
-    @assert NDU==OU+1 @sprintf("got OU=%i and NDU=%i. Expected OU+1==NDU",OU,NDU)
+    # @assert NDX==OX+1 @sprintf("got OX=%i and NDX=%i. Expected OX+1==NDX",OX,NDX)
+    # @assert NDU==OU+1 @sprintf("got OU=%i and NDU=%i. Expected OU+1==NDU",OU,NDU)
     if     mission==:matrices     P=2
     elseif mission==:vectors      P=1
     end
@@ -278,7 +259,7 @@ function addin!{mission}(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::El
                                     elseif  m==:positive; -KKT(λ,gap,γ) 
                                     elseif  m==:off;      -0.5λ^2 
                                     end
-    DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,OX,OU,IA}(out,asm,L,iele,Δt)
+    DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,IΛ,OX,OU,IA}(out,asm,L,iele,Δt)
 end
 
 
@@ -358,7 +339,7 @@ function preparebig(IA,nstep,out)
     return Lvv,Lv,Lvvasm,Lvasm,Lvdis
 end
 struct assemblebig!{mission} end
-function assemblebig!{mission}(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out::AssemblyDirect{OX,OU,IA},state,nstep,Δt,SP,dbg) where{mission,OX,OU,IA}
+function assemblebig!{mission}(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out::AssemblyDirect{IΛ,OX,OU,IA},state,nstep,Δt,SP,dbg) where{mission,IΛ,OX,OU,IA}
     zero!(Lvv)
     zero!(Lv )
     cumblk = 0

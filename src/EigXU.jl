@@ -16,8 +16,7 @@ function make_λxu_sparsepattern(out)
     β       = [1,1,2,2,2,3,3,3]  #   [. . .]
     return sparse(α,β,L2.(α,β))  # = [. . .]
 end
-
-function assemblebigmat!(L2::Vector{Sparse𝕣2},L2bigasm::SparseMatrixCSC,asm,model,dis,out::AssemblyDirect{OX,OU,0},dbg) where{OX,OU}
+function assemblebigmat!(L2::Vector{Sparse𝕣2},L2bigasm::SparseMatrixCSC,asm,model,dis,out::AssemblyDirect,dbg) 
     # does not call assemble!: solve has previously called assemble! to prepare bigasm, so out.L2 is already set,
     for L2ᵢ∈L2
         zero!(L2ᵢ)
@@ -37,7 +36,7 @@ function assemblebigmat!(L2::Vector{Sparse𝕣2},L2bigasm::SparseMatrixCSC,asm,m
         end
     end
 end
-function assemblebigvec!(L1,L1bigasm::𝕫1,asm,model,dis,out::AssemblyDirect{OX,OU,0},state,Δt,dbg) where{OX,OU}
+function assemblebigvec!(L1,L1bigasm::𝕫1,asm,model,dis,out::AssemblyDirect,state,Δt,dbg) 
     zero!.(L1)
     assemble!{:vectors}(out,asm,dis,model,state,Δt,(dbg...,asm=:assemblebigvec!)) # first assemble model vectors
     for β ∈ λxu                                                                # then collate them into

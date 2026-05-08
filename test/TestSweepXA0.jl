@@ -16,8 +16,8 @@ osc             = addelement!(model,AdjustableSdofOscillator,[node]; K,C,M)
 @functor with(    )  acost(a,σ)=(a/σ)^2
 @functor with(σ=.1)  xcost(x,t)=(x/σ)^2
 @functor with(    )  xload(  t)= .5cos(3t)
-# cK              = addelement!(model,SingleAcost  ,[node];          field=:ΞK,costargs=(.2,),cost =acost)
-#cX              = addelement!(model,SingleDofCost,[node];class=:X ,field=:tx1,              cost =xcost)
+cK              = addelement!(model,SingleAcost  ,[node];          field=:ΞK,costargs=(.2,),cost =acost)
+cX              = addelement!(model,SingleDofCost,[node];class=:X ,field=:tx1,              cost =xcost)
 #cF               = addelement!(model,DofLoad      ,[node];          field=:tx1,              value=xload)
 
 initialstate    = initialize!(model;time=0.)

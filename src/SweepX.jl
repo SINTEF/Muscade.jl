@@ -193,7 +193,7 @@ function solve(SX::Type{SweepX{OX}},pstate,verbose,dbg;
     model,dis        = initialstate.model,initialstate.dis
     out,asm,Xdofgr   = prepare(AssemblySweepX{OX},model,dis)  
     nXdof            = getndof(Xdofgr)
-    buffer           = ntuple(i->𝕣1(undef,nXdof), 6)  
+    buffer           = NTuple{6}(𝕣1(undef,nXdof) for i=1:6)  
     citer            = 0
     cΔx²,cLλ²        = maxΔx^2,maxLλ^2
     state            = State{1,OX+1,1}(copy(initialstate)) 
