@@ -67,6 +67,7 @@ end
 Muscade.assembleA!{:matrices}(out,asm,dis,model,state[1],(;))
 
 @testset "prepareA_out" begin
+    @test typeof(out) ==  Muscade.AssemblyDirect{1, OX+1,OU+1,IA}
     @test all(all(v.==0) for  v∈out.L1[1])
     @test all(all(v.==0) for  v∈out.L1[2])
     @test all(all(v.==0) for  v∈out.L1[3])
