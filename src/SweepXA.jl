@@ -232,7 +232,7 @@ function solve(SX::Type{SweepXA{OX,OSX1,OSX2}},pstate,verbose,dbg;
 
             # ΔA, accumulate costs over steps
 
-            assemble!{:Qₐ♯}(outQ♯ₐ,asmQ♯ₐ,dis,model,state,Δt,(dbg...,solver=:SweepXA,mission=:Qₐ♯,iAiter=iAiter,istep=istep))
+            assemble!{:matrices}(outQ♯ₐ,asmQ♯ₐ,dis,model,state,Δt,(dbg...,solver=:SweepXA,mission=:Qₐ♯,iAiter=iAiter,istep=istep))
             Lx,La,Lxx,Lax,Laa    = outQ♯ₐ.L1[ind.X], outQ♯ₐ.L1[ind.A], outQ♯ₐ.L2[ind.X,ind.X], outQ♯ₐ.L2[ind.A,ind.X], outQ♯ₐ.L2[ind.A,ind.A]
 
             La♯         .+= La[1]      # this is gradient of cost over time Δt

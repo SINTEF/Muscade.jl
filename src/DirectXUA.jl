@@ -112,17 +112,17 @@ function addin!{mission}(out::AssemblyDirect,asm,iele,scale,eleobj::Eleobj,Λ,X,
     addin!{mission}(out::AssemblyDirect,asm,iele,scale,eleobj,no_second_order(Eleobj),Λ,X,U,A,t,Δt,SP,dbg)
 end
 function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,eleobj::Eleobj,no_second_order::Val{true}, 
-                                Λ::NTuple{1  ,SVector{Nx}},
-                                X::NTuple{NDX,SVector{Nx}},
-                                U::NTuple{NDU,SVector{Nu}},
-                                A::           SVector{Na} ,t,Δt,SP,dbg) where{mission,NDΛ,NDX,NDU,NDA,Nx,Nu,Na,Eleobj} 
+                                Λ::NTuple{1   ,SVector{Nx}},
+                                X::NTuple{NDX_,SVector{Nx}},
+                                U::NTuple{NDU_,SVector{Nu}},
+                                A::            SVector{Na} ,t,Δt,SP,dbg) where{mission,NDΛ,NDX,NDU,NDA,NDX_,NDU_,Nx,Nu,Na,Eleobj} 
     ndof   = (Nx, Nx, Nu, Na)
     nder   = (NDΛ,NDX,NDU,NDA)
     if     mission==:matrices     P=1
     elseif mission==:vectors      P=0
     end
     if NDA == 1
-        ∂X,∂U,∂A = revariate{1}((;X,U,A),(;X=scale.X,U=scale.U,A=scale.A))
+        ∂X,∂U,∂A = revariate{1}((;X,U,A),(;X=scale.X,U=scale.U,A=scale.A)) # TODO as many partials as there are XUAs and their derivatives.  Possibly more than `out` wants
         R,FB     = residual(eleobj, ∂X,∂U,∂A,t,SP,dbg) # only elements with "residual" should set no_second_order=Val{true}
     else
         ∂X,∂U    = revariate{1}((;X,U  ),(;X=scale.X,U=scale.U))
@@ -171,10 +171,10 @@ function DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,NDΛ,NDX,NDU,NDA}(out,a
     end
 end    
 function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,eleobj::Eleobj,no_second_order::Val{false}, 
-    Λ::NTuple{1  ,SVector{Nx}},
-    X::NTuple{NDX,SVector{Nx}},
-    U::NTuple{NDU,SVector{Nu}},
-    A::           SVector{Na} ,t,Δt,SP,dbg) where{mission,NDΛ,NDX,NDU,NDA,Nx,Nu,Na,Eleobj} 
+                           Λ::NTuple{1   ,SVector{Nx}},
+                           X::NTuple{NDX_,SVector{Nx}},
+                           U::NTuple{NDU_,SVector{Nu}},
+                           A::            SVector{Na} ,t,Δt,SP,dbg) where{mission,NDΛ,NDX,NDU,NDA,NDX_,NDU_,Nx,Nu,Na,Eleobj} 
 
     if     mission==:matrices     P=2
     elseif mission==:vectors      P=1
@@ -189,18 +189,18 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,el
     DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,NDΛ,NDX,NDU,NDA}(out,asm,L,iele,Δt)
 end
 # Specialised to accelerate ElementCost and ElementConstraint
-function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,eleobj::ElementCost,no_second_order::Val{false}, 
-                                Λ::NTuple{1  ,SVector{Nx}},
-                                X::NTuple{NDX,SVector{Nx}},
-                                U::NTuple{NDU,SVector{Nu}},
-                                A::           SVector{Na} ,t,Δt,SP,dbg) where{mission,NDΛ,NDX,NDU,NDA,Nx,Nu,Na} 
+function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,eleobj::ElementCost,no_second_order::Val{false}, # TODO can we compact this?
+                           Λ::NTuple{1   ,SVector{Nx}},
+                           X::NTuple{NDX_,SVector{Nx}},
+                           U::NTuple{NDU_,SVector{Nu}},
+                           A::            SVector{Na} ,t,Δt,SP,dbg) where{mission,NDΛ,NDX,NDU,NDA,NDX_,NDU_,Nx,Nu,Na} 
          addin!{mission}(out,asm,iele,scale,eleobj,Val(true),Λ,X,U,A,t,Δt,SP,dbg) 
 end
 function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,eleobj::ElementCost,no_second_order::Val{true}, 
-                                Λ::NTuple{1  ,SVector{Nx}},
-                                X::NTuple{NDX,SVector{Nx}},
-                                U::NTuple{NDU,SVector{Nu}},
-                                A::           SVector{Na} ,t,Δt,SP,dbg) where{mission,NDΛ,NDX,NDU,NDA,Nx,Nu,Na} 
+                           Λ::NTuple{1   ,SVector{Nx}},
+                           X::NTuple{NDX_,SVector{Nx}},
+                           U::NTuple{NDU_,SVector{Nu}},
+                           A::            SVector{Na} ,t,Δt,SP,dbg) where{mission,NDΛ,NDX,NDU,NDA,NDX_,NDU_,Nx,Nu,Na} 
     if     mission==:matrices     P=2
     elseif mission==:vectors      P=1
     end
@@ -219,17 +219,17 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,el
     DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,NDΛ,NDX,NDU,NDA}(out,asm,L,iele,Δt)
 end
 function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,eleobj::ElementConstraint,no_second_order::Val{false}, 
-                                Λ::NTuple{1  ,SVector{Nx}},
-                                X::NTuple{NDX,SVector{Nx}},
-                                U::NTuple{NDU,SVector{Nu}},
-                                A::           SVector{Na} ,t,Δt,SP,dbg) where{mission,NDΛ,NDX,NDU,NDA,Nx,Nu,Na} 
+                         Λ::NTuple{1   ,SVector{Nx}},
+                         X::NTuple{NDX_,SVector{Nx}},
+                         U::NTuple{NDU_,SVector{Nu}},
+                         A::            SVector{Na} ,t,Δt,SP,dbg) where{mission,NDΛ,NDX,NDU,NDA,NDX_,NDU_,Nx,Nu,Na} 
          addin!{mission}(out,asm,iele,scale,eleobj,Val(true),Λ,X,U,A,t,Δt,SP,dbg) 
 end
 function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,eleobj::ElementConstraint,no_second_order::Val{true}, 
-                                Λ::NTuple{1  ,SVector{Nx}},
-                                X::NTuple{NDX,SVector{Nx}},
-                                U::NTuple{NDU,SVector{Nu}},
-                                A::           SVector{Na} ,t,Δt,SP,dbg) where{mission,NDΛ,NDX,NDU,NDA,Nx,Nu,Na} 
+                           Λ::NTuple{1   ,SVector{Nx}},
+                           X::NTuple{NDX_,SVector{Nx}},
+                           U::NTuple{NDU_,SVector{Nu}},
+                           A::            SVector{Na} ,t,Δt,SP,dbg) where{mission,NDΛ,NDX,NDU,NDA,NDX_,NDU_,Nx,Nu,Na} 
 # TODO Specialised code to accelerate constraints in DirectXUA, but... it does not set FB, and DIrectXUA/solve has no line search...                                
     if     mission==:matrices     P=2
     elseif mission==:vectors      P=1
