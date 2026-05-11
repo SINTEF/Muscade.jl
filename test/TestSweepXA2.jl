@@ -14,7 +14,7 @@ node            = addnode!(model,𝕣[])
 osc             = addelement!(model,AdjustableSdofOscillator,[node]; K,C,M)
 
 @functor with(σ=2.) acost(a  )=(a/σ)^2
-@functor with(σ=.1) xcost(x,t)=(x/σ)^2
+@functor with(σ=.01) xcost(x,t)=(x/σ)^2
 cK              = addelement!(model,SingleAcost  ,[node];field=:ΞK,               cost=acost)
 cX              = addelement!(model,SingleDofCost,[node];class=:X ,field=:tx1    ,cost=xcost)
 
@@ -23,8 +23,8 @@ x,x′,x″         = 0.,1.,0.
 initialstate    = setdof!(initialstate,[x′];field=:tx1,nodID=[node],order=1)  # initial speed
 
 
-Δt    = 0.1
-t     = Δt:Δt:100*Δt
+Δt     = 0.1
+t      = Δt:Δt:100*Δt
 state0 = solve(SweepX{ 2};  initialstate,time= t,verbose=false,catcherror=true)
 state  = solve(SweepXA{2,2,2};  initialstate,time= t,verbose=true,catcherror=true,maxAiter=20,maxΔa=1e-10)
 
@@ -34,20 +34,11 @@ using GLMakie
 fig      = Figure(size = (1000,800))
 axeX      = Axis(fig[1,1])
 x0 = [s.X[1][1] for s∈state0]
-#x = [s.X[1][1] for s∈state]
+x  = [s.X[1][1] for s∈state]
 lines!(axeX,t,x0,color=:red)
-#lines!(axeX,t,x,color=:black)
+lines!(axeX,t,x.+.01,color=:black)
 display(fig)
 
-# using GLMakie
-
-# fig      = Figure(size = (600,450))
-# display(fig) # open interactive window (gets closed down by "save")
-# axe      = Axis(fig[1,1],title="Test",xlabel="t")
-# ox    = lines!(  axe,t,x    ,color = :black, linewidth = 1.)
-# #oλ    = lines!(  axe,t,λ/100,color = :red, linewidth = 1.)
-# #@show state[1].A[1]
-# ;#end
 
 ;
 #end

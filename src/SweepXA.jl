@@ -233,22 +233,24 @@ function solve(SX::Type{SweepXA{OX,OSX1,OSX2}},pstate,verbose,dbg;
             # ΔA, accumulate costs over steps
 
             assemble!{:matrices}(outQ♯ₐ,asmQ♯ₐ,dis,model,state,Δt,(dbg...,solver=:SweepXA,mission=:Qₐ♯,iAiter=iAiter,istep=istep))
-            Lx,La,Lxx,Lax,Laa    = outQ♯ₐ.L1[ind.X], outQ♯ₐ.L1[ind.A], outQ♯ₐ.L2[ind.X,ind.X], outQ♯ₐ.L2[ind.A,ind.X], outQ♯ₐ.L2[ind.A,ind.A]
+            Lx,La,Lxx,Lax,Laa = outQ♯ₐ.L1[ind.X], outQ♯ₐ.L1[ind.A], outQ♯ₐ.L2[ind.X,ind.X], outQ♯ₐ.L2[ind.A,ind.X], outQ♯ₐ.L2[ind.A,ind.A]
 
             La♯         .+= La[1]      # this is gradient of cost over time Δt
             Laa♯        .+= Laa[1,1]
+            istep==1 &&  @show La♯[1],Laa♯[1,1]
             for idx = 1:OX+1
                 isassigned(Lx,idx)          && La♯     .+=                        Lx[     idx] ∘₁ Xₐ[idx]
                 isassigned(Lax,1,idx)       && Laa♯    .+= symmetric!(            Lax[1  ,idx] ∘₁ Xₐ[idx])
                 for jdx   = 1:OX+1  
-                    isassigned(Lax,idx,jdx) && Laa♯    .+=            Xₐ[idx]' ∘₁ Lxx[idx,jdx] ∘₁ Xₐ[jdx] 
+                    isassigned(Lxx,idx,jdx) && Laa♯    .+=            Xₐ[idx]' ∘₁ Lxx[idx,jdx] ∘₁ Xₐ[jdx] 
                 end
             end
             
-            deltaXa[istep] =-ΔXₐ[1,1]  ### dbg   
-            Xa[istep]      = Xₐ[1][1]  ### dbg   
-            Va[istep]      = Xₐ[2][1]  ### dbg   
-            Aa[istep]      = Xₐ[3][1]  ### dbg   
+            istep==1 && @show iAiter,istep,t outRₐ.Rₐ[1],ΔXₐ[1] Xₐ[1][1],Xₐ[2][1],Xₐ[3][1] Lx[1][1],Lx[2][1],Lx[3][1] La♯[1]
+            deltaXa[istep] =-ΔXₐ[1, 1]  ### dbg   
+            Xa[istep]      =  Xₐ[1][1]  ### dbg   
+            Va[istep]      =  Xₐ[2][1]  ### dbg   
+            Aa[istep]      =  Xₐ[3][1]  ### dbg   
 
         end # istep
 
