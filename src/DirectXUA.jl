@@ -116,20 +116,21 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,el
                                 X::NTuple{NDX_,SVector{Nx}},
                                 U::NTuple{NDU_,SVector{Nu}},
                                 A::            SVector{Na} ,t,Δt,SP,dbg) where{mission,NDΛ,NDX,NDU,NDA,NDX_,NDU_,Nx,Nu,Na,Eleobj} 
-    ndof   = (Nx, Nx, Nu, Na)
-    nder   = (NDΛ,NDX,NDU,NDA)
+    #  @show :addin_no2order
     if     mission==:matrices     P=1
     elseif mission==:vectors      P=0
     end
     if NDA == 1
-        ∂X,∂U,∂A = revariate{1}((;X,U,A),(;X=scale.X,U=scale.U,A=scale.A)) # TODO as many partials as there are XUAs and their derivatives.  Possibly more than `out` wants
+        ∂X,∂U,∂A = revariate{1}((;X,U,A),(;X=scale.X,U=scale.U,A=scale.A)) 
         R,FB     = residual(eleobj, ∂X,∂U,∂A,t,SP,dbg) # only elements with "residual" should set no_second_order=Val{true}
     else
         ∂X,∂U    = revariate{1}((;X,U  ),(;X=scale.X,U=scale.U))
         R,FB     = residual(eleobj, ∂X,∂U,  A,t,SP,dbg)
     end        
-    iλ   = 1:ndof[ind.Λ]
-    Lλ   = out.L1[ind.Λ]
+    ndof   = (Nx, Nx, Nu, Na)
+    nder   = (NDΛ,NDX,NDU,NDA)
+    iλ     = 1:ndof[ind.Λ]  ### TODO CHECK
+    Lλ     = out.L1[ind.Λ]
     isassigned(Lλ,1) && add_value!(Lλ[1] ,asm[arrnum(ind.Λ)],iele,R,iλ;Δt)   
     if mission==:matrices
         pβ       = 0
@@ -175,7 +176,7 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,el
                            X::NTuple{NDX_,SVector{Nx}},
                            U::NTuple{NDU_,SVector{Nu}},
                            A::            SVector{Na} ,t,Δt,SP,dbg) where{mission,NDΛ,NDX,NDU,NDA,NDX_,NDU_,Nx,Nu,Na,Eleobj} 
-
+#    @show :addin_2order
     if     mission==:matrices     P=2
     elseif mission==:vectors      P=1
     end
@@ -186,6 +187,10 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,el
         ∂Λ,∂X,∂U    = revariate{P}((;Λ=Λ[1],X,U),(;Λ=scale.Λ,X=scale.X,U=scale.U))
         L,FB        = getlagrangian(eleobj, ∂Λ,∂X,∂U,A  ,t,SP,dbg)
     end
+    # @show typeof(eleobj)
+    # @show NDΛ,NDX,NDU,NDA,NDX_,NDU_,Nx,Nu,Na
+    # @show L
+
     DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,NDΛ,NDX,NDU,NDA}(out,asm,L,iele,Δt)
 end
 # Specialised to accelerate ElementCost and ElementConstraint

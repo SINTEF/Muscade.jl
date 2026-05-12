@@ -143,18 +143,21 @@ to `∂0[X]`, `∂1[X]` and `∂2[X]`.
 See also: [`chainrule`](@ref), [`revariate_indices`](@ref)
 """
 struct revariate{P,N,Z}   end
-revariate(a)                                               = revariate{precedence(a)}(a)
-revariate{P           }(a                 ) where{P}       = revariate{P,flat_length(a),:variate}(a,1)
 """
     δV = reδ(V)
 
 Same as [`revariate`](@ref), but all values in `δV` are set to zero.    
 """
 struct reδ{P} end
-reδ{P}(a  ) where{P} = revariate{P,flat_length(a),:δ}(a,1  )
-reδ{P}(a,s) where{P} = revariate{P,flat_length(a),:δ}(a,1,s)
-revariate(a,s)                                                            = revariate{precedence(a)}(a,s)
-revariate{P           }(a                 ,s             ) where{P}       = revariate{P,flat_length(a),:variate}(a,1,s)
+
+revariate(   a  )          = revariate{precedence(a)            }(a    )
+revariate(   a,s)          = revariate{precedence(a)            }(a,  s)
+reδ(         a  )          = reδ{      precedence(a)            }(a    )
+reδ(         a,s)          = reδ{      precedence(a)            }(a,  s)
+revariate{P}(a  ) where{P} = revariate{P,flat_length(a),:variate}(a,1  )
+revariate{P}(a,s) where{P} = revariate{P,flat_length(a),:variate}(a,1,s)
+reδ{      P}(a  ) where{P} = revariate{P,flat_length(a),:δ      }(a,1  )
+reδ{      P}(a,s) where{P} = revariate{P,flat_length(a),:δ      }(a,1,s)
 
 # inner works
 revariate{P,N,Z       }(a::NamedTuple   ,i               ) where{P,N,Z}   = NamedTuple{keys(a)}(revariate{P,N,Z}(values(a),i)) 
@@ -165,7 +168,7 @@ revariate{P,N,:δ      }(a::ℝ            ,i               ) where{P,N  }   = m
 revariate{P,N,:variate}(a::ℝ            ,i               ) where{P,N  }   = multivariate_𝕣{P,N}(VALUE(a),i)
 
 revariate{P,N,Z       }(a::NamedTuple   ,i,s             ) where{P,N,Z}   = NamedTuple{keys(a)}(revariatevalues{P,N,Z}(values(a),i,values(s))) 
-revariate{P,N,Z       }(a::Tuple        ,i,s             ) where{P,N,Z}   = (revariate{P,N,Z}(first(a),i,      s ),revariate{      P,N,Z}(Base.tail(a),i+flat_length(first(a)),          s )...)
+revariate{P,N,Z       }(a::Tuple        ,i,s             ) where{P,N,Z}   = (revariate{P,N,Z}(first(a),i,s ),revariate{P,N,Z}(Base.tail(a),i+flat_length(first(a)),          s )...)
 revariate{P,N,Z       }(a::Tuple{}      ,i,s             ) where{P,N,Z}   = ()
 revariate{P,N,Z       }(a::SArray{S}    ,i,s::SArray{S,𝕣}) where{P,N,Z,S} = SArray{S,type_multivariate_𝕣{P,N}()}(revariate{P,N,Z}(a[j],i-1+j,s[j]) for j∈eachindex(a))
 revariate{P,N,:δ      }(a::ℝ            ,i,s::𝕣          ) where{P,N  }   = multivariate_𝕣{P,N}(zero( a),i,s)
