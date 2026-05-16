@@ -1,11 +1,3 @@
-struct   propagate!{OX} end
-function propagate!{OX}(Xₐ,c) where{OX}
-    a₁,a₂,a₃,b₁,b₂,b₃ = c.a₁,c.a₂,c.a₃,c.b₁,c.b₂,c.b₃
-    if OX≥2 b₂♯,b₃♯   = b₂/(1-a₂), a₃/(1-a₂)+b₃       end
-    if OX≥1 Xₐ[2]   .-= a₂  .* Xₐ[2] .+ a₃ .* Xₐ[3]   end #         xₐ′-= aₐ
-    if OX≥2 Xₐ[3]   .-= b₂♯ .* Xₐ[2] .+ b₃♯ .*Xₐ[3]   end # same as xₐ″-= bₐ but in place
-    return nothing
-end
 
 ### add and decrement
 
@@ -110,8 +102,8 @@ function solve(SX::Type{SweepXA{OX,OSX1,OSX2}},pstate,verbose,dbg;
     state.Λ[1]      .= 0.
     states           = allocate(pstate,Vector{typeof(state)}(undef,length(time))) 
 
-    La♯              = 𝕣1(undef,nAdof      )
-    Laa♯             = 𝕣2(undef,nAdof,nAdof)
+    Qa               = 𝕣1(undef,nAdof      )
+    Qaa              = 𝕣2(undef,nAdof,nAdof)
     Xₐ               = NTuple{OX+1}(𝕣2(undef,nXdof,nAdof) for idx=1:OX+1)
     local ◺Lλx, ◺K♯, ΔA, cAiter   # declare variables to be local to the present scope, i.e. scope the function.  
                            # This way we can initialise within a loop, but have a variable that exists at next iter/step or even after the loop
@@ -121,8 +113,8 @@ function solve(SX::Type{SweepXA{OX,OSX1,OSX2}},pstate,verbose,dbg;
         firstAiter = iAiter==1
         # time-independent Acost
         assembleA!{:matrices}(outA,asmA,dis,model,state,(dbg...,solver=:SweepXA,phase=:fixedAcost,iAiter=iAiter))
-        La♯              .= outA.L1[ind.A][1]   
-        Laa♯             .= outA.L2[ind.A,ind.A][1,1] 
+        Qa               .= outA.L1[ind.A][1]   
+        Qaa              .= outA.L2[ind.A,ind.A][1,1] 
         zero!(Xₐ)
 
         for (istep,t)    ∈ enumerate(time)
@@ -162,14 +154,18 @@ function solve(SX::Type{SweepXA{OX,OSX1,OSX2}},pstate,verbose,dbg;
 
             # sensitivity of X to A
 
-            propagate!{OX}(Xₐ,c)
-            Rₐ           = Matrix(Lλa[1,1]) 
-            Rₐ         .+= Lλx[1,1]*Xₐ[1]
-            OX≥1 && Rₐ .+= Lλx[1,2]*Xₐ[2]
-            OX≥2 && Rₐ .+= Lλx[1,3]*Xₐ[3]
-            K♯           = Lλx[1,1]
-            OX≥1 && K♯ .+= Lλx[1,2]*c.a₁ 
-            OX≥2 && K♯ .+= Lλx[1,3]*c.b₁ 
+            a₁,a₂,a₃,b₁,b₂,b₃ = c.a₁,c.a₂,c.a₃,c.b₁,c.b₂,c.b₃
+            if OX≥2 b₂♯,b₃♯   = b₂/(1-a₂), a₃/(1-a₂)+b₃       end
+            if OX≥1 Xₐ[2]    .= (1-a₂)  .* Xₐ[2] .- a₃      .* Xₐ[3]   end #         xₐ′-= aₐ
+            if OX≥2 Xₐ[3]    .= -b₂♯    .* Xₐ[2] .+ (1-b₃♯) .* Xₐ[3]   end # same as xₐ″-= bₐ but in place
+
+            Rₐ                 = Matrix(Lλa[1,1]) 
+            Rₐ               .+= Lλx[1,1]*Xₐ[1]
+            OX≥1 && Rₐ       .+= Lλx[1,2]*Xₐ[2]
+            OX≥2 && Rₐ       .+= Lλx[1,3]*Xₐ[3]
+            K♯                 = Lλx[1,1]
+            OX≥1 && K♯.nzval .+= Lλx[1,2].nzval*c.a₁ # operate on nzval directly, lest Sparse resize it
+            OX≥2 && K♯.nzval .+= Lλx[1,3].nzval*c.b₁ 
 
             try if istep==1 && firstAiter
                     ◺K♯ = lu(      K♯) 
@@ -180,27 +176,27 @@ function solve(SX::Type{SweepXA{OX,OSX1,OSX2}},pstate,verbose,dbg;
 
             # time-integrate total gradient and Hessian of L wrt A
 
-            La♯         .+= La[1]      # this is gradient of cost over time Δt
-            Laa♯        .+= Laa[1,1]
+            Qa         .+= La[1]      # this is gradient of cost over time Δt
+            Qaa        .+= Laa[1,1]
             for idx ∈ 1:OX+1
-                La♯     .+=             Lx[     idx] ∘₁ Xₐ[idx]
-                Laa♯    .+=             Lax[1  ,idx] ∘₁ Xₐ[idx]
-                Laa♯    .+= Xₐ[idx]' ∘₁ Lax[1  ,idx]'  
+                Qa     .+=             Lx[     idx] ∘₁ Xₐ[idx]
+                Qaa    .+=             Lax[1  ,idx] ∘₁ Xₐ[idx]
+                Qaa    .+= Xₐ[idx]' ∘₁ Lax[1  ,idx]'  
                 for jdx ∈ 1:OX+1  
-                    Laa♯.+= Xₐ[idx]' ∘₁ Lxx[idx,jdx] ∘₁ Xₐ[jdx] 
+                    Qaa.+= Xₐ[idx]' ∘₁ Lxx[idx,jdx] ∘₁ Xₐ[jdx] 
                 end
             end
         end # istep
 
         # update A
  
-        try ΔA   = Laa♯\La♯
+        try ΔA   = Qaa\Qa
         catch;     muscadeerror(@sprintf("matrix factorization failed at A-update, iAiter=%i",iAiter)) end
         decrement!(state,1,ΔA,Adofgr) 
 
         # Aiter convergence
-        ΔA²,La²          = sum(ΔA.^2),sum(La♯.^2)
-        verbose && @printf "    In A-iteration %3d, |ΔA|=%7.1e |La♯|=%7.1e\n" iAiter √(ΔA²) √(La²)
+        ΔA²,La²          = sum(ΔA.^2),sum(Qa.^2)
+        verbose && @printf "    In A-iteration %3d, |ΔA|=%7.1e |Qa|=%7.1e\n" iAiter √(ΔA²) √(La²)
         if ΔA²≤cΔA² && La²≤cLa² 
             verbose && @printf "    SweepXA converged in %3d A-iterations. |ΔA|=%7.1e / %g |La|=%7.1e / %g\n" iAiter √(ΔA²) maxΔa √(La²) maxLa
             break#out of the iAiter loop
