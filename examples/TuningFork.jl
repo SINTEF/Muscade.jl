@@ -1,4 +1,4 @@
-using Muscade, StaticArrays, GLMakie, Muscade.Toolbox, Interpolations
+using Muscade, StaticArrays, GLMakie, Muscade.Toolbox
 
 l₀=3e-2; n₀=6
 l₁=1e-2; n₁=2
@@ -37,7 +37,7 @@ mesh = vcat(
 eleid = addelement!(model,EulerBeam3D, mesh;    mat=beamCrossSection,orient2=SVector(0.,0,1))
 [addelement!(model,Hold,[nodid[1]]  ;field)  for field∈[:t1,:t2,:t3,:r1,:r2,:r3]]; 
 
-pling = linear_interpolation([-10, 0, 1e-2, 2e-2, 10],[0,0,10,0,0]); @functor with() pling_(t) = pling(t)
+pling = Muscade.FunctionFromVector([-10, 0, 1e-2, 2e-2, 10],[0,0,10,0,0]); @functor with() pling_(t) = pling(t)
 addelement!(model,DofLoad,[nodid[n₀+2n₁+n₂+1]];field=:t2,value=pling_)
 
 XAmodel = deepcopy(model)
