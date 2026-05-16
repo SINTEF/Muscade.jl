@@ -159,13 +159,13 @@ function solve(SX::Type{SweepXA{OX,OSX1,OSX2}},pstate,verbose,dbg;
             if OX≥1 Xₐ[2]    .= (1-a₂)  .* Xₐ[2] .- a₃      .* Xₐ[3]   end #         xₐ′-= aₐ
             if OX≥2 Xₐ[3]    .= -b₂♯    .* Xₐ[2] .+ (1-b₃♯) .* Xₐ[3]   end # same as xₐ″-= bₐ but in place
 
-            Rₐ           = Matrix(Lλa[1,1]) 
-            Rₐ         .+= Lλx[1,1]*Xₐ[1]
-            OX≥1 && Rₐ .+= Lλx[1,2]*Xₐ[2]
-            OX≥2 && Rₐ .+= Lλx[1,3]*Xₐ[3]
-            K♯           = Lλx[1,1]
-            OX≥1 && K♯ .+= Lλx[1,2]*c.a₁ 
-            OX≥2 && K♯ .+= Lλx[1,3]*c.b₁ 
+            Rₐ                 = Matrix(Lλa[1,1]) 
+            Rₐ               .+= Lλx[1,1]*Xₐ[1]
+            OX≥1 && Rₐ       .+= Lλx[1,2]*Xₐ[2]
+            OX≥2 && Rₐ       .+= Lλx[1,3]*Xₐ[3]
+            K♯                 = Lλx[1,1]
+            OX≥1 && K♯.nzval .+= Lλx[1,2].nzval*c.a₁ # operate on nzval directly, lest Sparse resize it
+            OX≥2 && K♯.nzval .+= Lλx[1,3].nzval*c.b₁ 
 
             try if istep==1 && firstAiter
                     ◺K♯ = lu(      K♯) 
