@@ -100,8 +100,9 @@ function addin!{mission}(out::AssemblyDirect,asm,iele,scale,eleobj::Acost,A::SVe
     elseif mission==:vectors      P=1
     end
     ∂A  = revariate{P}(A)
-    ø   = nothing
-    C,_ = lagrangian(eleobj,ø,ø,ø,∂A,ø,ø ,dbg)
+#    ø   = nothing
+#    C,_ = getlagrangian(eleobj,ø,ø,ø,∂A,ø,ø ,dbg)
+    C,_ = getlagrangian(eleobj,∂A,nothing,dbg)
     ∇ₐC = ∂{P,Na}(C)
     isassigned(out.L1[ind.A],1) && add_value!(out.L1[ind.A][1],asm[arrnum(ind.A)],iele,∇ₐC)
     if mission==:matrices
@@ -121,10 +122,10 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,el
     end
     if NDA == 1
         ∂X,∂U,∂A = revariate{1}((;X,U,A),(;X=scale.X,U=scale.U,A=scale.A)) 
-        R,FB     = residual(eleobj, ∂X,∂U,∂A,t,SP,dbg) # only elements with "residual" should set no_second_order=Val{true}
+        R,FB     = getresidual(eleobj, ∂X,∂U,∂A,t,SP,dbg) 
     else
         ∂X,∂U    = revariate{1}((;X,U  ),(;X=scale.X,U=scale.U))
-        R,FB     = residual(eleobj, ∂X,∂U,  A,t,SP,dbg)
+        R,FB     = getresidual(eleobj, ∂X,∂U,  A,t,SP,dbg)
     end        
     ndof   = (Nx, Nx, Nu, Na)
     nder   = (NDΛ,NDX,NDU,NDA)
@@ -205,10 +206,10 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,el
     end
     if     NDA == 1  # NB: compile-time condition
         ∂X,∂U,∂A    = revariate{P-1}((;X,U,A),(;X=scale.X,U=scale.U,A=scale.A))
-        R,FB,eleres = residual(eleobj.eleobj, ∂X,∂U,∂A,t,SP,(dbg...,via=:ElementCostAccelerator),eleobj.req.eleres)  
+        R,FB,eleres = getresidual(eleobj.eleobj, ∂X,∂U,∂A,t,SP,(dbg...,via=:ElementCostAccelerator),eleobj.req.eleres)  
     elseif NDA == 0
         ∂X,∂U       = revariate{P-1}((;X,U ),(;X=scale.X,U=scale.U))
-        R,FB,eleres = residual(eleobj.eleobj, ∂X,∂U,  A,t,SP,(dbg...,via=:ElementCostAccelerator),eleobj.req.eleres)  
+        R,FB,eleres = getresidual(eleobj.eleobj, ∂X,∂U,  A,t,SP,(dbg...,via=:ElementCostAccelerator),eleobj.req.eleres)  
     end
     Releres         = revariate{P}(eleres)
     
@@ -238,11 +239,11 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,el
     γ               = default{:γ}(SP,0.)
     m               = eleobj.mode(t)
     if     NDA == 1  # NB: compile-time condition
-        ∂X,∂U,∂A    = revariate{P-1}((X=X,U=U,A=A),(;X=scale.X,U=scale.U,A=scale.A))
+        ∂X,∂U,∂A    = getrevariate{P-1}((X=X,U=U,A=A),(;X=scale.X,U=scale.U,A=scale.A))
         R,FB,eleres = residual(eleobj.eleobj, ∂X,∂U,∂A,t,SP,(dbg...,via=:ElementCoonstraintAccelerator),eleobj.req)  
     elseif NDA == 0
         ∂X,∂U       = revariate{P-1}((X=X,U=U    ),(;X=scale.X,U=scale.U))
-        R,FB,eleres = residual(eleobj.eleobj, ∂X,∂U,  A,t,SP,(dbg...,via=:ElementConstraintAccelerator),eleobj.req)  
+        R,FB,eleres = getresidual(eleobj.eleobj, ∂X,∂U,  A,t,SP,(dbg...,via=:ElementConstraintAccelerator),eleobj.req)  
     end
     Releres         = revariate{P}(eleres)
     Rgap            = eleobj.gap(eleres,t,eleobj.gargs...)
