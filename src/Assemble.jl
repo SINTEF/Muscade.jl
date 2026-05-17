@@ -699,6 +699,18 @@ end
 getresidual(eleobj::Eleobj,hasres::Val{false},haslag::Val{false},nso, X,U,A,t,SP,dbg,req...) where{Eleobj} =
     muscadeerror((dbg...,t=t,SP=SP),@sprintf("Element %s must have method 'Muscade.lagrangian' or/and 'Muscade.residual' with correct interface",Eleobj))
 
+# Acost
+function getlagrangian(eleobj::Acost, A::SVector, SP, dbg,req) 
+    L,FB,eleres = lagrangian(eleobj,A,SP,dbg,req)    
+    hasnan(L,FB) && muscadeerror((dbg...,t=t,SP=SP),"lagrangian(Acost,...) returned NaN in L, FB or derivatives") 
+    return L,FB,eleres  
+end
+function getlagrangian(eleobj::Acost, A::SVector, SP, dbg) 
+    L,FB = lagrangian(eleobj,A,SP,dbg)    
+    hasnan(L,FB) && muscadeerror((dbg...,t=t,SP=SP),@sprintf("lagrangian(Acost,...) returned NaN in L, FB or derivatives",Eleobj)) 
+    return L,FB  
+end
+
 # dispatcher
 function getlagrangian(eleobj::Eleobj, Λ::SVector{Nx}, X::NTuple{Ndx,SVector{Nx}}, 
         U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na}, t::ℝ,SP,dbg,req)     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 

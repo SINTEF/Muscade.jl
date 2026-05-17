@@ -85,7 +85,7 @@ struct Acost{Na,inod,field,Tcost,Tcostargs} <: AbstractElement
 end
 Acost(nod::Vector{Node};inod::NTuple{Na,𝕫}=(),field::NTuple{Na,Symbol}=(),cost::Tcost,costargs::Tcostargs=()) where{Na,Tcost<:Functor,Tcostargs} = Acost{Na,inod,field,Tcost,Tcostargs}(cost,costargs)
 doflist(::Type{<:Acost{Na,inod,field}}) where{Na,inod,field} = (inod =inod,class=ntuple(i->:A,Na),field=field)
-@espy function lagrangian(o::Acost,Λ,X,U,A,t,SP,dbg)  
+@espy function lagrangian(o::Acost,A,SP,dbg)  
     ☼cost = o.cost(    A  ,o.costargs...)
     return cost,noFB
 end
