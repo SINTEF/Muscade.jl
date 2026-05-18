@@ -554,7 +554,7 @@ function zero!(out::AbstractSparseArray)
 end
 function zero!(out::Tuple)
     for oᵢ ∈ out
-        zero(oᵢ)
+        zero!(oᵢ)
     end
 end
 
