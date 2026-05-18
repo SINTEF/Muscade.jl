@@ -119,7 +119,7 @@ function solve(SX::Type{SweepXA{OX,OSX1,OSX2}},pstate,verbose,dbg;
         zero!(Xₐ)
 
         for (istep,t)    ∈ enumerate(time)
-            verbose && @printf "        step %3d\n" istep
+            #verbose && @printf "        step %3d\n" istep
             oldt         = state.time
             state.time   = t
             Δt           = t-oldt
@@ -128,7 +128,7 @@ function solve(SX::Type{SweepXA{OX,OSX1,OSX2}},pstate,verbose,dbg;
 
             # step and iterations
 
-            verbose && @printf "            Equilibrium iterations\n"
+            #verbose && @printf "            Equilibrium iterations\n"
             for iXiter   ∈ 1:maxXiter
                 cXiter  += 1
                 firstXiter = iXiter==1 
@@ -144,21 +144,21 @@ function solve(SX::Type{SweepXA{OX,OSX1,OSX2}},pstate,verbose,dbg;
 
                 ΔX²,Lλ²  = sum(ΔX.^2),sum(outX.Lλ.^2)
                 if ΔX²≤cΔX² && Lλ²≤cLλ² 
-                    #verbose && @printf "        step %3d converged in %3d iterations. |Δx|=%7.1e |Lλ|=%7.1e\n" istep iXiter √(ΔX²) √(Lλ²)
+                    verbose && @printf "        step %3d converged in %3d iterations. |Δx|=%7.1e |Lλ|=%7.1e\n" istep iXiter √(ΔX²) √(Lλ²)
                     states[istep] = State(state.time,state.Λ,deepcopy(state.X),state.U,state.A,state.SP,model,dis)
                     break#out of the iXiter loop
                 end
                 iXiter==maxXiter && muscadeerror(@sprintf("no convergence of step %3d for iAiter %3d after %3d iterations |Δx|=%g / %g, |Lλ|=%g / %g",istep,iAiter,iXiter,√(ΔX²),maxΔx,√(Lλ²)^2,maxLλ))
             end
 
-            verbose && @printf "            Assembling matrices for optimisation phase\n" 
+            #verbose && @printf "            Assembling matrices for optimisation phase\n" 
             assemble!{:matrices}(outA,asmA,dis,model,state,Δt,(dbg...,solver=:SweepXA,phase=:Asensitivity,iAiter=iAiter,istep=istep))
             Lx,La,Lxx,Lax,Laa = outA.L1[ind.X], outA.L1[ind.A], outA.L2[ind.X,ind.X], outA.L2[ind.A,ind.X], outA.L2[ind.A,ind.A]
             Lλx,Lλa           = outA.L2[ind.Λ,ind.X],outA.L2[ind.Λ,ind.A]
 
             # sensitivity of X to A
 
-            verbose && @printf "            Evaluate sensitivity of X to A\n" 
+            #verbose && @printf "            Evaluate sensitivity of X to A\n" 
             a₁,a₂,a₃,b₁,b₂,b₃ = c.a₁,c.a₂,c.a₃,c.b₁,c.b₂,c.b₃
             if OX≥2 b₂♯,b₃♯   = b₂/(1-a₂), a₃/(1-a₂)+b₃       end
             if OX≥1 Xₐ[2]    .= (1-a₂)  .* Xₐ[2] .- a₃      .* Xₐ[3]   end #         xₐ′-= aₐ
@@ -181,7 +181,7 @@ function solve(SX::Type{SweepXA{OX,OSX1,OSX2}},pstate,verbose,dbg;
 
             # time-integrate total gradient and Hessian of L wrt A
 
-            verbose && @printf "            Time-integrate total gradient and Hessian of L wrt A\n" 
+            #verbose && @printf "            Time-integrate total gradient and Hessian of L wrt A\n" 
             Qa         .+= La[1]      # this is gradient of cost over time Δt
             Qaa        .+= Laa[1,1]
             for idx ∈ 1:OX+1
@@ -195,8 +195,7 @@ function solve(SX::Type{SweepXA{OX,OSX1,OSX2}},pstate,verbose,dbg;
         end # istep
 
         # update A
- 
-            verbose && @printf "        Increment total cost given A\n" 
+        # verbose && @printf "        Increment total cost given A\n" 
         try ΔA   = Qaa\Qa
         catch;     muscadeerror(@sprintf("matrix factorization failed at A-update, iAiter=%i",iAiter)) end
         decrement!(state,1,ΔA,Adofgr) 
