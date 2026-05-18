@@ -42,8 +42,8 @@ addelement!(model,DofLoad,[nodid[n₀+2n₁+n₂+1]];field=:t2,value=pling_)
 
 XAmodel = deepcopy(model)
 
-Δt = 1e-4;
-nDynamicLoadSteps = 1000;
+Δt = 5e-4;
+nDynamicLoadSteps = 100;
 timeVec = Δt:Δt:nDynamicLoadSteps*Δt
 
 # X model
@@ -75,7 +75,7 @@ addelement!(XAmodel,SingleDofCost,[nodid[n₀+2n₁+n₂+1]];class=:X ,field=:t2
 XAinitialState    = initialize!(XAmodel;time=0.);
 XAdynamicStates   = solve(SweepX{2};initialstate=XAinitialState, time=timeVec)
 # XA model (optimized)
-optimXAstate  = solve(SweepXA{2,2,2};  initialstate=XAinitialState,time=timeVec, verbose=false,catcherror=true,maxAiter=50,maxΔa=1e-10)
+optimXAstate  = solve(SweepXA{2,2,2};  initialstate=XAinitialState,time=timeVec, verbose=true,catcherror=true,maxAiter=50,maxΔa=1e-10)
 
 
 
