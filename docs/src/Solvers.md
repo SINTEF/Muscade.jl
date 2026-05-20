@@ -20,6 +20,16 @@ See the reference manual [`EigX`](@ref).
 
 See the reference manual [`SweepX`](@ref).   
 
+## `SweepXA`: design optimisation
+
+Finds the design parameters `A` for which the response of the model, for given initial conditions, has minimum cost. The model will typicaly have costs contributions associated to the design parameters `A` ("expensive build"), and to the response parameters `X` ("this response of the system exceeds allowables stresses, leading to an expensive failure"). 
+
+For a given value of `A`, `SweepXA{OX}` does the same computations as `SwwepX{OX}`.
+
+As for `SweepX`, `SweepXA` can be applied to models that have ``U``-dofs.  
+
+See the reference manual [`SweepXA`](@ref).   
+
 ## `DirectXUA`: non-linear inverse solver
 
 `DirectXUA` is a solver for non-linear, static (`OX=0`), first order (`OX=1`) or dynamic (`OX=2`), optimisation-FEM problems. The same remarks on "state" variables and the choice of `OX` as for `SweepX` apply here. 

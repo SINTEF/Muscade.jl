@@ -39,8 +39,8 @@ An analysis is carried out by a call with the following syntax:
 
 ```
 initialstate    = initialize!(model)
-setdof!(initialstate,1.;class=:U,field=:λcsr)
-states           = solve(SweepXA{2};initialstate=initialstate,time=0:10)                                     TODO
+setdof!(initialstate,1.;class=:X,field=:tx1,order=1) 
+states           = solve(SweepXA{2};initialstate=initialstate,time=0:10)
 ```
 # Named arguments to `solve`:
 - `dbg=(;)`           a named tuple to trace the call tree (for debugging)
@@ -49,19 +49,12 @@ states           = solve(SweepXA{2};initialstate=initialstate,time=0:10)        
 - `initialstate`      a `State`, obtain from `ìnitialize!` or `SweepXA`.
 - `time`              maximum number of Newton-Raphson iterations 
 - `β=1/4`,`γ=1/2`     parameters to the Newmark-β algorithm. Dummy if `OX<2`
-- `maxXiter=50`        maximum number of equilibrium iterations at each step.
+- `maxXiter=50`       maximum number of equilibrium iterations at each step.
 - `maxΔx=1e-5`        convergence criteria: norm of `X`. 
 - `maxLλ=∞`           convergence criteria: norm of the residual. 
-- `maxLineIter=50`    Maximum number of iteration in the feasibility line search.
-                      set to 0 to skip the line search (not recommended for models
-                      with inequality constraints).
-- `sfac=0.5`          Parameter in the line search for a feasible point. If a 
-                      tentative result is not feasible, backtrack by a factor `sfac`.
-                      If still not feasible, backtrack what is left by a factor `sfac`,
-                      and so forth, up to `maxLineIter` times.
-- `γfac=0.5`          Parameter for feasibility. For an inequality constraint `g(X)`
-                      with reaction force `λ`, require `g(X)*λ==γ`, and multiply
-                      `γ *= γfac` at each iteration.                            
+- `maxAiter=50`       maximum number of A-iterations
+- `maxΔa=1e-5`        convergence criteria: norm of `A`. 
+- `maxLa=∞`           convergence criteria: norm of the residual. 
 
 # Output
 
