@@ -101,8 +101,8 @@ addelement!(XAmodel, SingleDofCost,[Xnod[plingNode]]; class=:X, field=:t2, cost=
 addelement!(XUAmodel,SingleDofCost,[Xnod[plingNode]]; class=:X, field=:t2, cost=Xcost);
 
 # Add costs on the coorecting mass, in the XA and XUA models
-@functor with(σₘ=5e-3,timeVec)          Acost(a) = 0.5*(a/σₘ)^2/length(timeVec)
-addelement!(XAmodel,  SingleAcost,[Anod]; field=:mass, cost=Acost);
+@functor with(σₘ=5e-3,timeVec)          Acost_(a) = 0.5*(a/σₘ)^2/length(timeVec)
+addelement!(XAmodel,  SingleAcost,[Anod]; field=:mass, cost=Acost_);
 
 # Prioritize estimation of U-loads during the first DirectXUA iterations, rather than updates of the A-parameter. 
 struct SingleDecayAcost{Field,Tcost,Tcostargs} <: AbstractElement
@@ -118,8 +118,8 @@ Muscade.doflist(::Type{<:SingleDecayAcost{Field,Tcost,Tcostargs}}) where{Field,T
     return cost*o.fac[iter],noFB
 end
 n=5; fac = [2^(n-i) for i∈1:n]
-addelement!(XUAmodel,SingleDecayAcost  ,[Anod]; field=:mass,fac, cost=Acost);
-#src addelement!(XUAmodel,SingleAcost,       [Anod]; field=:mass, cost=Acost)
+addelement!(XUAmodel,SingleDecayAcost  ,[Anod]; field=:mass,fac, cost=Acost_);
+#src addelement!(XUAmodel,SingleAcost,       [Anod]; field=:mass, cost=Acost_)
 
 # Add cost to unknown loads XUA model, force per unit legnth in the direction of the excitation 
 @functor with(σᵤₚ=1e-1,f₁,l₂,n₂) UcostPling(u,t) = 0.5*(u*(l₂/n₂)/σᵤₚ)^2*exp(t*f₁/5)
