@@ -161,8 +161,9 @@ for idx ∈ 1:length(analysisResults)
 excEstt2 = getdof(optimXUAstate[end];class=:U,field=:t2,nodID=[Unod])[:]*l₂/n₂;
 
 # Text output
-println("XA estimated mass to remove [g]:")
+println("Estimated mass to remove from SweepXA analysis [g]:")
 println(-getdof(optimXAstate[end];class=:A,field=:mass,nodID=[Anod])[1]*1e3)
+println("Estimated mass to remove from DirectXUA analysis [g]:")
 println(-getdof(optimXUAstate[end];class=:A,field=:mass,nodID=[Anod])[1]*1e3)
 println("Expected [g]:")
 println(spuriousMass*1e3)
@@ -184,7 +185,6 @@ scatter!(ax2,timeVec,t2[1,:]*1e3, label="Target")
 lines!(ax2,timeVec,t2[2,:]*1e3, label="Detuned config.")
 lines!(ax2,timeVec,t2[3,:]*1e3, label="Tuned (XA)")
 lines!(ax2,timeVec,t2[4,:]*1e3, label="Tuned (XUA)")
-display(fig)
 
 currentDir = @__DIR__
 if occursin("build", currentDir)
