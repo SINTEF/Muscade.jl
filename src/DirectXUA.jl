@@ -124,7 +124,7 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,el
         ∂X,∂U,∂A = revariate{1}((X,U,A),(Broadcast(scale.X),Broadcast(scale.U),scale.A)) 
         R,FB     = getresidual(eleobj, ∂X,∂U,∂A,t,SP,dbg) 
     else
-        ∂X,∂U    = revariate{1}((X,U ),Broadcast.(scale.X,scale.U))
+        ∂X,∂U    = revariate{1}((X,U ),(Broadcast(scale.X),Broadcast(scale.U)))
         R,FB     = getresidual(eleobj, ∂X,∂U,  A,t,SP,dbg)
     end        
     ndof   = (Nx, Nx, Nu, Na)
@@ -140,7 +140,7 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,el
             Lλβ  = out.L2[ind.Λ,β]
             Lβλ  = out.L2[β,ind.Λ]
             isassigned(Lλβ,1,βder) && add_∂!{1                 }(Lλβ[1,βder],asm[arrnum(ind.Λ,β)],iele,R,iλ,iβ;Δt)
-            isassigned(Lλβ,βder,1) && add_∂!{1,:plus,:transpose}(Lβλ[βder,1],asm[arrnum(β,ind.Λ)],iele,R,iλ,iβ;Δt)
+            isassigned(Lβλ,βder,1) && add_∂!{1,:plus,:transpose}(Lβλ[βder,1],asm[arrnum(β,ind.Λ)],iele,R,iλ,iβ;Δt)
         end
     end 
 end
@@ -208,7 +208,7 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,el
         ∂X,∂U,∂A    = revariate{P-1}((X,U,A),(Broadcast(scale.X),Broacast(scale.U),scale.A))
         R,FB,eleres = getresidual(eleobj.eleobj, ∂X,∂U,∂A,t,SP,(dbg...,via=:ElementCostAccelerator),eleobj.req.eleres)  
     elseif NDA == 0
-        ∂X,∂U       = revariate{P-1}((X,U ),Broadcast.(scale.X,U=scale.U))
+        ∂X,∂U       = revariate{P-1}((X,U ),(Broadcast(scale.X),Broadcast(scale.U)))
         R,FB,eleres = getresidual(eleobj.eleobj, ∂X,∂U,  A,t,SP,(dbg...,via=:ElementCostAccelerator),eleobj.req.eleres)  
     end
     Releres         = revariate{P}(eleres)
@@ -242,7 +242,7 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,el
         ∂X,∂U,∂A    = revariate{P-1}((X,U,A),(Broadcast(scale.X),Broadcast(scale.U),scale.A))
         R,FB,eleres = getresidual(eleobj.eleobj, ∂X,∂U,∂A,t,SP,(dbg...,via=:ElementCoonstraintAccelerator),eleobj.req)  
     elseif NDA == 0
-        ∂X,∂U       = revariate{P-1}((X,U ),Broadcast.(scale.X,scale.U))
+        ∂X,∂U       = revariate{P-1}((X,U ),(Broadcast(scale.X),Broadcast(scale.U)))
         R,FB,eleres = getresidual(eleobj.eleobj, ∂X,∂U,  A,t,SP,(dbg...,via=:ElementConstraintAccelerator),eleobj.req)  
     end
     Releres         = revariate{P}(eleres)
