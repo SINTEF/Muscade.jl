@@ -4,8 +4,8 @@ using Muscade, StaticArrays, GLMakie, Muscade.Toolbox
 l₀=2.5e-2; n₀=1       # base - length and number of elements 
 l₁=1e-2; n₁=1       # fork - length and number of elements per side
 l₂=9.5e-2; n₂=5      # prong - length and number of elements per side
-h = 5e-3;           # width of the tuning tuning fork
-b = 5e-3;           # thickness 
+h = 5e-3;           # width of the tuning tuning fork cross-section
+b = 5e-3;           # thickness of the cross-section
 E = 210e9;          # Young modulus
 G = 79.3e9;         # shear modulus
 μ = 7850. *h*b;     # mass per unit length, assumes steel
@@ -127,11 +127,11 @@ addelement!(XUAmodel,SingleDofCost,[Unodid]; class=:U,field=:t2, cost=UcostPling
 XAinitialState    = initialize!(XAmodel;time=0.);
 XAdynamicStates   = solve(SweepX{2};initialstate=XAinitialState, time=timeVec)
 # XA model (after optimization)
-optimXAstate  = solve(SweepXA{2,2,2}; initialstate=XAinitialState,verbose=false,time=timeVec, maxAiter=20,maxΔa=1e-10);
+optimXAstate  = solve(SweepXA{2}; initialstate=XAinitialState, time=timeVec, maxAiter=20,maxΔa=1e-10);
 
 # # DirectXUA
-XUAinitialState    = initialize!(XUAmodel;time=0.);
-XUAstaticState     = solve(SweepX{0};initialstate=XUAinitialState, time=[timeVec[1]])
+# XUAinitialState    = initialize!(XUAmodel;time=0.);
+# XUAstaticState     = solve(SweepX{0};initialstate=XUAinitialState, time=[timeVec[1]])
 # # XUAdynamicStates   = solve(SweepX{2};initialstate=XUAinitialState, time=timeVec)
 # optimXUAstate   = solve(DirectXUA{2,0,1};initialstate=[XUAstaticState[end]], 
 #         saveiter=true, maxiter=10, time=[timeVec],
