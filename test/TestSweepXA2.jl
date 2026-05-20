@@ -44,8 +44,8 @@ initialstate    = initialize!(model;time=0.)
 x,x′,x″         = 0.,1.,0.   
 initialstate    = setdof!(initialstate,[x′];field=:tx1,nodID=[node],order=1)  # initial speed
 
-state           = solve(SweepXA{2,2,2};  initialstate,time= t,verbose=false,catcherror=true,maxAiter=50,maxΔa=1e-10)
-statewrong      = solve(SweepX{     2};  initialstate,time= t,verbose=false,catcherror=true)
+state           = solve(SweepXA{2};  initialstate,time= t,verbose=false,catcherror=true,maxAiter=50,maxΔa=1e-10)
+statewrong      = solve(SweepX{ 2};  initialstate,time= t,verbose=false,catcherror=true)
 
 A              = getdof(state[1];class=:A,field=:ΞC,nodID=[node])
 xfitted        = getdof(state;field=:tx1,nodID=[node])

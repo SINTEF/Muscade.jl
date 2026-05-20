@@ -21,19 +21,14 @@ end
 ### The solver
 
 """
-	SweepXA{OX,OSX1,OSX2}
+	SweepXA{OX}
 
 A non-linear, time domain solver, that solves the problem time-step by time-step.
 Only the `X`-dofs of the model are solved for, while `U`-dofs and `A`-dofs are unchangeδ
 
-- `SweepXA{0,OSX1,OSX2}` is Newton-Raphson. 
-- `SweepXA{1,OSX1,OSX2}` is implicit Euler. 
-- `SweepXA{2,OSX1,OSX2}` is Newmark-β, with Newton-Raphson iterations.
-
-`OSX1` and `OSX2` refer to the order of time derivatives of `X` actualy used in the evaluation of `X`-costs.
-For example, a dynamic problem can have strain-measurement only, allowing to use `OXS1=OSX2=0`.
-`Qa` is computed using `OSX1`, while `Qaa` uses `OSX2`, so `OSX1>OSX2` introduces a pseudo-Newton step
-in the update of `A`. This accelerates each iteration, but makes convergence slover.  
+- `SweepXA{0}` is Newton-Raphson. 
+- `SweepXA{1}` is implicit Euler. 
+- `SweepXA{2}` is Newmark-β, with Newton-Raphson iterations.
 
 IMPORTANT NOTE: Muscade does not allow elements to have state variables, for example, plastic strain,
 or shear-free position for dry friction.  Where the element implements such physics, this 
@@ -74,21 +69,15 @@ A vector of length equal to that of the named input argument `time` containing t
 
 See also: [`solve`](@ref), [`initialize!`](@ref), [`findlastassigned`](@ref), [`study_singular`](@ref), [`DirectXUA`](@ref), [`FreqXU`](@ref)  
 """
-struct        SweepXA{OX,OSX1,OSX2} <: AbstractSolver end
-function solve(SX::Type{SweepXA{OX,OSX1,OSX2}},pstate,verbose,dbg;
-                    time::AbstractVector{𝕣},
-                    initialstate::State,
-                    β::𝕣=1/4,γ::𝕣=1/2,
-                    maxXiter::ℤ=50,maxΔx::ℝ=1e-5,maxLλ::ℝ=∞,
-                    maxAiter::ℤ=50,maxΔa::ℝ=1e-5,maxLa::ℝ=∞) where{OX,OSX1,OSX2}
+struct                SweepXA{OX} <: AbstractSolver end
+function solve(::Type{SweepXA{OX}},pstate,verbose,dbg;
+               time::AbstractVector{𝕣},
+               initialstate::State,
+               β::𝕣=1/4,γ::𝕣=1/2,
+               maxXiter::ℤ=50,maxΔx::ℝ=1e-5,maxLλ::ℝ=∞,
+               maxAiter::ℤ=50,maxΔa::ℝ=1e-5,maxLa::ℝ=∞) where{OX}
 
     model,dis        = initialstate.model,initialstate.dis
-    vectors          = ((ind.A,      1  ), 
-                        NTuple{OSX1+1     }((ind.X,idx         ) for idx=1:OSX1+1             )...)
-    matrices         = ((ind.A,ind.A,1,1), 
-                        NTuple{OSX1+1    }((ind.A,ind.X,1  ,idx) for idx=1:OSX1+1             )...,
-                        NTuple{OSX1+1    }((ind.X,ind.A,idx,1  ) for idx=1:OSX1+1             )...,  
-                        NTuple{(OSX2+1)^2}((ind.X,ind.X,idx,jdx) for idx=1:OSX2+1,jdx=1:OSX2+1)...) 
     outX,asmX,        Xdofgr                = prepare(AssemblySweepX{OX},model,dis                              ) # assembler for std forward analysis
     outA,asmA,(Λdofgr,Xdofgr,Udofgr,Adofgr) = prepare(AssemblyDirect    ,model,dis,Wanted{1,OX+1,1,1}(:all,:all)) # assembler for A-update 
     nXdof            = getndof(Xdofgr)
