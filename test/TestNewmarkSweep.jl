@@ -1,4 +1,4 @@
-#module TestNewmarkSweep
+module TestNewmarkSweep
 using Muscade,Test,StaticArrays
 
 K  = 1.
@@ -79,14 +79,14 @@ end
     @test x″ ≈ y″
 end
 
-using GLMakie
-fig      = Figure(size = (1000,750))
-axe      = Axis(fig[1,1],title="Test",xlabel="time",ylabel="x")
-display(fig)
-lines!(  axe,Δt*(1:n),x , linewidth = 1,color=:black)
-lines!(  axe,Δt*(1:n),y , linewidth = 1,color=:red  )
+# using GLMakie
+# fig      = Figure(size = (1000,750))
+# axe      = Axis(fig[1,1],title="Test",xlabel="time",ylabel="x")
+# display(fig)
+# lines!(  axe,Δt*(1:n),x , linewidth = 1,color=:black)
+# lines!(  axe,Δt*(1:n),y , linewidth = 1,color=:red  )
 
-#end
+end
 
 
 

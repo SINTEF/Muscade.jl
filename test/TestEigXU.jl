@@ -41,7 +41,7 @@ mat         = BeamCrossSection(;EA,EI₂,EI₃,GJ,μ,ι₁)
 model       = Model(:TestModel)
 Xnod        = addnode!(model,XnodeCoord)
 Unod        = addnode!(model,UnodeCoord)
-mesh        = hcat(Xnod,Xnod[mod_onebased.(iels.+1,nel)],Unod)
+mesh        = hcat(Xnod,Xnod[Muscade.mod_onebased.(iels.+1,nel)],Unod)
 nakedmesh   = mesh[inaked,:]
 strainmesh  = mesh[istrain,:]
 accmesh     = reshape(Xnod[iacc],(length(iacc),1))
@@ -94,7 +94,7 @@ OX,OU                 = 2,0
 
 ## EigXU analysis
 Δω                = 2^-6 
-p                 = 2#11
+p                 = 11
 nmod              = 5
 
 
@@ -143,11 +143,11 @@ eigincXU          = solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=true,v
 nα                = 32
 α                 = 2π*(1:nα)/nα
 circle            = 0.05*[cos.(α) sin.(α)]'
-GUI(initialstate,eigincXU;shadow = (;EulerBeam3D              = (;style=:shape,line_color=:grey,Udof=false),
-                                    EulerBeam3DwithStrainGauge  = (;gauge_color=:transparent)         ),
-                          model  = (;EulerBeam3D              = (;style=:solid,section=circle),
-                                     EulerBeam3DwithStrainGauge = (;L=0.03),
-                                     Position3D               = (;L=.03)) ) 
+Muscade.GUI(initialstate,eigincXU;shadow = (;EulerBeam3D                = (;style=:shape,line_color=:grey,Udof=false),
+                                            EulerBeam3DwithStrainGauge  = (;gauge_color=:transparent)         ),
+                                  model  = (;EulerBeam3D                = (;style=:solid,section=circle),
+                                             EulerBeam3DwithStrainGauge = (;L=0.03),
+                                             Position3D                 = (;L=.03)) ) 
 
 
 # using SnoopCompileCore, SnoopCompile, AbstractTrees, ProfileView

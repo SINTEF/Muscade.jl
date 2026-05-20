@@ -108,7 +108,7 @@ multivariate_𝕣{P,N}(a::R,i,scale) where{P,N,R}        = ∂ℝ{P,N  }(multiva
 multivariate_𝕣{0,N}(a::𝕣,i,scale) where{  N}          = a
 
 """ 
-    TX = revariate{P}(V)
+    TV = revariate{P}(V)
 
 The variable `V` is a nested structure `NamedTuple`s, `Tuple`s and `SArrays` of 
 `Real`s (possibly: `∂ℝ`s).
@@ -116,9 +116,11 @@ The variable `V` is a nested structure `NamedTuple`s, `Tuple`s and `SArrays` of
 `V` is stripped of its partials, an revariated to 
 order `P`.
 
-    TV = revariate(VX)
+    TV = revariate(V)
 
-revariates to the order `precedence(V)`.  
+revariates to the order `precedence(V)`.  `TV` has the same structure as `V`. One typical usage is with a `Tuple`:
+
+    Ta,Tb,Tc = revariate{P}((a,b,c))
 
 `revariate`, in conjunction with `chainrule` can be used to improve performance when the length of 
 `V` is smaller than the length of its partials.
@@ -128,53 +130,77 @@ containing  `∂ℝ`s but not produced by the same `revariate`.
 
 A special version of `revariate`
 
-    V = (;X,U,A)
-    S = (X=scale.X,U=scale.U,A=scale.A)
+    V = ((X₀,X₁,X₂)        ,      U,      A)
+    S = (Broadcast(scale.X),scale.U,scale.A)
     TV = revariate{P}(V,S)
 
 allows to introduce scaling in automatic differentiation.  For this method, `S` and `V`
-have the same structure, with the important exception that `Tuple`s in `V` must be
-`ntuple`s (have elements of identical type `T`), and, to a `Tuple` in `V` corresponds 
-a variable of type `T` in `V`. Put simply: the same scale `scale.X` will be applied
-to `∂0[X]`, `∂1[X]` and `∂2[X]`. 
+must have the same structure, with the important exception that `Broadcast` is used
+to apply a scaling to all elements of a `Tuple` or `SArray`: here, `scale.X` is applied
+to `X₀`, `X₁` and `X₂`.  
 
-See also: [`chainrule`](@ref)
+See also: [`chainrule`](@ref), [`revariate_indices`](@ref)
 """
 struct revariate{P,N,Z}   end
-revariate(a)                                               = revariate{precedence(a)}(a)
-revariate{P           }(a                 ) where{P}       = revariate{P,flat_length(a),:variate}(a,1)
-revariate{P,N,Z       }(a::NamedTuple   ,i) where{P,N,Z}   = NamedTuple{keys(a)}(revariate{P,N,Z}(values(a),i)) 
-revariate{P,N,Z       }(a::Tuple        ,i) where{P,N,Z}   = (revariate{P,N,Z}(first(a),i),revariate{P,N,Z}(Base.tail(a),i+flat_length(first(a)))...)
-revariate{P,N,Z       }(a::Tuple{}      ,i) where{P,N,Z}   = ()
-revariate{P,N,Z       }(a::SArray{S}    ,i) where{P,N,Z,S} = SArray{S,type_multivariate_𝕣{P,N}()}(revariate{P,N,Z}(aⱼ,i-1+j) for (j,aⱼ)∈enumerate(a))
-revariate{P,N,:δ      }(a::ℝ            ,i) where{P,N  }   = multivariate_𝕣{P,N}(zero( a),i)
-revariate{P,N,:variate}(a::ℝ            ,i) where{P,N  }   = multivariate_𝕣{P,N}(VALUE(a),i)
+"""
+    δV = reδ(V)
 
-# Specialised to adiff dofs, with scaling
-# s for scale
-# IMPORTANT: in a Tuple (but not NamedTuple), all a[i] share the same s
-struct revariatevalues{P,N,Z}   end
-revariate(a,s)                                                            = revariate{precedence(a)}(a,s)
-revariate{P           }(a                 ,s             ) where{P}       = revariate{P,flat_length(a),:variate}(a,1,s)
-revariate{P,N,Z       }(a::NamedTuple   ,i,s             ) where{P,N,Z}   = NamedTuple{keys(a)}(revariatevalues{P,N,Z}(values(a),i,values(s))) 
-revariatevalues{P,N,Z }(a::Tuple        ,i,s             ) where{P,N,Z}   = (revariate{P,N,Z}(first(a),i,first(s)),revariatevalues{P,N,Z}(Base.tail(a),i+flat_length(first(a)),Base.tail(s))...)
-revariatevalues{P,N,Z }(a::Tuple{}      ,i,s             ) where{P,N,Z}   = ()
-revariate{P,N,Z       }(a::Tuple        ,i,s             ) where{P,N,Z}   = (revariate{P,N,Z}(first(a),i,      s ),revariate{      P,N,Z}(Base.tail(a),i+flat_length(first(a)),          s )...)
-revariate{P,N,Z       }(a::Tuple{}      ,i,s             ) where{P,N,Z}   = ()
+Same as [`revariate`](@ref), but all values in `δV` are set to zero.    
+"""
+struct reδ{P} end
+
+struct Broadcast{S} 
+    s::S
+end
+
+revariate(   a  )          = revariate{precedence(a)            }(a    )
+revariate(   a,s)          = revariate{precedence(a)            }(a,  s)
+reδ(         a  )          = reδ{      precedence(a)            }(a    )
+reδ(         a,s)          = reδ{      precedence(a)            }(a,  s)
+revariate{P}(a  ) where{P} = revariate{P,flat_length(a),:variate}(a,1  )
+revariate{P}(a,s) where{P} = revariate{P,flat_length(a),:variate}(a,1,s)
+reδ{      P}(a  ) where{P} = revariate{P,flat_length(a),:δ      }(a,1  )
+reδ{      P}(a,s) where{P} = revariate{P,flat_length(a),:δ      }(a,1,s)
+
+# inner works
+revariate{P,N,Z       }(a::NamedTuple   ,i               ) where{P,N,Z}   = NamedTuple{keys(a)}(revariate{P,N,Z}(values(a),i)) 
+revariate{P,N,Z       }(a::Tuple        ,i               ) where{P,N,Z}   = (revariate{P,N,Z}(first(a),i),revariate{P,N,Z}(Base.tail(a),i+flat_length(first(a)))...)
+revariate{P,N,Z       }(a::Tuple{}      ,i               ) where{P,N,Z}   = ()
+revariate{P,N,Z       }(a::SArray{S}    ,i               ) where{P,N,Z,S} = SArray{S,type_multivariate_𝕣{P,N}()}(revariate{P,N,Z}(aⱼ,i-1+j) for (j,aⱼ)∈enumerate(a))
+revariate{P,N,:δ      }(a::ℝ            ,i               ) where{P,N  }   = multivariate_𝕣{P,N}(zero( a),i)
+revariate{P,N,:variate}(a::ℝ            ,i               ) where{P,N  }   = multivariate_𝕣{P,N}(VALUE(a),i)
+
+revariate{P,N,Z       }(a::NamedTuple   ,i,s::NamedTuple ) where{P,N,Z}   = NamedTuple{keys(a)}(revariatevalues{P,N,Z}(values(a),i,values(s))) 
+revariate{P,N,Z       }(a::Tuple        ,i,s::Tuple      ) where{P,N,Z}   = (revariate{P,N,Z}(first(a),i,first(s) ),revariate{P,N,Z}(Base.tail(a),i+flat_length(first(a)),Base.tail(s))...)
+revariate{P,N,Z       }(a::Tuple        ,i,s::Broadcast  ) where{P,N,Z}   = (revariate{P,N,Z}(first(a),i,      s.s),revariate{P,N,Z}(Base.tail(a),i+flat_length(first(a)),          s )...)
+revariate{P,N,Z       }(a::Tuple{}      ,i,s::Tuple{}    ) where{P,N,Z}   = ()
+revariate{P,N,Z       }(a::Tuple{}      ,i,s::Broadcast  ) where{P,N,Z}   = ()
 revariate{P,N,Z       }(a::SArray{S}    ,i,s::SArray{S,𝕣}) where{P,N,Z,S} = SArray{S,type_multivariate_𝕣{P,N}()}(revariate{P,N,Z}(a[j],i-1+j,s[j]) for j∈eachindex(a))
+revariate{P,N,Z       }(a::SArray{S}    ,i,s::Broadcast  ) where{P,N,Z,S} = SArray{S,type_multivariate_𝕣{P,N}()}(revariate{P,N,Z}(a[j],i-1+j,s.s ) for j∈eachindex(a))
 revariate{P,N,:δ      }(a::ℝ            ,i,s::𝕣          ) where{P,N  }   = multivariate_𝕣{P,N}(zero( a),i,s)
 revariate{P,N,:variate}(a::ℝ            ,i,s::𝕣          ) where{P,N  }   = multivariate_𝕣{P,N}(VALUE(a),i,s)
+struct revariatevalues{P,N,Z}   end
+revariatevalues{P,N,Z }(a::Tuple        ,i,s::Tuple      ) where{P,N,Z}   = (revariate{P,N,Z}(first(a),i,first(s) ),revariatevalues{P,N,Z}(Base.tail(a),i+flat_length(first(a)),Base.tail(s))...)
+revariatevalues{P,N,Z }(a::Tuple        ,i,s::Broadcast  ) where{P,N,Z}   = (revariate{P,N,Z}(first(a),i,      s.s),revariatevalues{P,N,Z}(Base.tail(a),i+flat_length(first(a)),          s )...)
+revariatevalues{P,N,Z }(a::Tuple{}      ,i,s::Tuple{}    ) where{P,N,Z}   = ()
+revariatevalues{P,N,Z }(a::Tuple{}      ,i,s::Broadcast  ) where{P,N,Z}   = ()
 
-struct reδ{P} end
-reδ{P}(a  ) where{P} = revariate{P,flat_length(a),:δ}(a,1  )
-reδ{P}(a,s) where{P} = revariate{P,flat_length(a),:δ}(a,1,s)
 
-# works with revariate{P}(a,s) and returns a structure of indices into the partials
-revariate_indices( args...)      = (revariate_indices_(args,0)...,flat_length(args))
-revariate_indices_(a::Tuple  ,i) = (revariate_indices_(first(a),i),revariate_indices_(Base.tail(a),i+flat_length(first(a)))...)
-revariate_indices_(a::Tuple{},i) = ()
-revariate_indices_(a::SArray ,i) = i+1:i+flat_length(a)
-revariate_indices_(a::𝕣,i)       = i+1
+"""
+    TV   = revariate{P}(V)
+    iV   = revariate_indices(V)
+
+`iV` has the same structure as `V` and `TV` but contains integers: the indices into the partials of `TV` 
+
+See also: [`revariate`](@ref)
+
+"""
+revariate_indices( a              ) = revariate_indices_(a,0)
+revariate_indices_(a::Tuple     ,i) = (revariate_indices_(first(a),i),revariate_indices_(Base.tail(a),i+flat_length(first(a)))...)
+revariate_indices_(a::Tuple{}   ,i) = ()
+revariate_indices_(a::NamedTuple,i) = NamedTuple{keys(a)}(revariate_indices_(values(a),i))
+revariate_indices_(a::SArray    ,i) = i+1:i+flat_length(a)
+revariate_indices_(a::𝕣         ,i) = i+1
 
 """
     to_order{P}(V)

@@ -145,7 +145,7 @@ function ∂²ℝ{P,N}(x::R,i,s=one(R)) where{P,N,R<:ℝ}
 end
 # Analyse
 """
-    @show VALUE(Y)
+    VALUE(Y)
 
 Completely strip `Y` of partial derivatives.  Use only for debugging purpose.    
 
@@ -348,8 +348,8 @@ function string_(a::∂ℝ{P,N,R}) where{P,N,R}
     x = string_(a.x)
     dx = N==0 ? "" : @sprintf("%s",string_(a.dx[1]))
     for i = 2:N
-       dx =   @sprintf("%s, %s",dx,string_(a.dx[i])) 
+       dx =   @sprintf("%s,%s",dx,string_(a.dx[i])) 
     end
-    return @sprintf("%s + ∂%s⟨%s⟩",x,p,dx) # \partial \langle \rangle mathematicaly-explicit
+    return @sprintf("%s+∂%s⟨%s⟩ ",x,p,dx) # \partial \langle \rangle mathematicaly-explicit
 end
 Base.show(io::IO,x::∂ℝ) = print(io,string_(x))

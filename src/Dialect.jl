@@ -286,3 +286,19 @@ function colnormalize(a::SMatrix{ndim,nvec,R}) where{ndim,nvec,R<:ℝ}
     n   = SVector{     nvec,R}(norm(a[:,ivec]) for ivec=1:nvec)
     out = SMatrix{ndim,nvec,R}(a[idim,ivec]/n[ivec] for idim=1:ndim,ivec=1:nvec)
 end
+
+"""
+    sA = symmetric!(A)
+
+Compute the symmetric part of a square `Matrix`.  Mutates the input argument.    
+"""
+function symmetric!(A::Matrix)
+    n,m = size(A)
+    @assert n==m
+    for i = 1:n
+        for j = 1:i-1
+            A[j,i] = A[i,j] = 0.5 * (A[i,j]+A[j,i])
+        end
+    end 
+    return A
+end
