@@ -155,9 +155,20 @@ function State{nΛder,nXder,nUder}(state;time=state.time,Λ=state.Λ,X=state.X,U
     state.dis   = dis
     return state
 end
-# A deep copy - except for SP,model and dis
-Base.copy(s::State;time=s.time,SP=s.SP) = State(time,deepcopy(s.Λ),deepcopy(s.X),deepcopy(s.U),deepcopy(s.A),SP,s.model,s.dis) 
+"""
+    s2 = copy(s1::State)
 
+Copy a state so that `s1` and `s2` do not share memory.
+
+(Actualy the `State`s will stil share the same `Model`, but no operations are provided to mutate it).
+
+    s2 = copy(s1;[time=t])
+
+create a copied `State` with time `t`. 
+
+See also: [`initialize!`](@ref), [`setdof!`](@ref)
+"""
+Base.copy(s::State;time=s.time,SP=s.SP) = State(time,deepcopy(s.Λ),deepcopy(s.X),deepcopy(s.U),deepcopy(s.A),SP,s.model,s.dis) 
 
 #### DofGroup
 

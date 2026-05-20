@@ -146,7 +146,7 @@ end
 
 X     = (SVector(1.,2.),SVector(3.,4.))
 U     = SVector(5.,6.,7.)
-scale = (X=SVector(10.,10.),U=SVector(2.,2.,2.))
+scale = (X=Muscade.Broadcast(SVector(10.,10.)),U=SVector(2.,2.,2.))
 d     = Muscade.revariate{2}((;X,U),scale)
 
 @testset "scaled revariate" begin

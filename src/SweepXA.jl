@@ -21,19 +21,14 @@ end
 ### The solver
 
 """
-	SweepXA{OX,OSX1,OSX2}
+	SweepXA{OX}
 
 A non-linear, time domain solver, that solves the problem time-step by time-step.
 Only the `X`-dofs of the model are solved for, while `U`-dofs and `A`-dofs are unchangeδ
 
-- `SweepXA{0,OSX1,OSX2}` is Newton-Raphson. 
-- `SweepXA{1,OSX1,OSX2}` is implicit Euler. 
-- `SweepXA{2,OSX1,OSX2}` is Newmark-β, with Newton-Raphson iterations.
-
-`OSX1` and `OSX2` refer to the order of time derivatives of `X` actualy used in the evaluation of `X`-costs.
-For example, a dynamic problem can have strain-measurement only, allowing to use `OXS1=OSX2=0`.
-`Qa♯` is computed using `OSX1`, while `Qaa♯` uses `OSX2`, so `OSX1>OSX2` introduces a pseudo-Newton step
-in the update of `A`. This accelerates each iteration, but makes convergence slover.  
+- `SweepXA{0}` is Newton-Raphson. 
+- `SweepXA{1}` is implicit Euler. 
+- `SweepXA{2}` is Newmark-β, with Newton-Raphson iterations.
 
 IMPORTANT NOTE: Muscade does not allow elements to have state variables, for example, plastic strain,
 or shear-free position for dry friction.  Where the element implements such physics, this 
@@ -74,21 +69,15 @@ A vector of length equal to that of the named input argument `time` containing t
 
 See also: [`solve`](@ref), [`initialize!`](@ref), [`findlastassigned`](@ref), [`study_singular`](@ref), [`DirectXUA`](@ref), [`FreqXU`](@ref)  
 """
-struct        SweepXA{OX,OSX1,OSX2} <: AbstractSolver end
-function solve(SX::Type{SweepXA{OX,OSX1,OSX2}},pstate,verbose,dbg;
-                    time::AbstractVector{𝕣},
-                    initialstate::State,
-                    β::𝕣=1/4,γ::𝕣=1/2,
-                    maxXiter::ℤ=50,maxΔx::ℝ=1e-5,maxLλ::ℝ=∞,
-                    maxAiter::ℤ=50,maxΔa::ℝ=1e-5,maxLa::ℝ=∞) where{OX,OSX1,OSX2}
+struct                SweepXA{OX} <: AbstractSolver end
+function solve(::Type{SweepXA{OX}},pstate,verbose,dbg;
+               time::AbstractVector{𝕣},
+               initialstate::State,
+               β::𝕣=1/4,γ::𝕣=1/2,
+               maxXiter::ℤ=50,maxΔx::ℝ=1e-5,maxLλ::ℝ=∞,
+               maxAiter::ℤ=50,maxΔa::ℝ=1e-5,maxLa::ℝ=∞) where{OX}
 
     model,dis        = initialstate.model,initialstate.dis
-    vectors          = ((ind.A,      1  ), 
-                        NTuple{OSX1+1     }((ind.X,idx         ) for idx=1:OSX1+1             )...)
-    matrices         = ((ind.A,ind.A,1,1), 
-                        NTuple{OSX1+1    }((ind.A,ind.X,1  ,idx) for idx=1:OSX1+1             )...,
-                        NTuple{OSX1+1    }((ind.X,ind.A,idx,1  ) for idx=1:OSX1+1             )...,  
-                        NTuple{(OSX2+1)^2}((ind.X,ind.X,idx,jdx) for idx=1:OSX2+1,jdx=1:OSX2+1)...) 
     outX,asmX,        Xdofgr                = prepare(AssemblySweepX{OX},model,dis                              ) # assembler for std forward analysis
     outA,asmA,(Λdofgr,Xdofgr,Udofgr,Adofgr) = prepare(AssemblyDirect    ,model,dis,Wanted{1,OX+1,1,1}(:all,:all)) # assembler for A-update 
     nXdof            = getndof(Xdofgr)
@@ -119,7 +108,7 @@ function solve(SX::Type{SweepXA{OX,OSX1,OSX2}},pstate,verbose,dbg;
         zero!(Xₐ)
 
         for (istep,t)    ∈ enumerate(time)
-            verbose && @printf "        step %3d\n" istep
+            #verbose && @printf "        step %3d\n" istep
             oldt         = state.time
             state.time   = t
             Δt           = t-oldt
@@ -128,7 +117,7 @@ function solve(SX::Type{SweepXA{OX,OSX1,OSX2}},pstate,verbose,dbg;
 
             # step and iterations
 
-            verbose && @printf "            Equilibrium iterations\n"
+            #verbose && @printf "            Equilibrium iterations\n"
             for iXiter   ∈ 1:maxXiter
                 cXiter  += 1
                 firstXiter = iXiter==1 
@@ -144,21 +133,21 @@ function solve(SX::Type{SweepXA{OX,OSX1,OSX2}},pstate,verbose,dbg;
 
                 ΔX²,Lλ²  = sum(ΔX.^2),sum(outX.Lλ.^2)
                 if ΔX²≤cΔX² && Lλ²≤cLλ² 
-                    #verbose && @printf "        step %3d converged in %3d iterations. |Δx|=%7.1e |Lλ|=%7.1e\n" istep iXiter √(ΔX²) √(Lλ²)
+                    verbose && @printf "        step %3d converged in %3d iterations. |Δx|=%7.1e |Lλ|=%7.1e\n" istep iXiter √(ΔX²) √(Lλ²)
                     states[istep] = State(state.time,state.Λ,deepcopy(state.X),state.U,state.A,state.SP,model,dis)
                     break#out of the iXiter loop
                 end
                 iXiter==maxXiter && muscadeerror(@sprintf("no convergence of step %3d for iAiter %3d after %3d iterations |Δx|=%g / %g, |Lλ|=%g / %g",istep,iAiter,iXiter,√(ΔX²),maxΔx,√(Lλ²)^2,maxLλ))
             end
 
-            verbose && @printf "            Assembling matrices for optimisation phase\n" 
+            #verbose && @printf "            Assembling matrices for optimisation phase\n" 
             assemble!{:matrices}(outA,asmA,dis,model,state,Δt,(dbg...,solver=:SweepXA,phase=:Asensitivity,iAiter=iAiter,istep=istep))
             Lx,La,Lxx,Lax,Laa = outA.L1[ind.X], outA.L1[ind.A], outA.L2[ind.X,ind.X], outA.L2[ind.A,ind.X], outA.L2[ind.A,ind.A]
             Lλx,Lλa           = outA.L2[ind.Λ,ind.X],outA.L2[ind.Λ,ind.A]
 
             # sensitivity of X to A
 
-            verbose && @printf "            Evaluate sensitivity of X to A\n" 
+            #verbose && @printf "            Evaluate sensitivity of X to A\n" 
             a₁,a₂,a₃,b₁,b₂,b₃ = c.a₁,c.a₂,c.a₃,c.b₁,c.b₂,c.b₃
             if OX≥2 b₂♯,b₃♯   = b₂/(1-a₂), a₃/(1-a₂)+b₃       end
             if OX≥1 Xₐ[2]    .= (1-a₂)  .* Xₐ[2] .- a₃      .* Xₐ[3]   end #         xₐ′-= aₐ
@@ -181,7 +170,7 @@ function solve(SX::Type{SweepXA{OX,OSX1,OSX2}},pstate,verbose,dbg;
 
             # time-integrate total gradient and Hessian of L wrt A
 
-            verbose && @printf "            Time-integrate total gradient and Hessian of L wrt A\n" 
+            #verbose && @printf "            Time-integrate total gradient and Hessian of L wrt A\n" 
             Qa         .+= La[1]      # this is gradient of cost over time Δt
             Qaa        .+= Laa[1,1]
             for idx ∈ 1:OX+1
@@ -195,8 +184,7 @@ function solve(SX::Type{SweepXA{OX,OSX1,OSX2}},pstate,verbose,dbg;
         end # istep
 
         # update A
- 
-            verbose && @printf "        Increment total cost given A\n" 
+        # verbose && @printf "        Increment total cost given A\n" 
         try ΔA   = Qaa\Qa
         catch;     muscadeerror(@sprintf("matrix factorization failed at A-update, iAiter=%i",iAiter)) end
         decrement!(state,1,ΔA,Adofgr) 
