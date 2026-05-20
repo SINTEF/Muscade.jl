@@ -32,7 +32,7 @@ Only the `X`-dofs of the model are solved for, while `U`-dofs and `A`-dofs are u
 
 `OSX1` and `OSX2` refer to the order of time derivatives of `X` actualy used in the evaluation of `X`-costs.
 For example, a dynamic problem can have strain-measurement only, allowing to use `OXS1=OSX2=0`.
-`Qa♯` is computed using `OSX1`, while `Qaa♯` uses `OSX2`, so `OSX1>OSX2` introduces a pseudo-Newton step
+`Qa` is computed using `OSX1`, while `Qaa` uses `OSX2`, so `OSX1>OSX2` introduces a pseudo-Newton step
 in the update of `A`. This accelerates each iteration, but makes convergence slover.  
 
 IMPORTANT NOTE: Muscade does not allow elements to have state variables, for example, plastic strain,

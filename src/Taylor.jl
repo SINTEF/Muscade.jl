@@ -130,8 +130,7 @@ containing  `∂ℝ`s but not produced by the same `revariate`.
 
 A special version of `revariate`
 
-    X = (X₀,X₁,X₂)
-    V = (X,U,A)
+    V = ((X₀,X₁,X₂)        ,      U,      A)
     S = (Broadcast(scale.X),scale.U,scale.A)
     TV = revariate{P}(V,S)
 
@@ -173,8 +172,8 @@ revariate{P,N,:variate}(a::ℝ            ,i               ) where{P,N  }   = mu
 
 revariate{P,N,Z       }(a::NamedTuple   ,i,s::NamedTuple ) where{P,N,Z}   = NamedTuple{keys(a)}(revariatevalues{P,N,Z}(values(a),i,values(s))) 
 revariate{P,N,Z       }(a::Tuple        ,i,s::Tuple      ) where{P,N,Z}   = (revariate{P,N,Z}(first(a),i,first(s) ),revariate{P,N,Z}(Base.tail(a),i+flat_length(first(a)),Base.tail(s))...)
-revariate{P,N,Z       }(a::Tuple{}      ,i,s::Tuple{}    ) where{P,N,Z}   = ()
 revariate{P,N,Z       }(a::Tuple        ,i,s::Broadcast  ) where{P,N,Z}   = (revariate{P,N,Z}(first(a),i,      s.s),revariate{P,N,Z}(Base.tail(a),i+flat_length(first(a)),          s )...)
+revariate{P,N,Z       }(a::Tuple{}      ,i,s::Tuple{}    ) where{P,N,Z}   = ()
 revariate{P,N,Z       }(a::Tuple{}      ,i,s::Broadcast  ) where{P,N,Z}   = ()
 revariate{P,N,Z       }(a::SArray{S}    ,i,s::SArray{S,𝕣}) where{P,N,Z,S} = SArray{S,type_multivariate_𝕣{P,N}()}(revariate{P,N,Z}(a[j],i-1+j,s[j]) for j∈eachindex(a))
 revariate{P,N,Z       }(a::SArray{S}    ,i,s::Broadcast  ) where{P,N,Z,S} = SArray{S,type_multivariate_𝕣{P,N}()}(revariate{P,N,Z}(a[j],i-1+j,s.s ) for j∈eachindex(a))
@@ -182,8 +181,8 @@ revariate{P,N,:δ      }(a::ℝ            ,i,s::𝕣          ) where{P,N  }   
 revariate{P,N,:variate}(a::ℝ            ,i,s::𝕣          ) where{P,N  }   = multivariate_𝕣{P,N}(VALUE(a),i,s)
 struct revariatevalues{P,N,Z}   end
 revariatevalues{P,N,Z }(a::Tuple        ,i,s::Tuple      ) where{P,N,Z}   = (revariate{P,N,Z}(first(a),i,first(s) ),revariatevalues{P,N,Z}(Base.tail(a),i+flat_length(first(a)),Base.tail(s))...)
-revariatevalues{P,N,Z }(a::Tuple{}      ,i,s::Tuple{}    ) where{P,N,Z}   = ()
 revariatevalues{P,N,Z }(a::Tuple        ,i,s::Broadcast  ) where{P,N,Z}   = (revariate{P,N,Z}(first(a),i,      s.s),revariatevalues{P,N,Z}(Base.tail(a),i+flat_length(first(a)),          s )...)
+revariatevalues{P,N,Z }(a::Tuple{}      ,i,s::Tuple{}    ) where{P,N,Z}   = ()
 revariatevalues{P,N,Z }(a::Tuple{}      ,i,s::Broadcast  ) where{P,N,Z}   = ()
 
 
