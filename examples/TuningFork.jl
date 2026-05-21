@@ -9,15 +9,11 @@ using Muscade, StaticArrays, GLMakie, Muscade.Toolbox
 l₀=2.5e-2;  n₀=1    # base - length and number of elements 
 l₁=1e-2;    n₁=1    # fork - length and number of elements per side
 l₂=9.5e-2;  n₂=5    # prong - length and number of elements per side
-h = 5e-3;           # width of the tuning fork cross-section
 b = 5e-3;           # thickness of the cross-section
 E = 210e9;          # Young modulus
 G = 79.3e9;         # shear modulus
-μ = 7850. *h*b;     # mass per unit length, assumes steel
-beamCrossSection = BeamCrossSection(EA=E*h*b, EI₂=E*h^3*b/12, EI₃=E*b*h^3/12, GJ=G*h*b^3/3, μ=μ, ι₁=μ/12*(h^2+b^2),Cl₂=1.,Cl₃=1.); 
-
-# Approximation of the fork fundamental frequency (cantilever beam bending)
-f₁ = 1.875^2/(2*π*l₂^2)*√(E*h^3*b/12/μ) 
+μ = 7850. *b^2;     # mass per unit length, assumes steel
+beamCrossSection = BeamCrossSection(EA=E*b^2, EI₂=1/12*E*b^4, EI₃=1/12*E*b^4, GJ=1/3*G*b^4, μ=μ, ι₁=1/6*μ*b^2,Cl₂=10.,Cl₃=10.); 
 
 # Define an A-parametrized point mass element (inducing an inertia force)
 struct LumpedMass <: AbstractElement; m :: 𝕣; end
@@ -25,9 +21,15 @@ LumpedMass(nod::Vector{Node};m::𝕣) = LumpedMass(m)
 @espy function Muscade.residual(o::LumpedMass, X,U,A, t,SP,dbg); return SVector((o.m+A[1]).*∂2(X)),noFB; end
 Muscade.doflist( ::Type{LumpedMass})  = (inod =(1,1,1,2), class=(:X,:X,:X,:A), field=(:t1,:t2,:t3,:mass));
 
+# Define an U-parametrized force acting along t2
+struct UnknownPointForce <: AbstractElement end
+UnknownPointForce(nod::Vector{Node}) = UnknownPointForce()
+@espy function Muscade.residual(o::UnknownPointForce, X,U,A, t,SP,dbg); return SVector(- U[1]),noFB; end
+Muscade.doflist( ::Type{UnknownPointForce})  = (inod =(1,2), class=(:X,:U), field=(:t2,:t2));
+
 # Time step and simulation length settings
-Δt = 1/f₁ / 8;
-nDynamicLoadSteps = 25*8;
+Δt = 3e-4;
+nDynamicLoadSteps = 200;
 timeVec = Δt:Δt:nDynamicLoadSteps*Δt;
 
 # Coordinates of the nodes.
@@ -40,7 +42,7 @@ XnodeCoord = vcat(
 )
 
 # External excitation load at the end of the upper prong 
-pling = Muscade.FunctionFromVector([-10, 0, 5/f₁, (5+1/2)/f₁, 10],[0,0,10,0,0]); @functor with() pling_(t) = pling(t)
+pling = Muscade.FunctionFromVector([-10, 0, 10e-3, 12e-3, 10],[0,0,10,0,0]); @functor with() pling_(t) = pling(t)
 plingNode = n₀+2n₁+n₂+1; # where do we hit the tuning fork
 
 # # Building the model
@@ -65,14 +67,7 @@ mesh = vcat(
 plingElement = n₀+2n₁+n₂;
 
 # Add beam elements to the model, enabling Udof only for the element that is hit. 
-eleid = Vector{Muscade.EleID}(undef,nel)
-for idx=1:nel
-    if idx == plingElement
-       eleid[idx] = addelement!(model,EulerBeam3D{true}, vcat(mesh[idx,:],Unod); mat=beamCrossSection,orient2=SVector(0.,0,1))
-    else
-        eleid[idx] = addelement!(model,EulerBeam3D{false}, mesh[idx,:];             mat=beamCrossSection,orient2=SVector(0.,0,1))
-    end
-end
+addelement!(model,EulerBeam3D{false}, mesh;             mat=beamCrossSection,orient2=SVector(0.,0,1))
 [addelement!(model,Hold,[Xnod[1]]  ;field)  for field∈[:t1,:t2,:t3,:r1,:r2,:r3]]; 
 
 # # Create variations of the model
@@ -80,14 +75,15 @@ XAmodel =   deepcopy(model)
 XUAmodel =  deepcopy(model);
 
 # Add parasitic lump mass on both XA and XUA models
-spuriousMass = 1e-3;
+spuriousMass = 4e-3;
 spuriousMassLocation = plingNode-1
 addelement!(XAmodel, LumpedMass,  [Xnod[spuriousMassLocation] Anod]; m=spuriousMass)
 addelement!(XUAmodel, LumpedMass, [Xnod[spuriousMassLocation] Anod]; m=spuriousMass);
 
-# Add known external load to X and XA models
+# Add known external force to X and XA models, and an unknown force to XUA model
 addelement!(model,   DofLoad,[Xnod[plingNode]];field=:t2,value=pling_)
 addelement!(XAmodel, DofLoad,[Xnod[plingNode]];field=:t2,value=pling_);
+addelement!(XUAmodel, UnknownPointForce,[Xnod[plingNode] Unod])
 
 # Establish target response
 initialState    = initialize!(model;time=0.);
@@ -100,34 +96,14 @@ target          = Muscade.FunctionFromVector(timeVec,vibTarget);
 addelement!(XAmodel, SingleDofCost,[Xnod[plingNode]]; class=:X, field=:t2, cost=Xcost)
 addelement!(XUAmodel,SingleDofCost,[Xnod[plingNode]]; class=:X, field=:t2, cost=Xcost);
 
-# Add costs on the coorecting mass, in the XA and XUA models
+# Add costs on the correcting mass, in the XA and XUA models
 @functor with(σₘ=5e-3,timeVec)          Acost_(a) = 0.5*(a/σₘ)^2/length(timeVec)
 addelement!(XAmodel,  SingleAcost,[Anod]; field=:mass, cost=Acost_);
+addelement!(XUAmodel,SingleAcost, [Anod]; field=:mass, cost=Acost_)
 
-# Prioritize estimation of U-loads during the first DirectXUA iterations, rather than updates of the A-parameter. 
-struct SingleDecayAcost{Field,Tcost,Tcostargs} <: AbstractElement
-    cost     :: Tcost     
-    costargs :: Tcostargs
-    fac      :: 𝕣1
-end
-SingleDecayAcost(nod::Vector{Node};field::Symbol,fac,cost::Functor ,costargs=()) = SingleDecayAcost{field,typeof(cost),typeof(costargs)}(cost,costargs,fac)
-Muscade.doflist(::Type{<:SingleDecayAcost{Field,Tcost,Tcostargs}}) where{Field,Tcost,Tcostargs} = (inod=(1,),class=(:A,),field=(Field,))
-@espy function Muscade.lagrangian(o::SingleDecayAcost,Λ,X,U,A,t,SP,dbg) 
-    iter  = min(length(o.fac),default{:iter}(SP,length(o.fac)))
-    ☼cost = o.cost(    A[1]  ,o.costargs...)
-    return cost*o.fac[iter],noFB
-end
-n=5; fac = [2^(n-i) for i∈1:n]
-addelement!(XUAmodel,SingleDecayAcost  ,[Anod]; field=:mass,fac, cost=Acost_);
-#src addelement!(XUAmodel,SingleAcost,       [Anod]; field=:mass, cost=Acost_)
-
-# Add cost to unknown loads XUA model, force per unit legnth in the direction of the excitation 
-@functor with(σᵤₚ=1e-1,f₁,l₂,n₂) UcostPling(u,t) = 0.5*(u*(l₂/n₂)/σᵤₚ)^2*exp(t*f₁/5)
+# Add cost to unknown external force in the XUA model 
+@functor with(σᵤₚ=0.1) UcostPling(u,t) = 0.5*(u/σᵤₚ)^2 * clutch(t,0.02,0.04,1.,100.,1)
 addelement!(XUAmodel,SingleDofCost,[Unod]; class=:U,field=:t2, cost=UcostPling);
-
-# and along the orthogonal dofs
-@functor with(σᵤₙ=1e-6) UcostNoLoad(u,t) = 0.5*(u/σᵤₙ)^2
-[addelement!(XUAmodel,SingleDofCost,[Unod]; class=:U,field=field, cost=UcostNoLoad) for field∈(:t1, :t3)];
 
 # # Run analyses
 
@@ -143,7 +119,7 @@ optimXAstate  = solve(SweepXA{2}; initialstate=XAinitialState, time=timeVec,
 # DirectXUA (slack convergence criteria and number of iterations)
 XUAinitialState    = initialize!(XUAmodel;time=0.);
 optimXUAstate   = solve(DirectXUA{2,0,1};initialstate=[XUAinitialState], time=[timeVec],
-                maxiter=15, maxΔx=1e-1,maxΔλ=Inf,maxΔu=1e1,maxΔa=1e-1, 
+                maxiter=15, maxΔx=5e-2,maxΔλ=Inf,maxΔu=5e-2,maxΔa=1e-4, 
                 verbose=false);
 
 
@@ -159,33 +135,34 @@ for idx ∈ 1:length(analysisResults)
     t2[idx,:] = getdof(analysisResults[idx];field=:t2,nodID=[Xnod[plingNode]])[:]
     t3[idx,:] = getdof(analysisResults[idx];field=:t3,nodID=[Xnod[plingNode]])[:]
  end
-excEstt2 = getdof(optimXUAstate[end];class=:U,field=:t2,nodID=[Unod])[:]*l₂/n₂;
+excEstt2 = getdof(optimXUAstate[end];class=:U,field=:t2,nodID=[Unod])[:];
 
 # Text output
-println("Estimated mass to remove from SweepXA analysis [g]:")
-println(-getdof(optimXAstate[end];class=:A,field=:mass,nodID=[Anod])[1]*1e3)
-println("Estimated mass to remove from DirectXUA analysis [g]:")
+println("Mass to remove in grams:")
+print("- Estimated from DirectXUA analysis (unknown loading) : ")
 println(-getdof(optimXUAstate[end];class=:A,field=:mass,nodID=[Anod])[1]*1e3)
-println("Expected [g]:")
+print("- Estimated by SweepXA analysis (known loading) : ")
+println(-getdof(optimXAstate[end];class=:A,field=:mass,nodID=[Anod])[1]*1e3)
+print("- Expected : ")
 println(spuriousMass*1e3)
 
 # Plot the axial and lateral displacement of the control node, and the estimated force.
 fig      = Figure(size = (1000,1000))
-ax0 = Axis(fig[1,1],ylabel="Excitation [N]")
-lines!(ax0,timeVec,pling.(timeVec), label="Actual",color=:black)
-lines!(ax0,timeVec,excEstt2, label="Estimated (XUA)")
-axislegend(ax0)
-ax1 = Axis(fig[2,1],ylabel="xₑ (axial) [mm]")
-scatter!(ax1,timeVec,t1[1,:]*1e3, label="Target")
-lines!(ax1,timeVec,t1[2,:]*1e3, label="Detuned config.")
-lines!(ax1,timeVec,t1[3,:]*1e3, label="Tuned (XA)")
-lines!(ax1,timeVec,t1[4,:]*1e3, label="Tuned (XUA)")
+ax1 = Axis(fig[1,1],ylabel="Axial disp. [mm]")
+lines!(ax1,timeVec,t1[1,:]*1e3,     label="Target",         color=:black, linestyle=:dash)
+lines!(ax1,timeVec,t1[2,:]*1e3,     label="Detuned config.",color=:black, linestyle=:solid)
+scatter!(ax1,timeVec,t1[3,:]*1e3,   label="Tuned (XA)",     color=:green, markersize = 10)
+scatter!(ax1,timeVec,t1[4,:]*1e3,   label="Tuned (XUA)",    color=:red, markersize = 5)
 axislegend(ax1)
-ax2 = Axis(fig[3,1],ylabel="yₑ (lateral) [mm]")
-scatter!(ax2,timeVec,t2[1,:]*1e3, label="Target")
-lines!(ax2,timeVec,t2[2,:]*1e3, label="Detuned config.")
-lines!(ax2,timeVec,t2[3,:]*1e3, label="Tuned (XA)")
-lines!(ax2,timeVec,t2[4,:]*1e3, label="Tuned (XUA)")
+ax2 = Axis(fig[2,1],ylabel="Lateral disp. [mm]")
+lines!(ax2,timeVec,t2[1,:]*1e3,     label="Target",         color=:black, linestyle=:dash)
+lines!(ax2,timeVec,t2[2,:]*1e3,     label="Detuned config.",color=:black, linestyle=:solid)
+scatter!(ax2,timeVec,t2[3,:]*1e3,   label="Tuned (XA)",     color=:green, markersize = 10)
+scatter!(ax2,timeVec,t2[4,:]*1e3,   label="Tuned (XUA)",    color=:red, markersize = 5)
+ax3 = Axis(fig[3,1],ylabel="Excitation [N]")
+lines!(ax3,timeVec,pling.(timeVec), label="Actual",color=:black, linestyle=:dash)
+lines!(ax3,timeVec,excEstt2, label="Estimated (XUA)",color=:red, linestyle=:solid)
+axislegend(ax3)
 
 currentDir = @__DIR__
 if occursin("build", currentDir)
