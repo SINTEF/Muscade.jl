@@ -79,6 +79,7 @@ function solve(::Type{SweepXA{OX}},pstate,verbose,dbg;
     cΔX²,cLλ²        = maxΔx^2,maxLλ^2
     cΔA²,cLa²        = maxΔa^2,maxLa^2
     cXiter           = 0
+    cAiter           = 0
 
     state            = State{1,OX+1,1}(copy(initialstate)) 
     state.Λ[1]      .= 0.
