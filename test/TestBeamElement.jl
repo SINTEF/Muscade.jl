@@ -241,7 +241,7 @@ end
 
 ## Testing weight
 ## Beam bent upwards with uniform weight (along negative t3)  
-w = 10
+w = 10.
 @functor with() g̃(t) = SVector(0.,0.,-1.)
 model           = Model(:TestModel)
 node1           = addnode!(model,𝕣[0,0,0])

@@ -1,4 +1,6 @@
 using Muscade, StaticArrays, GLMakie, Muscade.Toolbox
+using Profile,ProfileView,BenchmarkTools
+
 
 l₀=3e-2; n₀=6
 l₁=1e-2; n₁=2
@@ -75,7 +77,26 @@ addelement!(XAmodel,SingleDofCost,[nodid[n₀+2n₁+n₂+1]];class=:X ,field=:t2
 XAinitialState    = initialize!(XAmodel;time=0.);
 XAdynamicStates   = solve(SweepX{2};initialstate=XAinitialState, time=timeVec)
 # XA model (optimized)
-optimXAstate  = solve(SweepXA{2,2,2};  initialstate=XAinitialState,time=timeVec, verbose=true,catcherror=true,maxAiter=50,maxΔa=1e-10)
+optimXAstate  = solve(SweepXA{2};  initialstate=XAinitialState,time=timeVec, maxAiter=50,maxΔa=1e-10)
+#optimXAstate  = solve(SweepXA{2};  initialstate=XAinitialState,time=timeVec, maxAiter=50,maxΔa=1e10)
+
+# mission = :profile
+# if mission == :report
+#     solve(SweepXA{2};  initialstate=XAinitialState,time=timeVec, maxΔa=1e10)
+# elseif mission == :time
+#     solve(SweepXA{2};  initialstate=XAinitialState,time=timeVec, maxΔa=1e10)
+#     @btime     solve(SweepXA{2};  initialstate=XAinitialState,time=timeVec, maxΔa=1e10)
+# elseif mission == :profile
+#     solve(SweepXA{2};  initialstate=XAinitialState,time=timeVec, verbose=false,maxΔa=1e10)
+#     Profile.clear()
+#     Profile.@profile for i=1:100
+#             solve(SweepXA{2};  initialstate=XAinitialState,time=timeVec, verbose=false,maxΔa=1e10)
+#     end
+#     ProfileView.view(fontsize=30);
+# end
+;
+# After clicking on a bar in the flame diagram, you can type warntype_last() and see the result of 
+# code_warntype for the call represented by that bar.
 
 
 

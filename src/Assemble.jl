@@ -170,6 +170,19 @@ See also: [`initialize!`](@ref), [`setdof!`](@ref)
 """
 Base.copy(s::State;time=s.time,SP=s.SP) = State(time,deepcopy(s.Λ),deepcopy(s.X),deepcopy(s.U),deepcopy(s.A),SP,s.model,s.dis) 
 
+function Base.show(io::IO,o::State{nΛder,nXder,nUder,TSP}) where{nΛder,nXder,nUder,TSP}
+    print(io,"State{",nΛder,",",nXder,",",nUder,",",TSP,"}(model=:",o.model.ID,", time=",o.time,", ...)")
+end
+function Base.show(io::IO,o::Vector{State{nΛder,nXder,nUder,TSP}}) where{nΛder,nXder,nUder,TSP}
+    println(io,length(o),"-element Vector{State{",nΛder,",",nXder,",",nUder,",",TSP,"}}:")
+    for (i,oᵢ) ∈ enumerate(o)
+        println(io," ",i,": model=:",oᵢ.model.ID,", time=",oᵢ.time)
+    end
+end
+
+
+
+
 #### DofGroup
 
 # describes the relation between the dofs of the model, and a dof-vector containing an ordered selection
