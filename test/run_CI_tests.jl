@@ -29,6 +29,7 @@ include(joinpath(workingDir,"ModalBeamAnalysis.jl"))
 include(joinpath(workingDir,"DynamicBeamAnalysis.jl"))
 include(joinpath(workingDir,"DecayAnalysis.jl"))
 include(joinpath(workingDir,"DryFriction.jl"))
+include(joinpath(workingDir,"TuningFork.jl"))
 
 # generate documentation
 workingDir = joinpath(muscadeDir,"docs")

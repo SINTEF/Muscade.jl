@@ -4,7 +4,7 @@ docs        = @__DIR__
 muscade     = normpath(joinpath(docs,".."))
 docsrc      = joinpath(docs,"src")
 examplesrc(ex) = normpath(joinpath(docs,"..","examples",ex))
-examples    = ["StaticBeamAnalysis","ModalBeamAnalysis","DynamicBeamAnalysis","DecayAnalysis","DryFriction"]
+examples    = ["StaticBeamAnalysis","ModalBeamAnalysis","DynamicBeamAnalysis","DecayAnalysis","DryFriction","TuningFork"]
 
 requiredIncludeFiles = ["toolbox" "BeamElement.jl"; 
                         "toolbox" "Rotations.jl";  
