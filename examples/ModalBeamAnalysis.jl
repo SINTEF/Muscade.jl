@@ -5,14 +5,14 @@
 using Muscade, StaticArrays, GLMakie
 using Muscade.Toolbox
 
-L = 1;  # Beam length [m]
+L = 1.;  # Beam length [m]
 q = 0.0;  # Uniform lateral load [N/m]
-EI₂ = 1;  # Bending stiffness [Nm²]
-EI₃ = 1;  # Bending stiffness [Nm²]
+EI₂ = 1.;  # Bending stiffness [Nm²]
+EI₃ = 1.;  # Bending stiffness [Nm²]
 EA = 1e6;  # Axial stiffness [N]
 GJ = 1e6;  # Torsional stiffness [Nm²]
-μ = 1;
-ι₁= 1;
+μ = 1.;
+ι₁= 1.;
 
 # Create model
 nel         = 50

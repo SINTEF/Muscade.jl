@@ -4,7 +4,6 @@
 # We start from a target solution establihed using SweepX. A sprious mass is then introduced, parametrized by an A-dof. We use the SweepXA and DirectXUA solvers to estimate how much mass should be removed. In SweepXA, the excitation is assume to be known, while it is estimated by DirectXUA. 
 
 using Muscade, StaticArrays, GLMakie, Muscade.Toolbox
-using Profile,ProfileView,BenchmarkTools
 
 
 # Dimensions of the tuning fork and number of elements
@@ -44,7 +43,8 @@ XnodeCoord = vcat(
 )
 
 # External excitation load at the end of the upper prong 
-pling = Muscade.FunctionFromVector([-10, 0, 10e-3, 12e-3, 10],[0,0,10,0,0]); @functor with() pling_(t) = pling(t)
+pling = Muscade.FunctionFromVector([-10, 0, 10e-3, 12e-3, 10],[0,0,10,0,0]); 
+@functor with() pling_(t) = pling(t)
 plingNode = n₀+2n₁+n₂+1; # where do we hit the tuning fork
 
 # # Building the model
@@ -162,15 +162,15 @@ lines!(ax2,timeVec,t2[2,:]*1e3,     label="Detuned config.",color=:black, linest
 scatter!(ax2,timeVec,t2[3,:]*1e3,   label="Tuned (XA)",     color=:green, markersize = 10)
 scatter!(ax2,timeVec,t2[4,:]*1e3,   label="Tuned (XUA)",    color=:red, markersize = 5)
 ax3 = Axis(fig[3,1],ylabel="Excitation [N]")
-lines!(ax3,timeVec,pling.(timeVec), label="Actual",color=:black, linestyle=:dash)
+lines!(ax3,timeVec,pling_.(timeVec), label="Actual",color=:black, linestyle=:dash)
 lines!(ax3,timeVec,excEstt2, label="Estimated (XUA)",color=:red, linestyle=:solid)
 axislegend(ax3)
 
 currentDir = @__DIR__
 if occursin("build", currentDir)
-    save(normpath(joinpath(currentDir,"..","src","assets","tuningFork.png")),fig)
+    save(normpath(joinpath(currentDir,"..","src","assets","TuningFork.png")),fig)
 elseif occursin("examples", currentDir)
-    save(normpath(joinpath(currentDir,"tuningFork.png")),fig)
+    save(normpath(joinpath(currentDir,"TuningFork.png")),fig)
 end
 
-# ![Result](assets/tuningFork.png)
+# ![Result](assets/TuningFork.png)
