@@ -52,13 +52,12 @@ function solve(::Type{EigX{ℝ}},pstate,verbose,dbg;
     return 
 end
 # Normalize a vector by setting its maxabs component to 1
-function maxto1(v::AbstractVector)
+function maxto1(v::AbstractVector{𝕣})
     lo,hi     = extrema(v)
     maxabs    = abs(lo)>abs(hi) ? lo : hi
     return  v./maxabs
 end
-function solve(::Type{EigX{:fullℝ}},pstate,verbose,dbg; 
-                   state::State, kwargs...) 
+function solve(::Type{EigX{:fullℝ}},pstate,verbose,dbg; state::State) 
     OX,OU,IA         = 2,0,0
     model,dis        = state.model,state.dis
 
@@ -158,6 +157,31 @@ function solve(::Type{EigX{ℂ}},pstate,verbose,dbg;
     Δx             = [view(vecᵢ,nXdof+1:2nXdof) for vecᵢ ∈ vec]
 
     pstate[] = EigXℂincrement(dofgr[ind.X],p,Δx)
+    return 
+end
+function solve(::Type{EigX{:fullℂ}},pstate,verbose,dbg; state::State) 
+    OX,OU,IA         = 2,0,0
+    model,dis        = state.model,state.dis
+
+    verbose && @printf("\n    Assembing\n")
+    wantK,wantC,wantM= (ind.Λ,ind.X,1,1),(ind.Λ,ind.X,1,2),(ind.Λ,ind.X,1,3)
+    wanted           = Wanted{1,OX+1,OU+1,IA}(:all,(wantK,wantC,wantM))
+    out,asm,dofgr    = prepare(AssemblyDirect,model,dis,wanted)  
+    nXdof            = getndof.(dofgr)[ind.X]
+    state₀           = State{1,OX+1,OU+1}(copy(state))   
+    assemble!{:matrices}(out,asm,dis,model,state₀,idmult,(dbg...,solver=:EigXℂ))
+    K                = out.L2[ind.Λ,ind.X][1,1]
+    C                = out.L2[ind.Λ,ind.X][1,2]
+    M                = out.L2[ind.Λ,ind.X][1,3]
+    I                = spdiagm(ones(nXdof))
+    A,_   ,_         = blkasm([1,2  ],[1,2  ],[ I,K  ])  
+    B,_   ,_         = blkasm([2,1,2],[1,2,2],[-I,M,C])
+
+    verbose && @printf("    Solving Eigenvalues\n\n")
+    E                = eigen(Matrix(A),Matrix(B))
+    p                = E.values
+    Δx               = [view(E.vectors,nXdof+1:2nXdof,i) for i = 1:nXdof]
+    pstate[]         = EigXℂincrement(dofgr[ind.X],p,Δx)
     return 
 end
 function increment{OX}(initialstate,eiginc::EigXℂincrement,imod::AbstractVector{𝕫},A::AbstractVector) where{OX} 
