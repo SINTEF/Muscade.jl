@@ -51,6 +51,36 @@ function solve(::Type{EigX{ℝ}},pstate,verbose,dbg;
     verbose && @printf("\n")
     return 
 end
+# Normalize a vector by setting its maxabs component to 1
+function maxto1(v::AbstractVector)
+    lo,hi     = extrema(v)
+    maxabs    = abs(lo)>abs(hi) ? lo : hi
+    return  v./maxabs
+end
+function solve(::Type{EigX{:fullℝ}},pstate,verbose,dbg; 
+                   state::State, kwargs...) 
+    OX,OU,IA         = 2,0,0
+    model,dis        = state.model,state.dis
+
+    verbose && @printf("\n    Assembling\n")
+    wantK,wantM      = (ind.Λ,ind.X,1,1),(ind.Λ,ind.X,1,3)
+    wanted           = Wanted{1,OX+1,OU+1,IA}(:all,(wantK,wantM))
+    out,asm,dofgr    = prepare(AssemblyDirect,model,dis,wanted)  
+    nXdof            = getndof.(dofgr)[ind.X]
+    state₀           = State{1,OX+1,OU+1}(copy(state)) 
+    assemble!{:matrices}(out,asm,dis,model,state₀,idmult,(dbg...,solver=:EigXℝ))
+    K                = Matrix(out.L2[ind.Λ,ind.X][1,1])
+    M                = Matrix(out.L2[ind.Λ,ind.X][1,3])
+
+    verbose && @printf("    Solving Eigenvalues\n\n")
+    E                = eigen(K,M)
+    ω²               = E.values
+    Δx               = [maxto1(view(E.vectors,:,i)) for i = 1:nXdof]
+
+    pstate[] = EigXℝincrement(dofgr[ind.X],sqrt.(ω²),Δx)
+    verbose && @printf("\n")
+    return 
+end
 """
     state = increment{OX}(initialstate,eiginc,imod,A)
 
