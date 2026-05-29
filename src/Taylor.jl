@@ -79,12 +79,28 @@ flat_eltype(a::SArray{S,T}  ) where{S,T}     = T
 flat_eltype(a::R            ) where{R<:ℝ}    = R
 
 precedence(a::NamedTuple   )                 = precedence(values(a))
-precedence(a::Tuple        )                 = max(precedence(first(a)),precedence(Base.tail(a)))
 precedence(a::Tuple{X}     ) where{X}        = precedence(a[1]) 
+function precedence(a::Tuple        ) 
+    pa1 = precedence(first(a))
+    pat = precedence(Base.tail(a))
+    pa1==0   && return pat
+    pat==0   && return pa1
+    pa1==pat && return pat
+    error("precedence of a tuple with components of various precedence")
+end
+
 
 npartial(  a::NamedTuple   )                 = npartial(values(a))
-npartial(  a::Tuple        )                 = max(npartial(first(a)),npartial(Base.tail(a)))
 npartial(  a::Tuple{X}     ) where{X}        = npartial(a[1]) 
+function npartial(a::Tuple        ) 
+    na1 = npartial(first(a))
+    nat = npartial(Base.tail(a))
+    na1==0   && return nat
+    nat==0   && return na1
+    na1==nat && return nat
+    error("npartial of a tuple with components of various npartial")
+end
+
 
 struct flatten{T} end
 flatten(a)                                   = flatten{flat_eltype(a)}(a)
@@ -203,18 +219,23 @@ revariate_indices_(a::SArray    ,i) = i+1:i+flat_length(a)
 revariate_indices_(a::𝕣         ,i) = i+1
 
 """
-    to_order{P}(V)
+    to_order{P,N}(V)
 
 Decrease (lossy) or increase (pad partials with zeros) the order of differentiation of `V`.
 `V` is a nested structure of `NamedTuple`, `Tuple`, `SArray`, and the components
-of `V` must be of type `∂ℝ` (otherwise, the number of partials would be undefined).
+of `V` must be of type `∂ℝ` or `𝕣`.
+
+IMPORTANT: to_order{P,N}(V::𝕣) = V
 """
 struct to_order{P,N} end
-to_order{P,N}(a::NamedTuple   ) where{P,N} = NamedTuple{keys(a)}(to_order{P,N}(values(a)))
-to_order{P,N}(a::Tuple        ) where{P,N} = (to_order{P,N}(first(a)),to_order{P,N}(Base.tail(a))...)
-to_order{P,N}(a::Tuple{}      ) where{P,N} = ()
-to_order{P,N}(a::AbstractArray) where{P,N} = to_order{P,N}.(a)
-function to_order{P,N}(a::Ra)   where{Ra<:∂ℝ{Pa,N},P} where{Pa,N}
+to_order{P,N}(a::NamedTuple   ) where{P ,N} = NamedTuple{keys(a)}(to_order{P,N}(values(a)))
+to_order{P,N}(a::Tuple        ) where{P ,N} = (to_order{P,N}(first(a)),to_order{P,N}(Base.tail(a))...)
+to_order{P,N}(a::Tuple{}      ) where{P ,N} = ()
+to_order{P,N}(a::AbstractArray) where{P ,N} = to_order{P,N}.(a)
+to_order{0,N}(a::𝕣            ) where{   N} = a
+to_order{P,N}(a::𝕣            ) where{P, N} = a  # deliberate!
+to_order{0,N}(a::∂ℝ{Pa,N}     ) where{Pa,N} = VALUE(a) 
+function to_order{P,N}(a::∂ℝ{Pa,N}) where{P,N,Pa}
     if     Pa==P
         a
     elseif Pa> P   
@@ -224,21 +245,18 @@ function to_order{P,N}(a::Ra)   where{Ra<:∂ℝ{Pa,N},P} where{Pa,N}
         ∂ℝ{P,N}(ap, SVector{N}(∂ℝ{P-1,N}(ap.dx[i]) for i=1:N) )
     end
 end
-function to_order{P,N}(a::𝕣) where{P,N} 
-    P==0 ? a : ∂ℝ{P,N}(to_order{P-1,N}(a))
-end
-to_order{Pa}(a) where{Pa}= to_order{Pa,npartial(a)}(a)
- 
 
 
 
 #########################
 
 """
-    McLaurin(Ty,Δx)
+    v=McLaurin(Ty,Δx)
 
 `Ty::∂ℝ` has partials to arbitrary order with respect to a variable `x`. These
 partials define a McLaurin expansion, which `McLaurin` evaluates at value `Δx`.
+
+Thus the elements in `v` have the same type as `Δx`
 
 `McLaurin` handles nested structures of `Tuple`s and `SVector`s of `∂ℝ`, applying the
 expansion to each element.

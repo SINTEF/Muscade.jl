@@ -214,7 +214,7 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,el
     Releres         = revariate{P}(eleres)
     
     Rcost           = eleobj.cost(Releres,t,eleobj.costargs...)
-    cost            = chainrule(Rcost,to_order{P}(eleres))
+    cost            = chainrule(Rcost,to_order{P,npartial(eleres)}(eleres))
     L               = Λ[1] ∘₁ R + cost
     DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,NDΛ,NDX,NDU,NDA}(out,asm,L,iele,Δt)
 end
@@ -247,7 +247,7 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,el
     end
     Releres         = revariate{P}(eleres)
     Rgap            = eleobj.gap(eleres,t,eleobj.gargs...)
-    gap             = chainrule(Rgap,to_order{P}(eleres))
+    gap             = chainrule(Rgap,to_order{P,npartial(eleres)}(eleres))
     L               = Λ[1] ∘₁ R +   if      m==:equal;    -gap*λ   
                                     elseif  m==:positive; -KKT(λ,gap,γ) 
                                     elseif  m==:off;      -0.5λ^2 
