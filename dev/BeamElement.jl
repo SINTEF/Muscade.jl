@@ -41,7 +41,7 @@ mat             = BeamCrossSection(EA=EA,EI₂=EI₂,EI₃=EI₃,GJ=GJ,μ=μ,ι�
 
 See also: [`EulerBeam3D`](@ref), [`AxisymmetricBarCrossSection`](@ref)
 """
-struct BeamCrossSection
+struct BeamCrossSection{Tg̃}
     EA  :: 𝕣 
     EI₂ :: 𝕣 
     EI₃ :: 𝕣 
@@ -49,7 +49,7 @@ struct BeamCrossSection
     μ   :: 𝕣 
     ι₁  :: 𝕣 
     w   :: 𝕣 
-    g̃   :: Functor  
+    g̃   :: Tg̃  # a Functor  
     Ca₁ :: 𝕣  
     Cl₁ :: 𝕣
     Cq₁ :: 𝕣
