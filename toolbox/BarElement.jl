@@ -34,11 +34,11 @@ mat             = AxisymmetricBarCrossSection(EA=EA,μ=μ)
 
 See also: [`Bar3D`](@ref), [`EulerBeam3D`](@ref)
 """
-struct AxisymmetricBarCrossSection
+struct AxisymmetricBarCrossSection{Tg̃}
     EA  :: 𝕣 
     μ   :: 𝕣 
     w   :: 𝕣 
-    g̃   :: Functor  
+    g̃   :: Tg̃ # a functor  
     Caₜ :: 𝕣 
     Clₜ :: 𝕣 
     Cqₜ :: 𝕣 
