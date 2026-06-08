@@ -1,6 +1,11 @@
 """
-	eiginc = solve(EigX{ℝ};state=initialstate,nmod)
-	eiginc = solve(EigX{ℂ};state=initialstate,nmod)
+	eiginc = solve(EigX{ℝ     };state=initialstate,nmod)
+	eiginc = solve(EigX{:fullℝ};state=initialstate,nmod)
+	eiginc = solve(EigX{ℂ     };state=initialstate,nmod)
+
+!!! warning    
+    `EigX` is currently not working well due to problems with the sparse eigenvalue solver. `EigX{:fullℝ}` works well,
+    but because it operates on a full matrix, it can only be applied to smaller problems.  
 
 Given an initial (typicaly static) state `initialstate`, computes the lowest `nmod` eigenmodes of a system. 
 `EigX{ℝ}` computes real eigenmodes not accounting for damping. `EigX{ℝ}` computes complex eigenmodes accounting for damping.
