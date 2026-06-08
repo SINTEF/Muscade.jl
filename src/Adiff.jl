@@ -218,6 +218,9 @@ for OP∈(:(>),:(<),:(==),:(>=),:(<=),:(!=))
     @eval Base.$OP(a:: ℝ,b::∂ℝ)  = $OP(      a ,VALUE(b))
     @eval Base.$OP(a::∂ℝ,b:: ℝ)  = $OP(VALUE(a),      b )
 end
+Base.isapprox(a::∂ℝ,b::∂ℝ;kwargs...) = isapprox(VALUE(a),VALUE(b);kwargs...)  
+Base.isapprox(a:: ℝ,b::∂ℝ;kwargs...) = isapprox(      a ,VALUE(b);kwargs...)  
+Base.isapprox(a::∂ℝ,b:: ℝ;kwargs...) = isapprox(VALUE(a),      b ;kwargs...)  
 
 macro DiffRule2(OP,AB,A,B)
     return esc(quote
@@ -342,7 +345,7 @@ end
 
 # Print addifs
 const subscripts = ('₁','₂','₃','₄','₅','₆','₇','₈','₉')
-string_(a::Float64) = strip(@sprintf("%4.3g",a))
+string_(a::Float64) = strip(@sprintf("%16.15g",a))
 function string_(a::∂ℝ{P,N,R}) where{P,N,R}
     p = subscripts[P]
     x = string_(a.x)
@@ -353,3 +356,19 @@ function string_(a::∂ℝ{P,N,R}) where{P,N,R}
     return @sprintf("%s+∂%s⟨%s⟩ ",x,p,dx) # \partial \langle \rangle mathematicaly-explicit
 end
 Base.show(io::IO,x::∂ℝ) = print(io,string_(x))
+
+"""
+    Muscade.isapprox_dbg(a,b;kwargs...)
+
+Compare two `∂ℝ` of the same type (or two conformant `AbstractArrays` of same `eltype`).
+The comparison applies to the value and the partial derivatives.
+
+This differs from 
+
+    isapprox(a,b;kwargs...)
+
+which only compares values, in keeping with the principle that `∂ℝ` must behave as `ℝ`.    
+
+""" 
+isapprox_dbg(a::R,b::R;kwargs...) where{R<:∂ℝ} = isapprox(a.x,b.x;kwargs...)  && all(isapprox.(a.dx,b.dx;kwargs...))
+isapprox_dbg(a::AbstractArray{R},b::AbstractArray{R};kwargs...) where{R<:∂ℝ} = all(isapprox.(a,b;kwargs...))
