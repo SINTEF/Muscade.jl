@@ -19,19 +19,19 @@ beamCrossSection = BeamCrossSection(EA=E*b^2, EI₂=1/12*E*b^4, EI₃=1/12*E*b^4
 # Define an A-parametrized point mass element (inducing an inertia force)
 struct LumpedMass <: AbstractElement; m :: 𝕣; end
 LumpedMass(nod::Vector{Node};m::𝕣) = LumpedMass(m)
-@espy function Muscade.residual(o::LumpedMass, X,U,A, t,SP,dbg); return SVector((o.m+A[1]).*∂2(X)),noFB; end
+@espy function Muscade.residual(o::LumpedMass, X,U,A, t,SP,dbg); return (o.m+A[1]).*∂2(X),noFB; end   
 Muscade.doflist( ::Type{LumpedMass})  = (inod =(1,1,1,2), class=(:X,:X,:X,:A), field=(:t1,:t2,:t3,:mass));
 
 # Define an U-parametrized force acting along t2
 struct UnknownPointForce <: AbstractElement end
 UnknownPointForce(nod::Vector{Node}) = UnknownPointForce()
-@espy function Muscade.residual(o::UnknownPointForce, X,U,A, t,SP,dbg); return SVector(- U[1]),noFB; end
+@espy function Muscade.residual(o::UnknownPointForce, X,U,A, t,SP,dbg); return -∂0(U),noFB; end
 Muscade.doflist( ::Type{UnknownPointForce})  = (inod =(1,2), class=(:X,:U), field=(:t2,:t2));
 
 # Time step and simulation length settings
-Δt = 3e-4;
+Δt                = 3e-4;
 nDynamicLoadSteps = 200;
-timeVec = Δt:Δt:nDynamicLoadSteps*Δt;
+timeVec           = Δt:Δt:nDynamicLoadSteps*Δt;
 
 # Coordinates of the nodes.
 XnodeCoord = vcat(
@@ -52,8 +52,8 @@ model       = Model(:TuningFork);
 
 # Add the nodes describing the beam model, the node that will contain the parameter to optimize, and  the node that will contain the load to estimate in DirectXUA
 Xnod = addnode!(model,XnodeCoord)
-Anod = addnode!(model,Vector{𝕣}(undef,3))
-Unod = addnode!(model,Vector{𝕣}(undef,3)); 
+Anod = addnode!(model,𝕣[])
+Unod = addnode!(model,𝕣[]);
 
 # List of nodes that will be used to create the beam elements
 nel = n₀+2n₁+2n₂
@@ -83,8 +83,8 @@ addelement!(XAmodel, LumpedMass,  [Xnod[spuriousMassLocation] Anod]; m=spuriousM
 addelement!(XUAmodel, LumpedMass, [Xnod[spuriousMassLocation] Anod]; m=spuriousMass);
 
 # Add known external force to X and XA models, and an unknown force to XUA model
-addelement!(model,   DofLoad,[Xnod[plingNode]];field=:t2,value=pling_)
-addelement!(XAmodel, DofLoad,[Xnod[plingNode]];field=:t2,value=pling_);
+addelement!(model,    DofLoad,[Xnod[plingNode]];field=:t2,value=pling_)
+addelement!(XAmodel,  DofLoad,[Xnod[plingNode]];field=:t2,value=pling_);
 addelement!(XUAmodel, UnknownPointForce,[Xnod[plingNode] Unod])
 
 # Establish target response
@@ -111,18 +111,16 @@ addelement!(XUAmodel,SingleDofCost,[Unod]; class=:U,field=:t2, cost=UcostPling);
 
 # XA model (before estimating the mass)
 XAinitialState    = initialize!(XAmodel;time=0.);
-XAdynamicStates   = solve(SweepX{2};initialstate=XAinitialState, time=timeVec, verbose=false); 
+XAdynamicStates   = solve(SweepX{2};initialstate=XAinitialState, time=timeVec); 
 
 # XA model (after having estimated the mass)
 optimXAstate  = solve(SweepXA{2}; initialstate=XAinitialState, time=timeVec, 
-                maxAiter=20,maxΔa=1e-10, 
-                verbose=false);
+                maxAiter=20,maxΔa=1e-10);
 
 # DirectXUA (slack convergence criteria and number of iterations)
 XUAinitialState    = initialize!(XUAmodel;time=0.);
 optimXUAstate   = solve(DirectXUA{2,0,1};initialstate=[XUAinitialState], time=[timeVec],
-                maxiter=15, maxΔx=5e-2,maxΔλ=Inf,maxΔu=5e-2,maxΔa=1e-4, 
-                verbose=false);
+                maxiter=15, maxΔx=5e-2,maxΔλ=Inf,maxΔu=5e-2,maxΔa=1e-4);
 
 
 #  Gather results for comparison
