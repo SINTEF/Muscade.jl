@@ -268,22 +268,21 @@ See also: [`chainrule`](@ref), [`Taylor`](@ref), [`revariate`](@ref), [`apply`](
 McLaurin(y::Tuple,Δx)                          = tuple(McLaurin(first(y),Δx),McLaurin(Base.tail(y),Δx)...) 
 McLaurin( ::Tuple{},Δx)                        = tuple() 
 McLaurin(y::SArray{Sy,Ty,Dy,Ly},Δx::SVector{Sx,Tx}) where{Sy,Ty,Dy,Ly,Sx,Tx} = SArray{Sy,Tx,Dy,Ly}(McLaurin(yᵢ,Δx) for yᵢ∈y)
-McLaurin(y::SArray{Sy,𝕣 ,Dy,Ly},Δx::SVector{Sx,Tx}) where{Sy,   Dy,Ly,Sx,Tx} =                              y
-McLaurin(y::∂ℝ,Δx)                             = McLaurin(y.x,Δx) .+ McLaurin_right(y,Δx)
-McLaurin(y::𝕣 ,Δx)                             =          y
-function McLaurin_right(y::∂ℝ{P,N,R},Δx::SVector{N}) where{P,N,R} 
+McLaurin(y::∂ℝ,Δx)                             = McLaurin(y.x,Δx) + next_term(y,Δx) # McLaurin to order P = McLaurin to P-1 + next term in P 
+@inline McLaurin(y::𝕣 ,Δx)                             =          y
+function next_term(y::∂ℝ{P,N,R},Δx::SVector{N}) where{P,N,R} 
     if N==0
-        return zero(y) # hum!!!!
+        return 𝟘
     else
-        s = McLaurin_right(y.dx[1],Δx)*Δx[1]
+        s = next_term(y.dx[1],Δx)*Δx[1]
         for i ∈ 2:N
-            s += McLaurin_right(y.dx[i],Δx)*Δx[i]
+            s += next_term(y.dx[i],Δx)*Δx[i]
         end
-        s /= P
+        P>1 && (s *= inv(P))
     end
     return s
 end
-McLaurin_right(y::𝕣    ,Δx            )        =          y
+@inline next_term(y::𝕣        ,Δx            )              =                            y
 
 """
     Taylor(Ty,x₀,x)
@@ -335,7 +334,13 @@ Wrapper function of [`revariate`](@ref) and [`chainrule`](@ref)
 
 """
 struct apply{Mode} end
-apply{:chainrule}(f,x) = chainrule(f(revariate(x)),x)
+function apply{:chainrule}(f,x) 
+    x_ = revariate(x)
+    y_ = f(x_)
+    y  = chainrule(y_,x)
+    return y
+end
+#apply{:chainrule}(f,x) = chainrule(f(revariate(x)),x)
 apply{:direct   }(f,x) = f(x)
 
 """

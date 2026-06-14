@@ -22,12 +22,6 @@ LumpedMass(nod::Vector{Node};m::𝕣) = LumpedMass(m)
 @espy function Muscade.residual(o::LumpedMass, X,U,A, t,SP,dbg); return (o.m+A[1]).*∂2(X),noFB; end   
 Muscade.doflist( ::Type{LumpedMass})  = (inod =(1,1,1,2), class=(:X,:X,:X,:A), field=(:t1,:t2,:t3,:mass));
 
-# Define an U-parametrized force acting along t2
-struct UnknownPointForce <: AbstractElement end
-UnknownPointForce(nod::Vector{Node}) = UnknownPointForce()
-@espy function Muscade.residual(o::UnknownPointForce, X,U,A, t,SP,dbg); return -∂0(U),noFB; end
-Muscade.doflist( ::Type{UnknownPointForce})  = (inod =(1,2), class=(:X,:U), field=(:t2,:t2));
-
 # Time step and simulation length settings
 Δt                = 3e-4;
 nDynamicLoadSteps = 200;
@@ -43,17 +37,15 @@ XnodeCoord = vcat(
 )
 
 # External excitation load at the end of the upper prong 
-pling = Muscade.FunctionFromVector([-10, 0, 10e-3, 12e-3, 10],[0,0,10,0,0]); 
-@functor with() pling_(t) = pling(t)
+@functor with() pling(t) = Muscade.FunctionFromVector([-10, 0, 10e-3, 12e-3, 10],[0,0,10,0,0])(t)
 plingNode = n₀+2n₁+n₂+1; # where do we hit the tuning fork
 
 # # Building the model
 model       = Model(:TuningFork);
 
-# Add the nodes describing the beam model, the node that will contain the parameter to optimize, and  the node that will contain the load to estimate in DirectXUA
+# Add the nodes describing the beam model, the node that will contain the parameter to optimize
 Xnod = addnode!(model,XnodeCoord)
 Anod = addnode!(model,𝕣[])
-Unod = addnode!(model,𝕣[]);
 
 # List of nodes that will be used to create the beam elements
 nel = n₀+2n₁+2n₂
@@ -79,13 +71,14 @@ XUAmodel =  deepcopy(model);
 # Add parasitic lump mass on both XA and XUA models
 spuriousMass = 4e-3;
 spuriousMassLocation = plingNode-1
-addelement!(XAmodel, LumpedMass,  [Xnod[spuriousMassLocation] Anod]; m=spuriousMass)
+addelement!(XAmodel,  LumpedMass, [Xnod[spuriousMassLocation] Anod]; m=spuriousMass)
 addelement!(XUAmodel, LumpedMass, [Xnod[spuriousMassLocation] Anod]; m=spuriousMass);
 
 # Add known external force to X and XA models, and an unknown force to XUA model
-addelement!(model,    DofLoad,[Xnod[plingNode]];field=:t2,value=pling_)
-addelement!(XAmodel,  DofLoad,[Xnod[plingNode]];field=:t2,value=pling_);
-addelement!(XUAmodel, UnknownPointForce,[Xnod[plingNode] Unod])
+addelement!(model,    DofLoad,[Xnod[plingNode]];field=:t2,value=pling)
+addelement!(XAmodel,  DofLoad,[Xnod[plingNode]];field=:t2,value=pling);
+@functor with(σᵤₚ=0.1) UcostPling(u,t) = 0.5*(u/σᵤₚ)^2 * clutch(t,0.02,0.04,1.,100.,1)
+addelement!(XUAmodel, SingleUdof,[Xnod[plingNode]];Xfield=:t2,Ufield=:t2,cost=UcostPling)
 
 # Establish target response
 initialState    = initialize!(model;time=0.);
@@ -95,17 +88,13 @@ target          = Muscade.FunctionFromVector(timeVec,vibTarget);
 
 # Add costs on the deviation to target measurements, in the XA and XUA models
 @functor with(σᵥ=1e-6,target) Xcost(x,t)=((x-target(t))/σᵥ)^2
-addelement!(XAmodel, SingleDofCost,[Xnod[plingNode]]; class=:X, field=:t2, cost=Xcost)
 addelement!(XUAmodel,SingleDofCost,[Xnod[plingNode]]; class=:X, field=:t2, cost=Xcost);
+addelement!(XAmodel, SingleDofCost,[Xnod[plingNode]]; class=:X, field=:t2, cost=Xcost)
 
 # Add costs on the correcting mass, in the XA and XUA models
 @functor with(σₘ=5e-3,timeVec)          Acost_(a) = 0.5*(a/σₘ)^2/length(timeVec)
+addelement!(XUAmodel, SingleAcost,[Anod]; field=:mass, cost=Acost_)
 addelement!(XAmodel,  SingleAcost,[Anod]; field=:mass, cost=Acost_);
-addelement!(XUAmodel,SingleAcost, [Anod]; field=:mass, cost=Acost_)
-
-# Add cost to unknown external force in the XUA model 
-@functor with(σᵤₚ=0.1) UcostPling(u,t) = 0.5*(u/σᵤₚ)^2 * clutch(t,0.02,0.04,1.,100.,1)
-addelement!(XUAmodel,SingleDofCost,[Unod]; class=:U,field=:t2, cost=UcostPling);
 
 # # Run analyses
 
@@ -122,7 +111,6 @@ XUAinitialState    = initialize!(XUAmodel;time=0.);
 optimXUAstate   = solve(DirectXUA{2,0,1};initialstate=[XUAinitialState], time=[timeVec],
                 maxiter=15, maxΔx=5e-2,maxΔλ=Inf,maxΔu=5e-2,maxΔa=1e-4);
 
-
 #  Gather results for comparison
 analysisResults = (dynamicStates, XAdynamicStates,optimXAstate,optimXUAstate[end]); 
 t1 = Matrix{Float64}(undef,length(analysisResults),length(timeVec))
@@ -135,7 +123,7 @@ for idx ∈ 1:length(analysisResults)
     t2[idx,:] = getdof(analysisResults[idx];field=:t2,nodID=[Xnod[plingNode]])[:]
     t3[idx,:] = getdof(analysisResults[idx];field=:t3,nodID=[Xnod[plingNode]])[:]
  end
-excEstt2 = getdof(optimXUAstate[end];class=:U,field=:t2,nodID=[Unod])[:];
+excEstt2 = getdof(optimXUAstate[end];class=:U,field=:t2,nodID=[Xnod[plingNode]])[:];
 
 # Text output
 println("Mass to remove in grams:")
@@ -160,7 +148,7 @@ lines!(ax2,timeVec,t2[2,:]*1e3,     label="Detuned config.",color=:black, linest
 scatter!(ax2,timeVec,t2[3,:]*1e3,   label="Tuned (XA)",     color=:green, markersize = 10)
 scatter!(ax2,timeVec,t2[4,:]*1e3,   label="Tuned (XUA)",    color=:red, markersize = 5)
 ax3 = Axis(fig[3,1],ylabel="Excitation [N]")
-lines!(ax3,timeVec,pling_.(timeVec), label="Actual",color=:black, linestyle=:dash)
+lines!(ax3,timeVec,pling.(timeVec), label="Actual",color=:black, linestyle=:dash)
 lines!(ax3,timeVec,excEstt2, label="Estimated (XUA)",color=:red, linestyle=:solid)
 axislegend(ax3)
 

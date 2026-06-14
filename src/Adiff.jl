@@ -120,9 +120,9 @@ Create automatic differentiation object of precedence `P` and value `zero`.
 
 See also: [`constants`](@ref), [`variate`](@ref), [`value`](@ref), [`∂`](@ref), [`VALUE`](@ref), [`value_∂`](@ref)
 """
-δ{P,N,R}(                          ) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,N,R}}(∂ℝ{P,N  }(zero(R),i                                         ) for i=1:N)
-δ{P,N,R}(               δa::SV{N,𝕣}) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,N,R}}(∂ℝ{P,N,R}(zero(R),SV{N,R}(i==j ? δa[i]  : zero(R) for i=1:N)) for j=1:N)
-δ{P    }(                          ) where{P       } =                 ∂ℝ{P,1,𝕣}(0.     ,SV{1,𝕣}(1.                               ))
+@inline δ{P,N,R}(                          ) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,N,R}}(∂ℝ{P,N  }(zero(R),i                                         ) for i=1:N)
+@inline δ{P,N,R}(               δa::SV{N,𝕣}) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,N,R}}(∂ℝ{P,N,R}(zero(R),SV{N,R}(i==j ? δa[i]  : zero(R) for i=1:N)) for j=1:N)
+@inline δ{P    }(                          ) where{P       } =                 ∂ℝ{P,1,𝕣}(0.     ,SV{1,𝕣}(1.                               ))
 
 """
     X = variate{P,N}(x)
@@ -135,10 +135,10 @@ where `typeof(x)<:Real`, create an object of precedence `P`.
 
 See also: [`constants`](@ref), [`δ`](@ref), [`value`](@ref), [`∂`](@ref), [`VALUE`](@ref), [`value_∂`](@ref)
 """
-variate{    P,N}(a::SV{N,R}            ) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,N,R}}(∂ℝ{P,N  }(a[i],i) for i=1:N)
-variate{    P,N}(a::SV{N,R},δa::SV{N,𝕣}) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,N,R}}(∂ℝ{P,N,R}(a[j]   ,SV{N,R}(i==j ? R(δa[i])  : zero(R) for i=1:N)) for j=1:N)
-variate{    P  }(a::R                  ) where{P,  R<:ℝ} =      ∂ℝ{P,1  }(a,SV{1,R}(one(R)))
-directional{P  }(a::SV{N,R},δa::SV{N,R}) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,1,R}}(∂ℝ{P,1}(a[i],SV{1,R}(δa[i])) for i=1:N)
+@inline variate{    P,N}(a::SV{N,R}            ) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,N,R}}(∂ℝ{P,N  }(a[i],i) for i=1:N)
+@inline variate{    P,N}(a::SV{N,R},δa::SV{N,𝕣}) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,N,R}}(∂ℝ{P,N,R}(a[j]   ,SV{N,R}(i==j ? R(δa[i])  : zero(R) for i=1:N)) for j=1:N)
+@inline variate{    P  }(a::R                  ) where{P,  R<:ℝ} =      ∂ℝ{P,1  }(a,SV{1,R}(one(R)))
+@inline directional{P  }(a::SV{N,R},δa::SV{N,R}) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,1,R}}(∂ℝ{P,1}(a[i],SV{1,R}(δa[i])) for i=1:N)
 function ∂²ℝ{P,N}(x::R,i,s=one(R)) where{P,N,R<:ℝ}
     R1 = ∂ℝ{P,N,R}
     return ∂ℝ{P+1,N,R1}( ∂ℝ{P,N}(x,i,s) , SV{N,R1}(j==i ? R1(s) : zero(R1) for j=1:N ))
@@ -151,10 +151,10 @@ Completely strip `Y` of partial derivatives.  Use only for debugging purpose.
 
 See also: [`constants`](@ref), [`variate`](@ref), [`δ`](@ref), [`value`](@ref), [`∂`](@ref), [`value_∂`](@ref)
 """
-VALUE(a::Nothing )                     =        nothing
-VALUE(a::ℝ )                           =        a
-VALUE(a::∂ℝ)                           = VALUE( a.x)
-VALUE(a::SA)                           = VALUE.(a)
+@inline VALUE(a::Nothing )                     =        nothing
+@inline VALUE(a::ℝ )                           =        a
+@inline VALUE(a::∂ℝ)                           = VALUE( a.x)
+@inline VALUE(a::SA)                           = VALUE.(a)
 
 struct ∂{P,N}                  end 
 struct value{P,N}              end
@@ -167,10 +167,10 @@ Extract the value of an automatic differentiation object, or `SArray` of such ob
 
 See also: [`constants`](@ref), [`variate`](@ref), [`δ`](@ref), [`∂`](@ref), [`VALUE`](@ref), [`value_∂`](@ref)
 """
-value{P}(a::∂ℝ{P,N,R}) where{P,N,R   } = a.x
-value{P}(a::R        ) where{P  ,R<:ℝ} = a
-value{P}(a::SA       ) where{P       } = value{P}.(a)
-value{P}(a::Tuple    ) where{P       } = Tuple(value{P}(aᵢ) for aᵢ∈a) 
+@inline value{P}(a::∂ℝ{P,N,R}) where{P,N,R   } = a.x
+@inline value{P}(a::R        ) where{P  ,R<:ℝ} = a
+@inline value{P}(a::SA       ) where{P       } = value{P}.(a)
+@inline value{P}(a::Tuple    ) where{P       } = Tuple(value{P}(aᵢ) for aᵢ∈a) 
 
 # ∂{P}(a) is handled as ∂{P,1}(a) and returns a scalar 
 """
@@ -186,21 +186,21 @@ was created by the syntax `variate{P}`.
 
 See also: [`constants`](@ref), [`variate`](@ref), [`δ`](@ref), [`value`](@ref), [`VALUE`](@ref), [`value_∂`](@ref)
 """
-∂{P,N}(a::     ∂ℝ{P,N,R} ) where{  P,N,R   } = a.dx
-∂{P,N}(a::            R  ) where{  P,N,R<:ℝ} = SV{  N,R}(zero(R)    for i=1:N      )
-∂{P,N}(a::SV{M,∂ℝ{P,N,R}}) where{M,P,N,R   } = SM{M,N,R}(a[i].dx[j] for i=1:M,j∈1:N) # ∂(a,x)[i,j] = ∂a[i]/∂x[j]
-∂{P,N}(a::SV{M,       R }) where{M,P,N,R   } = SM{M,N,R}(zero(R)    for i=1:M,j=1:N)
-∂{P  }(a::            R  ) where{  P,  R<:ℝ} = zero(R)
-∂{P  }(a::     ∂ℝ{P,1,R} ) where{  P,  R   } = a.dx[1]
-∂{P  }(a::SV{N,∂ℝ{P,1,R}}) where{  P,N,R   } = SV{  N,R}(a[i].dx[1] for i=1:N     ) # ∂(a,x)[i]    = ∂a[i]/∂x
+@inline ∂{P,N}(a::     ∂ℝ{P,N,R} ) where{  P,N,R   } = a.dx
+@inline ∂{P,N}(a::            R  ) where{  P,N,R<:ℝ} = SV{  N,R}(zero(R)    for i=1:N      )
+@inline ∂{P,N}(a::SV{M,∂ℝ{P,N,R}}) where{M,P,N,R   } = SM{M,N,R}(a[i].dx[j] for i=1:M,j∈1:N) # ∂(a,x)[i,j] = ∂a[i]/∂x[j]
+@inline ∂{P,N}(a::SV{M,       R }) where{M,P,N,R   } = SM{M,N,R}(zero(R)    for i=1:M,j=1:N)
+@inline ∂{P  }(a::            R  ) where{  P,  R<:ℝ} = zero(R)
+@inline ∂{P  }(a::     ∂ℝ{P,1,R} ) where{  P,  R   } = a.dx[1]
+@inline ∂{P  }(a::SV{N,∂ℝ{P,1,R}}) where{  P,N,R   } = SV{  N,R}(a[i].dx[1] for i=1:N     ) # ∂(a,x)[i]    = ∂a[i]/∂x
 
-∂{P,N}(a::SM{      M1,M2       ,∂ℝ{P,N,R}}) where{M1,M2      ,P,N,R} = SA{Tuple{M1,M2,N       },R}(a[i].dx[j] for i∈eachindex(a),j∈1:N) # ∂(a,x)[i,...,j] = ∂a[i,...]/∂x[j]
-∂{P,N}(a::SM{      M1,M2       ,       R }) where{M1,M2      ,P,N,R} = SA{Tuple{M1,M2,N       },R}(zero(R)    for i∈eachindex(a),j∈1:N)
-∂{P,N}(a::SA{Tuple{M1,M2,M3   },∂ℝ{P,N,R}}) where{M1,M2,M3   ,P,N,R} = SA{Tuple{M1,M2,M3    ,N},R}(a[i].dx[j] for i∈eachindex(a),j∈1:N) # ∂(a,x)[i,...,j] = ∂a[i,...]/∂x[j]
-∂{P,N}(a::SA{Tuple{M1,M2,M3   },       R }) where{M1,M2,M3   ,P,N,R} = SA{Tuple{M1,M2,M3    ,N},R}(zero(R)    for i∈eachindex(a),j∈1:N)
-∂{P,N}(a::SA{Tuple{M1,M2,M3,M4},∂ℝ{P,N,R}}) where{M1,M2,M3,M4,P,N,R} = SA{Tuple{M1,M2,M3,M4 ,N},R}(a[i].dx[j] for i∈eachindex(a),j∈1:N) # ∂(a,x)[i,...,j] = ∂a[i,...]/∂x[j]
-∂{P,N}(a::SA{Tuple{M1,M2,M3,M4},       R }) where{M1,M2,M3,M4,P,N,R} = SA{Tuple{M1,M2,M3,M4 ,N},R}(zero(R)    for i∈eachindex(a),j∈1:N)
-∂{P,N}(a::Tuple                           ) where{            P,N  } = Tuple(∂{P,N}(aᵢ) for aᵢ∈a) 
+@inline ∂{P,N}(a::SM{      M1,M2       ,∂ℝ{P,N,R}}) where{M1,M2      ,P,N,R} = SA{Tuple{M1,M2,N       },R}(a[i].dx[j] for i∈eachindex(a),j∈1:N) # ∂(a,x)[i,...,j] = ∂a[i,...]/∂x[j]
+@inline ∂{P,N}(a::SM{      M1,M2       ,       R }) where{M1,M2      ,P,N,R} = SA{Tuple{M1,M2,N       },R}(zero(R)    for i∈eachindex(a),j∈1:N)
+@inline ∂{P,N}(a::SA{Tuple{M1,M2,M3   },∂ℝ{P,N,R}}) where{M1,M2,M3   ,P,N,R} = SA{Tuple{M1,M2,M3    ,N},R}(a[i].dx[j] for i∈eachindex(a),j∈1:N) # ∂(a,x)[i,...,j] = ∂a[i,...]/∂x[j]
+@inline ∂{P,N}(a::SA{Tuple{M1,M2,M3   },       R }) where{M1,M2,M3   ,P,N,R} = SA{Tuple{M1,M2,M3    ,N},R}(zero(R)    for i∈eachindex(a),j∈1:N)
+@inline ∂{P,N}(a::SA{Tuple{M1,M2,M3,M4},∂ℝ{P,N,R}}) where{M1,M2,M3,M4,P,N,R} = SA{Tuple{M1,M2,M3,M4 ,N},R}(a[i].dx[j] for i∈eachindex(a),j∈1:N) # ∂(a,x)[i,...,j] = ∂a[i,...]/∂x[j]
+@inline ∂{P,N}(a::SA{Tuple{M1,M2,M3,M4},       R }) where{M1,M2,M3,M4,P,N,R} = SA{Tuple{M1,M2,M3,M4 ,N},R}(zero(R)    for i∈eachindex(a),j∈1:N)
+@inline ∂{P,N}(a::Tuple                           ) where{            P,N  } = Tuple(∂{P,N}(aᵢ) for aᵢ∈a) 
 """
     y,yₓ = value_∂{P,N}(Y)
     y,y′ = value_∂{P  }(Y)
@@ -209,18 +209,18 @@ Get value and derivative in one operation.
 
 See also: [`constants`](@ref), [`variate`](@ref), [`δ`](@ref), [`value`](@ref), [`∂`](@ref), [`VALUE`](@ref)
 """
-value_∂{P,N}(a) where{  P,N}= value{P}(a),∂{P,N}(a)
-value_∂{P  }(a) where{  P  }= value{P}(a),∂{P  }(a)
+@inline value_∂{P,N}(a) where{  P,N}= value{P}(a),∂{P,N}(a)
+@inline value_∂{P  }(a) where{  P  }= value{P}(a),∂{P  }(a)
 
 ## Binary operations
 for OP∈(:(>),:(<),:(==),:(>=),:(<=),:(!=))
-    @eval Base.$OP(a::∂ℝ,b::∂ℝ)  = $OP(VALUE(a),VALUE(b))
-    @eval Base.$OP(a:: ℝ,b::∂ℝ)  = $OP(      a ,VALUE(b))
-    @eval Base.$OP(a::∂ℝ,b:: ℝ)  = $OP(VALUE(a),      b )
+    @eval @inline Base.$OP(a::∂ℝ,b::∂ℝ)  = $OP(VALUE(a),VALUE(b))
+    @eval @inline Base.$OP(a:: ℝ,b::∂ℝ)  = $OP(      a ,VALUE(b))
+    @eval @inline Base.$OP(a::∂ℝ,b:: ℝ)  = $OP(VALUE(a),      b )
 end
-Base.isapprox(a::∂ℝ,b::∂ℝ;kwargs...) = isapprox(VALUE(a),VALUE(b);kwargs...)  
-Base.isapprox(a:: ℝ,b::∂ℝ;kwargs...) = isapprox(      a ,VALUE(b);kwargs...)  
-Base.isapprox(a::∂ℝ,b:: ℝ;kwargs...) = isapprox(VALUE(a),      b ;kwargs...)  
+@inline Base.isapprox(a::∂ℝ,b::∂ℝ;kwargs...) = isapprox(VALUE(a),VALUE(b);kwargs...)  
+@inline Base.isapprox(a:: ℝ,b::∂ℝ;kwargs...) = isapprox(      a ,VALUE(b);kwargs...)  
+@inline Base.isapprox(a::∂ℝ,b:: ℝ;kwargs...) = isapprox(VALUE(a),      b ;kwargs...)  
 
 macro DiffRule2(OP,AB,A,B)
     return esc(quote
@@ -248,7 +248,7 @@ end
 @DiffRule2(Base.:(*),  a.dx*b.x+a.x*b.dx,                          a.dx*b,                a*b.dx               )
 @DiffRule2(Base.:(/),  a.dx/b.x-a.x/b.x^2*b.dx,                    a.dx/b,                -a/b.x^2*b.dx        ) 
 @DiffRule2(Base.:(^),  a.dx*b.x*a.x^(b.x-1)+log(a.x)*a.x^b.x*b.dx, a.dx*b*a.x^(b  -1),    log(a)*a ^b.x*b.dx   )  # for exponents ∈ ℝ
-@inline Base.:(^)(a::∂ℝ{P,N,R},b::ℤ) where{P,N,R<:ℝ} = b==0 ? zero(a) : ∂ℝ{P,N,R}(a.x^b ,a.dx*b*a.x^(b-1) )      # for exponents ∈ ℤ
+@inline Base.:(^)(a::∂ℝ{P,N,R},b::ℤ) where{P,N,R<:ℝ} = b==0 ? one(a) : ∂ℝ{P,N,R}(a.x^b ,a.dx*b*a.x^(b-1) )       # for exponents ∈ ℤ
 
 ## Functions
 macro DiffRule1(OP,A)
@@ -327,14 +327,14 @@ end
 
 
 ## Find NaN in derivatives
-hasnan(a::ℝ   )              = isnan(a)
-hasnan(a::∂ℝ   )             = hasnan(a.x) || hasnan(a.dx)
-hasnan(a::Tuple)             = any(hasnan.(a))
-hasnan(a::NamedTuple)        = any(hasnan.(values(a)))
-hasnan(a...;)                = any(hasnan.(a))
-hasnan(a)                    = false
+@inline hasnan(a::ℝ   )              = isnan(a)
+@inline hasnan(a::∂ℝ   )             = hasnan(a.x) || hasnan(a.dx)
+@inline hasnan(a::Tuple)             = any(hasnan.(a))
+@inline hasnan(a::NamedTuple)        = any(hasnan.(values(a)))
+@inline hasnan(a...;)                = any(hasnan.(a))
+@inline hasnan(a)                    = false
 #hasnan(a::AbstractArray)     = any(hasnan.(a)) # slow
-function hasnan(a::AbstractArray) 
+@inline function hasnan(a::AbstractArray) 
     for aᵢ ∈ a
         if hasnan(aᵢ)
             return true
@@ -345,7 +345,7 @@ end
 
 # Print addifs
 const subscripts = ('₁','₂','₃','₄','₅','₆','₇','₈','₉')
-string_(a::Float64) = strip(@sprintf("%16.15g",a))
+string_(a::Float64) = strip(@sprintf("%4.2g",a))
 function string_(a::∂ℝ{P,N,R}) where{P,N,R}
     p = subscripts[P]
     x = string_(a.x)

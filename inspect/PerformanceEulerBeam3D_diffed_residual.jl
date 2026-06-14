@@ -4,9 +4,7 @@ using Profile,ProfileView
 using BenchmarkTools
 using Muscade
 using StaticArrays
-
-include("../toolbox/BeamElement.jl")
-#include("../examples/StrainGaugeOnBeamElement.jl")
+using Muscade.Toolbox
 
 
 model           = Model(:TestModel)
@@ -24,20 +22,22 @@ const displacement =  SVector(0.,0.,0.,0.,0.,0.,  0.,0.,0.,0.,0.,0.);
 const velocity     =  SVector(0.,0.,0.,0.,0.,0.,  0.,0.,0.,0.,0.,0.); 
 const acceleration =  SVector(0.,0.,0.,0.,0.,0.,  0.,0.,0.,0.,0.,0.); 
 const X = (displacement,)#,velocity,acceleration)
-const U         = (SVector{0,𝕣}(),)
-const A         = SVector{0,𝕣}()
+const U            = (SVector{0,𝕣}(),)
+const A            =  SVector{0,𝕣}()
 
-mission = :report
-if mission == :report
-    out = diffed_residual(beam; X,U,A,t,SP)
+mission = :time
+if mission == :eval
+    out = Muscade.diffed_residual(beam; X,U,A,t,SP)
 elseif mission == :time
-    out =  diffed_residual(beam; X,U,A,t,SP)
-    @btime diffed_residual(beam; X,U,A,t,SP)
+    # 121.500 μs baseline 
+    # 104.400 μs if ...∂X₀ iscomputed with kinematics{:direct}
+    out =  Muscade.diffed_residual(beam; X,U,A,t,SP)
+    @btime Muscade.diffed_residual(beam; X,U,A,t,SP)
 elseif mission == :profile
-    diffed_residual(beam; X,U,A,t,SP)
+    Muscade.diffed_residual(beam; X,U,A,t,SP)
     Profile.clear()
     Profile.@profile for i=1:250000
-        local out = diffed_residual(beam; X,U,A,t,SP)
+        local out = Muscade.diffed_residual(beam; X,U,A,t,SP)
     end
     ProfileView.view(fontsize=30);
     # After clicking on a bar in the flame diagram, you can type warntype_last() and see the result of 

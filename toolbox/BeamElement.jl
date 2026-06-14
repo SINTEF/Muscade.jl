@@ -149,7 +149,7 @@ See also: [`BeamCrossSection`](@ref), [`Bar3D`](@ref)
 """
 struct EulerBeam3D{Mat,Uforce} <: AbstractElement
     cₘ       :: SVector{3,𝕣}     # Position of the middle of the element, as meshed
-    rₘ       :: Mat33{𝕣}         # Orientation of the element, as meshed, represented by a rotation matrix (from global to local)
+    rₘ       :: Mat33{𝕣}         # Orientation of the element, as meshed, represented by a rotation matrix 
     ζgp      :: SVector{ngp,𝕣}   # Location of the Gauss points for the normalized element with length 1
     ζnod     :: SVector{nXnod,𝕣} # Location of the nodes for the normalized element with length 1
     tgₘ      :: SVector{ndim,𝕣}  # Vector connecting the nodes of the element in the global coordinate system
@@ -218,8 +218,8 @@ end;
     gpval,☼ε,☼rₛₘ        = motion⁻¹{P,ND}(gp_,ε_,rₛₘ_) 
     vᵢ                  = intrinsicrotationrates(rₛₘ)
     ## compute all Jacobians of the above quantities with respect to X₀
-    X₀                  = ∂0(X) # returns concrete type
-    TX₀                 = revariate{P}(X₀)  # returns ::Any
+    X₀                  = ∂0(X) 
+    TX₀                 = revariate{P}(X₀)  
     Tgp,Tε,Tvₛₘ,_,_,_,_  = kinematics{:chainrule}(o,TX₀) # the crux
     gp∂X₀,ε∂X₀,vₛₘ∂X₀    = composeJacobian{P}((Tgp,Tε,Tvₛₘ),X₀)
     ## Quadrature loop: compute resultants

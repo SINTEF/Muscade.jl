@@ -106,7 +106,7 @@ y3 = atan(s3,c3)
         @test og === ∂ℝ{3,1,∂𝕣11}(∂𝕣11(16.0, SVector(11.090354888959125)), SVector(∂𝕣11(11.090354888959125, SVector(7.687248222691222))))
         @test ok === ∂ℝ{3,1,∂𝕣11}(∂𝕣11(1.0, SVector(1.0)), SVector(∂𝕣11(0.0, SVector(0.0))))
         @test value{1}(2*oX)==2*ox
-        @test variate{1}(0.)^0 === ∂ℝ{1,1,𝕣}(0., SVector(0.)) 
+        @test variate{1}(0.)^0 === ∂ℝ{1,1,𝕣}(1., SVector(0.)) 
     end
 
 
