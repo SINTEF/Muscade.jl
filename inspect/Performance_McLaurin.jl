@@ -12,9 +12,8 @@ X = revariate{2}(x)
 i = SVector(1,2,3)
 v = X[i]
 
-mode = :chainrule
-#mode = :direct
-apply = Muscade.apply{mode}
+apply = Muscade.apply{:chainrule}
+#apply = Muscade.apply{:direct}
 
 mission = :time
 if mission == :eval

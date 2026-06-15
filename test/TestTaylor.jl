@@ -161,8 +161,4 @@ d     = Muscade.revariate{2}((;X,U),scale)
                                           ∂ℝ{1,7,𝕣}(0.0,[0.0,0.0,0.0,0.0,0.0,0.0,0.0])])
 end
 
-
-
- 
-
 end # module

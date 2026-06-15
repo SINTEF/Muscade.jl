@@ -250,6 +250,7 @@ end
 
 #########################
 
+struct McLaurin{d} end
 """
     v=McLaurin(Ty,Δx)
 
@@ -267,22 +268,20 @@ See also: [`chainrule`](@ref), [`Taylor`](@ref), [`revariate`](@ref), [`apply`](
 """
 McLaurin(y::Tuple,Δx)                          = tuple(McLaurin(first(y),Δx),McLaurin(Base.tail(y),Δx)...) 
 McLaurin( ::Tuple{},Δx)                        = tuple() 
-McLaurin(y::SArray{Sy,Ty,Dy,Ly},Δx::SVector{Sx,Tx}) where{Sy,Ty,Dy,Ly,Sx,Tx} = SArray{Sy,Tx,Dy,Ly}(McLaurin(yᵢ,Δx) for yᵢ∈y)
-McLaurin(y::∂ℝ,Δx)                             = McLaurin(y.x,Δx) + next_term(y,Δx) # McLaurin to order P = McLaurin to P-1 + next term in P 
-@inline McLaurin(y::𝕣 ,Δx)                             =          y
-function next_term(y::∂ℝ{P,N,R},Δx::SVector{N}) where{P,N,R} 
-    if N==0
-        return 𝟘
-    else
-        s = next_term(y.dx[1],Δx)*Δx[1]
-        for i ∈ 2:N
-            s += next_term(y.dx[i],Δx)*Δx[i]
-        end
-        P>1 && (s *= inv(P))
+McLaurin(y::SArray{Sy,Ty,Dy,Ly},Δx::SVector{Sx,Tx}) where{Sy,Ty<:∂ℝ,Dy,Ly,Sx,Tx} = SArray{Sy,Tx,Dy,Ly}(McLaurin(yᵢ,Δx) for yᵢ∈y)
+McLaurin(y::SArray{Sy,Ty,Dy,Ly},Δx::SVector{Sx,Tx}) where{Sy,Ty<: ℝ,Dy,Ly,Sx,Tx} = SArray{Sy,Ty,Dy,Ly}(McLaurin(yᵢ,Δx) for yᵢ∈y)
+McLaurin(y::ℝ,Δx) = McLaurin{1}(y::ℝ,Δx)
+McLaurin{D}(y::∂ℝ{P,0,R},Δx::SVector{0}) where{P,R,D} = VALUE(y)
+McLaurin{D}(y::𝕣        ,Δx::SVector{N}) where{N,D}   = y
+function McLaurin{D}(y::∂ℝ{P,N,R},Δx::SVector{N}) where{P,N,R,D}
+    o = McLaurin{D+1}(y.dx[1],Δx)*Δx[1]
+    for i ∈ 2:N
+        o += McLaurin{D+1}(y.dx[i],Δx)*Δx[i]
     end
-    return s
+    P>1 && (o *= inv(P))
+    return VALUE(y)+o
 end
-@inline next_term(y::𝕣        ,Δx            )              =                            y
+
 
 """
     Taylor(Ty,x₀,x)

@@ -2,6 +2,21 @@
 # implement sincos
 # differentiate x^0 at x=0
 
+struct T𝟘 <: Real end  # Bbbzero
+const  𝟘 = T𝟘()
+@inline Base.:(+)(a::𝕣 , ::T𝟘) = a
+@inline Base.:(+)( ::T𝟘,b::𝕣 ) = b
+@inline Base.:(+)( ::T𝟘, ::T𝟘) = 𝟘
+@inline Base.:(-)(a::𝕣 , ::T𝟘) = a
+@inline Base.:(-)( ::T𝟘,b::𝕣 ) = -b
+@inline Base.:(-)( ::T𝟘, ::T𝟘) = 𝟘
+@inline Base.:(*)(a::𝕣 , ::T𝟘) = 𝟘
+@inline Base.:(*)( ::T𝟘,b::𝕣 ) = 𝟘
+@inline Base.:(*)( ::T𝟘, ::T𝟘) = 𝟘
+@inline Base.:(/)(a    , ::T𝟘) = error("division by 𝟘")
+@inline Base.:(/)( ::T𝟘,b    ) = 𝟘
+Base.show(io::IO, ::T𝟘) = print(io,"𝟘")
+
 ## Type and construction
 const SV = SVector  
 const SA = SArray 
@@ -70,9 +85,8 @@ Also handles static arrays and tuples.
 
 See also: [`npartial`](@ref)
 
-"""    
-precedence( ::Type{Union{}})                              = 0
-precedence( ::Type{<:∂ℝ{P,N,R}}) where{P,N,R<:ℝ}          = P
+"""  
+precedence  
 """
     Muscade.npartial(a::∂ℝ{P,N,R}) → N
     Muscade.npartial(typeof(a)) → N
@@ -81,15 +95,31 @@ Also handle static arrays and tuples.
 
 See also: [`precedence`](@ref)
 
-"""    
+""" 
+npartial
+
+precedence( ::Type{<:∂ℝ{P,N,R}}) where{P,N,R<:ℝ}          = P
 npartial(   ::Type{<:∂ℝ{P,N,R}}) where{P,N,R<:ℝ}          = N
+partialtype(::Type{<:∂ℝ{P,N,R}}) where{P,N,R<:ℝ}          = R
+precedence( ::Type{Union{}})                              = 0
 precedence( ::Type{<:ℝ})                                  = 0
 npartial(   ::Type{<:ℝ})                                  = 0
-precedence(a::SA)     = precedence(eltype(a))
-npartial(  a::SA)     = npartial(eltype(a))
+partialtype(::Type{<:ℝ})                                  = Union{} 
+
 precedence(a::ℝ)      = precedence(typeof(a))
 npartial(  a::ℝ)      = npartial(typeof(a))
 precedence( a,args...) = max(precedence(a),precedence(args...))
+precedence(a::SA)     = precedence(eltype(a))
+npartial(  a::SA)     = npartial(eltype(a))
+
+function ∂ℝ_promote_type(::Ra,::Rb) where{Ra<:ℝ,Rb<:ℝ}
+    Pa,Na = Muscade.precedence(Ra),Muscade.npartial(  Ra)
+    Pb,Nb = Muscade.precedence(Rb),Muscade.npartial(  Rb)
+    P     = Pa≥Pb ? Pa : Pb
+    N     = Pa≥Pb ? Na : Nb
+    R     = promote_type(partialtype(Ra),partialtype(Rb))
+    return P,N,R
+end
 
 """
     P = constants(a,b,c)
@@ -212,6 +242,15 @@ See also: [`constants`](@ref), [`variate`](@ref), [`δ`](@ref), [`value`](@ref),
 @inline value_∂{P,N}(a) where{  P,N}= value{P}(a),∂{P,N}(a)
 @inline value_∂{P  }(a) where{  P  }= value{P}(a),∂{P  }(a)
 
+# 
+struct  ∂𝟘{P} end
+@inline ∂𝟘{P}(a::∂ℝ{P}) where{P} = a.dx
+@inline ∂𝟘{P}(a:: ℝ   ) where{P} = 𝟘
+struct value_∂𝟘{P} end
+@inline value_∂𝟘{P}(a::ℝ) where{P}= value{P}(a), ∂𝟘{P}(a)
+
+
+
 ## Binary operations
 for OP∈(:(>),:(<),:(==),:(>=),:(<=),:(!=))
     @eval @inline Base.$OP(a::∂ℝ,b::∂ℝ)  = $OP(VALUE(a),VALUE(b))
@@ -250,6 +289,10 @@ end
 @DiffRule2(Base.:(^),  a.dx*b.x*a.x^(b.x-1)+log(a.x)*a.x^b.x*b.dx, a.dx*b*a.x^(b  -1),    log(a)*a ^b.x*b.dx   )  # for exponents ∈ ℝ
 @inline Base.:(^)(a::∂ℝ{P,N,R},b::ℤ) where{P,N,R<:ℝ} = b==0 ? one(a) : ∂ℝ{P,N,R}(a.x^b ,a.dx*b*a.x^(b-1) )       # for exponents ∈ ℤ
 
+
+
+
+
 ## Functions
 macro DiffRule1(OP,A)
     return esc(:(@inline $OP(a::∂ℝ{P,N}) where{P,N} = ∂ℝ{P,N}($OP(a.x),$A)))
@@ -261,7 +304,11 @@ end
 @DiffRule1(Base.sqrt,       a.dx / 2. / sqrt(a.x)                                    )
 @DiffRule1(Base.cbrt,       a.dx / 3. / cbrt(a.x)^2                                  )
 @DiffRule1(Base.abs2,       a.dx*2. * a.x                                            )
-@DiffRule1(Base.inv,       -a.dx * abs2(inv(a.x))                                    )
+#@DiffRule1(Base.inv,       -a.dx * abs2(inv(a.x))                                    )
+@inline function Base.inv(x::∂ℝ{P,N}) where{P,N}  
+    x⁻¹ = inv(x.x)  # minimal gain from computing x⁻¹ once, not twice
+    ∂ℝ{P,N}(x⁻¹,x.dx.*(-abs2(x⁻¹)))
+end
 @DiffRule1(Base.log,        a.dx / a.x                                               )
 @DiffRule1(Base.log10,      a.dx / a.x / log(10.)                                    )
 @DiffRule1(Base.log2,       a.dx / a.x / log(2.)                                     )

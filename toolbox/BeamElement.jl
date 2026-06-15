@@ -220,7 +220,7 @@ end;
     ## compute all Jacobians of the above quantities with respect to X₀
     X₀                  = ∂0(X) 
     TX₀                 = revariate{P}(X₀)  
-    Tgp,Tε,Tvₛₘ,_,_,_,_  = kinematics{:chainrule}(o,TX₀) # the crux
+    Tgp,Tε,Tvₛₘ,_,_,_,_  = kinematics{:direct}(o,TX₀) # the crux
     gp∂X₀,ε∂X₀,vₛₘ∂X₀    = composeJacobian{P}((Tgp,Tε,Tvₛₘ),X₀)
     ## Quadrature loop: compute resultants
     gp                  = ntuple(ngp) do igp
