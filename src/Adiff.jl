@@ -1,26 +1,8 @@
-# TODO
-# implement sincos
-# differentiate x^0 at x=0
-
-struct T𝟘 <: Real end  # Bbbzero
-const  𝟘 = T𝟘()
-@inline Base.:(+)(a::𝕣 , ::T𝟘) = a
-@inline Base.:(+)( ::T𝟘,b::𝕣 ) = b
-@inline Base.:(+)( ::T𝟘, ::T𝟘) = 𝟘
-@inline Base.:(-)(a::𝕣 , ::T𝟘) = a
-@inline Base.:(-)( ::T𝟘,b::𝕣 ) = -b
-@inline Base.:(-)( ::T𝟘, ::T𝟘) = 𝟘
-@inline Base.:(*)(a::𝕣 , ::T𝟘) = 𝟘
-@inline Base.:(*)( ::T𝟘,b::𝕣 ) = 𝟘
-@inline Base.:(*)( ::T𝟘, ::T𝟘) = 𝟘
-@inline Base.:(/)(a    , ::T𝟘) = error("division by 𝟘")
-@inline Base.:(/)( ::T𝟘,b    ) = 𝟘
-Base.show(io::IO, ::T𝟘) = print(io,"𝟘")
-
 ## Type and construction
 const SV = SVector  
 const SA = SArray 
 const SM = SMatrix
+const Jℝ  = Union{AbstractIrrational, AbstractFloat, Integer, Rational   }
 # Types
 # P precedence.  Newer, derivatives, outest in the adiff datastructure have higher numbers  
 # N number of partials 
@@ -29,6 +11,23 @@ struct ∂ℝ{P,N,R} <:ℝ where{R<:ℝ}  # P for precedence, N number of partia
     x  :: R
     dx :: SV{N,R}
 end
+const Jℝ∂ = Union{AbstractIrrational, AbstractFloat, Integer, Rational,∂ℝ}
+
+struct T𝟘 <: Real end  # Bbbzero
+const  𝟘 = T𝟘()
+@inline Base.:(+)(a::Jℝ∂, ::T𝟘 ) =  a
+@inline Base.:(+)( ::T𝟘 ,b::Jℝ∂) =  b
+@inline Base.:(+)( ::T𝟘 , ::T𝟘 ) =  𝟘
+@inline Base.:(-)(a::Jℝ∂, ::T𝟘 ) =  a
+@inline Base.:(-)( ::T𝟘 ,b::Jℝ∂) = -b
+@inline Base.:(-)( ::T𝟘 , ::T𝟘 ) =  𝟘
+@inline Base.:(*)(a::Jℝ∂, ::T𝟘 ) =  𝟘
+@inline Base.:(*)( ::T𝟘 ,b::Jℝ∂) =  𝟘
+@inline Base.:(*)( ::T𝟘 , ::T𝟘 ) =  𝟘
+@inline Base.:(/)(a     , ::T𝟘 ) =  error("division by 𝟘")
+@inline Base.:(/)( ::T𝟘 ,b     ) =  𝟘
+Base.show(io::IO, ::T𝟘) = print(io,"𝟘")
+
 
 # Constructors 
 ∂ℝ{P,N  }(x::R ,dx::SV{N,R}) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(  x ,SV{N,R}(dx                               ))
@@ -264,8 +263,8 @@ end
 macro DiffRule2(OP,AB,A,B)
     return esc(quote
         @inline $OP(a::∂ℝ{P,N,R},b::∂ℝ{P,N,R}) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}($OP(a.x,b.x),$AB)
-        @inline $OP(a::∂ℝ{P,N,R},b::ℝ        ) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}($OP(a.x,b  ),$A )
-        @inline $OP(a::ℝ        ,b::∂ℝ{P,N,R}) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}($OP(a  ,b.x),$B )
+        @inline $OP(a::∂ℝ{P,N,R},b::Jℝ       ) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}($OP(a.x,b  ),$A )
+        @inline $OP(a::Jℝ       ,b::∂ℝ{P,N,R}) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}($OP(a  ,b.x),$B )
         @inline function $OP(a::∂ℝ{Pa,Na,Ra},b::∂ℝ{Pb,Nb,Rb}) where{Pa,Pb,Na,Nb,Ra<:ℝ,Rb<:ℝ}
             if Pa==Pb
                 R = promote_type(Ra,Rb)
@@ -285,12 +284,46 @@ end
 @DiffRule2(Base.:(+),  a.dx+b.dx,                                  a.dx,                  b.dx                 )
 @DiffRule2(Base.:(-),  a.dx-b.dx,                                  a.dx,                  -b.dx                )
 @DiffRule2(Base.:(*),  a.dx*b.x+a.x*b.dx,                          a.dx*b,                a*b.dx               )
-@DiffRule2(Base.:(/),  a.dx/b.x-a.x/b.x^2*b.dx,                    a.dx/b,                -a/b.x^2*b.dx        ) 
-@DiffRule2(Base.:(^),  a.dx*b.x*a.x^(b.x-1)+log(a.x)*a.x^b.x*b.dx, a.dx*b*a.x^(b  -1),    log(a)*a ^b.x*b.dx   )  # for exponents ∈ ℝ
-@inline Base.:(^)(a::∂ℝ{P,N,R},b::ℤ) where{P,N,R<:ℝ} = b==0 ? one(a) : ∂ℝ{P,N,R}(a.x^b ,a.dx*b*a.x^(b-1) )       # for exponents ∈ ℤ
-
-
-
+#@DiffRule2(Base.:(/),  a.dx/b.x-a.x/b.x^2*b.dx,                    a.dx/b,                -a/b.x^2*b.dx        ) 
+@inline Base.:(/)(a::Jℝ,b::∂ℝ)        = Base.:(/)(a,b,inv(VALUE(b))) 
+@inline Base.:(/)(a::∂ℝ,b::Jℝ)        = Base.:(/)(a,b,inv(VALUE(b))) 
+@inline Base.:(/)(a::∂ℝ,b::∂ℝ)        = Base.:(/)(a,b,inv(VALUE(b))) 
+@inline Base.:(/)(a::Jℝ,b::Jℝ,b⁻¹::Jℝ) = a*b⁻¹  
+@inline function Base.:(/)(a::Ra,b::Rb,b⁻¹::Jℝ) where{Ra<:ℝ,Rb<:ℝ}
+    if Ra <: ∂ℝ || Rb <: ∂ℝ
+        P,N,R = ∂ℝ_promote_type(a,b)
+        va,∂a = value_∂𝟘{P}(a)
+        vb,∂b = value_∂𝟘{P}(b)
+        return ∂ℝ{P,N}( convert(R,/(va,vb,b⁻¹)) , convert.(R,∂a*inv(vb) .- /(va,vb*vb,pow{2}(b⁻¹))*∂b) )
+    else 
+        return a*b⁻¹
+    end
+end
+# @DiffRule2(Base.:(^),  a.dx*b.x*a.x^(b.x-1)+log(a.x)*a.x^b.x*b.dx, a.dx*b*a.x^(b  -1),    log(a)*a ^b.x*b.dx   )  # for exponents ∈ ℝ
+# @inline Base.:(^)(a::∂ℝ{P,N,R},b::ℤ) where{P,N,R<:ℝ} = b==0 ? one(a) : ∂ℝ{P,N,R}(a.x^b ,a.dx*b*a.x^(b-1) )       # for exponents ∈ ℤ
+struct pow{b} end
+@inline pow{b}(a::Jℝ) where{b} = a^b  # good if b is static
+@inline pow{0}(a::Jℝ) = one(a)
+@inline pow{1}(a::Jℝ) = a
+@inline pow{2}(a::Jℝ) = a*a
+@inline pow{3}(a::Jℝ) = a*a*a
+@inline pow{0}(a::∂ℝ) = one(VALUE(a))
+@inline pow{1}(a::∂ℝ) = a
+@inline pow{2}(a::∂ℝ) = a*a
+@inline function pow{b}(a::∂ℝ{P,N,R}) where{b,P,N,R}
+        va,∂a = value_∂𝟘{P}(a)
+        x     = pow{b-1}(va)  
+        ∂ℝ{P,N,R}(va*x ,∂a*(b*x) )
+end
+#@inline Base.:(^)(a::Jℝ,b::ℤ) = a^b # same as pow{b} but slower
+@inline function Base.:(^)(a::∂ℝ{P,N,R},b::ℤ) where{P,N,R}
+        va,∂a = value_∂𝟘{P}(a)
+        x     = va^(b-1)  
+        ∂ℝ{P,N,R}(va*x ,∂a*(b*x) )
+end
+@inline Base.:(^)(a::∂ℝ,b::Jℝ) = exp(b*log(a))
+@inline Base.:(^)(a::Jℝ,b::∂ℝ) = exp(b*log(a))
+@inline Base.:(^)(a::∂ℝ,b::∂ℝ) = exp(b*log(a))
 
 
 ## Functions
@@ -301,24 +334,55 @@ end
 @DiffRule1(Base.:(-),      -a.dx                                                     )
 @DiffRule1(Base.abs  ,a.x==0.0 ? zero(a.dx) : (a.x>0.0 ? a.dx : -a.dx)               )
 @DiffRule1(Base.conj ,      a.dx                                                     )
-@DiffRule1(Base.sqrt,       a.dx / 2. / sqrt(a.x)                                    )
+#@DiffRule1(Base.sqrt,       a.dx / 2. / sqrt(a.x)                                    )
+@inline Base.sqrt(a::∂ℝ)      = Base.sqrt(a,Base.sqrt(VALUE(a)))
+@inline Base.sqrt(a::Jℝ,sq::Jℝ) = sq
+@inline function Base.sqrt(a::∂ℝ{P,N},sq::Jℝ) where{P,N}  
+    SQ = Base.sqrt(a.x,sq)
+    ∂ℝ{P,N}(SQ, a.dx * inv(2*SQ)) 
+end
 @DiffRule1(Base.cbrt,       a.dx / 3. / cbrt(a.x)^2                                  )
 @DiffRule1(Base.abs2,       a.dx*2. * a.x                                            )
 #@DiffRule1(Base.inv,       -a.dx * abs2(inv(a.x))                                    )
-@inline function Base.inv(x::∂ℝ{P,N}) where{P,N}  
-    x⁻¹ = inv(x.x)  # minimal gain from computing x⁻¹ once, not twice
-    ∂ℝ{P,N}(x⁻¹,x.dx.*(-abs2(x⁻¹)))
+@inline function Base.inv(a::∂ℝ{P,N}) where{P,N}  
+    x⁻¹ = inv(a.x)  # minimal gain from computing x⁻¹ once, not twice
+    ∂ℝ{P,N}(x⁻¹,a.dx.*(-abs2(x⁻¹)))
 end
 @DiffRule1(Base.log,        a.dx / a.x                                               )
 @DiffRule1(Base.log10,      a.dx / a.x / log(10.)                                    )
 @DiffRule1(Base.log2,       a.dx / a.x / log(2.)                                     )
 @DiffRule1(Base.log1p,      a.dx / (a.x + 1.)                                        )
-@DiffRule1(Base.exp,         exp(a.x) * a.dx                                         )
+#@DiffRule1(Base.exp,         exp(a.x) * a.dx                                         )
+@inline Base.exp(a::∂ℝ)        = exp(a,exp(VALUE(a)))
+@inline Base.exp(a::Jℝ,eˣ::Jℝ) = eˣ
+@inline function Base.exp(a::∂ℝ{P,N},eˣ::Jℝ) where{P,N}  
+    E = exp(a.x,eˣ)
+    ∂ℝ{P,N}(E,a.dx.*E)
+end
+
 @DiffRule1(Base.exp2,        log(2. ) * exp2( a.x) * a.dx                            )
 @DiffRule1(Base.exp10,       log(10.) * exp10(a.x) * a.dx                            )
 @DiffRule1(Base.expm1,       exp(a.x) * a.dx                                         )
-@DiffRule1(Base.sin,         cos(a.x) * a.dx                                         )
-@DiffRule1(Base.cos,        -sin(a.x) * a.dx                                         )
+#@DiffRule1(Base.sin,         cos(a.x) * a.dx                                         )
+@inline Base.sin(a::∂ℝ)      = sin(a,sincos(VALUE(a))...)
+@inline function Base.sin(a::∂ℝ{P,N},s::Jℝ,c::Jℝ) where{P,N} 
+    S,C = sincos(a.x,s,c)
+    ∂ℝ{P,N}(S, a.dx.*C)
+end
+#@DiffRule1(Base.cos,        -sin(a.x) * a.dx                                         )
+@inline Base.cos(a::∂ℝ)      = cos(a,sincos(VALUE(a))...)
+@inline function Base.cos(a::∂ℝ{P,N},s::Jℝ,c::Jℝ) where{P,N} 
+    S,C = sincos(a.x,s,c)
+    ∂ℝ{P,N}(C, -a.dx.*S)
+end
+
+@inline Base.sincos(a::∂ℝ)      = sincos(a,sincos(VALUE(a))...)
+@inline Base.sincos(a::Jℝ,s::Jℝ,c::Jℝ) = s,c
+@inline function Base.sincos(a::∂ℝ{P,N},s::Jℝ,c::Jℝ) where{P,N} 
+    S,C = sincos(a.x,s,c)
+    ∂ℝ{P,N}(S, a.dx.*C), ∂ℝ{P,N}(C, -a.dx.*S)
+end
+
 @DiffRule1(Base.tan,         (1. + tan(a.x)^2) * a.dx                                )
 @DiffRule1(Base.sinpi,       π*cos(a.x) * a.dx                                       )
 @DiffRule1(Base.cospi,      -π*sin(a.x) * a.dx                                       )
@@ -332,7 +396,8 @@ end
 @DiffRule1(Base.cscd,       -π / 180. * cscd(a.x) * cotd(a.x) * a.dx                 )
 @DiffRule1(Base.cotd,       -π / 180. * (1. + cotd(a.x)^2)  * a.dx                   )
 @DiffRule1(Base.asin,        a.dx / sqrt(1. - a.x^2)                                 )
-@DiffRule1(Base.acos,       -a.dx / sqrt(1. - a.x^2)                                 )
+#@DiffRule1(Base.acos,       -a.dx / sqrt(1. - a.x^2)                                 )
+@inline Base.acos(a::∂ℝ{P,N}) where{P,N} = ∂ℝ{P,N}(acos(a.x), a.dx.*(-inv(sqrt(1-pow{2}(a.x)))))
 @DiffRule1(Base.atan,        a.dx / (1. + a.x^2)                                     )
 @DiffRule1(Base.asec,        a.dx / abs(a.x) / sqrt(a.x^2 - 1.)                      )
 @DiffRule1(Base.acsc,       -a.dx / abs(a.x) / sqrt(a.x^2 - 1.)                      )
@@ -392,7 +457,8 @@ end
 
 # Print addifs
 const subscripts = ('₁','₂','₃','₄','₅','₆','₇','₈','₉')
-string_(a::Float64) = strip(@sprintf("%4.2g",a))
+string_(a::Float64) = strip(@sprintf("%18.16g",a))
+#string_(a::Float64) = strip(@sprintf("%4.2g",a))
 function string_(a::∂ℝ{P,N,R}) where{P,N,R}
     p = subscripts[P]
     x = string_(a.x)
@@ -402,7 +468,7 @@ function string_(a::∂ℝ{P,N,R}) where{P,N,R}
     end
     return @sprintf("%s+∂%s⟨%s⟩ ",x,p,dx) # \partial \langle \rangle mathematicaly-explicit
 end
-Base.show(io::IO,x::∂ℝ) = print(io,string_(x))
+Base.show(io::IO,a::∂ℝ) = print(io,string_(a))
 
 """
     Muscade.isapprox_dbg(a,b;kwargs...)

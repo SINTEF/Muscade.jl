@@ -31,6 +31,7 @@ if mission == :eval
 elseif mission == :time
     # 121.500 μs baseline 
     # 104.400 μs if ...∂X₀ are computed with kinematics{:direct}
+    # 101.800 μs with improvements in Adiff.jl
     out =  Muscade.diffed_residual(beam; X,U,A,t,SP)
     @btime Muscade.diffed_residual(beam; X,U,A,t,SP)
 elseif mission == :profile
