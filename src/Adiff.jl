@@ -299,8 +299,11 @@ end
         return a*b⁻¹
     end
 end
-# @DiffRule2(Base.:(^),  a.dx*b.x*a.x^(b.x-1)+log(a.x)*a.x^b.x*b.dx, a.dx*b*a.x^(b  -1),    log(a)*a ^b.x*b.dx   )  # for exponents ∈ ℝ
-# @inline Base.:(^)(a::∂ℝ{P,N,R},b::ℤ) where{P,N,R<:ℝ} = b==0 ? one(a) : ∂ℝ{P,N,R}(a.x^b ,a.dx*b*a.x^(b-1) )       # for exponents ∈ ℤ
+"""
+    Muscade.pow{b}(a)
+
+For positive integer `b`, computes ``aᵇ``, marginaly faster than `a^b`   
+"""
 struct pow{b} end
 @inline pow{b}(a::Jℝ) where{b} = a^b  # good if b is static
 @inline pow{0}(a::Jℝ) = one(a)
@@ -311,17 +314,30 @@ struct pow{b} end
 @inline pow{1}(a::∂ℝ) = a
 @inline pow{2}(a::∂ℝ) = a*a
 @inline function pow{b}(a::∂ℝ{P,N,R}) where{b,P,N,R}
-        va,∂a = value_∂𝟘{P}(a)
-        x     = pow{b-1}(va)  
-        ∂ℝ{P,N,R}(va*x ,∂a*(b*x) )
+    @assert b>0
+    va,∂a = value_∂𝟘{P}(a)
+    x     = pow{b-1}(va)  
+    ∂ℝ{P,N,R}(va*x ,∂a*(b*x) )
 end
-#@inline Base.:(^)(a::Jℝ,b::ℤ) = a^b # same as pow{b} but slower
+
 @inline function Base.:(^)(a::∂ℝ{P,N,R},b::ℤ) where{P,N,R}
-        va,∂a = value_∂𝟘{P}(a)
-        x     = va^(b-1)  
-        ∂ℝ{P,N,R}(va*x ,∂a*(b*x) )
+        if b<0
+            inv(a)
+        elseif b<-1
+            inv(a)^(-b)
+        elseif b==0
+            one(a)
+        elseif b==1
+            a
+        elseif b==2
+            a*a
+        else
+            va,∂a = value_∂𝟘{P}(a)
+            x     = va^(b-1)  
+            ∂ℝ{P,N,R}(va*x ,∂a*(b*x) )
+        end
 end
-@inline Base.:(^)(a::∂ℝ,b::Jℝ) = exp(b*log(a))
+@inline Base.:(^)(a::∂ℝ,b::Jℝ) = exp(b*log(a)) 
 @inline Base.:(^)(a::Jℝ,b::∂ℝ) = exp(b*log(a))
 @inline Base.:(^)(a::∂ℝ,b::∂ℝ) = exp(b*log(a))
 
@@ -334,7 +350,6 @@ end
 @DiffRule1(Base.:(-),      -a.dx                                                     )
 @DiffRule1(Base.abs  ,a.x==0.0 ? zero(a.dx) : (a.x>0.0 ? a.dx : -a.dx)               )
 @DiffRule1(Base.conj ,      a.dx                                                     )
-#@DiffRule1(Base.sqrt,       a.dx / 2. / sqrt(a.x)                                    )
 @inline Base.sqrt(a::∂ℝ)      = Base.sqrt(a,Base.sqrt(VALUE(a)))
 @inline Base.sqrt(a::Jℝ,sq::Jℝ) = sq
 @inline function Base.sqrt(a::∂ℝ{P,N},sq::Jℝ) where{P,N}  
@@ -343,7 +358,6 @@ end
 end
 @DiffRule1(Base.cbrt,       a.dx / 3. / cbrt(a.x)^2                                  )
 @DiffRule1(Base.abs2,       a.dx*2. * a.x                                            )
-#@DiffRule1(Base.inv,       -a.dx * abs2(inv(a.x))                                    )
 @inline function Base.inv(a::∂ℝ{P,N}) where{P,N}  
     x⁻¹ = inv(a.x)  # minimal gain from computing x⁻¹ once, not twice
     ∂ℝ{P,N}(x⁻¹,a.dx.*(-abs2(x⁻¹)))
@@ -352,37 +366,31 @@ end
 @DiffRule1(Base.log10,      a.dx / a.x / log(10.)                                    )
 @DiffRule1(Base.log2,       a.dx / a.x / log(2.)                                     )
 @DiffRule1(Base.log1p,      a.dx / (a.x + 1.)                                        )
-#@DiffRule1(Base.exp,         exp(a.x) * a.dx                                         )
 @inline Base.exp(a::∂ℝ)        = exp(a,exp(VALUE(a)))
 @inline Base.exp(a::Jℝ,eˣ::Jℝ) = eˣ
 @inline function Base.exp(a::∂ℝ{P,N},eˣ::Jℝ) where{P,N}  
     E = exp(a.x,eˣ)
     ∂ℝ{P,N}(E,a.dx.*E)
 end
-
 @DiffRule1(Base.exp2,        log(2. ) * exp2( a.x) * a.dx                            )
 @DiffRule1(Base.exp10,       log(10.) * exp10(a.x) * a.dx                            )
 @DiffRule1(Base.expm1,       exp(a.x) * a.dx                                         )
-#@DiffRule1(Base.sin,         cos(a.x) * a.dx                                         )
 @inline Base.sin(a::∂ℝ)      = sin(a,sincos(VALUE(a))...)
 @inline function Base.sin(a::∂ℝ{P,N},s::Jℝ,c::Jℝ) where{P,N} 
     S,C = sincos(a.x,s,c)
     ∂ℝ{P,N}(S, a.dx.*C)
 end
-#@DiffRule1(Base.cos,        -sin(a.x) * a.dx                                         )
 @inline Base.cos(a::∂ℝ)      = cos(a,sincos(VALUE(a))...)
 @inline function Base.cos(a::∂ℝ{P,N},s::Jℝ,c::Jℝ) where{P,N} 
     S,C = sincos(a.x,s,c)
     ∂ℝ{P,N}(C, -a.dx.*S)
 end
-
 @inline Base.sincos(a::∂ℝ)      = sincos(a,sincos(VALUE(a))...)
 @inline Base.sincos(a::Jℝ,s::Jℝ,c::Jℝ) = s,c
 @inline function Base.sincos(a::∂ℝ{P,N},s::Jℝ,c::Jℝ) where{P,N} 
     S,C = sincos(a.x,s,c)
     ∂ℝ{P,N}(S, a.dx.*C), ∂ℝ{P,N}(C, -a.dx.*S)
 end
-
 @DiffRule1(Base.tan,         (1. + tan(a.x)^2) * a.dx                                )
 @DiffRule1(Base.sinpi,       π*cos(a.x) * a.dx                                       )
 @DiffRule1(Base.cospi,      -π*sin(a.x) * a.dx                                       )
@@ -396,8 +404,7 @@ end
 @DiffRule1(Base.cscd,       -π / 180. * cscd(a.x) * cotd(a.x) * a.dx                 )
 @DiffRule1(Base.cotd,       -π / 180. * (1. + cotd(a.x)^2)  * a.dx                   )
 @DiffRule1(Base.asin,        a.dx / sqrt(1. - a.x^2)                                 )
-#@DiffRule1(Base.acos,       -a.dx / sqrt(1. - a.x^2)                                 )
-@inline Base.acos(a::∂ℝ{P,N}) where{P,N} = ∂ℝ{P,N}(acos(a.x), a.dx.*(-inv(sqrt(1-pow{2}(a.x)))))
+@DiffRule1(Base.acos,       a.dx.*(-inv(sqrt(1-pow{2}(a.x))))                                 )
 @DiffRule1(Base.atan,        a.dx / (1. + a.x^2)                                     )
 @DiffRule1(Base.asec,        a.dx / abs(a.x) / sqrt(a.x^2 - 1.)                      )
 @DiffRule1(Base.acsc,       -a.dx / abs(a.x) / sqrt(a.x^2 - 1.)                      )
@@ -436,6 +443,29 @@ end
 @DiffRule1(SpecialFunctions.bessely0,   -bessely1(a.x) * a.dx                        )
 @DiffRule1(SpecialFunctions.bessely1,   (bessely0(a.x) - bessely(2., a.x))/2. * a.dx )
 
+"""
+    Muscade.sinc1(x)
+
+`sinc1(x) = sin(x)/x` - but  `sinc1(0.) = 1.`.  The function can be differentiated
+to the fourth order.
+
+This differs from Julia's `sinc(x) = sin(π*x)/(π*x)`.
+"""
+sinc1
+using Muscade
+@inline sinc1( x::R                       ) where{R<:∂ℝ} =   sinc1(x,sincos(x)...,inv(x),x*x)
+@inline sinc1( x::R,s::R,c::R,x⁻¹::R,x²::R) where{R<:∂ℝ} = R(sinc1( x.x,s.x,c.x,x⁻¹.x,x².x), x.dx*sinc1′(x.x,s.x,c.x,x⁻¹.x,x².x))
+@inline sinc1′(x::R,s::R,c::R,x⁻¹::R,x²::R) where{R<:∂ℝ} = R(sinc1′(x.x,s.x,c.x,x⁻¹.x,x².x), x.dx*sinc1″(x.x,s.x,c.x,x⁻¹.x,x².x))
+@inline sinc1″(x::R,s::R,c::R,x⁻¹::R,x²::R) where{R<:∂ℝ} = R(sinc1″(x.x,s.x,c.x,x⁻¹.x,x².x), x.dx*sinc1‴(x.x,s.x,c.x,x⁻¹.x,x².x))
+@inline sinc1‴(x::R,s::R,c::R,x⁻¹::R,x²::R) where{R<:∂ℝ} = R(sinc1‴(x.x,s.x,c.x,x⁻¹.x,x².x), x.dx*sinc1⁗(x.x,s.x,c.x,x⁻¹.x,x².x))
+@inline sinc1⁗(x::R                       ) where{R<:∂ℝ} = error("attempted to compute 5th derivative of sinc1")
+const Jℝ = Muscade.Jℝ
+@inline sinc1( x::R                       ) where{R<:Jℝ} = abs(x)>1e-2 ? sin(x)/x                         :   evalpoly(x*x,(1, -1/6, 1/120))  
+@inline sinc1( x::R,s::R,c::R,x⁻¹::R,x²::R) where{R<:Jℝ} = abs(x)>1e-2 ? s*x⁻¹                            :   evalpoly(x² ,(1, -1/6, 1/120))  
+@inline sinc1′(x::R,s::R,c::R,x⁻¹::R,x²::R) where{R<:Jℝ} = abs(x)>1e-3 ? x⁻¹*evalpoly(x⁻¹,(c,-s))         : x*evalpoly(x² ,(-1/3,1/30))
+@inline sinc1″(x::R,s::R,c::R,x⁻¹::R,x²::R) where{R<:Jℝ} = abs(x)>1e-1 ? x⁻¹*evalpoly(x⁻¹,(-s,-2c,2s))    :   evalpoly(x² ,(-1/3,1/10,-1/168,1/6480))
+@inline sinc1‴(x::R,s::R,c::R,x⁻¹::R,x²::R) where{R<:Jℝ} = abs(x)>0.4  ? x⁻¹*evalpoly(x⁻¹,(-c,3s,6c,-6s)) : x*evalpoly(x² ,(1/5,-1/42,1/1080,-1/55440,1/4717440))
+@inline sinc1⁗(x::R,s::R,c::R,x⁻¹::R,x²::R) where{R<:Jℝ} =                                                    evalpoly(x² ,(1/5,-1/14,1/216,-1/7920,1/524160,-1/54432000,1/54432000,-1/8143027200,1/1656387532800))
 
 
 ## Find NaN in derivatives
@@ -457,8 +487,8 @@ end
 
 # Print addifs
 const subscripts = ('₁','₂','₃','₄','₅','₆','₇','₈','₉')
-string_(a::Float64) = strip(@sprintf("%18.16g",a))
-#string_(a::Float64) = strip(@sprintf("%4.2g",a))
+#string_(a::Float64) = strip(@sprintf("%18.16g",a))
+string_(a::Float64) = strip(@sprintf("%4.2g",a))
 function string_(a::∂ℝ{P,N,R}) where{P,N,R}
     p = subscripts[P]
     x = string_(a.x)
@@ -483,5 +513,6 @@ This differs from
 which only compares values, in keeping with the principle that `∂ℝ` must behave as `ℝ`.    
 
 """ 
-isapprox_dbg(a::R,b::R;kwargs...) where{R<:∂ℝ} = isapprox(a.x,b.x;kwargs...)  && all(isapprox.(a.dx,b.dx;kwargs...))
-isapprox_dbg(a::AbstractArray{R},b::AbstractArray{R};kwargs...) where{R<:∂ℝ} = all(isapprox.(a,b;kwargs...))
+isapprox_dbg(a::R,b::R;kwargs...) where{R<:∂ℝ} = isapprox_dbg(a.x,b.x;kwargs...)  && all(isapprox_dbg.(a.dx,b.dx;kwargs...))
+isapprox_dbg(a::𝕣,b::𝕣;kwargs...)              = isapprox(    a,  b   ;kwargs...)
+isapprox_dbg(a::AbstractArray{R},b::AbstractArray{R};kwargs...) where{R<:∂ℝ} = all(isapprox_dbg.(a,b;kwargs...))

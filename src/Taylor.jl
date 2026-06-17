@@ -270,8 +270,8 @@ McLaurin(y::Tuple,Δx)                          = tuple(McLaurin(first(y),Δx),M
 McLaurin( ::Tuple{},Δx)                        = tuple() 
 McLaurin(y::SArray{Sy,Ty,Dy,Ly},Δx::SVector{Sx,Tx}) where{Sy,Ty<:∂ℝ,Dy,Ly,Sx,Tx} = SArray{Sy,Tx,Dy,Ly}(McLaurin(yᵢ,Δx) for yᵢ∈y)
 McLaurin(y::SArray{Sy,Ty,Dy,Ly},Δx::SVector{Sx,Tx}) where{Sy,Ty<: ℝ,Dy,Ly,Sx,Tx} = SArray{Sy,Ty,Dy,Ly}(McLaurin(yᵢ,Δx) for yᵢ∈y)
-McLaurin(y::ℝ,Δx) = McLaurin{1}(y::ℝ,Δx)
-McLaurin{D}(y::𝕣        ,Δx::SVector{N}) where{N,D}   = y
+McLaurin(y::ℝ,Δx)                              = McLaurin{1}(y::ℝ,Δx)
+McLaurin{D}(y::𝕣 ,Δx::SVector{N}) where{N,D}   = y
 function McLaurin{D}(y::∂ℝ{P,N,R},Δx::SVector{N}) where{P,N,R,D} # Horner's algorithm
     @assert N>0 # if this edge case is relevant, create specialised method that converts VALUE(y) to eltype(Δx)
     o = McLaurin{D+1}(y.dx[1],Δx)*Δx[1]

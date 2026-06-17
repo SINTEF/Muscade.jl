@@ -1,77 +1,8 @@
 # # 3D rotations
 using LinearAlgebra, StaticArrays
+using Muscade: sinc1
 """
-    Muscade.sinc1(x)
-
-`sinc1(x) = sin(x)/x` - but  `sinc1(0.) = 1.`.  The function can be differentiated
-to the fourth order.
-
-This differs from Julia's `sinc(x) = sin(π*x)/(π*x)`.
-
-See also [`Toolbox.scac`](@ref)
-"""
-sinc1(x) = sinc(x/π) 
-"""
-    Toolbox.sinc1′(x)
-
-first derivative of [`Toolbox.sinc1(x)`](@ref).
-"""
-function sinc1′(x)
-    if abs(x)>1e-3
-        s,c=sincos(x)
-        c/x -s/x^2
-    else
-        x² = x*x
-        x*(-1/3 +x²/30) 
-    end
-end
-"""
-    Toolbox.sinc1″(x)
-
-second derivative of [`Toolbox.sinc1(x)`](@ref).
-"""
-function sinc1″(x)
-    if abs(x)>1e-1
-        s,c=sincos(x)
-        -s/x -2c/x^2 +2s/x^3
-    else
-        x² = x*x
-        -1/3 +x²*(1/10 +x²*(-1/168 +x²*(1/6480))) 
-    end
-end
-"""
-    Toolbox.sinc1‴(x)
-
-third derivative of [`Toolbox.sinc1(x)`](@ref).
-"""
-function sinc1‴(x)
-    if abs(x)>0.4
-        s,c=sincos(x)
-        -c/x +3s/x^2 +6c/x^3 -6s/x^4
-    else
-        x² = x*x
-        x*(1/5 +x²*(-1/42 +x²*(1/1080 +x²*(-1/55440 +x²*(1/4717440)))))
-    end
-end
-"""
-    Toolbox.sinc1⁗(x)
-
-fourth derivative of [`Toolbox.sinc1(x)`](@ref).
-"""
-function sinc1⁗(x) 
-    x² = x*x
-    1/5 +x²*(-1/14 +x²*(1/216 +x²*(-1/7920 +x²*(1/524160 +x²*(-1/54432000 +x²*(1/54432000 +x²*(-1/8143027200 +x²*(1/1656387532800))))))))
-end
-sinc1⁗′(x) = x*NaN
-using Muscade
-Muscade.@DiffRule1(sinc1,               sinc1′( a.x)                * a.dx )
-Muscade.@DiffRule1(sinc1′,              sinc1″( a.x)                * a.dx )
-Muscade.@DiffRule1(sinc1″,              sinc1‴( a.x)                * a.dx )
-Muscade.@DiffRule1(sinc1‴,              sinc1⁗( a.x)                * a.dx )
-Muscade.@DiffRule1(sinc1⁗,              sinc1⁗′(a.x)                * a.dx )
-
-"""
-    Toolboxscac(x)
+    Toolbox.scac(x)
 
 `scac(x) = sinc1(acos(x)),`  The function can be differentiated
 to the fourth order over ]-1,1] .
@@ -83,7 +14,7 @@ function scac(x)
     if abs(dx)>1e-3 
         sinc1(acos(x))
     else  # deliberately a long Taylor series (5th order): this function will be adiffed at least to 2nd order, up to 4th order
-        y = 1 + dx*(1/3 + dx*(-2/90 + dx*(0.0052911879917544626 + dx*(-0.0016229317117234072 + dx*(0.0005625))))) 
+        evalpoly(dx,(1,1/3,-2/90,0.0052911879917544626,-0.0016229317117234072,0.0005625))
     end
 end
 
@@ -98,7 +29,7 @@ Transform a rotation vector `v` into the cross product matrix `M`, such that
 
 See also [`Toolbox.spin⁻¹`](@ref), [`Toolbox.Rodrigues`](@ref), [`Toolbox.Rodrigues⁻¹`](@ref).
 """
-spin(  v::Vec3 ) = SMatrix{3,3}(0,v[3],-v[2],-v[3],0,v[1],v[2],-v[1],0)
+spin(v::Vec3) = SMatrix{3,3}(0,v[3],-v[2],-v[3],0,v[1],v[2],-v[1],0)
 """
     toolbox.spin⁻¹(M::SMatrix{3,3})
 
@@ -113,7 +44,7 @@ spin⁻¹(m::Mat33) = SVector{3}(m[3,2]-m[2,3],m[1,3]-m[3,1],m[2,1]-m[1,2])/2
 
 Computes the trace of a matrix.
 """
-trace( m::Mat33) = m[1,1]+m[2,2]+m[3,3] 
+trace(m::Mat33) = m[1,1]+m[2,2]+m[3,3] 
 """
     Toolbox.Rodrigues⁻¹(v::SVector{3})
 
@@ -122,8 +53,8 @@ Transform a rotation matrix `M` into the rotation vector `v`, such that
 
 See also [`Toolbox.spin`](@ref), [`Toolbox.spin⁻¹`](@ref), [`Toolbox.Rodrigues`](@ref), [`Toolbox.adjust`](@ref).
 """
-Rodrigues⁻¹(m)   = spin⁻¹(m)/scac((trace(m)-1)/2)   # NB: is necessarily singular for π turn
-function norm3(v::SVector{3})  # executes faster, COMPILES MUCH FASTER , and adiffs poorly at origin
+Rodrigues⁻¹(m)   = spin⁻¹(m)/scac((trace(m)-1.)/2.)   # NB: is necessarily singular for π turn
+function LinearAlgebra.norm(v::Vec3)  # executes faster, COMPILES MUCH FASTER , and adiffs poorly at origin
     n = sqrt(v[1]*v[1]+v[2]*v[2]+v[3]*v[3])
     if n<1e-14
         n = zero(eltype(v))
@@ -131,7 +62,7 @@ function norm3(v::SVector{3})  # executes faster, COMPILES MUCH FASTER , and adi
     return n
 end
 
-function spin²(S) 
+function spin²(S::Vec3) 
     ab  = S[2,3]*S[3,1] 
     ca  = S[1,2]*S[2,3] 
     bc  = S[3,1]*S[1,2]
@@ -148,29 +79,18 @@ Transform a rotation vector `v` into the rotation matrix `M`.
 
 See also [`Toolbox.spin`](@ref), [`Toolbox.spin⁻¹`](@ref), [`Toolbox.Rodrigues⁻¹`](@ref), [`Toolbox.adjust`](@ref).
 """
-function Rodrigues(v::Vec3) 
-    S = spin(v)
-    θ = norm3(v)
-    return LinearAlgebra.I + sinc1(θ).*S + (sinc1(θ/2)^2/2).*spin²(S)   
+@inline function Rodrigues(v::Vec3{R}) where{R} 
+    # I + spin(v)*sinc1(norm3(v)) + spin²(v)*sinc1(norm3(v)/2)/√2 
+    θ           = norm(v)
+    s₁          = sinc1(θ  )
+    s₂          = sinc1(θ/2)*(1/√2)
+    a,b,c       = s₁*v[1],s₁*v[2],s₁*v[3] 
+    vs₂         = v*s₂
+    ab ,ac ,bc  = vs₂[1]*vs₂[2], vs₂[1]*vs₂[3], vs₂[2]*vs₂[3]
+    ma²,mb²,mc² = vs₂[1]*vs₂[1], vs₂[2]*vs₂[2], vs₂[3]*vs₂[3]
+    return Mat33{R}(1. -mc²-mb²,ab+c,ac-b,   ab-c,1. -ma²-mc²,bc+a,   ac+b,bc-a,1. -ma²-mb²)
 end
-# function Rodrigues(v::Vec3) # no substantial gain from this implementation
-#     a,b,c = v[1],v[2],v[3]
-#     ab    = a*b
-#     ca    = c*a 
-#     bc    = b*c
-#     a²    = a*a
-#     b²    = b*b
-#     c²    = c*c
-#     θ     = sqrt(a²+b²+c²)
-#     if θ<1e-14
-#         θ = zero(eltype(v))
-#     end
-#     A     = sinc1(θ)
-#     B     = sinc1(θ/2)^2/2
-#     return SMatrix{3,3}(1-B*(b²+c²), -A*c+B*ab,   A*b+B*ca,    # SMatrix constructor: the code is the transposed of the matrix!
-#                          A*c+B*ab,  1-B*(a²+c²), -A*a+B*bc,     
-#                         -A*b+B*ca,    A*a*B*bc, 1-B*(a²+b²))
-# end
+
 """
     Toolbox.adjust(u::SVector{3},v::SVector{3})
 
@@ -182,7 +102,7 @@ See also [`Toolbox.spin`](@ref), [`Toolbox.spin⁻¹`](@ref), [`Toolbox.Rodrigue
 function adjust(u::Vec3{R},v::Vec3{R}) where{R}
     u,v = normalize.((u,v))
     c,w = dot(u,v), cross(u,v) 
-    s   = norm3(w)
+    s   = norm(w)
     θ   = atan(s,c)
     return w/sinc1(θ)
 end

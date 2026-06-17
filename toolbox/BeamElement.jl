@@ -1,6 +1,7 @@
 # # Euler beam element
 
 using StaticArrays, LinearAlgebra, Muscade
+using Muscade: pow
 @functor with() g̃_default(t) = SVector(0.,0.,1.); 
 
 """
@@ -81,9 +82,9 @@ BeamCrossSection(;EA,EI₂=EI₂,EI₃=EI₃,GJ=GJ,μ=μ,ι₁=ι₁,w=0.,g̃=g�
     flₗ = SVector(   o.Cl₁ * xₗ₁[1], o.Cl₂ * xₗ₁[2], o.Cl₃ * xₗ₁[3])
     flᵧ = r₀ ∘₁ flₗ
     ## Compute quadratic damping force
-    fq1ₗ = o.Cq₁ * xₗ₁[1]^2; if xₗ₁[1] < 0; fq1ₗ = -fq1ₗ end
-    fq2ₗ = o.Cq₂ * xₗ₁[2]^2; if xₗ₁[2] < 0; fq2ₗ = -fq2ₗ end
-    fq3ₗ = o.Cq₃ * xₗ₁[3]^2; if xₗ₁[3] < 0; fq3ₗ = -fq3ₗ end
+    fq1ₗ = o.Cq₁ * pow{2}(xₗ₁[1]); if xₗ₁[1] < 0; fq1ₗ = -fq1ₗ end
+    fq2ₗ = o.Cq₂ * pow{2}(xₗ₁[2]); if xₗ₁[2] < 0; fq2ₗ = -fq2ₗ end
+    fq3ₗ = o.Cq₃ * pow{2}(xₗ₁[3]); if xₗ₁[3] < 0; fq3ₗ = -fq3ₗ end
     fqₗ = SVector(fq1ₗ,fq2ₗ,fq3ₗ)
     fqᵧ = r₀ ∘₁ fqₗ
     # Summing up forces
@@ -224,7 +225,7 @@ end;
     gp∂X₀,ε∂X₀,vₛₘ∂X₀    = composeJacobian{P}((Tgp,Tε,Tvₛₘ),X₀)
     ## Quadrature loop: compute resultants
     gp                  = ntuple(ngp) do igp
-        ☼x,☼κgp         = gpval[igp].x, gpval[igp].κ   
+        ☼x,☼κgp         = gpval[igp].x, gpval[igp].κ
         x∂X₀,κ∂X₀       = gp∂X₀[igp].x, gp∂X₀[igp].κ
         fᵢ,mᵢ,fₑ,mₑ     = ☼resultants(o.mat,ε,κgp,x,rₛₘ,vᵢ,t)          # call the "resultant" function to compute loads (local coordinates) from strains/curvatures/etc. using material properties. Note that output is dual of input. 
         fₑ              = Udof ? fₑ-∂0(U) : fₑ                    # U is per unit length
@@ -240,7 +241,7 @@ struct kinematics{Mode} end # Mode:
 function kinematics{Mode}(o::EulerBeam3D,X₀)  where{Mode}
     cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp,L  = o.cₘ,o.rₘ,o.tgₘ,o.tgₑ,o.ζnod,o.ζgp,o.L   # As-meshed element coordinates and describing tangential vector
     vₛₘ,rₛₘ,uₗ₂,vₗ₂,cₛₘ  = corotated{Mode}(o,X₀)
-    ε                = √((uₗ₂[1]+L/2)^2+uₗ₂[2]^2+uₗ₂[3]^2)*2/L - 1.      
+    ε                = √(pow{2}(uₗ₂[1]+L/2)+pow{2}(uₗ₂[2])+pow{2}(uₗ₂[3]))*2/L - 1.      
     gp               = ntuple(ngp) do igp  # gp[igp].κ, gp[igp].x
         yₐ,yᵤ,yᵥ,κₐ,κᵤ,κᵥ = o.yₐ[igp],o.yᵤ[igp],o.yᵥ[igp],o.κₐ[igp],o.κᵤ[igp],o.κᵥ[igp]
         κ            = SVector(         κₐ*vₗ₂[1], κᵤ*uₗ₂[2]+κᵥ*vₗ₂[3], κᵤ*uₗ₂[3]-κᵥ*vₗ₂[2])  
@@ -253,7 +254,7 @@ end
 
 struct corotated{Mode} end 
 function corotated{Mode}(o::EulerBeam3D,X₀)  where{Mode}
-    cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp,L  = o.cₘ,o.rₘ,o.tgₘ,o.tgₑ,o.ζnod,o.ζgp,o.L   # As-meshed element coordinates and describing tangential vector
+    cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp    = o.cₘ,o.rₘ,o.tgₘ,o.tgₑ,o.ζnod,o.ζgp   # As-meshed element coordinates and describing tangential vector
     uᵧ₁,vᵧ₁,uᵧ₂,vᵧ₂           = vec3(X₀,1:3), vec3(X₀,4:6), vec3(X₀,7:9), vec3(X₀,10:12)
     Δvᵧ,rₛₘ,vₛₘ                = apply{Mode}((vᵧ₁=vᵧ₁,vᵧ₂=vᵧ₂)) do v
         rₛ₁                   = apply{Mode}(Rodrigues,v.vᵧ₁)

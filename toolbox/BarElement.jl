@@ -170,8 +170,9 @@ end;
     c        = o.cₘ + 0.5*(uᵧ₁+uᵧ₂) 
     # Element direction and length
     tg      = o.tgₘ + uᵧ₂ - uᵧ₁
-    L       = √(tg[1]^2+tg[2]^2+tg[3]^2)
-    δ_       = tg/L
+    L       = norm(tg)
+    δ_      = tg/L
+
     # Strains
     ε_       = L/o.Lₛ - 1
     # Compute how strains vary with nodal displacements (will be used in the Princple of Virtual Work, PVW)
