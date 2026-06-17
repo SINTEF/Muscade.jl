@@ -348,7 +348,7 @@ function Muscade.update_drawing(axis,o::AbstractVector{EulerBeam3D{Tmat,Udof}},o
         for (iel,oᵢ) = enumerate(o)
             cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp,L  = oᵢ.cₘ,oᵢ.rₘ,oᵢ.tgₘ,oᵢ.tgₑ,oᵢ.ζnod,oᵢ.ζgp,oᵢ.L   
             X₀ₑ = view(X₀,:,iel)
-            vₛₘ,rₛₘ,uₗ₂,vₗ₂,cₛₘ = corotated{:direct}(oᵢ,X₀ₑ) 
+            vₛₘ,rₛₘ,uₗ₂,vₗ₂,cₛₘ = corotated(oᵢ,X₀ₑ) 
             if opt.draw_frame
                 for ivec = 1:3
                     shape_frame[:,1,ivec,iel] = cₛₘ
@@ -379,7 +379,7 @@ function Muscade.update_drawing(axis,o::AbstractVector{EulerBeam3D{Tmat,Udof}},o
         for (iel,oᵢ) = enumerate(o)
             cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp,L  = oᵢ.cₘ,oᵢ.rₘ,oᵢ.tgₘ,oᵢ.tgₑ,oᵢ.ζnod,oᵢ.ζgp,oᵢ.L   
             X₀ₑ = view(X₀,:,iel)
-            vₛₘ,rₛₘ,uₗ₂,vₗ₂,cₛₘ = corotated{:direct}(oᵢ,X₀ₑ) 
+            vₛₘ,rₛₘ,uₗ₂,vₗ₂,cₛₘ = corotated(oᵢ,X₀ₑ) 
             vᵧ₁,vᵧ₂          = vec3(X₀ₑ,4:6), vec3(X₀ₑ,10:12)
             rₛ₁              = Rodrigues(vᵧ₁)
             rₛ₂              = Rodrigues(vᵧ₂)
