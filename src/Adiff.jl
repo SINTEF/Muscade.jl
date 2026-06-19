@@ -369,16 +369,16 @@ end
 macro DiffRule1(OP,A)
     return esc(:(@inline $OP(a::∂ℝ{P,N}) where{P,N} = ∂ℝ{P,N}($OP(a.x),$A)))
 end
-@DiffRule1(Base.:(+),       a.dx                                                     )
-@DiffRule1(Base.:(-),      -a.dx                                                     )
-@DiffRule1(Base.abs  ,a.x==0.0 ? zero(a.dx) : (a.x>0.0 ? a.dx : -a.dx)               )
-@DiffRule1(Base.conj ,      a.dx                                                     )
-@DiffRule1(Base.log,        a.dx / a.x                                               )
-@DiffRule1(Base.log10,      a.dx / a.x / log(10.)                                    )
-@DiffRule1(Base.log2,       a.dx / a.x / log(2.)                                     )
-@DiffRule1(Base.log1p,      a.dx / (a.x + 1.)                                        )
-@DiffRule1(Base.cbrt,       a.dx / 3. / cbrt(a.x)^2                                  )
-@DiffRule1(Base.abs2,       a.dx*2. * a.x                                            )
+@DiffRule1(Base.:(+),        a.dx                                                    )
+@DiffRule1(Base.:(-),       -a.dx                                                    )
+@DiffRule1(Base.abs,         a.x==0.0 ? zero(a.dx) : (a.x>0.0 ? a.dx : -a.dx)        )
+@DiffRule1(Base.conj ,       a.dx                                                    )
+@DiffRule1(Base.log,         a.dx / a.x                                              )
+@DiffRule1(Base.log10,       a.dx / a.x / log(10.)                                   )
+@DiffRule1(Base.log2,        a.dx / a.x / log(2.)                                    )
+@DiffRule1(Base.log1p,       a.dx / (a.x + 1.)                                       )
+@DiffRule1(Base.cbrt,        a.dx / 3. / cbrt(a.x)^2                                 )
+@DiffRule1(Base.abs2,        a.dx*2. * a.x                                           )
 @DiffRule1(Base.exp2,        log(2. ) * exp2( a.x) * a.dx                            )
 @DiffRule1(Base.exp10,       log(10.) * exp10(a.x) * a.dx                            )
 @DiffRule1(Base.expm1,       exp(a.x) * a.dx                                         )
@@ -395,7 +395,7 @@ end
 @DiffRule1(Base.cscd,       -π / 180. * cscd(a.x) * cotd(a.x) * a.dx                 )
 @DiffRule1(Base.cotd,       -π / 180. * (1. + cotd(a.x)^2)  * a.dx                   )
 @DiffRule1(Base.asin,        a.dx / sqrt(1. - a.x^2)                                 )
-@DiffRule1(Base.acos,        a.dx.*(-inv(sqrt(1-a.x^2)))                       )
+@DiffRule1(Base.acos,        a.dx.*(-inv(sqrt(1-a.x^2)))                             )
 @DiffRule1(Base.atan,        a.dx / (1. + a.x^2)                                     )
 @DiffRule1(Base.asec,        a.dx / abs(a.x) / sqrt(a.x^2 - 1.)                      )
 @DiffRule1(Base.acsc,       -a.dx / abs(a.x) / sqrt(a.x^2 - 1.)                      )
@@ -442,21 +442,19 @@ to the fourth order.
 
 This differs from Julia's `sinc(x) = sin(π*x)/(π*x)`.
 """
-# sinc1
-# using Muscade
-@inline sinc1( x::R                       ) where{R<:∂ℝ} =   sinc1(x,sincos(x)...,inv(x),x*x)
-@inline sinc1( x::R,s::R,c::R,x⁻¹::R,x²::R) where{R<:∂ℝ} = R(sinc1( x.x,s.x,c.x,x⁻¹.x,x².x), x.dx*sinc1′(x.x,s.x,c.x,x⁻¹.x,x².x))
-@inline sinc1′(x::R,s::R,c::R,x⁻¹::R,x²::R) where{R<:∂ℝ} = R(sinc1′(x.x,s.x,c.x,x⁻¹.x,x².x), x.dx*sinc1″(x.x,s.x,c.x,x⁻¹.x,x².x))
-@inline sinc1″(x::R,s::R,c::R,x⁻¹::R,x²::R) where{R<:∂ℝ} = R(sinc1″(x.x,s.x,c.x,x⁻¹.x,x².x), x.dx*sinc1‴(x.x,s.x,c.x,x⁻¹.x,x².x))
-@inline sinc1‴(x::R,s::R,c::R,x⁻¹::R,x²::R) where{R<:∂ℝ} = R(sinc1‴(x.x,s.x,c.x,x⁻¹.x,x².x), x.dx*sinc1⁗(x.x,s.x,c.x,x⁻¹.x,x².x))
-@inline sinc1⁗(x::R                       ) where{R<:∂ℝ} = error("attempted to compute 5th derivative of sinc1")
-# const Jℝ = Muscade.Jℝ
 @inline sinc1( x::R                       ) where{R<:Jℝ} = abs(x)>1e-2 ? sin(x)/x                         :   evalpoly(x*x,(1, -1/6, 1/120))  
 @inline sinc1( x::R,s::R,c::R,x⁻¹::R,x²::R) where{R<:Jℝ} = abs(x)>1e-2 ? s*x⁻¹                            :   evalpoly(x² ,(1, -1/6, 1/120))  
 @inline sinc1′(x::R,s::R,c::R,x⁻¹::R,x²::R) where{R<:Jℝ} = abs(x)>1e-3 ? x⁻¹*evalpoly(x⁻¹,(c,-s))         : x*evalpoly(x² ,(-1/3,1/30))
 @inline sinc1″(x::R,s::R,c::R,x⁻¹::R,x²::R) where{R<:Jℝ} = abs(x)>1e-1 ? x⁻¹*evalpoly(x⁻¹,(-s,-2c,2s))    :   evalpoly(x² ,(-1/3,1/10,-1/168,1/6480))
 @inline sinc1‴(x::R,s::R,c::R,x⁻¹::R,x²::R) where{R<:Jℝ} = abs(x)>0.4  ? x⁻¹*evalpoly(x⁻¹,(-c,3s,6c,-6s)) : x*evalpoly(x² ,(1/5,-1/42,1/1080,-1/55440,1/4717440))
 @inline sinc1⁗(x::R,s::R,c::R,x⁻¹::R,x²::R) where{R<:Jℝ} =                                                    evalpoly(x² ,(1/5,-1/14,1/216,-1/7920,1/524160,-1/54432000,1/54432000,-1/8143027200,1/1656387532800))
+
+@inline sinc1( x::R                       ) where{R<:∂ℝ} =   sinc1(x,sincos(x)...,inv(x),x*x)
+@inline sinc1( x::R,s::R,c::R,x⁻¹::R,x²::R) where{R<:∂ℝ} = R(sinc1( x.x,s.x,c.x,x⁻¹.x,x².x), x.dx*sinc1′(x.x,s.x,c.x,x⁻¹.x,x².x))
+@inline sinc1′(x::R,s::R,c::R,x⁻¹::R,x²::R) where{R<:∂ℝ} = R(sinc1′(x.x,s.x,c.x,x⁻¹.x,x².x), x.dx*sinc1″(x.x,s.x,c.x,x⁻¹.x,x².x))
+@inline sinc1″(x::R,s::R,c::R,x⁻¹::R,x²::R) where{R<:∂ℝ} = R(sinc1″(x.x,s.x,c.x,x⁻¹.x,x².x), x.dx*sinc1‴(x.x,s.x,c.x,x⁻¹.x,x².x))
+@inline sinc1‴(x::R,s::R,c::R,x⁻¹::R,x²::R) where{R<:∂ℝ} = R(sinc1‴(x.x,s.x,c.x,x⁻¹.x,x².x), x.dx*sinc1⁗(x.x,s.x,c.x,x⁻¹.x,x².x))
+@inline sinc1⁗(x::R                       ) where{R<:∂ℝ} = error("attempted to compute 5th derivative of sinc1")
 
 
 ## Find NaN in derivatives
