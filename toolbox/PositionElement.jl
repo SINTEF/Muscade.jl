@@ -24,7 +24,7 @@ an `ElementCost`.
 
 # Requestables:
 
-- `a` `a[isensor]` is the 
+- `a` `a[isensor]` is the XXXXXXXXXXXX TODO
 - `x`  `x[oder+1][:,isensor]` contains the position, velocity and acceleration (oder=0,1,2) of the sensor
        which position was described in the `isensor`-th column of `P`. 
 - `rᵢ` `rₑ[oder+1]` is a vector containing a zero vector, the intrinsic rotation rate vector and its time derivative (oder=0,1,2), for the element's node.  

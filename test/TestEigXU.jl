@@ -20,14 +20,14 @@ xn         = 1.
 λn         = 1e3
 un         = 1e3
 
-L    = 1;    # Beam length [m]
+L    = 1.;    # Beam length [m]
 q    = 0.0;  # Uniform lateral load [N/m]
-EI₂  = 1;    # Bending stiffness [Nm²]
-EI₃  = 10;   # Bending stiffness [Nm²]
+EI₂  = 1.;    # Bending stiffness [Nm²]
+EI₃  = 10.;   # Bending stiffness [Nm²]
 EA   = 1e6;  # Axial stiffness [N]
 GJ   = 1e6;  # Torsional stiffness [Nm²]
-μ    = 1;
-ι₁   = 1;
+μ    = 1.;
+ι₁   = 1.;
 hasU = true
 σε   = 100e-6*100 # precision of strain measurements
 σx   = 1e-1
@@ -93,8 +93,10 @@ OX,OU                 = 2,0
 # @show N
 
 ## EigXU analysis
-Δω                = 2^-6 
-p                 = 11
+# Δω                = 2^-6 
+# p                 = 11
+Δω                = 16^-6 
+p                 = 8
 nmod              = 5
 
 

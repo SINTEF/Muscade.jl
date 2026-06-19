@@ -1,6 +1,11 @@
 """
-	eiginc = solve(EigX{ℝ};state=initialstate,nmod)
-	eiginc = solve(EigX{ℂ};state=initialstate,nmod)
+	eiginc = solve(EigX{ℝ     };state=initialstate,nmod)
+	eiginc = solve(EigX{:fullℝ};state=initialstate,nmod)
+	eiginc = solve(EigX{ℂ     };state=initialstate,nmod)
+
+!!! warning    
+    `EigX` is currently not working well due to problems with the sparse eigenvalue solver. `EigX{:fullℝ}` works well,
+    but because it operates on a full matrix, it can only be applied to smaller problems.  
 
 Given an initial (typicaly static) state `initialstate`, computes the lowest `nmod` eigenmodes of a system. 
 `EigX{ℝ}` computes real eigenmodes not accounting for damping. `EigX{ℝ}` computes complex eigenmodes accounting for damping.
@@ -47,6 +52,35 @@ function solve(::Type{EigX{ℝ}},pstate,verbose,dbg;
     ω², Δx, ncv = geneig{:symmetric}(K,M,nmod;kwargs...)
 
     ncv≥nmod||muscadeerror(dbg,@sprintf("eigensolver only converged for %i out of %i modes",ncv,nmod))
+    pstate[] = EigXℝincrement(dofgr[ind.X],sqrt.(ω²),Δx)
+    verbose && @printf("\n")
+    return 
+end
+# Normalize a vector by setting its maxabs component to 1
+function maxto1(v::AbstractVector{𝕣})
+    lo,hi     = extrema(v)
+    maxabs    = abs(lo)>abs(hi) ? lo : hi
+    return  v./maxabs
+end
+function solve(::Type{EigX{:fullℝ}},pstate,verbose,dbg; state::State) 
+    OX,OU,IA         = 2,0,0
+    model,dis        = state.model,state.dis
+
+    verbose && @printf("\n    Assembling\n")
+    wantK,wantM      = (ind.Λ,ind.X,1,1),(ind.Λ,ind.X,1,3)
+    wanted           = Wanted{1,OX+1,OU+1,IA}(:all,(wantK,wantM))
+    out,asm,dofgr    = prepare(AssemblyDirect,model,dis,wanted)  
+    nXdof            = getndof.(dofgr)[ind.X]
+    state₀           = State{1,OX+1,OU+1}(copy(state)) 
+    assemble!{:matrices}(out,asm,dis,model,state₀,idmult,(dbg...,solver=:EigXfullℝ))
+    K                = Matrix(out.L2[ind.Λ,ind.X][1,1])
+    M                = Matrix(out.L2[ind.Λ,ind.X][1,3])
+
+    verbose && @printf("    Solving Eigenvalues\n\n")
+    E                = eigen(K,M)
+    ω²               = E.values
+    Δx               = [maxto1(view(E.vectors,:,i)) for i = 1:nXdof]
+
     pstate[] = EigXℝincrement(dofgr[ind.X],sqrt.(ω²),Δx)
     verbose && @printf("\n")
     return 
@@ -128,6 +162,31 @@ function solve(::Type{EigX{ℂ}},pstate,verbose,dbg;
     Δx             = [view(vecᵢ,nXdof+1:2nXdof) for vecᵢ ∈ vec]
 
     pstate[] = EigXℂincrement(dofgr[ind.X],p,Δx)
+    return 
+end
+function solve(::Type{EigX{:fullℂ}},pstate,verbose,dbg; state::State) 
+    OX,OU,IA         = 2,0,0
+    model,dis        = state.model,state.dis
+
+    verbose && @printf("\n    Assembing\n")
+    wantK,wantC,wantM= (ind.Λ,ind.X,1,1),(ind.Λ,ind.X,1,2),(ind.Λ,ind.X,1,3)
+    wanted           = Wanted{1,OX+1,OU+1,IA}(:all,(wantK,wantC,wantM))
+    out,asm,dofgr    = prepare(AssemblyDirect,model,dis,wanted)  
+    nXdof            = getndof.(dofgr)[ind.X]
+    state₀           = State{1,OX+1,OU+1}(copy(state))   
+    assemble!{:matrices}(out,asm,dis,model,state₀,idmult,(dbg...,solver=:EigXfullℂ))
+    K                = out.L2[ind.Λ,ind.X][1,1]
+    C                = out.L2[ind.Λ,ind.X][1,2]
+    M                = out.L2[ind.Λ,ind.X][1,3]
+    I                = spdiagm(ones(nXdof))
+    A,_   ,_         = blkasm([1,2  ],[1,2  ],[ I,K  ])  
+    B,_   ,_         = blkasm([2,1,2],[1,2,2],[-I,M,C])
+
+    verbose && @printf("    Solving Eigenvalues\n\n")
+    E                = eigen(Matrix(A),Matrix(B))
+    p                = E.values
+    Δx               = [view(E.vectors,nXdof+1:2nXdof,i) for i = 1:nXdof]
+    pstate[]         = EigXℂincrement(dofgr[ind.X],p,Δx)
     return 
 end
 function increment{OX}(initialstate,eiginc::EigXℂincrement,imod::AbstractVector{𝕫},A::AbstractVector) where{OX} 

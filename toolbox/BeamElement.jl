@@ -149,7 +149,7 @@ See also: [`BeamCrossSection`](@ref), [`Bar3D`](@ref)
 """
 struct EulerBeam3D{Mat,Uforce} <: AbstractElement
     cₘ       :: SVector{3,𝕣}     # Position of the middle of the element, as meshed
-    rₘ       :: Mat33{𝕣}         # Orientation of the element, as meshed, represented by a rotation matrix (from global to local)
+    rₘ       :: Mat33{𝕣}         # Orientation of the element, as meshed, represented by a rotation matrix 
     ζgp      :: SVector{ngp,𝕣}   # Location of the Gauss points for the normalized element with length 1
     ζnod     :: SVector{nXnod,𝕣} # Location of the nodes for the normalized element with length 1
     tgₘ      :: SVector{ndim,𝕣}  # Vector connecting the nodes of the element in the global coordinate system
@@ -218,13 +218,13 @@ end;
     gpval,☼ε,☼rₛₘ        = motion⁻¹{P,ND}(gp_,ε_,rₛₘ_) 
     vᵢ                  = intrinsicrotationrates(rₛₘ)
     ## compute all Jacobians of the above quantities with respect to X₀
-    X₀                  = ∂0(X) # returns concrete type
-    TX₀                 = revariate{P}(X₀)  # returns ::Any
-    Tgp,Tε,Tvₛₘ,_,_,_,_  = kinematics{:chainrule}(o,TX₀) # the crux
+    X₀                  = ∂0(X) 
+    TX₀                 = revariate{P}(X₀)  
+    Tgp,Tε,Tvₛₘ,_,_,_,_  = kinematics{:direct}(o,TX₀) # the crux
     gp∂X₀,ε∂X₀,vₛₘ∂X₀    = composeJacobian{P}((Tgp,Tε,Tvₛₘ),X₀)
     ## Quadrature loop: compute resultants
     gp                  = ntuple(ngp) do igp
-        ☼x,☼κgp         = gpval[igp].x, gpval[igp].κ   
+        ☼x,☼κgp         = gpval[igp].x, gpval[igp].κ
         x∂X₀,κ∂X₀       = gp∂X₀[igp].x, gp∂X₀[igp].κ
         fᵢ,mᵢ,fₑ,mₑ     = ☼resultants(o.mat,ε,κgp,x,rₛₘ,vᵢ,t)          # call the "resultant" function to compute loads (local coordinates) from strains/curvatures/etc. using material properties. Note that output is dual of input. 
         fₑ              = Udof ? fₑ-∂0(U) : fₑ                    # U is per unit length
@@ -253,7 +253,7 @@ end
 
 struct corotated{Mode} end 
 function corotated{Mode}(o::EulerBeam3D,X₀)  where{Mode}
-    cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp,L  = o.cₘ,o.rₘ,o.tgₘ,o.tgₑ,o.ζnod,o.ζgp,o.L   # As-meshed element coordinates and describing tangential vector
+    cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp    = o.cₘ,o.rₘ,o.tgₘ,o.tgₑ,o.ζnod,o.ζgp   # As-meshed element coordinates and describing tangential vector
     uᵧ₁,vᵧ₁,uᵧ₂,vᵧ₂           = vec3(X₀,1:3), vec3(X₀,4:6), vec3(X₀,7:9), vec3(X₀,10:12)
     Δvᵧ,rₛₘ,vₛₘ                = apply{Mode}((vᵧ₁=vᵧ₁,vᵧ₂=vᵧ₂)) do v
         rₛ₁                   = apply{Mode}(Rodrigues,v.vᵧ₁)
@@ -425,6 +425,3 @@ function Muscade.display_drawing!(axis,::Type{EulerBeam3D{Tmat,Udof}},obs,opt) w
     opt.style==:solid  && opt.draw_marking && lines!(  axis, obs.solid_mark                   ,color = opt.line_color                              )    
     opt.Udof           &&                     lines!(  axis, obs.ucrest                       ,color = :red           ,linewidth=.5                )    
 end
-
-
-

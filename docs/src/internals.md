@@ -1,9 +1,9 @@
 # Internals
 
 !!! warning 
-    This section documents functions and structures that are not part of `Muscade`s or `Muscade.Toolbox`s public API.
+    This section documents functions and structures that are not part of `Muscade`s or `Muscade.Toolbox`'s public API.
     These are neither intended to be used by developers of `Muscade`-based applications
-    nor by users such applications.  
+    nor by users such of applications.  Interface changes can occur at any time.
 
 ## Muscade
 

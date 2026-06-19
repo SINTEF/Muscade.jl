@@ -46,7 +46,6 @@ function assemblebigvec!(L1,L1bigasm::𝕫1,asm,model,dis,out::AssemblyDirect,st
         end
     end
 end
-
 struct EigXUincrement{Tω}
     nmod  :: 𝕫
     dofgr :: DofGroup
@@ -57,10 +56,12 @@ struct EigXUincrement{Tω}
     ΔΛXU  :: Vector{𝕣11} # [iω][imod][idof]
 end
 
-
-
 """
 	EigXU{OX,OU}
+
+!!! warning    
+    `EigXU` is currently not working well due to problems with the sparse eigenvalue solver, and the solver
+    is still experimental
 
 Study the combinations of load and response that are least detected by sensor systems.
 
@@ -104,11 +105,12 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
     initialstate::State,
     droptol::𝕣=1e-10,
     nmod::𝕫=5,
+    full::𝕓=false,
     σₓᵤ,
     kwargs...) where{OX,OU}
 
     #  Mostly constants
-    local LU
+    local ◺A
     model,dis             = initialstate.model, initialstate.dis
     nω                    = 2^p
     IA                    = 0
@@ -157,24 +159,24 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
         B.nzval          .= N[1]        + ωᵢ^2*N[2]        + ωᵢ^4*N[3]     
         A.nzval          .= L2[1].nzval + ωᵢ^2*L2[3].nzval + ωᵢ^4*L2[5].nzval     # complex if exponents 1 and 3 included
         try 
-            if iω==1 LU   = lu(A) 
-            else     lu!(LU ,A)
+            if iω==1 ◺A  = lu(A) 
+            else     lu!(◺A,A)
             end 
-            λ⁻¹, ΔΛXU[iω], ncv[iω] = geneig{:symmetric}(A,B,nmod;normalize=false,kwargs...)
-            nor[iω]                = 𝕣1(undef,ncv[iω])
-            λ[iω]                  = 1 ./λ⁻¹
-            for imod               = 1:ncv[iω]
-                Δ                  = ΔΛXU[iω][imod]
-                wrk[ixu]          .= view(Δ,ixu)                   # this copy can be optimised by viewing the classes in Δ, operating on out.L2[α,β][αder,βder], and combining over derivatives.  Is it worth the effort?   
-                Anorm              = √(ℜ(dot(wrk,A,wrk))/2)  # ΔΛXU is real, A is complex Hermitian, so square norm is real: (imag part is zero to machine precision)
-                if iω>1  &&  imod≤nmod  &&  sum(Δ[idof]*ΔΛXU[iω-1][imod][idof] for idof∈λxu_dofgr.jX)<0
-                    Anorm          = -Anorm
-                end
-                Δ                .*= 2.575829303549/Anorm          # corresponds to a probability of exceedance of 0.01                        
-                nor[iω][imod]      = √(ℜ(dot(Δ,B,Δ))/2) 
-            end
         catch 
             muscadewarning(@sprintf("Factorization of matrix A failed for ω=%f",ωᵢ));
+        end
+        λ⁻¹, ΔΛXU[iω], ncv[iω] = geneig{:symmetric}(◺A,B,nmod;normalize=false,kwargs...)
+        nor[iω]                = 𝕣1(undef,ncv[iω])
+        λ[iω]                  = 1 ./λ⁻¹
+        for imod               = 1:ncv[iω]
+            Δ                  = ΔΛXU[iω][imod]
+            wrk[ixu]          .= view(Δ,ixu)                   # this copy can be optimised by viewing the classes in Δ, operating on out.L2[α,β][αder,βder], and combining over derivatives.  Is it worth the effort?   
+            Anorm              = √(ℜ(dot(wrk,A,wrk))/2)  # ΔΛXU is real, A is complex Hermitian, so square norm is real: (imag part is zero to machine precision)
+            if iω>1  &&  imod≤nmod  &&  sum(Δ[idof]*ΔΛXU[iω-1][imod][idof] for idof∈λxu_dofgr.jX)<0
+                Anorm          = -Anorm
+            end
+            Δ                .*= 2.575829303549/Anorm          # corresponds to a probability of exceedance of 0.01                        
+            nor[iω][imod]      = √(ℜ(dot(Δ,B,Δ))/2) 
         end
     end    
     any(ncv.<nmod) && verbose && muscadewarning("Some eigensolutions did not converge",4)
