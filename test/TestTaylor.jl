@@ -81,10 +81,11 @@ k(X) = 5.
 w(X) = (f(X),g(X),h(X),k(X))
 X₀   = SVector(0.,0.,1.)
 vX₀  = variate{1,3}(X₀)
-
+wX₀  = variate{2,3}(vX₀)
 @testset "Muscade.fast" begin
     @test Muscade.apply{:chainrule}(w, X₀) === w( X₀)
     @test Muscade.apply{:chainrule}(w,vX₀) === w(vX₀)
+    @test Muscade.apply{:chainrule}(w,wX₀) === w(wX₀)
 end
 
 yy    = Muscade.to_order{1,3}((revariate{1}(SVector(4.,5.,6.)),revariate{2}(SVector(7.,8.,9.)) ))  

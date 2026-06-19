@@ -278,7 +278,7 @@ function McLaurin{D}(y::∂ℝ{P,N,R},Δx::SVector{N}) where{P,N,R,D} # Horner's
     for i ∈ 2:N
         o += McLaurin{D+1}(y.dx[i],Δx)*Δx[i]
     end
-    P>1 && (o *= inv(P))
+    D>1 && (o *= inv(D))
     return VALUE(y)+o
 end
 

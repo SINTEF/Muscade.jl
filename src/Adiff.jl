@@ -270,21 +270,21 @@ struct value_∂𝟘{P} end
 end
 
 @inline function Base.:(^)(a::∂ℝ{P,N,R},b::ℤ) where{P,N,R}
-        if b<0  # 'if' resolved at compile time thanks to inlining if b is a compile time constant in caller function
-            inv(a)
-        elseif b<-1
-            inv(a)^(-b)
-        elseif b==0
-            one(a)
-        elseif b==1
-            a
-        elseif b==2
-            a*a
-        else
-            va,∂a = value_∂𝟘{P}(a)
-            x     = va^(b-1)  
-            ∂ℝ{P,N,R}(va*x ,∂a*(b*x) )
-        end
+    if b<0  # 'if' resolved at compile time thanks to inlining if b is a compile time constant in caller function
+        inv(a)
+    elseif b<-1
+        inv(a)^(-b)
+    elseif b==0
+        one(a)
+    elseif b==1
+        a
+    elseif b==2
+        a*a
+    else
+        va,∂a = value_∂𝟘{P}(a)
+        x     = va^(b-1)  
+        ∂ℝ{P,N,R}(va*x ,∂a*(b*x) )
+    end
 end
 @inline Base.:(^)(a::∂ℝ,b::Jℝ) = exp(b*log(a)) 
 @inline Base.:(^)(a::Jℝ,b::∂ℝ) = exp(b*log(a))
