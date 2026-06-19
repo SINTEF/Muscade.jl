@@ -215,13 +215,13 @@ end;
 @espy function Muscade.residual(o::EulerBeam3D{Mat,Udof},   X,U,A,t,SP,dbg) where{Mat,Udof}
     P,ND                = constants(X),length(X)
     ## Compute all quantities at Gauss point, their time derivatives, including intrinsic roll rate and acceleration
-    gp_,ε_,vₛₘ_,rₛₘ_,vₗ₂_,_,_ = kinematics(o,motion{P}(X))
+    gp_,ε_,vₛₘ_,rₛₘ_,vₗ₂_,_,_ = kinematics{:direct}(o,motion{P}(X))
     gpval,☼ε,☼rₛₘ        = motion⁻¹{P,ND}(gp_,ε_,rₛₘ_) 
     vᵢ                  = intrinsicrotationrates(rₛₘ)
     ## compute all Jacobians of the above quantities with respect to X₀
     X₀                  = ∂0(X) 
     TX₀                 = revariate{P}(X₀)  
-    Tgp,Tε,Tvₛₘ,_,_,_,_  = kinematics(o,TX₀) # the crux
+    Tgp,Tε,Tvₛₘ,_,_,_,_  = kinematics{:direct}(o,TX₀) # the crux
     gp∂X₀,ε∂X₀,vₛₘ∂X₀    = composeJacobian{P}((Tgp,Tε,Tvₛₘ),X₀)
     ## Quadrature loop: compute resultants
     gp                  = ntuple(ngp) do igp
@@ -237,9 +237,10 @@ end;
     return R,noFB  
 end;
 
-function kinematics(o::EulerBeam3D,X₀) 
+struct kinematics{Mode} end # Mode: 
+function kinematics{Mode}(o::EulerBeam3D,X₀)  where{Mode}
     cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp,L  = o.cₘ,o.rₘ,o.tgₘ,o.tgₑ,o.ζnod,o.ζgp,o.L   # As-meshed element coordinates and describing tangential vector
-    vₛₘ,rₛₘ,uₗ₂,vₗ₂,cₛₘ  = corotated(o,X₀)
+    vₛₘ,rₛₘ,uₗ₂,vₗ₂,cₛₘ  = corotated{Mode}(o,X₀)
     ε                = √(pow{2}(uₗ₂[1]+L/2)+pow{2}(uₗ₂[2])+pow{2}(uₗ₂[3]))*2/L - 1.      
     gp               = ntuple(ngp) do igp  # gp[igp].κ, gp[igp].x
         yₐ,yᵤ,yᵥ,κₐ,κᵤ,κᵥ = o.yₐ[igp],o.yᵤ[igp],o.yᵥ[igp],o.κₐ[igp],o.κᵤ[igp],o.κᵥ[igp]
@@ -251,14 +252,18 @@ function kinematics(o::EulerBeam3D,X₀)
     return gp,ε,vₛₘ,rₛₘ,vₗ₂,uₗ₂,cₛₘ
 end
 
-function corotated(o::EulerBeam3D,X₀)  
+struct corotated{Mode} end 
+function corotated{Mode}(o::EulerBeam3D,X₀)  where{Mode}
     cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp    = o.cₘ,o.rₘ,o.tgₘ,o.tgₑ,o.ζnod,o.ζgp   # As-meshed element coordinates and describing tangential vector
     uᵧ₁,vᵧ₁,uᵧ₂,vᵧ₂           = vec3(X₀,1:3), vec3(X₀,4:6), vec3(X₀,7:9), vec3(X₀,10:12)
-    rₛ₁                       = Rodrigues(vᵧ₁)
-    rₛ₂                       = Rodrigues(vᵧ₂)
-    Δvᵧ                      = 0.5*Rodrigues⁻¹(rₛ₂ ∘₁ rₛ₁')
-    rₛₘ                       = Rodrigues(Δvᵧ) ∘₁ rₛ₁ ∘₁ o.rₘ  
-    vₛₘ                       = Rodrigues⁻¹(rₛₘ)              
+    Δvᵧ,rₛₘ,vₛₘ                = apply{Mode}((vᵧ₁=vᵧ₁,vᵧ₂=vᵧ₂)) do v
+        rₛ₁                   = apply{Mode}(Rodrigues,v.vᵧ₁)
+        rₛ₂                   = apply{Mode}(Rodrigues,v.vᵧ₂)
+        Δvᵧ_                 = 0.5*Rodrigues⁻¹(rₛ₂ ∘₁ rₛ₁')
+        rₛₘ_                  = apply{Mode}(Rodrigues,Δvᵧ_) ∘₁ rₛ₁ ∘₁ o.rₘ  
+        vₛₘ_                  = Rodrigues⁻¹(rₛₘ_)              
+        return Δvᵧ_,rₛₘ_,vₛₘ_
+    end  
     cₛ                        = 0.5*(uᵧ₁+uᵧ₂)
     uₗ₂                       = rₛₘ' ∘₁ (uᵧ₂+tgₘ*ζnod[2]-cₛ)-tgₑ*ζnod[2]    #Local displacement of node 2
     vₗ₂                       = rₛₘ' ∘₁ Δvᵧ
@@ -348,7 +353,7 @@ function Muscade.update_drawing(axis,o::AbstractVector{EulerBeam3D{Tmat,Udof}},o
         for (iel,oᵢ) = enumerate(o)
             cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp,L  = oᵢ.cₘ,oᵢ.rₘ,oᵢ.tgₘ,oᵢ.tgₑ,oᵢ.ζnod,oᵢ.ζgp,oᵢ.L   
             X₀ₑ = view(X₀,:,iel)
-            vₛₘ,rₛₘ,uₗ₂,vₗ₂,cₛₘ = corotated(oᵢ,X₀ₑ) 
+            vₛₘ,rₛₘ,uₗ₂,vₗ₂,cₛₘ = corotated{:direct}(oᵢ,X₀ₑ) 
             if opt.draw_frame
                 for ivec = 1:3
                     shape_frame[:,1,ivec,iel] = cₛₘ
@@ -379,7 +384,7 @@ function Muscade.update_drawing(axis,o::AbstractVector{EulerBeam3D{Tmat,Udof}},o
         for (iel,oᵢ) = enumerate(o)
             cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp,L  = oᵢ.cₘ,oᵢ.rₘ,oᵢ.tgₘ,oᵢ.tgₑ,oᵢ.ζnod,oᵢ.ζgp,oᵢ.L   
             X₀ₑ = view(X₀,:,iel)
-            vₛₘ,rₛₘ,uₗ₂,vₗ₂,cₛₘ = corotated(oᵢ,X₀ₑ) 
+            vₛₘ,rₛₘ,uₗ₂,vₗ₂,cₛₘ = corotated{:direct}(oᵢ,X₀ₑ) 
             vᵧ₁,vᵧ₂          = vec3(X₀ₑ,4:6), vec3(X₀ₑ,10:12)
             rₛ₁              = Rodrigues(vᵧ₁)
             rₛ₂              = Rodrigues(vᵧ₂)
@@ -421,6 +426,3 @@ function Muscade.display_drawing!(axis,::Type{EulerBeam3D{Tmat,Udof}},obs,opt) w
     opt.style==:solid  && opt.draw_marking && lines!(  axis, obs.solid_mark                   ,color = opt.line_color                              )    
     opt.Udof           &&                     lines!(  axis, obs.ucrest                       ,color = :red           ,linewidth=.5                )    
 end
-
-
-
