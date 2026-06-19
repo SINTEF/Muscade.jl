@@ -251,6 +251,47 @@ struct value_∂𝟘{P} end
 
 
 ## Binary operations
+
+# optimised implementations
+
+@inline Base.:(/)(a::Jℝ,b::∂ℝ)        = Base.:(/)(a,b,inv(VALUE(b))) 
+@inline Base.:(/)(a::∂ℝ,b::Jℝ)        = Base.:(/)(a,b,inv(VALUE(b))) 
+@inline Base.:(/)(a::∂ℝ,b::∂ℝ)        = Base.:(/)(a,b,inv(VALUE(b))) 
+@inline Base.:(/)(a::Jℝ,b::Jℝ,b⁻¹::Jℝ) = a*b⁻¹  
+@inline function Base.:(/)(a::Ra,b::Rb,b⁻¹::Jℝ) where{Ra<:ℝ,Rb<:ℝ}
+    if Ra <: ∂ℝ || Rb <: ∂ℝ
+        P,N,R = ∂ℝ_promote_type(a,b)
+        va,∂a = value_∂𝟘{P}(a)
+        vb,∂b = value_∂𝟘{P}(b)
+        return ∂ℝ{P,N}( convert(R,/(va,vb,b⁻¹)) , convert.(R,∂a*inv(vb) .- /(va,vb*vb,b⁻¹^2)*∂b) )
+    else 
+        return a*b⁻¹
+    end
+end
+
+@inline function Base.:(^)(a::∂ℝ{P,N,R},b::ℤ) where{P,N,R}
+        if b<0  # 'if' resolved at compile time thanks to inlining if b is a compile time constant in caller function
+            inv(a)
+        elseif b<-1
+            inv(a)^(-b)
+        elseif b==0
+            one(a)
+        elseif b==1
+            a
+        elseif b==2
+            a*a
+        else
+            va,∂a = value_∂𝟘{P}(a)
+            x     = va^(b-1)  
+            ∂ℝ{P,N,R}(va*x ,∂a*(b*x) )
+        end
+end
+@inline Base.:(^)(a::∂ℝ,b::Jℝ) = exp(b*log(a)) 
+@inline Base.:(^)(a::Jℝ,b::∂ℝ) = exp(b*log(a))
+@inline Base.:(^)(a::∂ℝ,b::∂ℝ) = exp(b*log(a))
+
+# straightforward implementations
+
 for OP∈(:(>),:(<),:(==),:(>=),:(<=),:(!=))
     @eval @inline Base.$OP(a::∂ℝ,b::∂ℝ)  = $OP(VALUE(a),VALUE(b))
     @eval @inline Base.$OP(a:: ℝ,b::∂ℝ)  = $OP(      a ,VALUE(b))
@@ -284,97 +325,28 @@ end
 @DiffRule2(Base.:(+),  a.dx+b.dx,                                  a.dx,                  b.dx                 )
 @DiffRule2(Base.:(-),  a.dx-b.dx,                                  a.dx,                  -b.dx                )
 @DiffRule2(Base.:(*),  a.dx*b.x+a.x*b.dx,                          a.dx*b,                a*b.dx               )
-#@DiffRule2(Base.:(/),  a.dx/b.x-a.x/b.x^2*b.dx,                    a.dx/b,                -a/b.x^2*b.dx        ) 
-@inline Base.:(/)(a::Jℝ,b::∂ℝ)        = Base.:(/)(a,b,inv(VALUE(b))) 
-@inline Base.:(/)(a::∂ℝ,b::Jℝ)        = Base.:(/)(a,b,inv(VALUE(b))) 
-@inline Base.:(/)(a::∂ℝ,b::∂ℝ)        = Base.:(/)(a,b,inv(VALUE(b))) 
-@inline Base.:(/)(a::Jℝ,b::Jℝ,b⁻¹::Jℝ) = a*b⁻¹  
-@inline function Base.:(/)(a::Ra,b::Rb,b⁻¹::Jℝ) where{Ra<:ℝ,Rb<:ℝ}
-    if Ra <: ∂ℝ || Rb <: ∂ℝ
-        P,N,R = ∂ℝ_promote_type(a,b)
-        va,∂a = value_∂𝟘{P}(a)
-        vb,∂b = value_∂𝟘{P}(b)
-        return ∂ℝ{P,N}( convert(R,/(va,vb,b⁻¹)) , convert.(R,∂a*inv(vb) .- /(va,vb*vb,pow{2}(b⁻¹))*∂b) )
-    else 
-        return a*b⁻¹
-    end
-end
-"""
-    Muscade.pow{b}(a)
-
-For positive integer `b`, computes ``aᵇ``, marginaly faster than `a^b`   
-"""
-struct pow{b} end
-@inline pow{b}(a::Jℝ) where{b} = a^b  # good if b is static
-@inline pow{0}(a::Jℝ) = one(a)
-@inline pow{1}(a::Jℝ) = a
-@inline pow{2}(a::Jℝ) = a*a
-@inline pow{3}(a::Jℝ) = a*a*a
-@inline pow{0}(a::∂ℝ) = one(VALUE(a))
-@inline pow{1}(a::∂ℝ) = a
-@inline pow{2}(a::∂ℝ) = a*a
-@inline function pow{b}(a::∂ℝ{P,N,R}) where{b,P,N,R}
-    @assert b>0
-    va,∂a = value_∂𝟘{P}(a)
-    x     = pow{b-1}(va)  
-    ∂ℝ{P,N,R}(va*x ,∂a*(b*x) )
-end
-
-@inline function Base.:(^)(a::∂ℝ{P,N,R},b::ℤ) where{P,N,R}
-        if b<0
-            inv(a)
-        elseif b<-1
-            inv(a)^(-b)
-        elseif b==0
-            one(a)
-        elseif b==1
-            a
-        elseif b==2
-            a*a
-        else
-            va,∂a = value_∂𝟘{P}(a)
-            x     = va^(b-1)  
-            ∂ℝ{P,N,R}(va*x ,∂a*(b*x) )
-        end
-end
-@inline Base.:(^)(a::∂ℝ,b::Jℝ) = exp(b*log(a)) 
-@inline Base.:(^)(a::Jℝ,b::∂ℝ) = exp(b*log(a))
-@inline Base.:(^)(a::∂ℝ,b::∂ℝ) = exp(b*log(a))
 
 
 ## Functions
-macro DiffRule1(OP,A)
-    return esc(:(@inline $OP(a::∂ℝ{P,N}) where{P,N} = ∂ℝ{P,N}($OP(a.x),$A)))
-end
-@DiffRule1(Base.:(+),       a.dx                                                     )
-@DiffRule1(Base.:(-),      -a.dx                                                     )
-@DiffRule1(Base.abs  ,a.x==0.0 ? zero(a.dx) : (a.x>0.0 ? a.dx : -a.dx)               )
-@DiffRule1(Base.conj ,      a.dx                                                     )
+
+# optimised implementations
+
 @inline Base.sqrt(a::∂ℝ)      = Base.sqrt(a,Base.sqrt(VALUE(a)))
 @inline Base.sqrt(a::Jℝ,sq::Jℝ) = sq
 @inline function Base.sqrt(a::∂ℝ{P,N},sq::Jℝ) where{P,N}  
     SQ = Base.sqrt(a.x,sq)
     ∂ℝ{P,N}(SQ, a.dx * inv(2*SQ)) 
 end
-@DiffRule1(Base.cbrt,       a.dx / 3. / cbrt(a.x)^2                                  )
-@DiffRule1(Base.abs2,       a.dx*2. * a.x                                            )
 @inline function Base.inv(a::∂ℝ{P,N}) where{P,N}  
     x⁻¹ = inv(a.x)  # minimal gain from computing x⁻¹ once, not twice
     ∂ℝ{P,N}(x⁻¹,a.dx.*(-abs2(x⁻¹)))
 end
-@DiffRule1(Base.log,        a.dx / a.x                                               )
-@DiffRule1(Base.log10,      a.dx / a.x / log(10.)                                    )
-@DiffRule1(Base.log2,       a.dx / a.x / log(2.)                                     )
-@DiffRule1(Base.log1p,      a.dx / (a.x + 1.)                                        )
 @inline Base.exp(a::∂ℝ)        = exp(a,exp(VALUE(a)))
 @inline Base.exp(a::Jℝ,eˣ::Jℝ) = eˣ
 @inline function Base.exp(a::∂ℝ{P,N},eˣ::Jℝ) where{P,N}  
     E = exp(a.x,eˣ)
     ∂ℝ{P,N}(E,a.dx.*E)
 end
-@DiffRule1(Base.exp2,        log(2. ) * exp2( a.x) * a.dx                            )
-@DiffRule1(Base.exp10,       log(10.) * exp10(a.x) * a.dx                            )
-@DiffRule1(Base.expm1,       exp(a.x) * a.dx                                         )
 @inline Base.sin(a::∂ℝ)      = sin(a,sincos(VALUE(a))...)
 @inline function Base.sin(a::∂ℝ{P,N},s::Jℝ,c::Jℝ) where{P,N} 
     S,C = sincos(a.x,s,c)
@@ -391,6 +363,25 @@ end
     S,C = sincos(a.x,s,c)
     ∂ℝ{P,N}(S, a.dx.*C), ∂ℝ{P,N}(C, -a.dx.*S)
 end
+
+# straightforward implementations
+
+macro DiffRule1(OP,A)
+    return esc(:(@inline $OP(a::∂ℝ{P,N}) where{P,N} = ∂ℝ{P,N}($OP(a.x),$A)))
+end
+@DiffRule1(Base.:(+),       a.dx                                                     )
+@DiffRule1(Base.:(-),      -a.dx                                                     )
+@DiffRule1(Base.abs  ,a.x==0.0 ? zero(a.dx) : (a.x>0.0 ? a.dx : -a.dx)               )
+@DiffRule1(Base.conj ,      a.dx                                                     )
+@DiffRule1(Base.log,        a.dx / a.x                                               )
+@DiffRule1(Base.log10,      a.dx / a.x / log(10.)                                    )
+@DiffRule1(Base.log2,       a.dx / a.x / log(2.)                                     )
+@DiffRule1(Base.log1p,      a.dx / (a.x + 1.)                                        )
+@DiffRule1(Base.cbrt,       a.dx / 3. / cbrt(a.x)^2                                  )
+@DiffRule1(Base.abs2,       a.dx*2. * a.x                                            )
+@DiffRule1(Base.exp2,        log(2. ) * exp2( a.x) * a.dx                            )
+@DiffRule1(Base.exp10,       log(10.) * exp10(a.x) * a.dx                            )
+@DiffRule1(Base.expm1,       exp(a.x) * a.dx                                         )
 @DiffRule1(Base.tan,         (1. + tan(a.x)^2) * a.dx                                )
 @DiffRule1(Base.sinpi,       π*cos(a.x) * a.dx                                       )
 @DiffRule1(Base.cospi,      -π*sin(a.x) * a.dx                                       )
@@ -404,7 +395,7 @@ end
 @DiffRule1(Base.cscd,       -π / 180. * cscd(a.x) * cotd(a.x) * a.dx                 )
 @DiffRule1(Base.cotd,       -π / 180. * (1. + cotd(a.x)^2)  * a.dx                   )
 @DiffRule1(Base.asin,        a.dx / sqrt(1. - a.x^2)                                 )
-@DiffRule1(Base.acos,       a.dx.*(-inv(sqrt(1-pow{2}(a.x))))                                 )
+@DiffRule1(Base.acos,        a.dx.*(-inv(sqrt(1-a.x^2)))                       )
 @DiffRule1(Base.atan,        a.dx / (1. + a.x^2)                                     )
 @DiffRule1(Base.asec,        a.dx / abs(a.x) / sqrt(a.x^2 - 1.)                      )
 @DiffRule1(Base.acsc,       -a.dx / abs(a.x) / sqrt(a.x^2 - 1.)                      )
@@ -451,15 +442,15 @@ to the fourth order.
 
 This differs from Julia's `sinc(x) = sin(π*x)/(π*x)`.
 """
-sinc1
-using Muscade
+# sinc1
+# using Muscade
 @inline sinc1( x::R                       ) where{R<:∂ℝ} =   sinc1(x,sincos(x)...,inv(x),x*x)
 @inline sinc1( x::R,s::R,c::R,x⁻¹::R,x²::R) where{R<:∂ℝ} = R(sinc1( x.x,s.x,c.x,x⁻¹.x,x².x), x.dx*sinc1′(x.x,s.x,c.x,x⁻¹.x,x².x))
 @inline sinc1′(x::R,s::R,c::R,x⁻¹::R,x²::R) where{R<:∂ℝ} = R(sinc1′(x.x,s.x,c.x,x⁻¹.x,x².x), x.dx*sinc1″(x.x,s.x,c.x,x⁻¹.x,x².x))
 @inline sinc1″(x::R,s::R,c::R,x⁻¹::R,x²::R) where{R<:∂ℝ} = R(sinc1″(x.x,s.x,c.x,x⁻¹.x,x².x), x.dx*sinc1‴(x.x,s.x,c.x,x⁻¹.x,x².x))
 @inline sinc1‴(x::R,s::R,c::R,x⁻¹::R,x²::R) where{R<:∂ℝ} = R(sinc1‴(x.x,s.x,c.x,x⁻¹.x,x².x), x.dx*sinc1⁗(x.x,s.x,c.x,x⁻¹.x,x².x))
 @inline sinc1⁗(x::R                       ) where{R<:∂ℝ} = error("attempted to compute 5th derivative of sinc1")
-const Jℝ = Muscade.Jℝ
+# const Jℝ = Muscade.Jℝ
 @inline sinc1( x::R                       ) where{R<:Jℝ} = abs(x)>1e-2 ? sin(x)/x                         :   evalpoly(x*x,(1, -1/6, 1/120))  
 @inline sinc1( x::R,s::R,c::R,x⁻¹::R,x²::R) where{R<:Jℝ} = abs(x)>1e-2 ? s*x⁻¹                            :   evalpoly(x² ,(1, -1/6, 1/120))  
 @inline sinc1′(x::R,s::R,c::R,x⁻¹::R,x²::R) where{R<:Jℝ} = abs(x)>1e-3 ? x⁻¹*evalpoly(x⁻¹,(c,-s))         : x*evalpoly(x² ,(-1/3,1/30))
