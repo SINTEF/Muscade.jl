@@ -343,31 +343,31 @@ end
 apply{:direct   }(f,x) = f(x)
 
 """
-    composevalue{P,ND}(Ty,X_)
+    chainrule_value{P,ND}(Ty,X_)
 
 Given `Ty` obtained using `revariate`, and `X_`, obtained using `motion{P}(X)` where `X` is a tuple
 of length `ND` and `P=constants(X)`, compute `y`, a tuple of length `ND` of `AbstractArrays` of same `eltype` as vectors in `X.
 
-See also [`revariate`](@ref), [`motion`](@ref), [`motion⁻¹`](@ref), [`composeJacobian`](@ref)  
+See also [`revariate`](@ref), [`motion`](@ref), [`motion⁻¹`](@ref), [`chainrule_Jacobian`](@ref)  
 """
-struct composevalue{P,ND} end
-composevalue{P,ND}(Ty            ,X_) where{P,ND} = motion⁻¹{P,ND}(chainrule(value{P}(Ty),X_))
-composevalue{P,ND}(Ty::NamedTuple,X_) where{P,ND} = NamedTuple{keys(Ty)}(composevalue{P,ND}(values(Ty),X_))
-composevalue{P,ND}(Ty::Tuple     ,X_) where{P,ND} = (composevalue{P,ND}(first(Ty),X_),composevalue{P,ND}(Base.tail(Ty),X_)...)
-composevalue{P,ND}(Ty::Tuple{}   ,X_) where{P,ND} = ()
+struct chainrule_value{P,ND} end
+chainrule_value{P,ND}(Ty            ,X_) where{P,ND} = motion⁻¹{P,ND}(chainrule(value{P}(Ty),X_))
+chainrule_value{P,ND}(Ty::NamedTuple,X_) where{P,ND} = NamedTuple{keys(Ty)}(chainrule_value{P,ND}(values(Ty),X_))
+chainrule_value{P,ND}(Ty::Tuple     ,X_) where{P,ND} = (chainrule_value{P,ND}(first(Ty),X_),chainrule_value{P,ND}(Base.tail(Ty),X_)...)
+chainrule_value{P,ND}(Ty::Tuple{}   ,X_) where{P,ND} = ()
 """
-    composeJacobian{P}(Ty,X_)
+    chainrule_Jacobian{P}(Ty,X_)
 
 Given `Ty` obtained using `revariate`, and `X_`, obtained using `motion{P}(X)` where `X` is a tuple
 of `SVectors` and `P=constants(X)`, compute `y`, a tuple of length `ND` of `AbstractArrays` of same `eltype` as vectors in `X,
 and `y∂X₀`, the Jacobian of `∂0(y)` with respect to `∂0(X)`.
 
-See also [`revariate`](@ref), [`motion`](@ref), [`motion⁻¹`](@ref), [`composevalue`](@ref)   
+See also [`revariate`](@ref), [`motion`](@ref), [`motion⁻¹`](@ref), [`chainrule_value`](@ref)   
 """
-struct composeJacobian{P} end
-composeJacobian{P}(Ty            ,X₀) where{P} = chainrule(∂{P,npartial(Ty)}(Ty),X₀) # y∂X₀
-composeJacobian{P}(Ty::NamedTuple,X₀) where{P} = NamedTuple{keys(Ty)}(composeJacobian{P}(values(Ty),X₀))
-composeJacobian{P}(Ty::Tuple     ,X₀) where{P} = (composeJacobian{P}(first(Ty),X₀),composeJacobian{P}(Base.tail(Ty),X₀)...)
-composeJacobian{P}(Ty::Tuple{}   ,X₀) where{P} = ()
+struct chainrule_Jacobian{P} end
+chainrule_Jacobian{P}(Ty            ,X₀) where{P} = chainrule(∂{P,npartial(Ty)}(Ty),X₀) # y∂X₀
+chainrule_Jacobian{P}(Ty::NamedTuple,X₀) where{P} = NamedTuple{keys(Ty)}(chainrule_Jacobian{P}(values(Ty),X₀))
+chainrule_Jacobian{P}(Ty::Tuple     ,X₀) where{P} = (chainrule_Jacobian{P}(first(Ty),X₀),chainrule_Jacobian{P}(Base.tail(Ty),X₀)...)
+chainrule_Jacobian{P}(Ty::Tuple{}   ,X₀) where{P} = ()
 
 

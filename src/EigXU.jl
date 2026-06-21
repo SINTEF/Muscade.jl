@@ -60,8 +60,8 @@ end
 	EigXU{OX,OU}
 
 !!! warning    
-    `EigXU` is currently not working well due to problems with the sparse eigenvalue solver, and the solver
-    is still experimental
+    `EigXU` is currently not working well due to problems with the sparse eigenvalue solver.
+    In addition, the solver is still experimental
 
 Study the combinations of load and response that are least detected by sensor systems.
 
@@ -73,7 +73,7 @@ eiginc          = solve(EigXU{OX,OU};Δω, p, nmod,initialstate)
 ```
 
 The solver linearises the problem (computes the Hessian of the Lagrangian) at `initialstate` and solves 
-the ΛXU-eigenvalue problem at frequencies ωᵢ = Δω*i with i∈{0,...,2ᵖ-1}.
+the ΛXU-eigenvalue problem at frequencies ``ωᵢ = Δω*i`` with ``i∈{0,...,2ᵖ-1}``.
 
 
 # Parameters

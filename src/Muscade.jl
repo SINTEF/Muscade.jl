@@ -29,7 +29,7 @@ module Muscade
 
     include("Taylor.jl")
     export motion,motion⁻¹,revariate,chainrule,apply
-    export composevalue,composeJacobian 
+    export chainrule_value,chainrule_Jacobian 
     public Taylor,McLaurin
     
     include("Functors.jl")

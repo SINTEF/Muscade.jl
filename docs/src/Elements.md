@@ -226,18 +226,75 @@ See [`Muscade.residual`](@ref) for the list of arguments and outputs.
 
 Some solvers may prefer to evaluate 2nd order derivatives of `residual`.  However, for elements with anything but a small number of degrees of freedom, this quickly leads to intractably high compilation and/or execution times.  If this is the case, then the element should implement [`Muscade.no_second_order`](@ref) to limit differentiation to the first order only. 
 
+
+
+
 ### Automatic differentiation
 
-The gradients and Hessians of `R` or `L` do not need to be implemented, because `Muscade` uses [automatic differentiation](Adiff.md). Because of this, it is important not to over-specify the inputs.  For example, 
-implementing a function header with
+While solvers usualy require the Jacobians of `R` with respect to `X`, `̇X`, `̈X`, `U` and `A`, and the gradient and Hessians of `L`, their evaluation does not need to be implemented in `Muscade.lagrangian` or `Muscade.residual`.  This is because Muscade uses a form of automatic differentiation known as "forward automatic differentiation by operator overleading". In this technique, instead of passing an input `X` that is a `ntuple` of `SVector` of `Float64` (that can be noted `𝕣` "\Bbbr" in `Muscade`), all or some of the `SVector` in the `tuple` can have elements of type `∂ℝ`, while is a real number with partial differences, to the first or second order. As `∂ℝ` propagates through the function, operations like `*` and `sin` also update the partial derivatives, because they have been "overloaded" (specific methods have been added to these functions). Two simplified examples of differentiation to the first order:
+
+```julia
+struct ∂ℝ{P,N,R} <:Real where{R<:Real} # P precedence, N number of partials, 
+                                       # R type of the variable (∂ℝ can be nested)
+    x  ::           R   # value
+    dx :: SVector{N,R}  # N partial derivatives
+end
+
+#                                                          value      partial derivatives
+Base.(:* )(a::∂ℝ{1,N,𝕣},b::∂ℝ{1,N,𝕣}) where{N} = ∂ℝ{1,N,𝕣}(a.x*b.x  , a.x*b.dx+a.dx*b.dx)
+Base.(sin)(a::∂ℝ{1,N,𝕣}             ) where{N} = ∂ℝ{1,N,𝕣}(sin(a.x) , cos(a.x)*a.dx     )
+Base.(:< )(a::∂ℝ{1,N,𝕣},b::∂ℝ{1,N,𝕣}) where{N} = a.x < b.x # not affected by derivatives
+
+```
+
+where `a.dx` and `b.dx` are vectors with `N` partial derivatives.  These function definitions express if ``c = a \cdot b``, then ``\frac{\partial c}{\partial x} = a\cdot\frac{\partial b}{\partial x} + \frac{\partial a}{\partial x}⋅ b``, and if ``b = \sin(a)`` then ``\frac{\partial b}{\partial x} = \cos(a)\cdot\frac{\partial a}{\partial x}``.
+
+In general, the fact that `Muscade.lagrangian` or `Muscade.residual` can be differentiated in this way does generaly not affect how the function is to be written.  See the `Muscade.residual` method of [`Muscade.Toolbox.Bar3D`](@ref) for a simple example.  There are however two points to be aware of:
+
+First, do not specify the type of inputs `Λ`, `X`, `U`, `A` and `t`.  For example
 
 ```julia
 @espy function Muscade.lagrangian(o::MyElement,Λ::Vector{Float64},X,U,A,t,SP,dbg)
-#                                                |___bad_idea___|
+#                                               |____bad_idea___|
 ```
 
-would cause a `MethodError`, because `Muscade` will attempt to call with a `SVector` instead of `Vector`, and a special
-datatype supporting automatic differentiation instead of `Float64`.
+would cause a `MethodError`, because `Muscade` will attempt to call `lagrangian` with a `SVector{L,∂ℝ...}`, and the method only accepts a`Vector{𝕣}`.
+
+Second, beware of branches (`if` and `cond ? opt1 : opt2`).  In the following code
+
+```julia
+if x>0
+    y=x  # y is of type ∂ℝ
+else
+    y=0. # y is of type 𝕣
+end    
+```
+
+the type of `y` depends on the *value* of `x` and can thus not be determined at compilation.  This is [type instability](TypeStable.md) and results in *very* slow execution.
+
+When a number of type `∂ℝ` is printed, both value and partial derivatives are presented, but strongly truncated, to keep printouts compact
+
+```julia
+@show x
+x = 3.1+∂₁⟨1.3,0.6⟩ 
+```
+
+When debugging an element which uses simple automatic differentiation, a good rule of thumb is to get the values computed correctly, then the derivatives will be correct too. When inserting debug printouts in the code, use `VALUE` to strip all the partials:
+
+```julia
+@show VALUE(x)
+VALUE(x) = 3.1458766
+```
+
+Do not use `VALUE` for other purposes - unless you know what you are doing.
+
+The `Muscade.residual` method of [`Muscade.Toolbox.EulerBeam3D`](@ref) shows an *advanced* example where the code is written in order to
+
+1) accelerate automatic differentiation (where possible)
+2) compute derivatives to handle the transformation from e.g. stress resultants into nodal forces, in the presence of a corotated reference system.
+
+See [automatic differentiation](Adiff.md) for a discussion of these and other advanced techniques.
+
 
 ### [Extraction of element-results](@id espy)
 
@@ -351,19 +408,23 @@ For a given element formulation, the performance of `Muscade.residual` and `Musc
 
 **Type stable code** allows the compiler to know the type of every variable in a function given the type of its parameters. Code that is type unstable is significantly slower. See the page on [type stability](TypeStable.md).
 
-**Allocation**, and the corresponding deallocation of memory *on the heap* takes time. By contrast, allocation and deallocation *on the stack* is fast.  In Julia, only immutable variables can be allocated on the stack. See the page on [memory management](Memory.md)
+**Allocation** *on the heap* and the corresponding deallocation of memory by Julia's "garbage collector" takes time. By contrast, allocation and deallocation *on the stack* is fast.  In Julia, only immutable variables of length known at compile time can be allocated on the stack. See the page on [memory management](Memory.md). One gotcha to be aware of is when extracting a subvector from a vector: the code
 
-**Automatic differentiation** generaly does not affect how `Muscade.residual` and `Muscade.lagrangian` are written.  There are two performance-related exceptions to this:
+```julia
+r = X0[4:6] # r is a Vector, heap allocated, slow
+```
 
-1. If a complicated sub-function in `Muscade.residual` and `Muscade.lagrangian` (typicaly a material model or other closure) operates on an array (for example, the strain) that is smaller than the number of degrees of freedom of the system, computing time can be saved by computing the derivative of the output (in the example, the stress) with respect to the input to the subfunction, and then chainrule the derivatives.
-2. Iterative precedures are sometimes used within `Muscade.residual` and `Muscade.lagrangian`, a typical example being in plastic material formulations.  There is no need to propagate automatic differentiation through all the iterations - doing so with the result of the iteration provides the same result.
-3. Elements with corotated reference system (e.g. [beam elements](StaticBeamAnalysis.md)) can use automatic differentiation to transform the residual back to the global reference system.
+results in allocations. `r` is a `Vector`, because the length of a range like `4:6` is not part of its type and thus not known to the compiler, making it impossible to make `r` a SVector.  Instead we need to write one of the lines below.
 
-See the page on [automatic differentiation](Adiff.md).
+```julia
+r = X0[SVector(4,5,6) ] # The compiler can count 3 arguments
+r = X0[SVector{3}(4:6)] # or read a type parameter
+                        # r is a SVector, on the stack, fast  
+
+```
 
 
-
-## Method for graphics: `Muscade.allocate_drawing`, `Muscade.update_drawing` and `Muscade.display_drawing!`
+## Method for graphics
 
 ### Template
 The element can provide methods of the form
@@ -466,15 +527,6 @@ For those prefering to think in terms of Cartesian tensor algebra, rather than m
 
 Elements with a corotated reference system, can make use of [`toolbox/Rotations.jl`](StaticBeamAnalysis.md) that provides functionality to handle rotations in ℝ³.  See [`toolbox/BeamElement.jl`](StaticBeamAnalysis.md) for an example.
 
-## Automatic differentiation within element code
-
-Some advanced elements (in particular, elements with co-rotated element systems) can be implemented elegantly by using automatic differentiation within `residual` or `lagrangian`.  These are advanced techniques, requiring a good understanding of [`automatic differentiation`](Adiff.md).  Example of usage can be found in [`toolbox/BeamElement.jl`](StaticBeamAnalysis.md).
-
-Helper functions [`motion`](@ref) and [`motion⁻¹`](@ref) allow to transform a `tuple` of `SVectors`, like the input `X` given to `residual` and `lagrangian`, into a an automatic differentiation structure, so that functions of `∂0(X)` only can be differentiated with respect to time. 
-
-It is sometimes possible to improve performance by identifying a part of `residual` or `lagrangian` which takes a single, `SVector` as an input: A vector shorter than the list of dofs differentiated by the solver allow to accelerate computations, by using [`apply`](@ref), or for more advanced usage, [`revariate`](@ref) in combination with [`chainrule`](@ref). 
-
-In [`toolbox/BeamElement.jl`](StaticBeamAnalysis.md), in function `kinematics`, [`apply`](@ref) is applied to accelerate a process of differentiation to the 2nd order.  In `residual`, [`revariate`](@ref) and [`chainrule`](@ref) in order to differentiate `kinematics` and accelerate computations by exploiting the fact that `kinematic` is a function of `∂0(X)` only.
 
 
 

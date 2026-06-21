@@ -221,7 +221,7 @@ end;
     X₀                  = ∂0(X) 
     TX₀                 = revariate{P}(X₀)  
     Tgp,Tε,Tvₛₘ,_,_,_,_  = kinematics{:direct}(o,TX₀) # the crux
-    gp∂X₀,ε∂X₀,vₛₘ∂X₀    = composeJacobian{P}((Tgp,Tε,Tvₛₘ),X₀)
+    gp∂X₀,ε∂X₀,vₛₘ∂X₀    = chainrule_Jacobian{P}((Tgp,Tε,Tvₛₘ),X₀)
     ## Quadrature loop: compute resultants
     gp                  = ntuple(ngp) do igp
         ☼x,☼κgp         = gpval[igp].x, gpval[igp].κ
