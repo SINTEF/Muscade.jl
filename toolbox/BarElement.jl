@@ -171,12 +171,12 @@ end;
     # Element direction and length
     tg      = o.tgₘ + uᵧ₂ - uᵧ₁
     L       = norm(tg)
-    δ_      = tg/L
+    δ       = tg/L
 
     # Strains
     ε_       = L/o.Lₛ - 1
     # Compute how strains vary with nodal displacements (will be used in the Princple of Virtual Work, PVW)
-    ε,δ = motion⁻¹{P,ND}(ε_,δ_); δ₀ = ∂0(δ)
+    ε,δ = motion⁻¹{P,ND}(ε_,δ); δ₀ = ∂0(δ)
     ε∂X₀ = 1/o.L₀*SVector{6}(-δ₀[1],-δ₀[2],-δ₀[3],δ₀[1],δ₀[2],δ₀[3]) 
     # Compute Gauss point kinematics
     gp = ntuple(ngp) do igp; 

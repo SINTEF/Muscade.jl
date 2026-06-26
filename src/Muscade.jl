@@ -22,9 +22,10 @@ module Muscade
 
     include("Adiff.jl")
     export  ∂ℝ #\partial\BbbR
-    export  variate,δ,directional # \delta
+    export  directional # \delta
     export  value,VALUE,∂,value_∂ # \partial, \nabla
     export  constants
+    export variate
     public  precedence,npartial #,norm
 
     include("Taylor.jl")

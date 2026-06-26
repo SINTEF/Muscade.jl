@@ -61,7 +61,7 @@ end
 function addin!{:iter}(out::AssemblySweepX{2},asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A,t,Δt,SP,dbg) where{Nxder,Nx} 
     a₁,b₁      = out.c.a₁,out.c.b₁
     x,x′,x″    = X
-    δX         = δ{1,Nx,𝕣}(scale.X)
+    δX         = δ_{1,Nx,𝕣}(scale.X)
     Lλ,FB      = getresidual(eleobj,(x+δX, x′+a₁*δX, x″+b₁*δX),U,A,t,SP,dbg)
     Lλ         = Lλ .* scale.X
     add_value!(out.Lλ ,asm[1],iele,Lλ          )
@@ -83,7 +83,7 @@ end
 function addin!{:iter}(out::AssemblySweepX{1},asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A,t,Δt,SP,dbg) where{Nxder,Nx}
     a₁         = out.c.a₁
     x,x′       = X
-    δX         = δ{1,Nx,𝕣}(scale.X)
+    δX         = δ_{1,Nx,𝕣}(scale.X)
     Lλ,FB      = getresidual(eleobj,(x+δX, x′+a₁*δX),U,A,t,SP,dbg)
     Lλ         = Lλ .* scale.X
     add_value!(out.Lλ ,asm[1],iele,Lλ           )  # rhs  = R    
@@ -92,7 +92,7 @@ end
 
 function addin!{Both}(out::AssemblySweepX{0},asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A,t,Δt,SP,dbg) where{Both,Nxder,Nx} 
     x,         = X
-    δX         = δ{1,Nx,𝕣}(scale.X)
+    δX         = δ_{1,Nx,𝕣}(scale.X)
     Lλ,FB      = getresidual(eleobj,(x+δX,),U,A,t,SP,dbg)
     Lλ         = Lλ .* scale.X
     add_value!(out.Lλ ,asm[1],iele,Lλ)

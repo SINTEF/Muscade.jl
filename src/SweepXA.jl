@@ -24,7 +24,7 @@ end
 	SweepXA{OX}
 
 A non-linear, time domain solver, that solves the problem time-step by time-step.
-Only the `X`-dofs of the model are solved for, while `U`-dofs and `A`-dofs are unchangeδ
+Only the `X`-dofs of the model are solved for, while `U`-dofs and `A`-dofs are unchanged.
 
 - `SweepXA{0}` is Newton-Raphson. 
 - `SweepXA{1}` is implicit Euler. 

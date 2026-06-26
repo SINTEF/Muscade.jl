@@ -20,9 +20,9 @@ t2 = promote_rule(typeof(dx1),typeof(x))
 (g,h)=promote(dx1,x)
 
 ## Extraction
-dscaled=δ{1,3,𝕣}(SVector(1.,2.,3.))
+dscaled=Muscade.δ_{1,3,𝕣}(SVector(1.,2.,3.))
 vscaled=variate{1,3}(SVector(4.,4.,4.),SVector(1.,2.,3.))
-Δ   = δ{1,2,𝕣}()
+Δ   = Muscade.δ_{1,2,𝕣}()
 C1  = variate{constants(Δ),2}(SVector(3.,4.))
 C   = variate{constants(C1),2}(C1)
 PC  = Muscade.precedence(C)

@@ -114,7 +114,7 @@ u        = SVector(3.,4.,5.)
 P,N,R    = 1,length(x)+length(u),𝕣
 ix       = SVector(1,2)
 iu       = SVector(3,4,5)
-δ1       = δ{P,N,R}()
+δ1       = Muscade.Muscade.δ_{P,N,R}()
 x1       = x + δ1[ix]
 u1       = u + δ1[iu]
 r1       = res(x1,u1)
@@ -146,7 +146,7 @@ julia> u1
  5+∂₁⟨0,0,0,0,1⟩ 
 ``` 
 
-`δ` is similar to `variate`, except that all the `value`s of `δs` are `zero(R)`.  In the above the elements of `x1`, `u2` and `r1` all have 5 partials - the first two corresponding to `x` and the rest to `u`. 
+`Muscade.δ_` is similar to `variate`, except that all the `value`s of `δs` are `zero(R)`.  In the above the elements of `x1`, `u2` and `r1` all have 5 partials - the first two corresponding to `x` and the rest to `u`. 
 
 The above code is quite clumsy, and the function [`revariate`](@ref) allows to do the same more elegantly.
 
@@ -154,13 +154,13 @@ The above code is quite clumsy, and the function [`revariate`](@ref) allows to d
 
 ```julia
 using StaticArrays
-using Muscade: variate,value,∂,δ,𝕣
+using Muscade: variate,value,∂,Muscade.δ_,𝕣
 
 f(x)  = x.*x .+ sum(x)
 x     = SVector(1.,2.,3.)
 dir   = SVector(1.,0.,2.)
 P,N,R = 1,1,𝕣
-δs    = δ{P,N,R}()[1]
+δs    = δ_{P,N,R}()[1]
 x1    = x + dir*δs
 y1    = f(x1)
 y     = value{P}(y1)
@@ -168,7 +168,7 @@ yₓ    = ∂{P,N}(y1)
 ```
 
 ```julia
-julia> δs    = δ{P,N,R}()[1]
+julia> δs    = Muscade.δ_{P,N,R}()[1]
 0+∂₁⟨1⟩ 
 
 julia> x1    = x + dir*δs
@@ -282,7 +282,7 @@ Here is a simple example:
 
 ```julia
 using StaticArrays
-using Muscade: variate,value,∂,δ,𝕣,npartial,constants
+using Muscade: variate,value,∂,δ_,𝕣,npartial,constants
 
 function f(x) 
     P  = constants(x)
@@ -304,7 +304,7 @@ yₓ   = ∂{P,N}(y1)
 In a context where the programmer of `f` cannot know to what order the input variable `x` is already adiffed, [`constants`](@ref) provides a precedance that is higher than the precedence of `x` (`constants` can handle multiple variables), to prevent [perturbation confusion](https://arxiv.org/pdf/1211.4892v3).
 
 !!! warning
-     Any pair og variables of identical precedence (and this applies recursively, where higher order differentiation is used), but issued from different factories (including [`variate`](@ref), [`δ`](@ref), [`revariate`](@ref) and [`motion`](@ref)) must never be allowed to be the two arguments of a binary operation.  Failure to enforce this may cause silent failure, producing erroneous results.  
+     Any pair og variables of identical precedence (and this applies recursively, where higher order differentiation is used), but issued from different factories (including [`variate`](@ref), [`Muscade.δ_`](@ref), [`revariate`](@ref) and [`motion`](@ref)) must never be allowed to be the two arguments of a binary operation.  Failure to enforce this may cause silent failure, producing erroneous results.  
 
 Consider using `let` blocks to contain "dangerous variables".
 
