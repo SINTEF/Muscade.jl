@@ -10,7 +10,7 @@ const Jℝ  = Union{AbstractIrrational, AbstractFloat, Integer, Rational   }
 struct ∂ℝ{P,N,R} <:ℝ where{R<:ℝ}  # P for precedence, N number of partials, R type of the variable (∂ℝ can be nested)
     x  :: R
     dx :: SV{N,R}
-end
+end 
 const Jℝ∂ = Union{AbstractIrrational, AbstractFloat, Integer, Rational,∂ℝ}
 
 struct T𝟘 <: Real end  # Bbbzero
@@ -137,7 +137,7 @@ constants( ::Nothing)   = 1
 struct δ{P,N,R}                end # need dum, because syntax δ{P,N,R}() collides with default constructor
 struct variate{P,N}            end
 struct directional{P,N}        end 
-struct ∂²ℝ{P,N}                end
+struct variate²{P,N}                end
 """
     X = δ{P,N,R}()
 
@@ -168,7 +168,7 @@ See also: [`constants`](@ref), [`δ`](@ref), [`value`](@ref), [`∂`](@ref), [`V
 @inline variate{    P,N}(a::SV{N,R},δa::SV{N,𝕣}) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,N,R}}(∂ℝ{P,N,R}(a[j]   ,SV{N,R}(i==j ? R(δa[i])  : zero(R) for i=1:N)) for j=1:N)
 @inline variate{    P  }(a::R                  ) where{P,  R<:ℝ} =      ∂ℝ{P,1  }(a,SV{1,R}(one(R)))
 @inline directional{P  }(a::SV{N,R},δa::SV{N,R}) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,1,R}}(∂ℝ{P,1}(a[i],SV{1,R}(δa[i])) for i=1:N)
-function ∂²ℝ{P,N}(x::R,i,s=one(R)) where{P,N,R<:ℝ}
+function variate²{P,N}(x::R,i,s=one(R)) where{P,N,R<:ℝ}
     R1 = ∂ℝ{P,N,R}
     return ∂ℝ{P+1,N,R1}( ∂ℝ{P,N}(x,i,s) , SV{N,R1}(j==i ? R1(s) : zero(R1) for j=1:N ))
 end
@@ -483,7 +483,7 @@ end
 # Print addifs
 const subscripts = ('₁','₂','₃','₄','₅','₆','₇','₈','₉')
 #string_(a::Float64) = strip(@sprintf("%18.16g",a))
-string_(a::Float64) = strip(@sprintf("%4.2g",a))
+string_(a::Float64) = strip(replace(@sprintf("%5.3g",a),"e+0"=>"e","e+"=>"e","e-0"=>"e-"))
 function string_(a::∂ℝ{P,N,R}) where{P,N,R}
     p = subscripts[P]
     x = string_(a.x)
@@ -491,7 +491,7 @@ function string_(a::∂ℝ{P,N,R}) where{P,N,R}
     for i = 2:N
        dx =   @sprintf("%s,%s",dx,string_(a.dx[i])) 
     end
-    return @sprintf("%s+∂%s⟨%s⟩ ",x,p,dx) # \partial \langle \rangle mathematicaly-explicit
+    return @sprintf("%s+∂%s⟨%s⟩",x,p,dx) # \partial \langle \rangle mathematicaly-explicit
 end
 Base.show(io::IO,a::∂ℝ) = print(io,string_(a))
 

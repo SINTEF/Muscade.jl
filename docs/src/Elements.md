@@ -244,7 +244,6 @@ end
 Base.(:* )(a::∂ℝ{1,N,𝕣},b::∂ℝ{1,N,𝕣}) where{N} = ∂ℝ{1,N,𝕣}(a.x*b.x  , a.x*b.dx+a.dx*b.dx)
 Base.(sin)(a::∂ℝ{1,N,𝕣}             ) where{N} = ∂ℝ{1,N,𝕣}(sin(a.x) , cos(a.x)*a.dx     )
 Base.(:< )(a::∂ℝ{1,N,𝕣},b::∂ℝ{1,N,𝕣}) where{N} = a.x < b.x # not affected by derivatives
-
 ```
 
 where `a.dx` and `b.dx` are vectors with `N` partial derivatives.  These function definitions express if ``c = a \cdot b``, then ``\frac{\partial c}{\partial x} = a\cdot\frac{\partial b}{\partial x} + \frac{\partial a}{\partial x}⋅ b``, and if ``b = \sin(a)`` then ``\frac{\partial b}{\partial x} = \cos(a)\cdot\frac{\partial a}{\partial x}``.

@@ -21,7 +21,7 @@ module Muscade
     include("OffsetVector.jl")
 
     include("Adiff.jl")
-    export  ∂ℝ #\partial \bbR
+    export  ∂ℝ #\partial\BbbR
     export  variate,δ,directional # \delta
     export  value,VALUE,∂,value_∂ # \partial, \nabla
     export  constants
