@@ -21,10 +21,10 @@ t2 = promote_rule(typeof(dx1),typeof(x))
 
 ## Extraction
 dscaled=Muscade.δ_{1,3,𝕣}(SVector(1.,2.,3.))
-vscaled=variate{1,3}(SVector(4.,4.,4.),SVector(1.,2.,3.))
+vscaled=Muscade.variate_{1,3}(SVector(4.,4.,4.),SVector(1.,2.,3.))
 Δ   = Muscade.δ_{1,2,𝕣}()
-C1  = variate{constants(Δ),2}(SVector(3.,4.))
-C   = variate{constants(C1),2}(C1)
+C1  = Muscade.variate_{constants(Δ),2}(SVector(3.,4.))
+C   = Muscade.variate_{constants(C1),2}(C1)
 PC  = Muscade.precedence(C)
 PC1 = Muscade.precedence(C1)
 vC  = value{PC}(C)
@@ -36,9 +36,9 @@ v∂C = value{PC1}(∂C)
 dX1 = Muscade.toggle(false,dx1,3.)
 
 ## Operations
-oa = variate{1}(1.)
-ob = variate{constants(oa   )}(2.)
-oc = variate{constants(oa,ob)}(3.)
+oa = Muscade.variate_{1}(1.)
+ob = Muscade.variate_{constants(oa   )}(2.)
+oc = Muscade.variate_{constants(oa,ob)}(3.)
 od = oa+oc
 oe = od+ob
 oj = od^2
@@ -46,7 +46,7 @@ og = 2^od
 oh = oa^oc
 ok = oc*oa/oc
 ox = SVector(1.,2.,3.)
-oX = variate{1,3}(ox)
+oX = Muscade.variate_{1,3}(ox)
 
 
 ## norm
@@ -55,7 +55,7 @@ nrm = norm(oX)
 
 ## atan(s,c)
 
-x3 = variate{1}(1.6455)
+x3 = Muscade.variate_{1}(1.6455)
 s3,c3=sin(x3),cos(x3)
 y3 = atan(s3,c3)
 
@@ -105,8 +105,8 @@ y3 = atan(s3,c3)
         @test oj === od*od
         @test ok === ∂ℝ{3,1,∂𝕣11}(∂𝕣11(1.0, SVector(1.0)), SVector(∂𝕣11(0.0, SVector(0.0))))
         @test value{1}(2*oX)==2*ox
-        @test variate{1}(1.)^0 === ∂ℝ{1,1,𝕣}(1. , SVector(0.)) 
-        @test variate{1}(0.)^0 === ∂ℝ{1,1,𝕣}(1. , SVector(0.)) # this can of course be discussed...
+        @test Muscade.variate_{1}(1.)^0 === ∂ℝ{1,1,𝕣}(1. , SVector(0.)) 
+        @test Muscade.variate_{1}(0.)^0 === ∂ℝ{1,1,𝕣}(1. , SVector(0.)) # this can of course be discussed...
     end
 
 

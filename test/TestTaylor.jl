@@ -5,9 +5,9 @@ using Test,StaticArrays
 const X1 = (SVector{3,𝕣}(1,2,3),)
 const X2 = (SVector{3,𝕣}(1,2,3),SVector{3,𝕣}(4,5,6))
 const X3 = (SVector{3,𝕣}(1,2,3),SVector{3,𝕣}(4,5,6),SVector{3,𝕣}(7,8,9))
-const X4 = (variate{1,3}(SVector{3,𝕣}(1,2,3)),)
-const X5 = (variate{1,3}(SVector{3,𝕣}(1,2,3)),variate{1,3}(SVector{3,𝕣}(4,5,6)))
-const X6 = (variate{1,3}(SVector{3,𝕣}(1,2,3)),variate{1,3}(SVector{3,𝕣}(4,5,6)),variate{1,3}(SVector{3,𝕣}(7,8,9)))
+const X4 = (Muscade.variate_{1,3}(SVector{3,𝕣}(1,2,3)),)
+const X5 = (Muscade.variate_{1,3}(SVector{3,𝕣}(1,2,3)),Muscade.variate_{1,3}(SVector{3,𝕣}(4,5,6)))
+const X6 = (Muscade.variate_{1,3}(SVector{3,𝕣}(1,2,3)),Muscade.variate_{1,3}(SVector{3,𝕣}(4,5,6)),Muscade.variate_{1,3}(SVector{3,𝕣}(7,8,9)))
 
 Y1=motion{2}(X1)
 Y2=motion{2}(X2)
@@ -49,17 +49,17 @@ end
     @test motion⁻¹{2,3,1}(Y3) === SVector{3,𝕣}(4,5,6)
     @test motion⁻¹{2,3,2}(Y3) === SVector{3,𝕣}(7,8,9)
 
-    @test motion⁻¹{3,1,0}(Y4) === variate{1,3}(SVector{3,𝕣}(1,2,3))
+    @test motion⁻¹{3,1,0}(Y4) === Muscade.variate_{1,3}(SVector{3,𝕣}(1,2,3))
     @test motion⁻¹{3,1,1}(Y4) === SVector{3,𝕣}(0,0,0)
     @test motion⁻¹{3,1,2}(Y4) === SVector{3,𝕣}(0,0,0)
 
-    @test motion⁻¹{3,2,0}(Y5) === variate{1,3}(SVector{3,𝕣}(1,2,3))
-    @test motion⁻¹{3,2,1}(Y5) === variate{1,3}(SVector{3,𝕣}(4,5,6))
+    @test motion⁻¹{3,2,0}(Y5) === Muscade.variate_{1,3}(SVector{3,𝕣}(1,2,3))
+    @test motion⁻¹{3,2,1}(Y5) === Muscade.variate_{1,3}(SVector{3,𝕣}(4,5,6))
     @test motion⁻¹{3,2,2}(Y5) === SVector{3,𝕣}(0,0,0)
 
-    @test motion⁻¹{3,3,0}(Y6) === variate{1,3}(SVector{3,𝕣}(1,2,3))
-    @test motion⁻¹{3,3,1}(Y6) === variate{1,3}(SVector{3,𝕣}(4,5,6))
-    @test motion⁻¹{3,3,2}(Y6) === variate{1,3}(SVector{3,𝕣}(7,8,9))
+    @test motion⁻¹{3,3,0}(Y6) === Muscade.variate_{1,3}(SVector{3,𝕣}(1,2,3))
+    @test motion⁻¹{3,3,1}(Y6) === Muscade.variate_{1,3}(SVector{3,𝕣}(4,5,6))
+    @test motion⁻¹{3,3,2}(Y6) === Muscade.variate_{1,3}(SVector{3,𝕣}(7,8,9))
 
     @test motion⁻¹{2,1}(Y1) === (SVector{3,𝕣}(1,2,3),)
     @test motion⁻¹{2,2}(Y2) === (SVector{3,𝕣}(1,2,3),SVector{3,𝕣}(4,5,6))
@@ -80,8 +80,8 @@ h(X) = SVector(3.,4.)
 k(X) = 5.
 w(X) = (f(X),g(X),h(X),k(X))
 X₀   = SVector(0.,0.,1.)
-vX₀  = variate{1,3}(X₀)
-wX₀  = variate{2,3}(vX₀)
+vX₀  = Muscade.variate_{1,3}(X₀)
+wX₀  = Muscade.variate_{2,3}(vX₀)
 @testset "Muscade.fast" begin
     @test Muscade.apply{:chainrule}(w, X₀) === w( X₀)
     @test Muscade.apply{:chainrule}(w,vX₀) === w(vX₀)
@@ -102,7 +102,7 @@ end
 #### chainrule with NamedTuple
 
 x      = SVector(1.,2.,2.5,3.)
-X      = variate{1,4}(x)
+X      = Muscade.variate_{1,4}(x)
 ε      = SMatrix{2,2}((X.^2)...)
 eleres = (part=(ε = ε, x = X), y = 2x[2],z = 3.)
 

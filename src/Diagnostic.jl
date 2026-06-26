@@ -313,7 +313,7 @@ function addin!{mission}(out::Assemblystudy_scale,asm,iele,scale,eleobj::E,Λ,X:
                                          U::NTuple{Nuder,<:SVector{Nu}},A::SVector{Na},t,Δt,SP,dbg) where{mission,E,Nxder,Nx,Nuder,Nu,Na} # TODO make Nx,Nu,Na types
     Nz              = 2Nx+Nu+Na                        # Z =[Λ;X;U;A]       
     scaleZ          = SVector(scale.Λ...,scale.X...,scale.U...,scale.A...)
-    ΔZ              = variate{2,Nz}(δ_{1,Nz,𝕣}(scaleZ),scaleZ)                 
+    ΔZ              = Muscade.variate_{2,Nz}(δ_{1,Nz,𝕣}(scaleZ),scaleZ)                 
     iλ,ix,iu,ia     = gradientpartition(Nx,Nx,Nu,Na) # index into element vectors ΔZ and Lz
     ΔΛ,ΔX,ΔU,ΔA     = view(ΔZ,iλ),view(ΔZ,ix),view(ΔZ,iu),view(ΔZ,ia) 
     L,FB            = getlagrangian(eleobj, ∂0(Λ)+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A+ΔA,t,SP,dbg)
@@ -525,7 +525,7 @@ function addin!{mission}(out::Assemblystudy_singular,asm,iele,scale,eleobj::E,Λ
 
     Nz              = 2Nx+Nu+Na       
     scaleZ          = SVector(scale.Λ...,scale.X...,scale.U...,scale.A...)
-    ΔZ              = variate{2,Nz}(δ_{1,Nz,𝕣}(scaleZ),scaleZ)                 
+    ΔZ              = Muscade.variate_{2,Nz}(δ_{1,Nz,𝕣}(scaleZ),scaleZ)                 
     iλ,ix,iu,ia     = gradientpartition(Nx,Nx,Nu,Na) # index into element vectors ΔZ and Lz
     ΔΛ,ΔX,ΔU,ΔA     = view(ΔZ,iλ),view(ΔZ,ix),view(ΔZ,iu),view(ΔZ,ia)
     L,FB            = getlagrangian(eleobj, ∂0(Λ)+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A+ΔA,t,nothing,SP,dbg)

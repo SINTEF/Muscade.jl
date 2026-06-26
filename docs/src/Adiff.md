@@ -55,18 +55,18 @@ where `ℝ` is `Muscade` shorthand for `Real`.  The type parameters of `∂ℝ` 
 
 ```julia
 using StaticArrays
-using Muscade: variate,value,∂
+using Muscade: variate_,value,∂
 
 f(x) = x.*x .+ sum(x)
 x    = SVector(1.,2.,3.)
 P,N  = 1,length(x)
-x1   = variate{P,N}(x)
+x1   = variate_{P,N}(x)
 y1   = f(x1)
 y    = value{P}(y1)
 yₓ   = ∂{P,N}(y1)    
 ```
 
-[`variate`](@ref) builds a `SVector` of `∂{P,N,R}`, where `R == eltype(x)`. `x` *must* be a `SVector{N}`. `Muscade` developers speak of `x1` being the "adiffed" form of `x`". Once the calculations to be differentiated are completed, results (here:`y`) are `StaticArrays` of `∂{P,N,R}`.  The partials are "seeded", so that `∂{P,N}(x1)[i]` is a `SVector{N}` of `zero(R)`, except for the `i`-th term that is `one(R)`. 
+[`Muscade.variate_`](@ref) builds a `SVector` of `∂{P,N,R}`, where `R == eltype(x)`. `x` *must* be a `SVector{N}`. `Muscade` developers speak of `x1` being the "adiffed" form of `x`". Once the calculations to be differentiated are completed, results (here:`y`) are `StaticArrays` of `∂{P,N,R}`.  The partials are "seeded", so that `∂{P,N}(x1)[i]` is a `SVector{N}` of `zero(R)`, except for the `i`-th term that is `one(R)`. 
 
 ```julia
 julia> x1
@@ -106,7 +106,7 @@ julia> yₓ
 
 ```julia
 using StaticArrays
-using Muscade: variate,value,∂,δ,𝕣
+using Muscade: variate_,value,∂,δ,𝕣
 
 res(x,u) = x.*x .+ sum(u) # SVector-valued 
 x        = SVector(1.,2.)
@@ -146,7 +146,7 @@ julia> u1
  5+∂₁⟨0,0,0,0,1⟩ 
 ``` 
 
-`Muscade.δ_` is similar to `variate`, except that all the `value`s of `δs` are `zero(R)`.  In the above the elements of `x1`, `u2` and `r1` all have 5 partials - the first two corresponding to `x` and the rest to `u`. 
+`Muscade.δ_` is similar to `Muscade.variate_`, except that all the `value`s of `δs` are `zero(R)`.  In the above the elements of `x1`, `u2` and `r1` all have 5 partials - the first two corresponding to `x` and the rest to `u`. 
 
 The above code is quite clumsy, and the function [`revariate`](@ref) allows to do the same more elegantly.
 
@@ -154,7 +154,7 @@ The above code is quite clumsy, and the function [`revariate`](@ref) allows to d
 
 ```julia
 using StaticArrays
-using Muscade: variate,value,∂,Muscade.δ_,𝕣
+using Muscade: variate_,value,∂,Muscade.δ_,𝕣
 
 f(x)  = x.*x .+ sum(x)
 x     = SVector(1.,2.,3.)
@@ -182,15 +182,15 @@ julia> x1    = x + dir*δs
 
 ```julia
 using StaticArrays
-using Muscade: variate,value,∂
+using Muscade: variate_,value,∂
 
 lag(x,u) = x[1]*x[1]+u[2]*u[3]+x[2]*u[3]
 x        = SVector(1.,2.)
 u        = SVector(3.,4.,5.)
 Px,Nx    = 1,length(x)
 Pu,Nu    = 2,length(u) # NB: Pu > Px
-x1       = variate{Px,Nx}(x)
-u2       = variate{Pu,Nu}(u)
+x1       = variate_{Px,Nx}(x)
+u2       = variate_{Pu,Nu}(u)
 ℓ2       = lag(x1,u2) # \ell
 ℓ        = value{Px}(value{Pu}(ℓ2))
 ℓₓ       = ∂{Px,Nx }(value{Pu}(ℓ2))    
@@ -238,18 +238,18 @@ Note the specific order in which `ℓ2` is unpacked to obtain the derivatives: f
 
 Unpacking `ℓ2` with any precedence higher than `2` will cause `ℓ2` to be treated as a constant: `value{3}(ℓ2) == ℓ2`, and `∂{3,6}(ℓ2)` returns an array of zeros. Similarly, `value{Pu}(x1) == x1` and `x1ᵤ₁ == ∂{Pu,Nu }(x1)` is zeros.
 
-**Higher order derivatives** are a special case of cross derivatives (the cross derivative of a variable with itself), but this requires nested calls to `variate`:
+**Higher order derivatives** are a special case of cross derivatives (the cross derivative of a variable with itself), but this requires nested calls to `Muscade.variate_`:
 
 ```julia
 using StaticArrays
-using Muscade: variate,value,∂
+using Muscade: variate_,value,∂
 
 lag(x,u) = x[1]*x[1]+u[2]*u[3]+x[2]*u[3]
 x        = SVector(1.,2.)
 u        = SVector(3.,4.,5.)
 P1,P2,N  = 1,2,length(x)
-x1       = variate{P1,N}(x )
-x2       = variate{P2,N}(x1)
+x1       = variate_{P1,N}(x )
+x2       = variate_{P2,N}(x1)
 ℓ2       = lag(x2,u)
 ℓ        = value{P1}(value{P2}(ℓ2))
 ℓₓ       = ∂{P1,N  }(value{P2}(ℓ2))    
@@ -260,8 +260,8 @@ x2       = variate{P2,N}(x1)
 Note in particular the nested calls
 
 ```julia
-x1       = variate{P1,N}(x )
-x2       = variate{P2,N}(x1)
+x1       = variate_{P1,N}(x )
+x2       = variate_{P2,N}(x1)
 ```
 
 in which the lower precedence `P1` must applied before the higher precedence `P2`, and the fact that `ℓₓ` can be obtained in two different ways.  Indeed, the values are stored twice in `ℓ2` which has structure `ℓ+∂₁⟨ℓₓ⟩+∂₂⟨ℓₓ+∂₁⟨ℓₓₓ⟩⟩`.
@@ -282,12 +282,12 @@ Here is a simple example:
 
 ```julia
 using StaticArrays
-using Muscade: variate,value,∂,δ_,𝕣,npartial,constants
+using Muscade: variate_,value,∂,δ_,𝕣,npartial,constants
 
 function f(x) 
     P  = constants(x)
     N  = length(x)
-    xP = variate{P,N}(x)
+    xP = variate_{P,N}(x)
     gP = sum(xP)*sin(sum(xP))
     gₓ = ∂{P,N}(gP) 
     x.*x + sum(u).*gₓ 
@@ -295,7 +295,7 @@ end
 
 x    = SVector(1.,2.,3.)
 P,N  = 1,length(x)
-x1   = variate{P,N}(x)
+x1   = variate_{P,N}(x)
 y1   = f(x1)
 y    = value{P}(y1)
 yₓ   = ∂{P,N}(y1)    
@@ -304,7 +304,7 @@ yₓ   = ∂{P,N}(y1)
 In a context where the programmer of `f` cannot know to what order the input variable `x` is already adiffed, [`constants`](@ref) provides a precedance that is higher than the precedence of `x` (`constants` can handle multiple variables), to prevent [perturbation confusion](https://arxiv.org/pdf/1211.4892v3).
 
 !!! warning
-     Any pair og variables of identical precedence (and this applies recursively, where higher order differentiation is used), but issued from different factories (including [`variate`](@ref), [`Muscade.δ_`](@ref), [`revariate`](@ref) and [`motion`](@ref)) must never be allowed to be the two arguments of a binary operation.  Failure to enforce this may cause silent failure, producing erroneous results.  
+     Any pair og variables of identical precedence (and this applies recursively, where higher order differentiation is used), but issued from different factories (including [`Muscade.variate_`](@ref), [`Muscade.δ_`](@ref), [`revariate`](@ref) and [`motion`](@ref)) must never be allowed to be the two arguments of a binary operation.  Failure to enforce this may cause silent failure, producing erroneous results.  
 
 Consider using `let` blocks to contain "dangerous variables".
 
@@ -312,7 +312,7 @@ Consider using `let` blocks to contain "dangerous variables".
 function f(x) 
     P  = constants(x)
     N  = length(x)
-    gₓ = let xP = variate{P,N}(x)
+    gₓ = let xP = variate_{P,N}(x)
         gP = sum(xP)*sin(sum(xP))
         ∂{P,N}(gP) 
     end
@@ -359,16 +359,16 @@ In this example `x` is not actualy long, to make outputs more readable.
 
 ```julia
 using StaticArrays
-using Muscade: variate,VALUE,McLaurin
+using Muscade: variate_,VALUE,McLaurin
 
 g(y) = sin.(y).*y                   # computationaly expensive
 
-x = variate{3,1}(SVector(1.))       # long x
+x = variate_{3,1}(SVector(1.))       # long x
 y = 3. .+ x .+ x.^2                 # short y
 
 # z = g(y)                          # too slow
 
-z = let y_ = variate{3,1}(VALUE(y)) # fewer partials
+z = let y_ = variate_{3,1}(VALUE(y)) # fewer partials
     z_ = g(y_)                      # faster execution
     McLaurin(z_,y-VALUE(y))         # ah! Not cheap
 end

@@ -478,7 +478,7 @@ doflist(::Type{<:DofConstraint{λclass,Nλ,Nx,Nu,Na,λinod,λfield,xinod,xfield,
     P          = constants(∂0(X),t)
     m          = o.mode(t)
     ☼λ,x       = ∂0(X)[iλ], ∂0(X)[ix]    
-    x∂         = variate{P,Nx}(x) 
+    x∂         = Muscade.variate_{P,Nx}(x) 
     ☼gap,g∂x   = value_∂{P,Nx}(o.gap(x∂,t,o.gargs...)) 
     R = if     m==:equal;    SVector{Nλ+Nx}(-gap...       ,(       -λ∘₁g∂x)...) # - sign: λ interpreted as an external force on generalised dof g∂x
     elseif     m==:positive; SVector{Nλ+Nx}(-S(λ,gap,γ)...,(       -λ∘₁g∂x)...) 

@@ -11,7 +11,7 @@ x       =   SVector(3.,2.)
  
 # Create an adiff xₐ at that point x
 N       =   length(x)
-xₐ      =   variate{1,N}(x)
+xₐ      =   Muscade.variate_{1,N}(x)
 @show typeof(xₐ)
 # returns typeof(xₐ) = SVector{2, ∂ℝ{1, 2, Float64}}
 
@@ -39,7 +39,7 @@ hxₐ     =   g(f(xₐ))
 
 # Compute the gradient of g, for a variable y depends on x
 # Create an adiff yₐ at point xₐ
-yₐ      =   variate{2,N}(fxₐ)
+yₐ      =   Muscade.variate_{2,N}(fxₐ)
 # Note: The level of preceedence (here, 2) can be obtained using constants(fxₐ)
 @show typeof(yₐ)
 # returns typeof(yₐ) = SVector{2, ∂ℝ{2, 2, ∂ℝ{1, 2, Float64}}}
