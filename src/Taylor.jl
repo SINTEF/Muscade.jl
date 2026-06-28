@@ -110,12 +110,6 @@ flatten{T}(a::Tuple{}      ) where{T}        = ()
 flatten{T}(a::SArray       ) where{T}        = SVector{length(a),T}(a)  
 flatten{T}(a::ℝ            ) where{T}        = T(a)
 
-struct type_multivariate_𝕣{P,N} 
-    dummy::𝕫  
-end
-type_multivariate_𝕣{0,N}() where{  N} = 𝕣
-type_multivariate_𝕣{P,N}() where{P,N} = ∂ℝ{P,N,type_multivariate_𝕣{P-1,N}()} # this causes (slight) type instability - because if Ra isnot ℝ, then return type is different.
-
 struct multivariate_𝕣{P,N} end
 multivariate_𝕣{P,N}(a   ,i      ) where{P,N}          = ∂ℝ{P,N  }(multivariate_𝕣{P-1,N}(a,i      ),i) 
 multivariate_𝕣{0,N}(a::𝕣,i      ) where{  N}          = a
@@ -126,11 +120,10 @@ multivariate_𝕣{0,N}(a::𝕣,i,scale) where{  N}          = a
 """ 
     TV = revariate{P}(V)
 
-The variable `V` is a nested structure `NamedTuple`s, `Tuple`s and `SArrays` of 
+The variable `V` is a nested structure of `NamedTuple`s, `Tuple`s and `SArrays` of 
 `Real`s (possibly: `∂ℝ`s).
 
-`V` is stripped of its partials, an revariated to 
-order `P`.
+`V` is stripped of its partials, an revariated to order `P`.
 
     TV = revariate(V)
 
@@ -165,7 +158,7 @@ Same as [`revariate`](@ref), but all values in `δV` are set to zero.
 """
 struct reδ{P} end
 
-struct Broadcast{S} 
+struct Broadcast{S} # apply a scaling to a whole Tuple or SArray
     s::S
 end
 
@@ -182,29 +175,27 @@ reδ{      P}(a,s) where{P} = revariate{P,flat_length(a),:δ      }(a,1,s)
 revariate{P,N,Z       }(a::NamedTuple   ,i               ) where{P,N,Z}   = NamedTuple{keys(a)}(revariate{P,N,Z}(values(a),i)) 
 revariate{P,N,Z       }(a::Tuple        ,i               ) where{P,N,Z}   = (revariate{P,N,Z}(first(a),i),revariate{P,N,Z}(Base.tail(a),i+flat_length(first(a)))...)
 revariate{P,N,Z       }(a::Tuple{}      ,i               ) where{P,N,Z}   = ()
-revariate{P,N,Z       }(a::SArray{S}    ,i               ) where{P,N,Z,S} = SArray{S,type_multivariate_𝕣{P,N}()}(revariate{P,N,Z}(aⱼ,i-1+j) for (j,aⱼ)∈enumerate(a))
+revariate{P,N,Z       }(a::SArray{S}    ,i               ) where{P,N,Z,S} = revariate{P,N,Z}.(a,SArray{S,𝕫}(i-1+j for j∈eachindex(a)))
 revariate{P,N,:δ      }(a::ℝ            ,i               ) where{P,N  }   = multivariate_𝕣{P,N}(zero( a),i)
 revariate{P,N,:variate}(a::ℝ            ,i               ) where{P,N  }   = multivariate_𝕣{P,N}(VALUE(a),i)
 
-revariate{P,N,Z       }(a::NamedTuple   ,i,s::NamedTuple ) where{P,N,Z}   = NamedTuple{keys(a)}(revariatevalues{P,N,Z}(values(a),i,values(s))) 
+revariate{P,N,Z       }(a::NamedTuple   ,i,s::NamedTuple ) where{P,N,Z}   = NamedTuple{keys(a)}(revariate{P,N,Z}(values(a),i,values(s))) 
 revariate{P,N,Z       }(a::Tuple        ,i,s::Tuple      ) where{P,N,Z}   = (revariate{P,N,Z}(first(a),i,first(s) ),revariate{P,N,Z}(Base.tail(a),i+flat_length(first(a)),Base.tail(s))...)
 revariate{P,N,Z       }(a::Tuple        ,i,s::Broadcast  ) where{P,N,Z}   = (revariate{P,N,Z}(first(a),i,      s.s),revariate{P,N,Z}(Base.tail(a),i+flat_length(first(a)),          s )...)
 revariate{P,N,Z       }(a::Tuple{}      ,i,s::Tuple{}    ) where{P,N,Z}   = ()
 revariate{P,N,Z       }(a::Tuple{}      ,i,s::Broadcast  ) where{P,N,Z}   = ()
-revariate{P,N,Z       }(a::SArray{S}    ,i,s::SArray{S,𝕣}) where{P,N,Z,S} = SArray{S,type_multivariate_𝕣{P,N}()}(revariate{P,N,Z}(a[j],i-1+j,s[j]) for j∈eachindex(a))
-revariate{P,N,Z       }(a::SArray{S}    ,i,s::Broadcast  ) where{P,N,Z,S} = SArray{S,type_multivariate_𝕣{P,N}()}(revariate{P,N,Z}(a[j],i-1+j,s.s ) for j∈eachindex(a))
+revariate{P,N,Z       }(a::SArray{S}    ,i,s::SArray{S,𝕣}) where{P,N,Z,S} = revariate{P,N,Z}.(a,SArray{S,𝕫}(i-1+j for j∈eachindex(a)),s   )
+revariate{P,N,Z       }(a::SArray{S}    ,i,s::Broadcast  ) where{P,N,Z,S} = revariate{P,N,Z}.(a,SArray{S,𝕫}(i-1+j for j∈eachindex(a)),s.s ) 
 revariate{P,N,:δ      }(a::ℝ            ,i,s::𝕣          ) where{P,N  }   = multivariate_𝕣{P,N}(zero( a),i,s)
 revariate{P,N,:variate}(a::ℝ            ,i,s::𝕣          ) where{P,N  }   = multivariate_𝕣{P,N}(VALUE(a),i,s)
-struct revariatevalues{P,N,Z}   end
-revariatevalues{P,N,Z }(a::Tuple        ,i,s::Tuple      ) where{P,N,Z}   = (revariate{P,N,Z}(first(a),i,first(s) ),revariatevalues{P,N,Z}(Base.tail(a),i+flat_length(first(a)),Base.tail(s))...)
-revariatevalues{P,N,Z }(a::Tuple        ,i,s::Broadcast  ) where{P,N,Z}   = (revariate{P,N,Z}(first(a),i,      s.s),revariatevalues{P,N,Z}(Base.tail(a),i+flat_length(first(a)),          s )...)
-revariatevalues{P,N,Z }(a::Tuple{}      ,i,s::Tuple{}    ) where{P,N,Z}   = ()
-revariatevalues{P,N,Z }(a::Tuple{}      ,i,s::Broadcast  ) where{P,N,Z}   = ()
 
 
 """
-    TV   = revariate{P}(V)
     iV   = revariate_indices(V)
+
+For use in conjunction with
+    
+    TV   = revariate(V)
 
 `iV` has the same structure as `V` and `TV` but contains integers: the indices into the partials of `TV` 
 
@@ -215,7 +206,8 @@ revariate_indices( a              ) = revariate_indices_(a,0)
 revariate_indices_(a::Tuple     ,i) = (revariate_indices_(first(a),i),revariate_indices_(Base.tail(a),i+flat_length(first(a)))...)
 revariate_indices_(a::Tuple{}   ,i) = ()
 revariate_indices_(a::NamedTuple,i) = NamedTuple{keys(a)}(revariate_indices_(values(a),i))
-revariate_indices_(a::SArray    ,i) = i+1:i+flat_length(a)
+#revariate_indices_(a::SArray    ,i) = i+1:i+flat_length(a)
+revariate_indices_(a::SArray    ,i) = SVector{flat_length(a),𝕫}(i+iₐ for iₐ∈1:flat_length(a))
 revariate_indices_(a::𝕣         ,i) = i+1
 
 """
@@ -225,7 +217,9 @@ Decrease (lossy) or increase (pad partials with zeros) the order of differentiat
 `V` is a nested structure of `NamedTuple`, `Tuple`, `SArray`, and the components
 of `V` must be of type `∂ℝ` or `𝕣`.
 
-IMPORTANT: to_order{P,N}(V::𝕣) = V
+IMPORTANT:
+1) assumes all differentiations are with respect to the same variable. 
+2) to_order{P,N}(V::𝕣) = V
 """
 struct to_order{P,N} end
 to_order{P,N}(a::NamedTuple   ) where{P ,N} = NamedTuple{keys(a)}(to_order{P,N}(values(a)))

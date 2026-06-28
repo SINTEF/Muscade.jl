@@ -138,9 +138,9 @@ q2       = cost(Muscade.to_order{2,4}(eleres))
     @test Muscade.flat_eltype(q2)                                       == ∂ℝ{2, 4 , ∂ℝ{1, 4 , 𝕣}} 
     @test q == q2
 end
-
+infer = Base.infer_return_type
 @testset "inferred" begin
-    @inferred Muscade.revariate{2}(eleres)
+    @inferred revariate{2}(eleres)
     @inferred Muscade.to_order{2,4}(Muscade.flatten(eleres))
     @inferred Muscade.chainrule(Rq,Muscade.to_order{2,4}(Muscade.flatten(eleres)))
 end
