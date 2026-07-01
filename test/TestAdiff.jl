@@ -23,10 +23,10 @@ t2 = promote_rule(typeof(dx1),typeof(x))
 dscaled=Muscade.δ_{1,3,𝕣}(SVector(1.,2.,3.))
 vscaled=Muscade.variate_{1,3}(SVector(4.,4.,4.),SVector(1.,2.,3.))
 Δ   = Muscade.δ_{1,2,𝕣}()
-C1  = Muscade.variate_{constants(Δ),2}(SVector(3.,4.))
-C   = Muscade.variate_{constants(C1),2}(C1)
-PC  = Muscade.precedence(C)
-PC1 = Muscade.precedence(C1)
+C1  = Muscade.variate_{precedence(Δ)+1,2}(SVector(3.,4.))
+C   = Muscade.variate_{precedence(C1)+1,2}(C1)
+PC  = precedence(C)
+PC1 = precedence(C1)
 vC  = value{PC}(C)
 ∂C  = ∂{PC,2}(  C)
 vvC = value{PC1}(vC)
@@ -37,8 +37,8 @@ dX1 = Muscade.toggle(false,dx1,3.)
 
 ## Operations
 oa = Muscade.variate_{1}(1.)
-ob = Muscade.variate_{constants(oa   )}(2.)
-oc = Muscade.variate_{constants(oa,ob)}(3.)
+ob = Muscade.variate_{precedence(oa   )+1}(2.)
+oc = Muscade.variate_{precedence(oa,ob)+1}(3.)
 od = oa+oc
 oe = od+ob
 oj = od^2
@@ -80,7 +80,7 @@ y3 = atan(s3,c3)
 
     @testset "Adiff extraction" begin
         @test Δ            === SVector(∂𝕣12(0.0, SVector(1.0, 0.0)),∂𝕣12(0.0, SVector(0.0, 1.0)))
-        @test constants(Δ) == 2
+        @test precedence(Δ) == 1
         @test typeof(C)    == SVector{2, ∂ℝ{3, 2, ∂ℝ{2, 2, Float64}}}#Array{∂ℝ{3,2,∂𝕣22},1}
         @test C[1]         === ∂ℝ{3,2,∂𝕣22}(∂𝕣22(3.0, SVector(1.0, 0.0)), SVector(∂𝕣22(1.0, SVector(0.0, 0.0)), ∂𝕣22(0.0, SVector(0.0, 0.0))))
         @test vC[1]        === ∂𝕣22(3.0, SVector(1.0, 0.0))

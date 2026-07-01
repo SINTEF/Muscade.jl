@@ -120,19 +120,6 @@ function ∂ℝ_promote_type(::Ra,::Rb) where{Ra<:ℝ,Rb<:ℝ}
     return P,N,R
 end
 
-"""
-    P = constants(a,b,c)
-
-Generate a precedence `P` that is higher than the precedence of the arguments.   
-
-See also: [`Muscade.variate_`](@ref), [`δ_`](@ref), [`value`](@ref), [`∂`](@ref), [`VALUE`](@ref), [`value_∂`](@ref)
-"""
-constants(tup::Tuple)   = constants(tup...) 
-constants( a,args...)   = max(constants(a),constants(args...))
-constants( a)           = 1+precedence(a) 
-constants(tup::Tuple{}) = 1 
-constants( ::Nothing)   = 1
-
 # Muscade.variate_
 struct δ_{P,N,R}                end # need dum, because syntax δ_{P,N,R}() collides with default constructor
 struct variate_{P,N}            end
@@ -146,7 +133,7 @@ create a `SVector` of automatic differentiation objects of precedence `P` and va
 
 Create automatic differentiation object of precedence `P` and value `zero`.  
 
-See also: [`constants`](@ref), [`Muscade.variate_`](@ref), [`value`](@ref), [`∂`](@ref), [`VALUE`](@ref), [`value_∂`](@ref)
+See also: [`precedence`](@ref), [`Muscade.variate_`](@ref), [`value`](@ref), [`∂`](@ref), [`VALUE`](@ref), [`value_∂`](@ref)
 """
 @inline δ_{P,N,R}(                          ) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,N,R}}(∂ℝ{P,N  }(zero(R),i                                         ) for i=1:N)
 @inline δ_{P,N,R}(               δa::SV{N,𝕣}) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,N,R}}(∂ℝ{P,N,R}(zero(R),SV{N,R}(i==j ? δa[i]  : zero(R) for i=1:N)) for j=1:N)
@@ -161,7 +148,7 @@ where `typeof(x)<:SVector{N}`, create a `SVector` of automatic differentiation o
 
 where `typeof(x)<:Real`, create an object of precedence `P`.    
 
-See also: [`constants`](@ref), [`δ_`](@ref), [`value`](@ref), [`∂`](@ref), [`VALUE`](@ref), [`value_∂`](@ref)
+See also: [`precedence`](@ref), [`δ_`](@ref), [`value`](@ref), [`∂`](@ref), [`VALUE`](@ref), [`value_∂`](@ref)
 """
 @inline Muscade.variate_{    P,N}(a::SV{N,R}            ) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,N,R}}(∂ℝ{P,N  }(a[i],i) for i=1:N)
 @inline Muscade.variate_{    P,N}(a::SV{N,R},δa::SV{N,𝕣}) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,N,R}}(∂ℝ{P,N,R}(a[j]   ,SV{N,R}(i==j ? R(δa[i])  : zero(R) for i=1:N)) for j=1:N)
@@ -173,7 +160,7 @@ See also: [`constants`](@ref), [`δ_`](@ref), [`value`](@ref), [`∂`](@ref), [`
 
 Completely strip `Y` of partial derivatives.  Use only for debugging purpose.    
 
-See also: [`constants`](@ref), [`Muscade.variate_`](@ref), [`δ_`](@ref), [`value`](@ref), [`∂`](@ref), [`value_∂`](@ref)
+See also: [`precedence`](@ref), [`Muscade.variate_`](@ref), [`δ_`](@ref), [`value`](@ref), [`∂`](@ref), [`value_∂`](@ref)
 """
 @inline VALUE(a::Nothing )                     =        nothing
 @inline VALUE(a::ℝ )                           =        a
@@ -189,7 +176,7 @@ struct value_∂{P,N}            end
 
 Extract the value of an automatic differentiation object, or `SArray` of such objects.    
 
-See also: [`constants`](@ref), [`Muscade.variate_`](@ref), [`δ_`](@ref), [`∂`](@ref), [`VALUE`](@ref), [`value_∂`](@ref)
+See also: [`precedence`](@ref), [`Muscade.variate_`](@ref), [`δ_`](@ref), [`∂`](@ref), [`VALUE`](@ref), [`value_∂`](@ref)
 """
 @inline value{P}(a::∂ℝ{P ,N,R}) where{P   ,N,R   } = a.x
 @inline value{P}(a::∂ℝ{Pa,N,R}) where{Pa,P,N,R   } = P>Pa ? a : error("extracting value with invalid precedence")
@@ -209,7 +196,7 @@ the index of the partial derivative is appended to the indices of `Y`.
 Extract the derivative of an automatic differentiation object (or `SArray` of such), where the variation
 was created by the syntax `Muscade.variate_{P}`.
 
-See also: [`constants`](@ref), [`Muscade.variate_`](@ref), [`δ_`](@ref), [`value`](@ref), [`VALUE`](@ref), [`value_∂`](@ref)
+See also: [`precedence`](@ref), [`Muscade.variate_`](@ref), [`δ_`](@ref), [`value`](@ref), [`VALUE`](@ref), [`value_∂`](@ref)
 """
 @inline ∂{P,N}(a::     ∂ℝ{P ,N,R} ) where{     P,N,R   } =        a.dx
 @inline ∂{P,N}(a::     ∂ℝ{Pa,N,R} ) where{  Pa,P,N,R   } = P>Pa ? SV{  N,R}(zero(R)    for i=1:N      ) : error("extracting ∂ with invalid precedence")
@@ -237,7 +224,7 @@ See also: [`constants`](@ref), [`Muscade.variate_`](@ref), [`δ_`](@ref), [`valu
     
 Get value and derivative in one operation.    
 
-See also: [`constants`](@ref), [`Muscade.variate_`](@ref), [`Muscade.δ_`](@ref), [`value`](@ref), [`∂`](@ref), [`VALUE`](@ref)
+See also: [`precedence`](@ref), [`Muscade.variate_`](@ref), [`Muscade.δ_`](@ref), [`value`](@ref), [`∂`](@ref), [`VALUE`](@ref)
 """
 @inline value_∂{P,N}(a) where{  P,N}= value{P}(a),∂{P,N}(a)
 @inline value_∂{P  }(a) where{  P  }= value{P}(a),∂{P  }(a)

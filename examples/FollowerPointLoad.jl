@@ -10,12 +10,12 @@ Muscade.no_second_order(::Type{<:FollowerPointLoad}) = Val(true)
 Muscade.doflist(::Type{<:FollowerPointLoad}) = (inod = (1,1,1,1,1,1),class= ntuple(i->:X,ndof),field= (:t1,:t2,:t3,:r1,:r2,:r3) )
 FollowerPointLoad(nod::Vector{Node};f,m) = FollowerPointLoad(f,m)
 @espy function Muscade.residual(o::FollowerPointLoad,   X,U,A,t,SP,dbg) 
-    i = SVector(4,5,6)
+    i                   = SVector(4,5,6)
+    P,ND                = precedence(X),length(X)
+
     X_                  = motion{P}(X)
     V_                  = X_[i]
 
-
-    P,ND                = constants(X),length(X)
     X₀                  = ∂0(X)
     TX₀                 = revariate{1}(X₀)
     Tgp,Tε,Tvₛₘ,Trₛₘ,Tvₗ₂ = kinematics(o,TX₀)

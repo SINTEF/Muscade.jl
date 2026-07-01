@@ -24,8 +24,8 @@ module Muscade
     export  ∂ℝ #\partial\BbbR
     export  directional # \delta
     export  value,VALUE,∂,value_∂ # \partial, \nabla
-    export  constants
-    public  precedence,npartial #,norm
+    export precedence
+    public  npartial #,norm
 
     include("Taylor.jl")
     export motion,motion⁻¹,variate,variate0,revariate,chainrule,apply,AllElements

@@ -475,11 +475,11 @@ doflist(::Type{<:DofConstraint{λclass,Nλ,Nx,Nu,Na,λinod,λfield,xinod,xfield,
     iλ         = SVector{Nλ}(1:Nλ)
     ix         = SVector{Nx}(Nλ+1:Nλ+Nx)
     γ          = default{:γ}(SP,0.) # γ=SP.γ - default 0
-    P          = constants(∂0(X),t)
+    P          = precedence(∂0(X),t)
     m          = o.mode(t)
     ☼λ,x       = ∂0(X)[iλ], ∂0(X)[ix]    
-    x∂         = Muscade.variate_{P,Nx}(x) 
-    ☼gap,g∂x   = value_∂{P,Nx}(o.gap(x∂,t,o.gargs...)) 
+    x∂         = Muscade.variate_{P+1,Nx}(x) 
+    ☼gap,g∂x   = value_∂{P+1,Nx}(o.gap(x∂,t,o.gargs...)) 
     R = if     m==:equal;    SVector{Nλ+Nx}(-gap...       ,(       -λ∘₁g∂x)...) # - sign: λ interpreted as an external force on generalised dof g∂x
     elseif     m==:positive; SVector{Nλ+Nx}(-S(λ,gap,γ)...,(       -λ∘₁g∂x)...) 
     elseif     m==:off;      SVector{Nλ+Nx}(-λ...         , ntuple(i->0,Nx)...) 

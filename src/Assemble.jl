@@ -704,18 +704,18 @@ end
 # has lagrangian
 function getresidual(eleobj::Eleobj,hasres::Val{false},haslag::Val{true},nso, X::NTuple{Ndx,SVector{Nx}}, 
         U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na} ,t::ℝ,SP,dbg,req)     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
-    P            = constants(∂0(X),∂0(U),A,t)
-    Λ            = δ_{P,Nx,𝕣}() 
+    P            = precedence(∂0(X),∂0(U),A,t)
+    Λ            = δ_{P+1,Nx,𝕣}() 
     L,FB,eleres  = lagrangian(eleobj,Λ,X,U,A,t,SP,dbg,req)    
-    R            = ∂{P,Nx}(L)
+    R            = ∂{P+1,Nx}(L)
     return R,FB,eleres
 end
 function getresidual(eleobj::Eleobj,hasres::Val{false},haslag::Val{true},nso, X::NTuple{Ndx,SVector{Nx}}, 
         U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na} ,t::ℝ,SP,dbg   )     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
-    P            = constants(∂0(X),∂0(U),A,t)
-    Λ            = δ_{P,Nx,𝕣}() 
+    P            = precedence(∂0(X),∂0(U),A,t)
+    Λ            = δ_{P+1,Nx,𝕣}() 
     L,FB         = lagrangian(eleobj,Λ,X,U,A,t,SP,dbg   )    
-    R            = ∂{P,Nx}(L)
+    R            = ∂{P+1,Nx}(L)
     return R,FB
 end
 

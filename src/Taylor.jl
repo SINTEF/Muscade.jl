@@ -2,7 +2,7 @@ struct motion{P}          end
 struct motion_{P,Q}       end 
 struct motion⁻¹{P,ND,OD}  end 
 """
-    P  = constant(X)
+    P  = precedence(X)
     X_ = motion{P}(X)
 
 Transform a `NTuple` of `SVector`s, for example the vector `X` provided as an input to
@@ -14,22 +14,21 @@ Some principles of safe automatic differentiation must be adhered to:
 - the function that uses `motion` must also 'unpack' : no variable that is touched by 
   the output of `motion` must be returned by the function without having been unpacked
   by `motion⁻¹`. Touched variables can for example be marked with an underscore.
-- The precendence `P` must be calculated using `constants` with all variables that are input to 
+- The precedence `P` must be calculated using `precedence` with all variables that are input to 
   the function and may be differentiated.
 - If other levels of automatic differentiation are introduced within the function, unpack in reverse
   order of packing.    
 
 See [`motion⁻¹`](@ref)
 """
-motion{ P    }(a::NTuple{ND,SV{N,R}}) where{ND,P,N,R        } = SV{N}(motion_{P-1,P+ND-2}(let a=a 
+motion{ P    }(a::NTuple{ND,SV{N,R}}) where{ND,P,N,R        } = SV{N}(motion_{P,P+ND-1}(let a=a 
                                                                                             ntuple(j->a[j][i],Val(ND))
                                                                                          end) for i=1:N)
-#motion{ P    }(a::NTuple{ND,SV{N,R}}) where{ND,P,N,R        } = SV{N}(motion_{P-1,P+ND-2}(ntuple(j->a[j][i],Val(ND))) for i=1:N)
 motion_{P,Q  }(a::NTuple{D,      R }) where{D ,P  ,R<:Real,Q} = ∂ℝ{Q,1}(motion_{P,Q-1}(a),SV(motion_{P,Q-1}(a[2:D]))) 
 motion_{P,P  }(a::NTuple{D,      R }) where{D ,P  ,R<:Real  } = a[1]
 
 """
-    P  = constants(X,U,A,t)
+    P  = precedence(X,U,A,t)
     ND = length(X)
     X_  = motion{P,ND}(X)
     Y_  = f(Y_)    
@@ -44,16 +43,16 @@ In the above `Y` is a tuple of length `ND`.  One can use `∂0`,`∂1` and `∂2
 See also [`motion`](@ref)
 """
 motion⁻¹{P,1,0}(a::ℝ) where{P} =                      a
-motion⁻¹{P,2,0}(a::ℝ) where{P} =          value{P   }(a)
-motion⁻¹{P,3,0}(a::ℝ) where{P} = value{P}(value{P+1 }(a))
+motion⁻¹{P,2,0}(a::ℝ) where{P} =            value{P+1 }(a)
+motion⁻¹{P,3,0}(a::ℝ) where{P} = value{P+1}(value{P+2 }(a))
 # velocities
 motion⁻¹{P,1,1}(a::ℝ) where{P} = 0. 
-motion⁻¹{P,2,1}(a::ℝ) where{P} =          ∂{    P  ,1}(a)[1]  # [1]: only partial is wrt time
-motion⁻¹{P,3,1}(a::ℝ) where{P} = value{P}(∂{    P+1,1}(a)[1])
+motion⁻¹{P,2,1}(a::ℝ) where{P} =            ∂{    P+1,1}(a)[1]  # [1]: only partial is wrt time
+motion⁻¹{P,3,1}(a::ℝ) where{P} = value{P+1}(∂{    P+2,1}(a)[1])
 # accelerations
 motion⁻¹{P,1,2}(a::ℝ) where{P} = 0. 
 motion⁻¹{P,2,2}(a::ℝ) where{P} = 0.
-motion⁻¹{P,3,2}(a::ℝ) where{P} = ∂{   P,1}(∂{   P+1,1}(a)[1])[1]
+motion⁻¹{P,3,2}(a::ℝ) where{P} = ∂{   P+1,1}(∂{   P+2,1}(a)[1])[1]
 motion⁻¹{P,ND,OD}(a::SArray{S,R}) where{S,P,ND,OD,R<:ℝ}   = SArray{S}(motion⁻¹{P,ND,OD}(aᵢ) for aᵢ∈a)
  
 motion⁻¹{P,1    }(a::Union{ℝ,SArray}) where{P   } = (motion⁻¹{P,1,0}(a),)
@@ -404,7 +403,7 @@ apply{:direct   }(f,x) = f(x)
     chainrule_value{P,ND}(Ty,X_)
 
 Given `Ty` obtained using `revariate`, and `X_`, obtained using `motion{P}(X)` where `X` is a tuple
-of length `ND` and `P=constants(X)`, compute `y`, a tuple of length `ND` of `AbstractArrays` of same `eltype` as vectors in `X.
+of length `ND` and `P=precedence(X)`, compute `y`, a tuple of length `ND` of `AbstractArrays` of same `eltype` as vectors in `X.
 
 See also [`revariate`](@ref), [`motion`](@ref), [`motion⁻¹`](@ref), [`chainrule_Jacobian`](@ref)  
 """
@@ -417,13 +416,13 @@ chainrule_value{P,ND}(Ty::Tuple{}   ,X_) where{P,ND} = ()
     chainrule_Jacobian{P}(Ty,X_)
 
 Given `Ty` obtained using `revariate`, and `X_`, obtained using `motion{P}(X)` where `X` is a tuple
-of `SVectors` and `P=constants(X)`, compute `y`, a tuple of length `ND` of `AbstractArrays` of same `eltype` as vectors in `X,
+of `SVectors` and `P=precedence(X)`, compute `y`, a tuple of length `ND` of `AbstractArrays` of same `eltype` as vectors in `X,
 and `y∂X₀`, the Jacobian of `∂0(y)` with respect to `∂0(X)`.
 
 See also [`revariate`](@ref), [`motion`](@ref), [`motion⁻¹`](@ref), [`chainrule_value`](@ref)   
 """
 struct chainrule_Jacobian{P} end
-chainrule_Jacobian{P}(Ty            ,X₀) where{P} = chainrule(∂{P,npartial(Ty)}(Ty),X₀) # y∂X₀
+chainrule_Jacobian{P}(Ty            ,X₀) where{P} = chainrule(∂{P+1,npartial(Ty)}(Ty),X₀) # y∂X₀
 chainrule_Jacobian{P}(Ty::NamedTuple,X₀) where{P} = NamedTuple{keys(Ty)}(chainrule_Jacobian{P}(values(Ty),X₀))
 chainrule_Jacobian{P}(Ty::Tuple     ,X₀) where{P} = (chainrule_Jacobian{P}(first(Ty),X₀),chainrule_Jacobian{P}(Base.tail(Ty),X₀)...)
 chainrule_Jacobian{P}(Ty::Tuple{}   ,X₀) where{P} = ()
