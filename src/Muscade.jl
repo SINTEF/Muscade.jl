@@ -28,7 +28,7 @@ module Muscade
     public  precedence,npartial #,norm
 
     include("Taylor.jl")
-    export motion,motion⁻¹,revariate,chainrule,apply
+    export motion,motion⁻¹,variate,variate0,revariate,chainrule,apply,AllElements
     export chainrule_value,chainrule_Jacobian 
     public Taylor,McLaurin
     

@@ -117,6 +117,46 @@ multivariate_𝕣{0,N}(a::𝕣,i      ) where{  N}          = a
 multivariate_𝕣{P,N}(a::R,i,scale) where{P,N,R}        = ∂ℝ{P,N  }(multivariate_𝕣{P-1,N}(a,i,scale),SV{N,R}(i==j ? scale : zero(R) for j=1:N)) 
 multivariate_𝕣{0,N}(a::𝕣,i,scale) where{  N}          = a
 
+@inline longuestfirst(a,b) = length(a)>length(b) ? (a,b) : (b,a)
+
+@inline function npartials(a::Tuple) 
+    long,short = longuestfirst(npartials(first(a)),npartials(Base.tail(a)))
+    Δ          = length(long)-length(short)
+    for i      = 1:length(short)
+        @assert long[Δ+i] == short[i] "Perturbation collision"
+    end
+    return long # Core.Const
+end
+@inline npartials(a::Tuple{}  )              = ()
+@inline npartials(a::NamedTuple )            = npartials(values(a)) 
+@inline npartials(a::SArray   )              = length(a)==0 ? () : npartials(first(a)) # edgecase empty array. Is that OK?
+@inline npartials(a::∂ℝ{P,N,R}) where{P,N,R} = (N,npartials(a.x)...)
+@inline npartials(a::ℝ        )              = ()
+
+struct front{P} end
+@inline front{P}(tup) where{P} = Base.front(front{P-1}(tup))
+@inline front{0}(tup)          = tup
+
+@inline zerovalue(v::∂ℝ{P,N,R}) where{P,N,R<:ℝ}  = ∂ℝ{P,N,R}(zerovalue(v.x),v.dx)
+@inline zerovalue(v::       R ) where{    R<:ℝ}  = zero(R)
+
+struct AllElements{S} # apply a scaling to a whole Tuple or SArray
+    s::S
+end
+
+# type for static parametrization
+struct variate{O}   end
+struct variate0{O}  end # former δ: returns outputs with VALUE=0
+struct revariate{P} end
+struct variate_work{A,B,C} end
+struct revariate_work{A} end
+struct variate_nested{A,B,C,D,E} end
+
+# API
+@inline variate(     v;kwargs...)          = variate_work{1,identity ,:variate}(v;kwargs...)
+@inline variate{O}(  v;kwargs...) where{O} = variate_work{O,identity ,:variate}(v;kwargs...)
+@inline variate0(    v;kwargs...)          = variate_work{1,zerovalue,:variate}(v;kwargs...)
+@inline variate0{O}( v;kwargs...) where{O} = variate_work{O,zerovalue,:variate}(v;kwargs...)
 """ 
     TV = revariate{P}(V)
 
@@ -140,54 +180,78 @@ containing  `∂ℝ`s but not produced by the same `revariate`.
 A special version of `revariate`
 
     V = ((X₀,X₁,X₂)        ,      U,      A)
-    S = (Broadcast(scale.X),scale.U,scale.A)
+    S = (AllElements(scale.X),scale.U,scale.A)
     TV = revariate{P}(V,S)
 
 allows to introduce scaling in automatic differentiation.  For this method, `S` and `V`
-must have the same structure, with the important exception that `Broadcast` is used
+must have the same structure, with the important exception that `AllElements` is used
 to apply a scaling to all elements of a `Tuple` or `SArray`: here, `scale.X` is applied
 to `X₀`, `X₁` and `X₂`.  
 
 See also: [`chainrule`](@ref), [`revariate_indices`](@ref)
 """
-struct revariate{P,N,Z}   end
-"""
-    δV = reδ(V)
+@inline revariate(   v;kwargs...)          = revariate_work{precedence(v)}(v;kwargs...)
+@inline revariate{P}(v;kwargs...) where{P} = revariate_work{P            }(v;kwargs...)
 
-Same as [`revariate`](@ref), but all values in `δV` are set to zero.    
-"""
-struct reδ{P} end
-
-struct Broadcast{S} # apply a scaling to a whole Tuple or SArray
-    s::S
+# workhorses
+@inline function variate_work{O,VZ,:variate}(v;constants=0,scale=nothing) where{O,VZ}
+    Nv = flat_length(v)    # 𝕫
+    Nc = npartials((v,constants))  # ntuple(𝕫,Pvc)
+    P  = O+length(Nc)              # precedence of outputs
+    return if scale==nothing  P,Nv,variate_nested{:variate,O,Nv,Nc,VZ}(v,1      )
+    else                      P,Nv,variate_nested{:variate,O,Nv,Nc,VZ}(v,1,scale)
+    end
+end
+@inline function revariate_work{P}(v;scale=nothing) where{P}     
+    N = flat_length(v)
+    return variate_nested{:revariate,P,N,Nothing,Nothing}(v,1) 
 end
 
-revariate(   a  )          = revariate{precedence(a)            }(a    )
-revariate(   a,s)          = revariate{precedence(a)            }(a,  s)
-reδ(         a  )          = reδ{      precedence(a)            }(a    )
-reδ(         a,s)          = reδ{      precedence(a)            }(a,  s)
-revariate{P}(a  ) where{P} = revariate{P,flat_length(a),:variate}(a,1  )
-revariate{P}(a,s) where{P} = revariate{P,flat_length(a),:variate}(a,1,s)
-reδ{      P}(a  ) where{P} = revariate{P,flat_length(a),:δ      }(a,1  )
-reδ{      P}(a,s) where{P} = revariate{P,flat_length(a),:δ      }(a,1,s)
+# nested types,recursion
+@inline variate_nested{A,B,C,D,E}(v::NamedTuple,i              ) where{A,B,C,D,E  } = NamedTuple{keys(v)}(variate_nested{A,B,C,D,E}(values(v),i          )) 
+@inline variate_nested{A,B,C,D,E}(v::NamedTuple,i,s::NamedTuple) where{A,B,C,D,E  } = NamedTuple{keys(v)}(variate_nested{A,B,C,D,E}(values(v),i,values(s))) 
+@inline variate_nested{A,B,C,D,E}(v::NamedTuple,i,s::AllElements ) where{A,B,C,D,E  } = NamedTuple{keys(v)}(variate_nested{A,B,C,D,E}(values(v),i,s        )) 
+@inline variate_nested{A,B,C,D,E}(v::Tuple     ,i              ) where{A,B,C,D,E  } = (variate_nested{A,B,C,D,E}(first(v),i         ),variate_nested{A,B,C,D,E}(Base.tail(v),i+flat_length(first(v))             )...)
+@inline variate_nested{A,B,C,D,E}(v::Tuple     ,i,s::Tuple     ) where{A,B,C,D,E  } = (variate_nested{A,B,C,D,E}(first(v),i,first(s)),variate_nested{A,B,C,D,E}(Base.tail(v),i+flat_length(first(v)),Base.tail(s))...)
+@inline variate_nested{A,B,C,D,E}(v::Tuple     ,i,s::AllElements ) where{A,B,C,D,E  } = (variate_nested{A,B,C,D,E}(first(v),i,s.s     ),variate_nested{A,B,C,D,E}(Base.tail(v),i+flat_length(first(v)),s           )...)
+@inline variate_nested{A,B,C,D,E}(v::Tuple{}   ,i              ) where{A,B,C,D,E  } = ()
+@inline variate_nested{A,B,C,D,E}(v::Tuple{}   ,i,s::Tuple{}   ) where{A,B,C,D,E  } = ()
+@inline variate_nested{A,B,C,D,E}(v::Tuple{}   ,i,s::AllElements ) where{A,B,C,D,E  } = ()
+@inline variate_nested{A,B,C,D,E}(v::SArray{S} ,i              ) where{A,B,C,D,E,S} = variate_nested{A,B,C,D,E}.(v,SArray{S,𝕫}(i-1+j for j∈eachindex(v))                                              )
+@inline variate_nested{A,B,C,D,E}(v::SArray{S} ,i,s::SArray{S} ) where{A,B,C,D,E,S} = variate_nested{A,B,C,D,E}.(v,SArray{S,𝕫}(i-1+j for j∈eachindex(v)),s                                            ) 
+@inline variate_nested{A,B,C,D,E}(v::SArray{S} ,i,s::AllElements ) where{A,B,C,D,E,S} = variate_nested{A,B,C,D,E}.(v,SArray{S,𝕫}(i-1+j for j∈eachindex(v)),SArray{S,typeof(s.s)}(s.s for j∈eachindex(v)))
+@inline variate_nested{A,B,C,D,E}(v::ℝ         ,i              ) where{A,B,C,D,E  } = variate_nested{A,B,C,D,E}(v,i,1.)
 
-# inner works
-revariate{P,N,Z       }(a::NamedTuple   ,i               ) where{P,N,Z}   = NamedTuple{keys(a)}(revariate{P,N,Z}(values(a),i)) 
-revariate{P,N,Z       }(a::Tuple        ,i               ) where{P,N,Z}   = (revariate{P,N,Z}(first(a),i),revariate{P,N,Z}(Base.tail(a),i+flat_length(first(a)))...)
-revariate{P,N,Z       }(a::Tuple{}      ,i               ) where{P,N,Z}   = ()
-revariate{P,N,Z       }(a::SArray{S}    ,i               ) where{P,N,Z,S} = revariate{P,N,Z}.(a,SArray{S,𝕫}(i-1+j for j∈eachindex(a)))
-revariate{P,N,:δ      }(a::ℝ            ,i               ) where{P,N  }   = multivariate_𝕣{P,N}(zero( a),i)
-revariate{P,N,:variate}(a::ℝ            ,i               ) where{P,N  }   = multivariate_𝕣{P,N}(VALUE(a),i)
 
-revariate{P,N,Z       }(a::NamedTuple   ,i,s::NamedTuple ) where{P,N,Z}   = NamedTuple{keys(a)}(revariate{P,N,Z}(values(a),i,values(s))) 
-revariate{P,N,Z       }(a::Tuple        ,i,s::Tuple      ) where{P,N,Z}   = (revariate{P,N,Z}(first(a),i,first(s) ),revariate{P,N,Z}(Base.tail(a),i+flat_length(first(a)),Base.tail(s))...)
-revariate{P,N,Z       }(a::Tuple        ,i,s::Broadcast  ) where{P,N,Z}   = (revariate{P,N,Z}(first(a),i,      s.s),revariate{P,N,Z}(Base.tail(a),i+flat_length(first(a)),          s )...)
-revariate{P,N,Z       }(a::Tuple{}      ,i,s::Tuple{}    ) where{P,N,Z}   = ()
-revariate{P,N,Z       }(a::Tuple{}      ,i,s::Broadcast  ) where{P,N,Z}   = ()
-revariate{P,N,Z       }(a::SArray{S}    ,i,s::SArray{S,𝕣}) where{P,N,Z,S} = revariate{P,N,Z}.(a,SArray{S,𝕫}(i-1+j for j∈eachindex(a)),s   )
-revariate{P,N,Z       }(a::SArray{S}    ,i,s::Broadcast  ) where{P,N,Z,S} = revariate{P,N,Z}.(a,SArray{S,𝕫}(i-1+j for j∈eachindex(a)),s.s ) 
-revariate{P,N,:δ      }(a::ℝ            ,i,s::𝕣          ) where{P,N  }   = multivariate_𝕣{P,N}(zero( a),i,s)
-revariate{P,N,:variate}(a::ℝ            ,i,s::𝕣          ) where{P,N  }   = multivariate_𝕣{P,N}(VALUE(a),i,s)
+# add O variations on the outside
+@inline function variate_nested{:variate,O  ,Nv,Nc,VZ}(v::ℝ,i,s) where{O,Nv,Nc,VZ} 
+    x  =         variate_nested{:variate,O-1,Nv,Nc,VZ}(v   ,i,s)
+    R  = typeof(x)
+    dx = SVector{Nv,R}(i==j ? R(s) : zero(R) for j=1:Nv)
+    return ∂ℝ{O+length(Nc),Nv,R}(x,dx)
+end 
+# transition to getting v up to Nc
+@inline function variate_nested{:variate, 0 ,Nv       ,Nc,VZ}(v::ℝ,i,s) where{Nv,Nc,VZ} 
+    Nc_ = front{precedence(v)}(Nc) # cut the tail of Nc if v is not 𝕣
+    return       variate_nested{:variate,-1  ,Nothing,Nc_,VZ}(v,i,s) 
+end
+# get v up to Nc
+@inline          variate_nested{:variate,-1,Nothing,()           ,VZ}(v::ℝ,i,s) where{VZ} = VZ(v)
+@inline function variate_nested{:variate,-1,Nothing,          Nc ,VZ}(v::ℝ,i,s) where{Nc,VZ}
+    x     =      variate_nested{:variate,-1,Nothing,Base.tail(Nc),VZ}(v   ,i,s)
+    P,N,R = precedence(v)+length(Nc),first(Nc),typeof(x)
+    dx    = SVector{N,R}(zero(R) for j=1:N)
+    return ∂ℝ{P,N,R}(x,dx)
+end
+
+# revariate
+@inline variate_nested{         :revariate,0  ,N,D,E}(v::ℝ,i,s) where{  N,D,E} = VALUE(v)
+@inline function variate_nested{:revariate,P  ,N,D,E}(v::ℝ,i,s) where{P,N,D,E} 
+    x  = variate_nested{:revariate,P-1,N,D,E}(v   ,i,s)
+    R  = typeof(x)
+    dx = SVector{N,R}(i==j ? R(s) : zero(R) for j=1:N)
+    return ∂ℝ{P,N,R}(x,dx)
+end 
 
 
 """
