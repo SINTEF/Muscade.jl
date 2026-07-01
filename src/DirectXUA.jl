@@ -99,7 +99,7 @@ function addin!{mission}(out::AssemblyDirect,asm,iele,scale,eleobj::Acost,A::SVe
     if     mission==:matrices     P=2
     elseif mission==:vectors      P=1
     end
-    ∂A  = revariate{P}(A)
+    _,_,∂A  = variate{P}(A)
 #    ø   = nothing
 #    C,_ = getlagrangian(eleobj,ø,ø,ø,∂A,ø,ø ,dbg)
     C,_ = getlagrangian(eleobj,∂A,nothing,dbg)
@@ -121,10 +121,10 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,el
     elseif mission==:vectors      P=0
     end
     if NDA == 1
-        ∂X,∂U,∂A = revariate{1}((X,U,A),(Broadcast(scale.X),Broadcast(scale.U),scale.A)) 
+        _,_,(∂X,∂U,∂A) = variate{1}((X,U,A),scale=(AllElements(scale.X),AllElements(scale.U),scale.A)) 
         R,FB     = getresidual(eleobj, ∂X,∂U,∂A,t,SP,dbg) 
     else
-        ∂X,∂U    = revariate{1}((X,U ),(Broadcast(scale.X),Broadcast(scale.U)))
+        _,_,(∂X,∂U)   = variate{1}((X,U ),scale=(AllElements(scale.X),AllElements(scale.U)))
         R,FB     = getresidual(eleobj, ∂X,∂U,  A,t,SP,dbg)
     end        
     ndof   = (Nx, Nx, Nu, Na)
@@ -180,10 +180,10 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,el
     elseif mission==:vectors      P=1
     end
     if NDA == 1   
-        ∂Λ,∂X,∂U,∂A = revariate{P}((Λ[1],X,U,A),(scale.Λ,Broadcast(scale.X),Broadcast(scale.U),scale.A))
+        _,_,(∂Λ,∂X,∂U,∂A) = variate{P}((Λ[1],X,U,A),scale=(scale.Λ,AllElements(scale.X),AllElements(scale.U),scale.A))
         L,FB        = getlagrangian(eleobj, ∂Λ,∂X,∂U,∂A,t,SP,dbg)
     else
-        ∂Λ,∂X,∂U    = revariate{P}((Λ[1],X,U),(scale.Λ,Broadcast(scale.X),Broadcast(scale.U)))
+        _,_,(∂Λ,∂X,∂U)  = variate{P}((Λ[1],X,U),scale=(scale.Λ,AllElements(scale.X),AllElements(scale.U)))
         L,FB        = getlagrangian(eleobj, ∂Λ,∂X,∂U,A  ,t,SP,dbg)
     end
     DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,NDΛ,NDX,NDU,NDA}(out,asm,L,iele,Δt)
@@ -205,13 +205,13 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,el
     elseif mission==:vectors      P=1
     end
     if     NDA == 1  # NB: compile-time condition
-        ∂X,∂U,∂A    = revariate{P-1}((X,U,A),(Broadcast(scale.X),Broacast(scale.U),scale.A))
+        _,_,(∂X,∂U,∂A) = variate{P-1}((X,U,A),scale=(AllElements(scale.X),Broacast(scale.U),scale.A))
         R,FB,eleres = getresidual(eleobj.eleobj, ∂X,∂U,∂A,t,SP,(dbg...,via=:ElementCostAccelerator),eleobj.req.eleres)  
     elseif NDA == 0
-        ∂X,∂U       = revariate{P-1}((X,U ),(Broadcast(scale.X),Broadcast(scale.U)))
+        _,_,(∂X,∂U)   = variate{P-1}((X,U ),scale=(AllElements(scale.X),AllElements(scale.U)))
         R,FB,eleres = getresidual(eleobj.eleobj, ∂X,∂U,  A,t,SP,(dbg...,via=:ElementCostAccelerator),eleobj.req.eleres)  
     end
-    Releres         = revariate{P}(eleres)
+    _,_,Releres     = variate{P}(eleres)
     
     Rcost           = eleobj.cost(Releres,t,eleobj.costargs...)
     cost            = chainrule(Rcost,to_order{P,npartial(eleres)}(eleres))
@@ -239,13 +239,13 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,el
     γ               = default{:γ}(SP,0.)
     m               = eleobj.mode(t)
     if     NDA == 1  # NB: compile-time condition
-        ∂X,∂U,∂A    = revariate{P-1}((X,U,A),(Broadcast(scale.X),Broadcast(scale.U),scale.A))
+        _,_,(∂X,∂U,∂A) = variate{P-1}((X,U,A),scale=(AllElements(scale.X),AllElements(scale.U),scale.A))
         R,FB,eleres = getresidual(eleobj.eleobj, ∂X,∂U,∂A,t,SP,(dbg...,via=:ElementCoonstraintAccelerator),eleobj.req)  
     elseif NDA == 0
-        ∂X,∂U       = revariate{P-1}((X,U ),(Broadcast(scale.X),Broadcast(scale.U)))
+        _,_,(∂X,∂U) = variate{P-1}((X,U ),scale=(AllElements(scale.X),AllElements(scale.U)))
         R,FB,eleres = getresidual(eleobj.eleobj, ∂X,∂U,  A,t,SP,(dbg...,via=:ElementConstraintAccelerator),eleobj.req)  
     end
-    Releres         = revariate{P}(eleres)
+    _,_,Releres     = variate{P}(eleres)
     Rgap            = eleobj.gap(eleres,t,eleobj.gargs...)
     gap             = chainrule(Rgap,to_order{P,npartial(eleres)}(eleres))
     L               = Λ[1] ∘₁ R +   if      m==:equal;    -gap*λ   
