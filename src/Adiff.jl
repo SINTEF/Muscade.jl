@@ -137,7 +137,6 @@ constants( ::Nothing)   = 1
 struct δ_{P,N,R}                end # need dum, because syntax δ_{P,N,R}() collides with default constructor
 struct variate_{P,N}            end
 struct directional{P,N}         end 
-struct variate²{P,N}            end
 """
     X = δ_{P,N,R}()
 
@@ -168,10 +167,6 @@ See also: [`constants`](@ref), [`δ_`](@ref), [`value`](@ref), [`∂`](@ref), [`
 @inline Muscade.variate_{    P,N}(a::SV{N,R},δa::SV{N,𝕣}) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,N,R}}(∂ℝ{P,N,R}(a[j]   ,SV{N,R}(i==j ? R(δa[i])  : zero(R) for i=1:N)) for j=1:N)
 @inline Muscade.variate_{    P  }(a::R                  ) where{P,  R<:ℝ} =      ∂ℝ{P,1  }(a,SV{1,R}(one(R)))
 @inline directional{P  }(a::SV{N,R},δa::SV{N,R}) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,1,R}}(∂ℝ{P,1}(a[i],SV{1,R}(δa[i])) for i=1:N)
-function variate²{P,N}(x::R,i,s=one(R)) where{P,N,R<:ℝ}
-    R1 = ∂ℝ{P,N,R}
-    return ∂ℝ{P+1,N,R1}( ∂ℝ{P,N}(x,i,s) , SV{N,R1}(j==i ? R1(s) : zero(R1) for j=1:N ))
-end
 # Analyse
 """
     VALUE(Y)
