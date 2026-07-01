@@ -109,13 +109,6 @@ flatten{T}(a::Tuple{}      ) where{T}        = ()
 flatten{T}(a::SArray       ) where{T}        = SVector{length(a),T}(a)  
 flatten{T}(a::ℝ            ) where{T}        = T(a)
 
-struct multivariate_𝕣{P,N} end
-multivariate_𝕣{P,N}(a   ,i      ) where{P,N}          = ∂ℝ{P,N  }(multivariate_𝕣{P-1,N}(a,i      ),i) 
-multivariate_𝕣{0,N}(a::𝕣,i      ) where{  N}          = a
-
-multivariate_𝕣{P,N}(a::R,i,scale) where{P,N,R}        = ∂ℝ{P,N  }(multivariate_𝕣{P-1,N}(a,i,scale),SV{N,R}(i==j ? scale : zero(R) for j=1:N)) 
-multivariate_𝕣{0,N}(a::𝕣,i,scale) where{  N}          = a
-
 @inline longuestfirst(a,b) = length(a)>length(b) ? (a,b) : (b,a)
 
 @inline function npartials(a::Tuple) 
@@ -187,7 +180,7 @@ must have the same structure, with the important exception that `AllElements` is
 to apply a scaling to all elements of a `Tuple` or `SArray`: here, `scale.X` is applied
 to `X₀`, `X₁` and `X₂`.  
 
-See also: [`chainrule`](@ref), [`revariate_indices`](@ref)
+See also: [`chainrule`](@ref), [`variate_indices`](@ref)
 """
 @inline revariate(   v;kwargs...)          = revariate_work{precedence(v)}(v;kwargs...)
 @inline revariate{P}(v;kwargs...) where{P} = revariate_work{P            }(v;kwargs...)
@@ -254,7 +247,7 @@ end
 
 
 """
-    iV   = revariate_indices(V)
+    iV   = variate_indices(V)
 
 For use in conjunction with
     
@@ -265,7 +258,7 @@ For use in conjunction with
 See also: [`revariate`](@ref)
 
 """
-revariate_indices( a              ) = revariate_indices_(a,0)
+variate_indices( a              ) = revariate_indices_(a,0)
 revariate_indices_(a::Tuple     ,i) = (revariate_indices_(first(a),i),revariate_indices_(Base.tail(a),i+flat_length(first(a)))...)
 revariate_indices_(a::Tuple{}   ,i) = ()
 revariate_indices_(a::NamedTuple,i) = NamedTuple{keys(a)}(revariate_indices_(values(a),i))

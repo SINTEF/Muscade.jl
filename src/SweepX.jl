@@ -46,7 +46,7 @@ function addin!{:step}(out::AssemblySweepX{2},asm,iele,scale,eleobj,Λ,X::NTuple
     a₁,a₂,a₃,b₁,b₂,b₃ = out.c.a₁,out.c.a₂,out.c.a₃,out.c.b₁,out.c.b₂,out.c.b₃
     x,x′,x″    = X
     _,_,(δX,δr)= variate0((x=x,r=0.),scale=(x=scale.X,r=1.))
-    iX,ir      = revariate_indices((x,0.)) 
+    iX,ir      = variate_indices((x,0.)) 
     a          = a₂*x′ + a₃*x″
     b          = b₂*x′ + b₃*x″
     vx         = x  +    δX
