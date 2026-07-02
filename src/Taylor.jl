@@ -11,9 +11,9 @@ compute time derivatives, for example Euler, Coriolis and centrifugal accelerati
 or strain rates.
 
 !!! Warning
-    `motion` is unsafe: `X_`, and any variable touched by it, must not be allower to
+    `motion` is unsafe: `X_`, and any variable touched by it, must not be allowed to
     touch `Λ`, `X`, `U`, `A`, `t`, or any other variable touched by these.
-    Give all variables touched by `X_` a name ending in `_`.
+    To prevent errors, consider giving all variables touched by `X_` a name ending in `_`.
 
 Some principles of safe automatic differentiation must be adhered to:
 - the function that uses `motion` must also 'unpack' : no variable that is touched by 

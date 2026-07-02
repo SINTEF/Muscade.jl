@@ -123,7 +123,6 @@ end
 # Muscade.variate_
 struct δ_{P,N,R}                end # need dum, because syntax δ_{P,N,R}() collides with default constructor
 struct variate_{P,N}            end
-struct directional{P,N}         end 
 """
     X = δ_{P,N,R}()
 
@@ -133,6 +132,9 @@ create a `SVector` of automatic differentiation objects of precedence `P` and va
 
 Create automatic differentiation object of precedence `P` and value `zero`.  
 
+!!! Warning
+    Improper use may cause perturbation confusion
+
 See also: [`precedence`](@ref), [`Muscade.variate_`](@ref), [`value`](@ref), [`∂`](@ref), [`VALUE`](@ref), [`value_∂`](@ref)
 """
 @inline δ_{P,N,R}(                          ) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,N,R}}(∂ℝ{P,N  }(zero(R),i                                         ) for i=1:N)
@@ -140,20 +142,23 @@ See also: [`precedence`](@ref), [`Muscade.variate_`](@ref), [`value`](@ref), [`�
 @inline δ_{P    }(                          ) where{P       } =                 ∂ℝ{P,1,𝕣}(0.     ,SV{1,𝕣}(1.                               ))
 
 """
-    X = Muscade.variate_{P,N}(x)
+    X = variate_{P,N}(x)
 
 where `typeof(x)<:SVector{N}`, create a `SVector` of automatic differentiation objects of precedence `P`.    
 
-    X = Muscade.variate_{P}(x)
+    X = variate_{P}(x)
 
 where `typeof(x)<:Real`, create an object of precedence `P`.    
+
+!!! Warning
+    Improper use may cause perturbation confusion.  
+    Assumes, without testing, that precedence(x)=P-1
 
 See also: [`precedence`](@ref), [`δ_`](@ref), [`value`](@ref), [`∂`](@ref), [`VALUE`](@ref), [`value_∂`](@ref)
 """
 @inline variate_{    P,N}(a::SV{N,R}            ) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,N,R}}(∂ℝ{P,N  }(a[i],i) for i=1:N)
 @inline variate_{    P,N}(a::SV{N,R},δa::SV{N,𝕣}) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,N,R}}(∂ℝ{P,N,R}(a[j]   ,SV{N,R}(i==j ? R(δa[i])  : zero(R) for i=1:N)) for j=1:N)
 @inline variate_{    P  }(a::R                  ) where{P,  R<:ℝ} =      ∂ℝ{P,1  }(a,SV{1,R}(one(R)))
-@inline directional{P  }(a::SV{N,R},δa::SV{N,R}) where{P,N,R<:ℝ} = SV{N,∂ℝ{P,1,R}}(∂ℝ{P,1}(a[i],SV{1,R}(δa[i])) for i=1:N)
 # Analyse
 """
     VALUE(Y)

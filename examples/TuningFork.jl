@@ -2,6 +2,9 @@
 # 
 # Tuning forks should resonate at a desired frequency when subjected to an impulsive load. Achieving the right frequency cab be done by adding material or filing material off the prongs.
 # We start from a target solution establihed using SweepX. A sprious mass is then introduced, parametrized by an A-dof. We use the SweepXA and DirectXUA solvers to estimate how much mass should be removed. In SweepXA, the excitation is assume to be known, while it is estimated by DirectXUA. 
+#
+# NB: In several places in this script, `solve` is called with optional `verbose=false`, because this script is part of the generation
+# of `Muscade`'s online documentation.  Setting `verbose=true` would be more relevant in other contexts.
 
 using Muscade, StaticArrays, GLMakie, Muscade.Toolbox
 
@@ -100,16 +103,16 @@ addelement!(XAmodel,  SingleAcost,[Anod]; field=:mass, cost=Acost_);
 
 # XA model (before estimating the mass)
 XAinitialState    = initialize!(XAmodel;time=0.);
-XAdynamicStates   = solve(SweepX{2};initialstate=XAinitialState, time=timeVec); 
+XAdynamicStates   = solve(SweepX{2};initialstate=XAinitialState, time=timeVec,verbose=false); 
 
 # XA model (after having estimated the mass)
 optimXAstate  = solve(SweepXA{2}; initialstate=XAinitialState, time=timeVec, 
-                maxAiter=20,maxΔa=1e-10);
+                maxAiter=20,maxΔa=1e-10,verbose=false);
 
 # DirectXUA (slack convergence criteria and number of iterations)
 XUAinitialState    = initialize!(XUAmodel;time=0.);
 optimXUAstate   = solve(DirectXUA{2,0,1};initialstate=[XUAinitialState], time=[timeVec],
-                maxiter=15, maxΔx=5e-2,maxΔλ=Inf,maxΔu=5e-2,maxΔa=1e-4);
+                maxiter=15, maxΔx=5e-2,maxΔλ=Inf,maxΔu=5e-2,maxΔa=1e-4,verbose=false);
 
 #  Gather results for comparison
 analysisResults = (dynamicStates, XAdynamicStates,optimXAstate,optimXUAstate[end]); 

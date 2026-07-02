@@ -22,7 +22,6 @@ module Muscade
 
     include("Adiff.jl")
     export  ∂ℝ #\partial\BbbR
-    export  directional # \delta
     export  value,VALUE,∂,value_∂ # \partial, \nabla
     export  precedence
     public  npartial #,norm

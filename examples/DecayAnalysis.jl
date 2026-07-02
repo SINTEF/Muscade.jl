@@ -2,6 +2,10 @@
 # 
 # We estimate the mass and damping matrices of a coupled linear oscillator (floater moving in the surge, sway and yaw) based on a decay tests
 # In the following, we define the necessary element and residual function describing the dynamic behaviour of the floater. 
+#
+# NB: In two places in this script, `solve` is called with optional `verbose=false`, because this script is part of the generation
+# of `Muscade`'s online documentation.  Setting `verbose=true` would be more relevant in other contexts.
+
 using Muscade,StaticArrays,Interpolations,GLMakie
 
 fold(x::SVector{6}) = SMatrix{3,3}( x[1],x[2],x[3],
@@ -125,7 +129,7 @@ e7             = addelement!(modelXUA,SingleDofCost,[n1];class=:X,field=:yaw,   
 #Solve inverse problem
 initialstateXUA    = initialize!(modelXUA;time=0.)
 stateXUA         = solve(DirectXUA{2,0,1};initialstate=[initialstateXUA],time=[T],
-                        maxiter=100,saveiter=true,
+                        maxiter=100,saveiter=true,verbose=false,
                         maxΔx=1e-5,maxΔλ=Inf,maxΔu=1e-5,maxΔa=1e-5);
 
 # Fetch and display estimated model parameters
