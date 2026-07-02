@@ -10,6 +10,11 @@ Transform a `NTuple` of `SVector`s, for example the vector `X` provided as an in
 compute time derivatives, for example Euler, Coriolis and centrifugal accelerations, 
 or strain rates.
 
+!!! Warning
+    `motion` is unsafe: `X_`, and any variable touched by it, must not be allower to
+    touch `Λ`, `X`, `U`, `A`, `t`, or any other variable touched by these.
+    Give all variables touched by `X_` a name ending in `_`.
+
 Some principles of safe automatic differentiation must be adhered to:
 - the function that uses `motion` must also 'unpack' : no variable that is touched by 
   the output of `motion` must be returned by the function without having been unpacked
@@ -19,7 +24,7 @@ Some principles of safe automatic differentiation must be adhered to:
 - If other levels of automatic differentiation are introduced within the function, unpack in reverse
   order of packing.    
 
-See [`motion⁻¹`](@ref)
+See [`motion⁻¹`](@ref),[`precedence`](@ref)
 """
 motion{ P    }(a::NTuple{ND,SV{N,R}}) where{ND,P,N,R        } = SV{N}(motion_{P,P+ND-1}(let a=a 
                                                                                             ntuple(j->a[j][i],Val(ND))
@@ -28,9 +33,9 @@ motion_{P,Q  }(a::NTuple{D,      R }) where{D ,P  ,R<:Real,Q} = ∂ℝ{Q,1}(moti
 motion_{P,P  }(a::NTuple{D,      R }) where{D ,P  ,R<:Real  } = a[1]
 
 """
-    P  = precedence(X,U,A,t)
+    P  = precedence(X)
     ND = length(X)
-    X_  = motion{P,ND}(X)
+    X_  = motion{P}(X)
     Y_  = f(Y_)    
     Y₀ = motion⁻¹{P,ND,0}(Y_)
     Y₁ = motion⁻¹{P,ND,1}(Y_)
@@ -274,7 +279,7 @@ Decrease (lossy) or increase (pad partials with zeros) the order of differentiat
 of `V` must be of type `∂ℝ` or `𝕣`.
 
 IMPORTANT:
-1) assumes all differentiations are with respect to the same variable. 
+1) assumes all the nested differentiations are with respect to the same variable. 
 2) to_order{P,N}(V::𝕣) = V
 """
 struct to_order{P,N} end
@@ -377,7 +382,11 @@ the length of its partials.
 Also works where `x` is a nested structure of `Tuple`s and `NamedTuple`s where the leaves
 are `ℝ` or `SArray{S,R} where {S,R<:ℝ}`.    
 
-Be extremely careful if `f` is a closure, making sure that `f` does not capture variables of type `∂ℝ`.
+!!! warning
+    If `f` is a closure, make sure that `f` does not capture variables of type `∂ℝ`.
+
+!!! warning
+    See [`chainrule`](@ref) about when it is advisable to use chainrule, and when not.
 
 Wrapper function of [`revariate`](@ref) and [`chainrule`](@ref) 
 

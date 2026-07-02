@@ -24,7 +24,7 @@ module Muscade
     export  ∂ℝ #\partial\BbbR
     export  directional # \delta
     export  value,VALUE,∂,value_∂ # \partial, \nabla
-    export precedence
+    export  precedence
     public  npartial #,norm
 
     include("Taylor.jl")

@@ -689,14 +689,14 @@ end
 function getresidual(eleobj::Eleobj,hasres::Val{true},haslag,nso::Val{true}, X::NTuple{Ndx,SVector{Nx}}, 
         U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na} ,t::ℝ,SP,dbg,req)     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
     P,N = precedence((X,U,A,t)),npartial((X,U,A,t)) 
-    X1,U1,A1,t1 = to_order{max(1,P),N}((X,U,A,t))
+    X1,U1,A1,t1 = to_order{min(1,P),N}((X,U,A,t))
     R,FB,eleres = residual(  eleobj,  X1,U1,A1,t1,SP,dbg,req)
     return to_order{P,N}(R),FB,to_order{P,N}(eleres) 
 end
 function getresidual(eleobj::Eleobj,hasres::Val{true},haslag,nso::Val{true}, X::NTuple{Ndx,SVector{Nx}}, 
         U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na} ,t::ℝ,SP,dbg    )     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
     P,N = precedence((X,U,A,t)),npartial((X,U,A,t)) 
-    X1,U1,A1,t1 = to_order{max(1,P),N}((X,U,A,t))
+    X1,U1,A1,t1 = to_order{min(1,P),N}((X,U,A,t))
     R,FB        = residual(  eleobj,  X1,U1,A1,t1,SP,dbg    )
     return to_order{P,N}(R),FB 
 end
@@ -705,7 +705,7 @@ end
 function getresidual(eleobj::Eleobj,hasres::Val{false},haslag::Val{true},nso, X::NTuple{Ndx,SVector{Nx}}, 
         U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na} ,t::ℝ,SP,dbg,req)     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
     P            = precedence(∂0(X),∂0(U),A,t)
-    Λ            = δ_{P+1,Nx,𝕣}() 
+    Λ            = δ_{P+1,Nx,𝕣}() # legal only because lagrangian is linear in Λ
     L,FB,eleres  = lagrangian(eleobj,Λ,X,U,A,t,SP,dbg,req)    
     R            = ∂{P+1,Nx}(L)
     return R,FB,eleres
@@ -713,7 +713,7 @@ end
 function getresidual(eleobj::Eleobj,hasres::Val{false},haslag::Val{true},nso, X::NTuple{Ndx,SVector{Nx}}, 
         U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na} ,t::ℝ,SP,dbg   )     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
     P            = precedence(∂0(X),∂0(U),A,t)
-    Λ            = δ_{P+1,Nx,𝕣}() 
+    Λ            = δ_{P+1,Nx,𝕣}() # legal only because lagrangian is linear in Λ
     L,FB         = lagrangian(eleobj,Λ,X,U,A,t,SP,dbg   )    
     R            = ∂{P+1,Nx}(L)
     return R,FB
@@ -777,7 +777,7 @@ end
 function getlagrangian(eleobj::Eleobj,hasres::Val{true},haslag::Val{false},nso::Val{true}, Λ::SVector{Nx}, X::NTuple{Ndx,SVector{Nx}}, 
         U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na}, t::ℝ,SP,dbg,req)     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
     P,N = precedence((X,U,A,t)),npartial((X,U,A,t)) 
-    X1,U1,A1,t1 = to_order{max(1,P),N}((X,U,A,t)) 
+    X1,U1,A1,t1 = to_order{min(1,P),N}((X,U,A,t)) 
     R,FB,eleres = residual(  eleobj,  X1,U1,A1,t1,SP,dbg,req)
     L           = Λ ∘₁ to_order{P,N}(R) # to avoid loosing symmetry of Hessian...
     return L,FB,to_order{P,N}(eleres) 
@@ -785,7 +785,7 @@ end
 function getlagrangian(eleobj::Eleobj,hasres::Val{true},haslag::Val{false},nso::Val{true}, Λ::SVector{Nx}, X::NTuple{Ndx,SVector{Nx}}, 
         U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na}, t::ℝ,SP,dbg    )     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
     P,N = precedence((X,U,A,t)),npartial((X,U,A,t)) 
-    X1,U1,A1,t1 = to_order{max(1,P),N}((X,U,A,t)) 
+    X1,U1,A1,t1 = to_order{min(1,P),N}((X,U,A,t)) 
     R,FB        = residual(  eleobj,  X1,U1,A1,t1,SP,dbg    )
     L           = Λ ∘₁ to_order{P,N}(R) # to avoid loosing symmetry of Hessian...
     return L,FB 
