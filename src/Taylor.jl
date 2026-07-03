@@ -1,8 +1,7 @@
-struct motion{P}          end 
 struct motion_{P,Q}       end 
 struct motion⁻¹{P,ND,OD}  end 
 """
-    P,N,X_ = motion{P}(X,context=(U,A,t))
+    P,ND,X_ = motion(X,context=(U,A,t))
 
 Transform a `NTuple` of `SVector`s, for example the vector `X` provided as an input to
 `residual` or `Lagrangian` into a `SVector` of `∂ℝ`.  This can be used by an element to 
@@ -23,11 +22,15 @@ Some principles of safe automatic differentiation must be adhered to:
 - If other levels of automatic differentiation are introduced within the function, unpack in reverse
   order of packing.    
 
-See [`motion⁻¹`](@ref),[`precedence`](@ref)
+See [`motion⁻¹`](@ref)
 """
-motion{ P    }(a::NTuple{ND,SV{N,R}}) where{ND,P,N,R        } = SV{N}(motion_{P,P+ND-1}(let a=a 
-                                                                                            ntuple(j->a[j][i],Val(ND))
-                                                                                         end) for i=1:N)
+function motion(a::NTuple{ND,SV{N,R}};context=0) where{ND,N,R} 
+    P,_,a_ = variate{0}(a;context) 
+    A  = SV{N}(motion_{P,P+ND-1}(let a=a 
+                  ntuple(j->a_[j][i],Val(ND))
+              end) for i=1:N)
+    return P,ND,A          
+end
 motion_{P,Q  }(a::NTuple{D,      R }) where{D ,P  ,R<:Real,Q} = ∂ℝ{Q,1}(motion_{P,Q-1}(a),SV(motion_{P,Q-1}(a[2:D]))) 
 motion_{P,P  }(a::NTuple{D,      R }) where{D ,P  ,R<:Real  } = a[1]
 
@@ -400,19 +403,19 @@ end
 #apply{:chainrule}(f,x) = chainrule(f(revariate(x)),x)
 apply{:direct   }(f,x) = f(x)
 
-"""
-    chainrule_value{P,ND}(Ty,X_)
+# """
+#     chainrule_value{P,ND}(Ty,X_)
 
-Given `Ty` obtained using `revariate`, and `X_`, obtained using `motion{P}(X)` where `X` is a tuple
-of length `ND` and `P=precedence(X)`, compute `y`, a tuple of length `ND` of `AbstractArrays` of same `eltype` as vectors in `X.
+# Given `Ty` obtained using `revariate`, and `X_`, obtained using `motion{P}(X)` where `X` is a tuple
+# of length `ND` and `P=precedence(X)`, compute `y`, a tuple of length `ND` of `AbstractArrays` of same `eltype` as vectors in `X.
 
-See also [`revariate`](@ref), [`motion`](@ref), [`motion⁻¹`](@ref), [`chainrule_Jacobian`](@ref)  
-"""
-struct chainrule_value{P,ND} end
-chainrule_value{P,ND}(Ty            ,X_) where{P,ND} = motion⁻¹{P,ND}(chainrule(value{P}(Ty),X_))
-chainrule_value{P,ND}(Ty::NamedTuple,X_) where{P,ND} = NamedTuple{keys(Ty)}(chainrule_value{P,ND}(values(Ty),X_))
-chainrule_value{P,ND}(Ty::Tuple     ,X_) where{P,ND} = (chainrule_value{P,ND}(first(Ty),X_),chainrule_value{P,ND}(Base.tail(Ty),X_)...)
-chainrule_value{P,ND}(Ty::Tuple{}   ,X_) where{P,ND} = ()
+# See also [`revariate`](@ref), [`motion`](@ref), [`motion⁻¹`](@ref), [`chainrule_Jacobian`](@ref)  
+# """
+# struct chainrule_value{P,ND} end
+# chainrule_value{P,ND}(Ty            ,X_) where{P,ND} = motion⁻¹{P,ND}(chainrule(value{P}(Ty),X_))
+# chainrule_value{P,ND}(Ty::NamedTuple,X_) where{P,ND} = NamedTuple{keys(Ty)}(chainrule_value{P,ND}(values(Ty),X_))
+# chainrule_value{P,ND}(Ty::Tuple     ,X_) where{P,ND} = (chainrule_value{P,ND}(first(Ty),X_),chainrule_value{P,ND}(Base.tail(Ty),X_)...)
+# chainrule_value{P,ND}(Ty::Tuple{}   ,X_) where{P,ND} = ()
 """
     chainrule_Jacobian{P}(Ty,X_)
 
@@ -423,9 +426,13 @@ and `y∂X₀`, the Jacobian of `∂0(y)` with respect to `∂0(X)`.
 See also [`revariate`](@ref), [`motion`](@ref), [`motion⁻¹`](@ref), [`chainrule_value`](@ref)   
 """
 struct chainrule_Jacobian{P} end
-chainrule_Jacobian{P}(Ty            ,X₀) where{P} = chainrule(∂{P+1,npartial(Ty)}(Ty),X₀) # y∂X₀
-chainrule_Jacobian{P}(Ty::NamedTuple,X₀) where{P} = NamedTuple{keys(Ty)}(chainrule_Jacobian{P}(values(Ty),X₀))
-chainrule_Jacobian{P}(Ty::Tuple     ,X₀) where{P} = (chainrule_Jacobian{P}(first(Ty),X₀),chainrule_Jacobian{P}(Base.tail(Ty),X₀)...)
-chainrule_Jacobian{P}(Ty::Tuple{}   ,X₀) where{P} = ()
+#chainrule_Jacobian{P}(Ty            ,X₀) where{P} = chainrule(∂{P+1,npartial(Ty)}(Ty),X₀) # y∂X₀
+#chainrule_Jacobian{P}(Ty::NamedTuple,X₀) where{P} = NamedTuple{keys(Ty)}(chainrule_Jacobian{P}(values(Ty),X₀))
+#chainrule_Jacobian{P}(Ty::Tuple     ,X₀) where{P} = (chainrule_Jacobian{P}(first(Ty),X₀),chainrule_Jacobian{P}(Base.tail(Ty),X₀)...)
+#chainrule_Jacobian{P}(Ty::Tuple{}   ,X₀) where{P} = ()
+chainrule_Jacobian(Ty            ,X₀)  = chainrule(∂{precedence(Ty),npartial(Ty)}(Ty),X₀) # y∂X₀
+chainrule_Jacobian(Ty::NamedTuple,X₀)  = NamedTuple{keys(Ty)}(chainrule_Jacobian(values(Ty),X₀))
+chainrule_Jacobian(Ty::Tuple     ,X₀)  = (chainrule_Jacobian(first(Ty),X₀),chainrule_Jacobian(Base.tail(Ty),X₀)...)
+chainrule_Jacobian(Ty::Tuple{}   ,X₀)  = ()
 
 

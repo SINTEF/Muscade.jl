@@ -163,8 +163,7 @@ end;
 # Define now the residual function for the Bar3D element.
 @espy function Muscade.residual(o::Bar3D{Mat,Udof},   X,U,A,t,SP,dbg) where{Mat,Udof}
     # Obtain motions (i.e. including velocity and accelerations) from X
-    P,ND    = precedence(X),length(X)
-    x_      = motion{P}(X)
+    P,ND,x_      = motion(X)
     # Motions of the nodes, center of the element
     uᵧ₁,uᵧ₂   = vec3(x_,1:3), vec3(x_,4:6) 
     c        = o.cₘ + 0.5*(uᵧ₁+uᵧ₂) 

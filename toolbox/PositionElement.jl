@@ -58,8 +58,7 @@ Muscade.doflist(::Type{<:Position3D}) = (inod  = (1  ,1  ,1  ,1  ,1  ,1  ),
 Muscade.no_second_order(::Type{<:Position3D}) = Val(true)
 
 @espy function Muscade.residual(o::Position3D{Nsensor},   X,U,A,t,SP,dbg) where{Nsensor}
-    P,ND   = precedence(X),length(X)
-    X_     = motion{P}(X)
+    P,ND,X_     = motion(X)
     Δx_    = X_[SVector(1,2,3)]
     r_     = X_[SVector(4,5,6)]
     R_     = Rodrigues(r_)

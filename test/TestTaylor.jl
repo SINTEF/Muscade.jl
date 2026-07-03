@@ -9,61 +9,75 @@ const X4 = (Muscade.variate_{1,3}(SVector{3,𝕣}(1,2,3)),)
 const X5 = (Muscade.variate_{1,3}(SVector{3,𝕣}(1,2,3)),Muscade.variate_{1,3}(SVector{3,𝕣}(4,5,6)))
 const X6 = (Muscade.variate_{1,3}(SVector{3,𝕣}(1,2,3)),Muscade.variate_{1,3}(SVector{3,𝕣}(4,5,6)),Muscade.variate_{1,3}(SVector{3,𝕣}(7,8,9)))
 
-Y1=motion{1}(X1)
-Y2=motion{1}(X2)
-Y3=motion{1}(X3)
-Y4=motion{2}(X4)
-Y5=motion{2}(X5)
-Y6=motion{2}(X6)
+P1,ND1,Y1 = motion(X1)
+P2,ND2,Y2 = motion(X2)
+P3,ND3,Y3 = motion(X3)
+P4,ND4,Y4 = motion(X4)
+P5,ND5,Y5 = motion(X5)
+P6,ND6,Y6 = motion(X6)
+
+Z1        = motion⁻¹{P1,ND1}(Y1)
+Z2        = motion⁻¹{P2,ND2}(Y2)
+Z3        = motion⁻¹{P3,ND3}(Y3)
+Z4        = motion⁻¹{P4,ND4}(Y4)
+Z5        = motion⁻¹{P5,ND5}(Y5)
+Z6        = motion⁻¹{P6,ND6}(Y6)
 
 @testset "motion" begin
     @test typeof(X1) == Tuple{SVector{3, 𝕣}}
     @test typeof(Y1) == SVector{3, 𝕣}
 
     @test typeof(X2) == Tuple{SVector{3, 𝕣}, SVector{3, 𝕣}}
-    @test typeof(Y2) == SVector{3, ∂ℝ{2, 1, 𝕣}} 
+    @test typeof(Y2) == SVector{3, ∂ℝ{1, 1, 𝕣}} 
 
     @test typeof(X3) == Tuple{SVector{3, 𝕣}, SVector{3, 𝕣}, SVector{3, 𝕣}}
-    @test typeof(Y3) == SVector{3, ∂ℝ{3, 1, ∂ℝ{2, 1, 𝕣}}}
+    @test typeof(Y3) == SVector{3, ∂ℝ{2, 1, ∂ℝ{1, 1, 𝕣}}}
 
     @test typeof(X4) == Tuple{SVector{3, ∂ℝ{1, 3, 𝕣}}}
     @test typeof(Y4) == SVector{3, ∂ℝ{1, 3, 𝕣}}
 
     @test typeof(X5) == Tuple{SVector{3, ∂ℝ{1, 3, 𝕣}}, SVector{3, ∂ℝ{1, 3, 𝕣}}}
-    @test typeof(Y5) == SVector{3, ∂ℝ{3, 1, ∂ℝ{1, 3, 𝕣}}}
+    @test typeof(Y5) == SVector{3, ∂ℝ{2, 1, ∂ℝ{1, 3, 𝕣}}}
 
     @test typeof(X6) == Tuple{SVector{3, ∂ℝ{1, 3, 𝕣}}, SVector{3, ∂ℝ{1, 3, 𝕣}}, SVector{3, ∂ℝ{1, 3, 𝕣}}}
-    @test typeof(Y6) == SVector{3, ∂ℝ{4, 1, ∂ℝ{3, 1, ∂ℝ{1, 3, 𝕣}}}}
+    @test typeof(Y6) == SVector{3, ∂ℝ{3, 1, ∂ℝ{2, 1, ∂ℝ{1, 3, 𝕣}}}}
 end
 
 @testset "motion⁻¹" begin
-    @test motion⁻¹{1,1,0}(Y1) === SVector{3,𝕣}(1,2,3)
-    @test motion⁻¹{1,1,1}(Y1) === SVector{3,𝕣}(0,0,0)
-    @test motion⁻¹{1,1,2}(Y1) === SVector{3,𝕣}(0,0,0)
+    @test Z1===X1
+    @test Z2===X2
+    @test Z3===X3
+    @test Z4===X4
+    @test Z5===X5
+    @test Z6===X6
 
-    @test motion⁻¹{1,2,0}(Y2) === SVector{3,𝕣}(1,2,3)
-    @test motion⁻¹{1,2,1}(Y2) === SVector{3,𝕣}(4,5,6)
-    @test motion⁻¹{1,2,2}(Y2) === SVector{3,𝕣}(0,0,0)
+    @test motion⁻¹{P1,ND1,0}(Y1) === SVector{3,𝕣}(1,2,3)
+    @test motion⁻¹{P1,ND1,1}(Y1) === SVector{3,𝕣}(0,0,0)
+    @test motion⁻¹{P1,ND1,2}(Y1) === SVector{3,𝕣}(0,0,0)
 
-    @test motion⁻¹{1,3,0}(Y3) === SVector{3,𝕣}(1,2,3)
-    @test motion⁻¹{1,3,1}(Y3) === SVector{3,𝕣}(4,5,6)
-    @test motion⁻¹{1,3,2}(Y3) === SVector{3,𝕣}(7,8,9)
+    @test motion⁻¹{P2,ND2,0}(Y2) === SVector{3,𝕣}(1,2,3)
+    @test motion⁻¹{P2,ND2,1}(Y2) === SVector{3,𝕣}(4,5,6)
+    @test motion⁻¹{P2,ND2,2}(Y2) === SVector{3,𝕣}(0,0,0)
 
-    @test motion⁻¹{2,1,0}(Y4) === Muscade.variate_{1,3}(SVector{3,𝕣}(1,2,3))
-    @test motion⁻¹{2,1,1}(Y4) === SVector{3,𝕣}(0,0,0)
-    @test motion⁻¹{2,1,2}(Y4) === SVector{3,𝕣}(0,0,0)
+    @test motion⁻¹{P3,ND3,0}(Y3) === SVector{3,𝕣}(1,2,3)
+    @test motion⁻¹{P3,ND3,1}(Y3) === SVector{3,𝕣}(4,5,6)
+    @test motion⁻¹{P3,ND3,2}(Y3) === SVector{3,𝕣}(7,8,9)
 
-    @test motion⁻¹{2,2,0}(Y5) === Muscade.variate_{1,3}(SVector{3,𝕣}(1,2,3))
-    @test motion⁻¹{2,2,1}(Y5) === Muscade.variate_{1,3}(SVector{3,𝕣}(4,5,6))
-    @test motion⁻¹{2,2,2}(Y5) === SVector{3,𝕣}(0,0,0)
+    @test motion⁻¹{P4,ND4,0}(Y4) === Muscade.variate_{1,3}(SVector{3,𝕣}(1,2,3))
+    @test motion⁻¹{P4,ND4,1}(Y4) === SVector{3,𝕣}(0,0,0)
+    @test motion⁻¹{P4,ND4,2}(Y4) === SVector{3,𝕣}(0,0,0)
 
-    @test motion⁻¹{2,3,0}(Y6) === Muscade.variate_{1,3}(SVector{3,𝕣}(1,2,3))
-    @test motion⁻¹{2,3,1}(Y6) === Muscade.variate_{1,3}(SVector{3,𝕣}(4,5,6))
-    @test motion⁻¹{2,3,2}(Y6) === Muscade.variate_{1,3}(SVector{3,𝕣}(7,8,9))
+    @test motion⁻¹{P5,ND5,0}(Y5) === Muscade.variate_{1,3}(SVector{3,𝕣}(1,2,3))
+    @test motion⁻¹{P5,ND5,1}(Y5) === Muscade.variate_{1,3}(SVector{3,𝕣}(4,5,6))
+    @test motion⁻¹{P5,ND5,2}(Y5) === SVector{3,𝕣}(0,0,0)
 
-    @test motion⁻¹{1,1}(Y1) === (SVector{3,𝕣}(1,2,3),)
-    @test motion⁻¹{1,2}(Y2) === (SVector{3,𝕣}(1,2,3),SVector{3,𝕣}(4,5,6))
-    @test motion⁻¹{1,3}(Y3) === (SVector{3,𝕣}(1,2,3),SVector{3,𝕣}(4,5,6),SVector{3,𝕣}(7,8,9))
+    @test motion⁻¹{P6,ND6,0}(Y6) === Muscade.variate_{1,3}(SVector{3,𝕣}(1,2,3))
+    @test motion⁻¹{P6,ND6,1}(Y6) === Muscade.variate_{1,3}(SVector{3,𝕣}(4,5,6))
+    @test motion⁻¹{P6,ND6,2}(Y6) === Muscade.variate_{1,3}(SVector{3,𝕣}(7,8,9))
+
+    @test motion⁻¹{P1,ND1}(Y1) === (SVector{3,𝕣}(1,2,3),)
+    @test motion⁻¹{P2,ND2}(Y2) === (SVector{3,𝕣}(1,2,3),SVector{3,𝕣}(4,5,6))
+    @test motion⁻¹{P3,ND3}(Y3) === (SVector{3,𝕣}(1,2,3),SVector{3,𝕣}(4,5,6),SVector{3,𝕣}(7,8,9))
 end
 
 a = SVector(3.,4.)
@@ -93,8 +107,8 @@ yy    = Muscade.to_order{1,3}((revariate{1}(SVector(4.,5.,6.)),revariate{2}(SVec
     @test yy[1] === revariate{1}(SVector(4.,5.,6.)) 
     @test yy[2] === revariate{1}(SVector(7.,8.,9.)) 
     @test Muscade.to_order{0,0}(3.) == 3.0
-    @test Muscade.to_order{1,0}(3.) == ∂ℝ{1, 0, Float64}(3.0, Float64[])
-    @test Muscade.to_order{2,0}(3.) == ∂ℝ{2, 0, ∂ℝ{1, 0, Float64}}(∂ℝ{1, 0, Float64}(3.0, Float64[]), ∂ℝ{1, 0, Float64}[])
+    @test Muscade.to_order{1,0}(3.) == ∂ℝ{1, 0, 𝕣}(3.0, 𝕣[])
+    @test Muscade.to_order{2,0}(3.) == ∂ℝ{2, 0, ∂ℝ{1, 0, 𝕣}}(∂ℝ{1, 0, 𝕣}(3.0, 𝕣[]), ∂ℝ{1, 0, 𝕣}[])
 end
 
 
@@ -144,8 +158,6 @@ end
     @inferred Muscade.to_order{2,4}(Muscade.flatten(eleres))
     @inferred Muscade.chainrule(Rq,Muscade.to_order{2,4}(Muscade.flatten(eleres)))
 end
-
-
 
 @testset "multiple derivative" begin
     a       = SVector(1.,2.,3.)
@@ -228,5 +240,19 @@ end
     @test Bm1[1]===∂ℝ{1,2,𝕣}(3,[1,0])
 end
 
+@testset "chainrule_Jacobian" begin
+    x         = SVector(1.,2.,3.)
+    u         = SVector(4.,5.)
+    P,N,(X,U) = variate{2}((x,u))
+    TX1       = revariate{1}(X)
+    TY1       = TX1.^2
+    Y∂X1      = chainrule_Jacobian(TY1,X)
+    TX2       = revariate(X) # revariate{2}, implicit
+    TY2       = TX2.^2
+    Y∂X2      = chainrule_Jacobian(TY2,X)
+
+    @test Y∂X1 === SMatrix{3,3,𝕣}(2,0,0, 0,4,0, 0,0,6)
+    @test Y∂X2[1,1] === ∂ℝ{2,5,∂ℝ{1,5,𝕣}}(∂ℝ{1,5,𝕣}(2,[2,0,0,0,0]),∂ℝ{1,5,𝕣}[∂ℝ{1,5,𝕣}(2,[0,0,0,0,0]),∂ℝ{1,5,𝕣}(0,[0,0,0,0,0]),∂ℝ{1,5,𝕣}(0,[0,0,0,0,0]),∂ℝ{1,5,𝕣}(0,[0,0,0,0,0]),∂ℝ{1,5,𝕣}(0,[0,0,0,0,0])])
+end
 
 end # module

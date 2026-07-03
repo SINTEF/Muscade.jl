@@ -480,7 +480,7 @@ function string_(a::∂ℝ{P,N,R}) where{P,N,R}
     end
     return @sprintf("%s+∂%s⟨%s⟩",x,p,dx) # \partial \langle \rangle mathematicaly-explicit
 end
-Base.show(io::IO,a::∂ℝ) = print(io,string_(a))
+#Base.show(io::IO,a::∂ℝ) = print(io,string_(a))
 
 """
     Muscade.isapprox_dbg(a,b;kwargs...)
