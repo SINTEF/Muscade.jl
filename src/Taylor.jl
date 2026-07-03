@@ -2,8 +2,7 @@ struct motion{P}          end
 struct motion_{P,Q}       end 
 struct motion⁻¹{P,ND,OD}  end 
 """
-    P  = precedence(X)
-    X_ = motion{P}(X)
+    P,N,X_ = motion{P}(X,context=(U,A,t))
 
 Transform a `NTuple` of `SVector`s, for example the vector `X` provided as an input to
 `residual` or `Lagrangian` into a `SVector` of `∂ℝ`.  This can be used by an element to 
@@ -191,9 +190,9 @@ See also: [`chainrule`](@ref), [`variate_indices`](@ref)
 @inline revariate{P}(v;kwargs...) where{P} = revariate_work{P            }(v;kwargs...)
 
 # workhorses
-@inline function variate_work{O,VZ,:variate}(v;constants=0,scale=nothing) where{O,VZ}
+@inline function variate_work{O,VZ,:variate}(v;context=0,scale=nothing) where{O,VZ}
     Nv = flat_length(v)    # 𝕫
-    Nc = npartials((v,constants))  # ntuple(𝕫,Pvc)
+    Nc = npartials((v,context))  # ntuple(𝕫,Pvc)
     P  = O+length(Nc)              # precedence of outputs
     return if scale==nothing  P,Nv,variate_nested{:variate,O,Nv,Nc,VZ}(v,1      )
     else                      P,Nv,variate_nested{:variate,O,Nv,Nc,VZ}(v,1,scale)
@@ -205,19 +204,19 @@ end
 end
 
 # nested types,recursion
-@inline variate_nested{A,B,C,D,E}(v::NamedTuple,i              ) where{A,B,C,D,E  } = NamedTuple{keys(v)}(variate_nested{A,B,C,D,E}(values(v),i          )) 
-@inline variate_nested{A,B,C,D,E}(v::NamedTuple,i,s::NamedTuple) where{A,B,C,D,E  } = NamedTuple{keys(v)}(variate_nested{A,B,C,D,E}(values(v),i,values(s))) 
-@inline variate_nested{A,B,C,D,E}(v::NamedTuple,i,s::AllElements ) where{A,B,C,D,E  } = NamedTuple{keys(v)}(variate_nested{A,B,C,D,E}(values(v),i,s        )) 
-@inline variate_nested{A,B,C,D,E}(v::Tuple     ,i              ) where{A,B,C,D,E  } = (variate_nested{A,B,C,D,E}(first(v),i         ),variate_nested{A,B,C,D,E}(Base.tail(v),i+flat_length(first(v))             )...)
-@inline variate_nested{A,B,C,D,E}(v::Tuple     ,i,s::Tuple     ) where{A,B,C,D,E  } = (variate_nested{A,B,C,D,E}(first(v),i,first(s)),variate_nested{A,B,C,D,E}(Base.tail(v),i+flat_length(first(v)),Base.tail(s))...)
-@inline variate_nested{A,B,C,D,E}(v::Tuple     ,i,s::AllElements ) where{A,B,C,D,E  } = (variate_nested{A,B,C,D,E}(first(v),i,s.s     ),variate_nested{A,B,C,D,E}(Base.tail(v),i+flat_length(first(v)),s           )...)
-@inline variate_nested{A,B,C,D,E}(v::Tuple{}   ,i              ) where{A,B,C,D,E  } = ()
-@inline variate_nested{A,B,C,D,E}(v::Tuple{}   ,i,s::Tuple{}   ) where{A,B,C,D,E  } = ()
-@inline variate_nested{A,B,C,D,E}(v::Tuple{}   ,i,s::AllElements ) where{A,B,C,D,E  } = ()
-@inline variate_nested{A,B,C,D,E}(v::SArray{S} ,i              ) where{A,B,C,D,E,S} = variate_nested{A,B,C,D,E}.(v,SArray{S,𝕫}(i-1+j for j∈eachindex(v))                                              )
-@inline variate_nested{A,B,C,D,E}(v::SArray{S} ,i,s::SArray{S} ) where{A,B,C,D,E,S} = variate_nested{A,B,C,D,E}.(v,SArray{S,𝕫}(i-1+j for j∈eachindex(v)),s                                            ) 
-@inline variate_nested{A,B,C,D,E}(v::SArray{S} ,i,s::AllElements ) where{A,B,C,D,E,S} = variate_nested{A,B,C,D,E}.(v,SArray{S,𝕫}(i-1+j for j∈eachindex(v)),SArray{S,typeof(s.s)}(s.s for j∈eachindex(v)))
-@inline variate_nested{A,B,C,D,E}(v::ℝ         ,i              ) where{A,B,C,D,E  } = variate_nested{A,B,C,D,E}(v,i,1.)
+@inline variate_nested{A,B,C,D,E}(v::NamedTuple,i               ) where{A,B,C,D,E  } = NamedTuple{keys(v)}(variate_nested{A,B,C,D,E}(values(v),i          )) 
+@inline variate_nested{A,B,C,D,E}(v::NamedTuple,i,s::NamedTuple ) where{A,B,C,D,E  } = NamedTuple{keys(v)}(variate_nested{A,B,C,D,E}(values(v),i,values(s))) 
+@inline variate_nested{A,B,C,D,E}(v::NamedTuple,i,s::AllElements) where{A,B,C,D,E  } = NamedTuple{keys(v)}(variate_nested{A,B,C,D,E}(values(v),i,s        )) 
+@inline variate_nested{A,B,C,D,E}(v::Tuple     ,i               ) where{A,B,C,D,E  } = (variate_nested{A,B,C,D,E}(first(v),i         ),variate_nested{A,B,C,D,E}(Base.tail(v),i+flat_length(first(v))             )...)
+@inline variate_nested{A,B,C,D,E}(v::Tuple     ,i,s::Tuple      ) where{A,B,C,D,E  } = (variate_nested{A,B,C,D,E}(first(v),i,first(s)),variate_nested{A,B,C,D,E}(Base.tail(v),i+flat_length(first(v)),Base.tail(s))...)
+@inline variate_nested{A,B,C,D,E}(v::Tuple     ,i,s::AllElements) where{A,B,C,D,E  } = (variate_nested{A,B,C,D,E}(first(v),i,s.s     ),variate_nested{A,B,C,D,E}(Base.tail(v),i+flat_length(first(v)),s           )...)
+@inline variate_nested{A,B,C,D,E}(v::Tuple{}   ,i               ) where{A,B,C,D,E  } = ()
+@inline variate_nested{A,B,C,D,E}(v::Tuple{}   ,i,s::Tuple{}    ) where{A,B,C,D,E  } = ()
+@inline variate_nested{A,B,C,D,E}(v::Tuple{}   ,i,s::AllElements) where{A,B,C,D,E  } = ()
+@inline variate_nested{A,B,C,D,E}(v::SArray{S} ,i               ) where{A,B,C,D,E,S} = variate_nested{A,B,C,D,E}.(v,SArray{S,𝕫}(i-1+j for j∈eachindex(v))                                              )
+@inline variate_nested{A,B,C,D,E}(v::SArray{S} ,i,s::SArray{S}  ) where{A,B,C,D,E,S} = variate_nested{A,B,C,D,E}.(v,SArray{S,𝕫}(i-1+j for j∈eachindex(v)),s                                            ) 
+@inline variate_nested{A,B,C,D,E}(v::SArray{S} ,i,s::AllElements) where{A,B,C,D,E,S} = variate_nested{A,B,C,D,E}.(v,SArray{S,𝕫}(i-1+j for j∈eachindex(v)),SArray{S,typeof(s.s)}(s.s for j∈eachindex(v)))
+@inline variate_nested{A,B,C,D,E}(v::ℝ         ,i               ) where{A,B,C,D,E  } = variate_nested{A,B,C,D,E}(v,i,1.)
 
 
 # add O variations on the outside

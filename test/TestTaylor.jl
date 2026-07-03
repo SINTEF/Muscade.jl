@@ -196,10 +196,10 @@ end
     a       = SVector(1.,2.,3.)
     b       = SVector(3.,4.)
     Pa,Na,A  = variate{1}(a)
-    Pb,Nb,B  = variate{1}(b,constants=(A,0.)) 
-    _ ,_ ,Bs = variate{1}(b,constants=A,scale=AllElements(2.)) 
+    Pb,Nb,B  = variate{1}(b,context=(A,0.)) 
+    _ ,_ ,Bs = variate{1}(b,context=A,scale=AllElements(2.)) 
 
-    Pb0,Nb0,B0 = variate0{1}(b,constants=A) 
+    Pb0,Nb0,B0 = variate0{1}(b,context=A) 
     @test Pb==2
     @test Nb==2
     @test B[1]===∂ℝ{2,2,∂ℝ{1,3,𝕣}}(∂ℝ{1,3,𝕣}(3,[0,0,0]),∂ℝ{1,3,𝕣}[∂ℝ{1,3,𝕣}(1,[0,0,0]),∂ℝ{1,3,𝕣}(0,[0,0,0])])
