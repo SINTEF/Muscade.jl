@@ -23,12 +23,11 @@ module Muscade
     include("Adiff.jl")
     export  ∂ℝ #\partial\BbbR
     export  value,VALUE,∂,value_∂ # \partial, \nabla
-    export  precedence
-    public  npartial #,norm
+    public  precedence,npartial #,norm
 
     include("Taylor.jl")
     export motion,motion⁻¹,variate,variate0,revariate,chainrule,apply,AllElements
-    export chainrule_value,chainrule_Jacobian 
+    export chainrule_Jacobian 
     public Taylor,McLaurin
     
     include("Functors.jl")

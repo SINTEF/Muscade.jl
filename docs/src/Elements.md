@@ -278,7 +278,7 @@ When a number of type `∂ℝ` is printed, both value and partial derivatives ar
 x = 3.1+∂₁⟨1.3,0.6⟩ 
 ```
 
-When debugging an element which uses simple automatic differentiation, a good rule of thumb is to get the values computed correctly, then the derivatives will be correct too. When inserting debug printouts in the code, use `VALUE` to strip all the partials:
+When debugging an element which uses simple automatic differentiation, a good rule of thumb is to get the values computed correctly, then the derivatives will be correct too. When inserting debug printouts in the code, use [`VALUE`](@ref) to strip all the partials:
 
 ```julia
 @show VALUE(x)
@@ -289,7 +289,7 @@ Do not use `VALUE` for other purposes - unless you know what you are doing.
 
 The `Muscade.residual` method of [`Muscade.Toolbox.EulerBeam3D`](@ref) shows an *advanced* example where the code is written in order to
 
-1) accelerate automatic differentiation (where possible)
+1) accelerate automatic differentiation (where possible).
 2) compute derivatives to handle the transformation from e.g. stress resultants into nodal forces, in the presence of a corotated reference system.
 
 See [automatic differentiation](Adiff.md) for a discussion of these and other advanced techniques.

@@ -1,28 +1,36 @@
 struct motion_{P,Q}       end 
 struct motion⁻¹{P,ND,OD}  end 
 """
-    P,ND,X_ = motion(X,context=(U,A,t))
+    P,ND,X_ = motion(X [;context])
 
-Transform a `NTuple` of `SVector`s, for example the vector `X` provided as an input to
-`residual` or `Lagrangian` into a `SVector` of `∂ℝ`.  This can be used by an element to 
-compute time derivatives, for example Euler, Coriolis and centrifugal accelerations, 
-or strain rates.
+Input variables `X` and `U` provided to`residual` or `Lagrangian` are `NTuples` which can
+have a form like `(X₀,X₁,X₂)`, with the zeroth, first and second time derivative. `motion` 
+transform such a `NTuple` into a `SVector` of `∂ℝ`, containing derivatives with respect to time.
+
+Using a scalar instead of `SVector` to provide an idea, (`motion` actually only operates on `NTuple` of `SVector`s)
+this transforms `(x₀,x₁,x₂)` into `x₀+∂₁⟨x₁⟩+∂₂⟨x₁+∂₁⟨x₂⟩⟩`.
+
+This enables an element to use automatic differentiation to use time derivatives of various results, such
+as Coriolis and centrifugal accelerations, or strain rates. 
+
+If the third output from `motion` (or variables computed from this 3rd ouput), are combined in computation
+with variables obtained by `variate` or `revariate` (including the inputs `Λ`, `X`, `U`, `A` and `t`) to
+`lagrangian` and `residual` (or variables computed from these), then the variables obtained by `variate` or `revariate`
+must be included in `context`. `context` can be a variable or a ``tuple` of variables.  To prevent bugs, mark variables "touched"
+directly or indirectly by `motion`'s 3rd output with e.g. an underscore to keep track of the separation.
+
+    P,ND,X_ = motion(X ,context=(A,t)])
+    b       = f(A)         # b is "touched by A", which may be an addifed input to `residual`
+    Y_      = g(X_,b,t)    # Y_ is touched by t, and indirectly by A.  This is OK, they where 
+                           # declared in the context of X_ 
+
+See [`toolbox.EulerBeam3D`] for an example of usage.
 
 !!! Warning
-    `motion` is unsafe: `X_`, and any variable touched by it, must not be allowed to
-    touch `Λ`, `X`, `U`, `A`, `t`, or any other variable touched by these.
-    To prevent errors, consider giving all variables touched by `X_` a name ending in `_`.
+    Use `∂0`, `∂1` and `∂2` to extract time derivatives from `X` and `U`, do not use
+    indexing `X[1]` as the `NTuple` may be truncated in e.g. static analyses.
 
-Some principles of safe automatic differentiation must be adhered to:
-- the function that uses `motion` must also 'unpack' : no variable that is touched by 
-  the output of `motion` must be returned by the function without having been unpacked
-  by `motion⁻¹`. Touched variables can for example be marked with an underscore.
-- The precedence `P` must be calculated using `precedence` with all variables that are input to 
-  the function and may be differentiated.
-- If other levels of automatic differentiation are introduced within the function, unpack in reverse
-  order of packing.    
-
-See [`motion⁻¹`](@ref)
+See [`motion⁻¹`](@ref), [`variate`](@ref)
 """
 function motion(a::NTuple{ND,SV{N,R}};context=0) where{ND,N,R} 
     P,_,a_ = variate{0}(a;context) 
@@ -35,17 +43,20 @@ motion_{P,Q  }(a::NTuple{D,      R }) where{D ,P  ,R<:Real,Q} = ∂ℝ{Q,1}(moti
 motion_{P,P  }(a::NTuple{D,      R }) where{D ,P  ,R<:Real  } = a[1]
 
 """
-    P  = precedence(X)
-    ND = length(X)
-    X_  = motion{P}(X)
-    Y_  = f(Y_)    
-    Y₀ = motion⁻¹{P,ND,0}(Y_)
-    Y₁ = motion⁻¹{P,ND,1}(Y_)
-    Y₂ = motion⁻¹{P,ND,2}(Y_)
-    Y  = motion⁻¹{P,ND  }(Y) 
+    P,ND,X_  = motion(X)
+    Y_       = f(Y_)    
+    Y        = motion⁻¹{P,ND}(Y_) 
 
-Extract the value and time derivatives from a variable that is a function of the output of `motion`.
-In the above `Y` is a tuple of length `ND`.  One can use `∂0`,`∂1` and `∂2` to unpack `Y`.    
+`motion⁻¹` transforms `Y_` into a `NTuple` `Y`.  The values `P` and ``ND`
+must be as returned by `motion`. Time derivatives can be accessed as
+
+    Y₀ = ∂0(Y)
+    Y₁ = ∂1(Y)
+    Y₂ = ∂2(Y)
+
+One can also obtain the i-th time derivative directly as
+
+    Yᵢ = motion⁻¹{P,ND,i}(Y_)
 
 See also [`motion`](@ref)
 """
@@ -144,8 +155,70 @@ struct AllElements{S} # apply a scaling to a whole Tuple or SArray
 end
 
 # type for static parametrization
+""" 
+    V = variate{O}(v[;context,scale])
+
+variate `v` to the `O`-th order. 
+
+    V = variate(v[;context,scale])
+
+variates `v` to the first order.
+
+The variable `v` is a nested structure of `NamedTuple`s, `Tuple`s and `SArrays` of 
+`Real`s (possibly: `∂ℝ`s). `V` has the same structure as `v`. 
+
+The output of `variate` must not be combined in computation
+with variables obtained by `motion`, `revariate` or a separate call to `variate` (including the inputs `Λ`, `X`, `U`, `A` and `t`) to
+`lagrangian` and `residual` (or variables computed from these).  
+
+If output from `variate` (or variables computed from this ouput), are combined in computation
+with variables obtained by `revariate`, `motion` or a separate call to `variate` (including the inputs `Λ`, `X`, `U`, `A` and `t`) to
+`lagrangian` and `residual` (or variables computed from these), then the later variables
+must be included in `context`. `context` can be a variable or a ``tuple` of variables.  
+
+    V = variate(∂1{X};context=(Λ,X,U,t)) # A left out
+    W = V*t+∂0(X)                        # safe
+    Y = V*A[1]                           # not safe!!!
+
+Not for use within elements: `scale` has the same structure as `v` except that `SArray`s and `NTuple`s can be replaced
+by `AllElement(scaling)` to apply `scaling to all elements in the `SArray` or `NTuple` in `v`. 
+
+See also: [`motion`](@ref), [`revariate`](@ref), [`chainrule`](@ref), [`variate_indices`](@ref)
+"""
 struct variate{O}   end
+""" 
+    V = variate0{O}(v[;context,scale])
+
+The same as [`variate`](@ref), but while all derivatives are as from [`variate`](@ref), all
+values are set to 0.
+"""
 struct variate0{O}  end # former δ: returns outputs with VALUE=0
+""" 
+    V_ = revariate{P}(V)
+
+The variable `V` is a nested structure of `NamedTuple`s, `Tuple`s and `SArrays` of 
+`Real`s (possibly: `∂ℝ`s).
+
+`V` is stripped of its partials, an revariated to order `P`.
+
+    V_ = revariate(V)
+
+revariates to the order `precedence(V)`.  `TV` has the same structure as `V`. One typical usage is with a `Tuple`:
+
+    a_,b_,c_ = revariate((a,b,c))
+
+`revariate`, in conjunction with `chainrule` can be used to improve performance when the length of 
+`V` is smaller than the length of its partials.
+
+The output(s) of `revariate` must not be combined in computation
+with variables obtained by `variate` or `revariate` (including the inputs `Λ`, `X`, `U`, `A` and `t`) to
+`lagrangian` and `residual` (or variables computed from these).  To prevent bugs, mark variables "touched"
+directly or indirectly by `revariate`'s output with e.g. an underscore to keep track of the separation.
+
+See [`toolbox.EulerBeam3D`] for an example of usage.
+
+See also: [`chainrule`](@ref), [`variate_indices`](@ref), [`variate`](@ref)
+"""
 struct revariate{P} end
 struct variate_work{A,B,C} end
 struct revariate_work{A} end
@@ -156,39 +229,6 @@ struct variate_nested{A,B,C,D,E} end
 @inline variate{O}(  v;kwargs...) where{O} = variate_work{O,identity ,:variate}(v;kwargs...)
 @inline variate0(    v;kwargs...)          = variate_work{1,zerovalue,:variate}(v;kwargs...)
 @inline variate0{O}( v;kwargs...) where{O} = variate_work{O,zerovalue,:variate}(v;kwargs...)
-""" 
-    TV = revariate{P}(V)
-
-The variable `V` is a nested structure of `NamedTuple`s, `Tuple`s and `SArrays` of 
-`Real`s (possibly: `∂ℝ`s).
-
-`V` is stripped of its partials, an revariated to order `P`.
-
-    TV = revariate(V)
-
-revariates to the order `precedence(V)`.  `TV` has the same structure as `V`. One typical usage is with a `Tuple`:
-
-    Ta,Tb,Tc = revariate{P}((a,b,c))
-
-`revariate`, in conjunction with `chainrule` can be used to improve performance when the length of 
-`V` is smaller than the length of its partials.
-
-Be extremely careful never to mix any variable that is a function of `V` with any other variables
-containing  `∂ℝ`s but not produced by the same `revariate`.
-
-A special version of `revariate`
-
-    V = ((X₀,X₁,X₂)        ,      U,      A)
-    S = (AllElements(scale.X),scale.U,scale.A)
-    TV = revariate{P}(V,S)
-
-allows to introduce scaling in automatic differentiation.  For this method, `S` and `V`
-must have the same structure, with the important exception that `AllElements` is used
-to apply a scaling to all elements of a `Tuple` or `SArray`: here, `scale.X` is applied
-to `X₀`, `X₁` and `X₂`.  
-
-See also: [`chainrule`](@ref), [`variate_indices`](@ref)
-"""
 @inline revariate(   v;kwargs...)          = revariate_work{precedence(v)}(v;kwargs...)
 @inline revariate{P}(v;kwargs...) where{P} = revariate_work{P            }(v;kwargs...)
 
@@ -400,22 +440,8 @@ function apply{:chainrule}(f,x)
     y  = chainrule(y_,x)
     return y
 end
-#apply{:chainrule}(f,x) = chainrule(f(revariate(x)),x)
 apply{:direct   }(f,x) = f(x)
 
-# """
-#     chainrule_value{P,ND}(Ty,X_)
-
-# Given `Ty` obtained using `revariate`, and `X_`, obtained using `motion{P}(X)` where `X` is a tuple
-# of length `ND` and `P=precedence(X)`, compute `y`, a tuple of length `ND` of `AbstractArrays` of same `eltype` as vectors in `X.
-
-# See also [`revariate`](@ref), [`motion`](@ref), [`motion⁻¹`](@ref), [`chainrule_Jacobian`](@ref)  
-# """
-# struct chainrule_value{P,ND} end
-# chainrule_value{P,ND}(Ty            ,X_) where{P,ND} = motion⁻¹{P,ND}(chainrule(value{P}(Ty),X_))
-# chainrule_value{P,ND}(Ty::NamedTuple,X_) where{P,ND} = NamedTuple{keys(Ty)}(chainrule_value{P,ND}(values(Ty),X_))
-# chainrule_value{P,ND}(Ty::Tuple     ,X_) where{P,ND} = (chainrule_value{P,ND}(first(Ty),X_),chainrule_value{P,ND}(Base.tail(Ty),X_)...)
-# chainrule_value{P,ND}(Ty::Tuple{}   ,X_) where{P,ND} = ()
 """
     chainrule_Jacobian{P}(Ty,X_)
 
@@ -423,13 +449,9 @@ Given `Ty` obtained using `revariate`, and `X_`, obtained using `motion{P}(X)` w
 of `SVectors` and `P=precedence(X)`, compute `y`, a tuple of length `ND` of `AbstractArrays` of same `eltype` as vectors in `X,
 and `y∂X₀`, the Jacobian of `∂0(y)` with respect to `∂0(X)`.
 
-See also [`revariate`](@ref), [`motion`](@ref), [`motion⁻¹`](@ref), [`chainrule_value`](@ref)   
+See also [`revariate`](@ref), [`motion`](@ref), [`motion⁻¹`](@ref) 
 """
 struct chainrule_Jacobian{P} end
-#chainrule_Jacobian{P}(Ty            ,X₀) where{P} = chainrule(∂{P+1,npartial(Ty)}(Ty),X₀) # y∂X₀
-#chainrule_Jacobian{P}(Ty::NamedTuple,X₀) where{P} = NamedTuple{keys(Ty)}(chainrule_Jacobian{P}(values(Ty),X₀))
-#chainrule_Jacobian{P}(Ty::Tuple     ,X₀) where{P} = (chainrule_Jacobian{P}(first(Ty),X₀),chainrule_Jacobian{P}(Base.tail(Ty),X₀)...)
-#chainrule_Jacobian{P}(Ty::Tuple{}   ,X₀) where{P} = ()
 chainrule_Jacobian(Ty            ,X₀)  = chainrule(∂{precedence(Ty),npartial(Ty)}(Ty),X₀) # y∂X₀
 chainrule_Jacobian(Ty::NamedTuple,X₀)  = NamedTuple{keys(Ty)}(chainrule_Jacobian(values(Ty),X₀))
 chainrule_Jacobian(Ty::Tuple     ,X₀)  = (chainrule_Jacobian(first(Ty),X₀),chainrule_Jacobian(Base.tail(Ty),X₀)...)
