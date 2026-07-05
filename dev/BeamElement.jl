@@ -212,16 +212,16 @@ end;
 
 # Define now the residual function for the EulerBeam3D element.
 @espy function Muscade.residual(o::EulerBeam3D{Mat,Udof},   X,U,A,t,SP,dbg) where{Mat,Udof}
-    P,ND                = constants(X),length(X)
     ## Compute all quantities at Gauss point, their time derivatives, including intrinsic roll rate and acceleration
-    gp_,ε_,vₛₘ_,rₛₘ_,vₗ₂_,_,_ = kinematics{:direct}(o,motion{P}(X))
+    P,ND,X_             = motion(X)
+    gp_,ε_,vₛₘ_,rₛₘ_,vₗ₂_,_,_ = kinematics{:direct}(o,X_)
     gpval,☼ε,☼rₛₘ        = motion⁻¹{P,ND}(gp_,ε_,rₛₘ_) 
     vᵢ                  = intrinsicrotationrates(rₛₘ)
     ## compute all Jacobians of the above quantities with respect to X₀
     X₀                  = ∂0(X) 
-    TX₀                 = revariate{P}(X₀)  
+    TX₀                 = revariate{P+1}(X₀)  
     Tgp,Tε,Tvₛₘ,_,_,_,_  = kinematics{:direct}(o,TX₀) # the crux
-    gp∂X₀,ε∂X₀,vₛₘ∂X₀    = composeJacobian{P}((Tgp,Tε,Tvₛₘ),X₀)
+    gp∂X₀,ε∂X₀,vₛₘ∂X₀    = chainrule_Jacobian((Tgp,Tε,Tvₛₘ),X₀)  
     ## Quadrature loop: compute resultants
     gp                  = ntuple(ngp) do igp
         ☼x,☼κgp         = gpval[igp].x, gpval[igp].κ
