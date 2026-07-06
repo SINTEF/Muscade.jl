@@ -666,11 +666,13 @@ haslagrangian(::Eleobj) where{Eleobj} = Val(hasmethod(lagrangian,(Eleobj,NTuple,
 # dispatcher
 function getresidual(eleobj::Eleobj,X,U,A,t,SP,dbg,req) where{Eleobj} 
     R,FB,eleres = getresidual(eleobj,hasresidual(eleobj),haslagrangian(eleobj),no_second_order(Eleobj),X,U,A,t,SP,dbg,req) 
+    R isa SVector{length(X[1])} || muscadeerror(dbg,@sprintf("R, from residual(%s,...), must be a SVector of length nXdof",Eleobj))
     hasnan(R,FB) && muscadeerror((dbg...,t=t,SP=SP ),@sprintf("residual(%s,...) returned NaN in R, FB or derivatives",Eleobj))  
     return R,FB,eleres
 end
 function getresidual(eleobj::Eleobj,X,U,A,t,SP,dbg,req...) where{Eleobj} 
     R,FB     = getresidual(eleobj,hasresidual(eleobj),haslagrangian(eleobj),no_second_order(Eleobj),X,U,A,t,SP,dbg    ) 
+    R isa SVector{length(X[1])} || muscadeerror(dbg,@sprintf("R, from residual(%s,...), must be a SVector of length nXdof",Eleobj))
     hasnan(R,FB) && muscadeerror((dbg...,t=t,SP=SP ),@sprintf("residual(%s,...) returned NaN in R, FB or derivatives",Eleobj))  
     return R,FB
 end
@@ -726,11 +728,13 @@ getresidual(eleobj::Eleobj,hasres::Val{false},haslag::Val{false},nso, X,U,A,t,SP
 # Acost
 function getlagrangian(eleobj::Acost, A::SVector, SP, dbg,req) 
     L,FB,eleres = lagrangian(eleobj,A,SP,dbg,req)    
+    L isa ℝ || muscadeerror(dbg,@sprintf("L, from lagrangian(%s,...), must be a ℝ, alias Real",Eleobj))
     hasnan(L,FB) && muscadeerror((dbg...,t=t,SP=SP),"lagrangian(Acost,...) returned NaN in L, FB or derivatives") 
     return L,FB,eleres  
 end
 function getlagrangian(eleobj::Acost, A::SVector, SP, dbg) 
     L,FB = lagrangian(eleobj,A,SP,dbg)    
+    L isa ℝ || muscadeerror(dbg,@sprintf("L, from lagrangian(%s,...), must be a ℝ, alias Real",Eleobj))
     hasnan(L,FB) && muscadeerror((dbg...,t=t,SP=SP),@sprintf("lagrangian(Acost,...) returned NaN in L, FB or derivatives",Eleobj)) 
     return L,FB  
 end
@@ -739,12 +743,14 @@ end
 function getlagrangian(eleobj::Eleobj, Λ::SVector{Nx}, X::NTuple{Ndx,SVector{Nx}}, 
         U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na}, t::ℝ,SP,dbg,req)     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
     L,FB,eleres = getlagrangian(eleobj,hasresidual(eleobj),haslagrangian(eleobj),no_second_order(Eleobj),Λ,X,U,A,t,SP,dbg,req)    
+    L isa ℝ || muscadeerror(dbg,@sprintf("L, from lagrangian(%s,...), must be a ℝ, alias Real",Eleobj))
     hasnan(L,FB) && muscadeerror((dbg...,t=t,SP=SP),@sprintf("lagrangian(%s,...) returned NaN in L, FB or derivatives",Eleobj)) 
     return L,FB,eleres  
 end
 function getlagrangian(eleobj::Eleobj, Λ::SVector{Nx}, X::NTuple{Ndx,SVector{Nx}}, 
         U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na}, t::ℝ,SP,dbg,req...)     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
     L,FB           = getlagrangian(eleobj,hasresidual(eleobj),haslagrangian(eleobj),no_second_order(Eleobj),Λ,X,U,A,t,SP,dbg       )    
+    L isa ℝ || muscadeerror(dbg,@sprintf("L, from lagrangian(%s,...), must be a ℝ, alias Real",Eleobj))
     hasnan(L,FB) && muscadeerror((dbg...,t=t,SP=SP),@sprintf("lagrangian(%s,...) returned NaN in L, FB or derivatives",Eleobj)) 
     return L,FB        
 end
