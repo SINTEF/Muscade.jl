@@ -26,7 +26,7 @@ struct NodID <: ID
     inod        :: 𝕫
 end
 struct Dof
-    ID          :: DofID       # global dof number, unique ID
+    dofID       :: DofID       # global dof number, unique ID
     nodID       :: NodID       # global number of associated node within class
     idoftyp     :: 𝕫
     eleID       :: Vector{EleID}
@@ -43,13 +43,13 @@ Example:
 See also: [`coord`](@ref) 
 """
 struct Node 
-    ID          :: NodID             # global node number, unique ID
+    nodID       :: NodID             # global node number, unique ID
     coord       :: 𝕣1                # all nodes in a model have coordinates in same space
     dofID       :: Vector{DofID}     # list of dofs on this node
     eleID       :: Vector{EleID}     # list of elements connected to the node
 end
 struct Element
-    ID          :: EleID             # global element number, unique ID
+    eleID       :: EleID             # global element number, unique ID
     ieletyp     :: 𝕫
     iele        :: 𝕫                 # number of element within type
     nodID       :: Vector{NodID}                
@@ -141,8 +141,11 @@ end
 getdofID(model::Model,class::Symbol,field::Symbol) = getdoftyp(model,class,field).dofID
 function getdofID(model::Model,class::Symbol,field::Symbol,nodID::AbstractVector{NodID})
     dofID  = getdofID(model,class,field) 
-    i      = [model.dof[d].nodID ∈ nodID for d ∈ dofID]
-    return dofID[i]
+   i      = [model.dof[d].nodID ∈ nodID for d ∈ dofID]
+   return dofID[i]
+ #   for i∈eachindex(nodID)
+
+
 end
 
 
