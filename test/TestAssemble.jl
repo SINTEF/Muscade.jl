@@ -1,4 +1,4 @@
-module TestAssemble
+#module TestAssemble
 
 using Test,StaticArrays,SparseArrays
 using Muscade
@@ -34,7 +34,7 @@ A        = @SVector [0.,0.]  # [Δseadrag,Δskydrag]
 #                             eleobj, Λ, X,  U,  A, t, SP,     dbg
 out   = Muscade.diffed_lagrangian{2}(anchorline;Λ ,X=(X,),U=(U,),A)
 @testset "anchorline1" begin
-    @test out.∇L[1][1]              ≈ [-12.25628901693551, 0.2607721067433087, 24.51257803387102]
+    @test out.∇L[1][1]            ≈ [-12.25628901693551, 0.2607721067433087, 24.51257803387102]
     @test out.∇L[2][1]            ≈ [-0.91509745608786, 0.14708204066349, 1.3086506986891027]
     @test length(out.∇L[3][1])    == 0
     @test out.∇L[4][1]            ≈ [-156.06324599170992, 12.517061123678818]
@@ -157,5 +157,15 @@ Muscade.assemble!{:iter}(out,asm,dis,model,state,Muscade.idmult,(someunittest=tr
     @test  out.Lλx ≈ sparse([1, 2, 3, 1, 2, 3, 1, 2, 3], [1, 1, 1, 2, 2, 2, 3, 3, 3], [10323.069597975566, 0.0, 0.0, 0.0, 1049.1635310247202, 5245.817655123601, 0.0, 5245.8176551236, 786872.6482685402], 3, 3)
 end
 
+setdof!(state,[1.,2.];field=:tx1,nodID=[n1,n2])
+dof1 = getdof(state;field=:tx1,nodID=[n1,n2])
+dof2 = getdof(state;field=:tx1,nodID=[n2,n1])
 
+@testset "setdof! and getdof" begin
+    @test  state.X[1]  ≈ [1., 0., 0.]
+    @test  state.A     ≈ [0., 0., 0., 0.]
+    @test  isequal(dof1,[1.,NaN])
+    @test  isequal(dof2,[NaN,1.])
 end
+
+#end
