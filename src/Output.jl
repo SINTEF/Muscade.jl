@@ -1,12 +1,6 @@
-# function getidoftyp(model::Model,class::Symbol,field::Symbol)
-#     idoftyp = findfirst(doftyp.class==class && doftyp.field==field for doftyp∈model.doftyp)
-#     isnothing(idoftyp) && muscadeerror(@sprintf("The model has no dof of class %s and field %s.",class,field))    
-#     return idoftyp    
-# end
-
 # getdofID in ModelDescription returns the dofIDs in the order in which they are found in the model
-# getdofIDx returns the dofIDs in the order in which they are found in the input nodID
-function getdofIDx(model::Model,class::Symbol,field::Symbol,nodID::AbstractVector{NodID})
+# getdofIDordered returns the dofIDs in the order in which they are found in the input nodID
+function getdofIDordered(model::Model,class::Symbol,field::Symbol,nodID::AbstractVector{NodID})
     dofIDs  = Vector{DofID}(undef,length(nodID))
     idoftyp = getidoftyp(model,class,field)
     for (inodID,nodIDᵢ) ∈ enumerate(nodID)
@@ -22,7 +16,6 @@ function getdofIDx(model::Model,class::Symbol,field::Symbol,nodID::AbstractVecto
     end
     return dofIDs
 end
-
 
 ## Nodal results
 """
@@ -42,7 +35,7 @@ end
 function getdof(state::Vector{S};class::Symbol=:X,field::Symbol,nodID::Vector{NodID}=NodID[],order::ℤ=0)where {S<:State}
         class ∈ [:Λ,:X,:U,:A] || muscadeerror(sprintf("Unknown dof class %s",class))
     c       = class==:Λ      ? :X                                   : class
-    dofID   = nodID==NodID[] ? getdofID(state[begin].model,c,field) : getdofIDx(state[begin].model,c,field,nodID)
+    dofID   = nodID==NodID[] ? getdofID(state[begin].model,c,field) : getdofIDordered(state[begin].model,c,field,nodID)
     dofres  = 𝕣2(undef,length(dofID),length(state)) 
     for istate ∈ eachindex(state)
         sc = if class==:Λ state[istate].Λ
@@ -90,7 +83,7 @@ See also: [`getresult`](@ref), [`addnode!`](@ref), [`solve`](@ref)
 function setdof!(state::State,dofval::𝕣1;class::Symbol=:X,field::Symbol,nodID::Vector{NodID},order::ℤ=0)
     class ∈ [:Λ,:X,:U,:A] || muscadeerror(sprintf("Unknown dof class %s",class))
     c     = class==:Λ ? :X : class
-    dofID = getdofIDx(state.model,c,field,nodID)
+    dofID = getdofID(state.model,c,field,nodID)
     if class == :A 
         for (idof,d) ∈ enumerate(dofID)
             if d.class ≠ :UNKNOWN  
@@ -122,7 +115,7 @@ end
 function setdof!(state::State,dofval::𝕣;class::Symbol=:X,field::Symbol,order::ℤ=0)
     class ∈ [:Λ,:X,:U,:A] || muscadeerror(sprintf("Unknown dof class %s",class))
     c     = class==:Λ ? :X : class
-    dofID = getdofIDx(state.model,c,field)
+    dofID = getdofIDordered(state.model,c,field)
     if class == :A 
         for (idof,d) ∈ enumerate(dofID)
             if d.class ≠ :UNKNOWN 

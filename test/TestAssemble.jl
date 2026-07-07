@@ -1,4 +1,4 @@
-#module TestAssemble
+module TestAssemble
 
 using Test,StaticArrays,SparseArrays
 using Muscade
@@ -168,4 +168,4 @@ dof2 = getdof(state;field=:tx1,nodID=[n2,n1])
     @test  isequal(dof2,[NaN,1.])
 end
 
-#end
+end
