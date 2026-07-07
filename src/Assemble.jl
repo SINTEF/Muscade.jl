@@ -287,52 +287,6 @@ function selecteddofs(model::Model,dis,classes)
     return DofGroup(dis, iΛ,iX,iU,iA)
 end
 
-function makevecfromfields!(vec::AbstractVector,dg::DofGroup,in)
-    # in[:class][:doftype] = val
-    # vec   = zeros(getndof(dg))
-    if haskey(in,:Λ)
-        for i = 1:length(dg.iΛ)
-            iΛ,jΛ   = dg.iΛ[i],dg.jΛ[i]  # state.Λ[iΛ] <-> y[jΛ]*scaleΛ
-            field   = dg.fieldΛ[iΛ]
-            scale   = dg.scaleΛ[iΛ]
-            if haskey(in.Λ,field)
-                vec[jΛ] = in.Λ[field] / scale
-            end
-        end
-    end
-    if haskey(in,:X)
-        for i = 1:length(dg.iX)
-            iX,jX   = dg.iX[i],dg.jX[i]  # state.X[iX] <-> y[jX]*scaleX
-            field   = dg.fieldX[iX]
-            scale   = dg.scaleX[iX]
-            if haskey(in.X,field)
-                vec[jX] = in.X[field] / scale
-            end
-        end
-    end
-    if haskey(in,:U)
-        for i = 1:length(dg.iU)
-            iU,jU   = dg.iU[i],dg.jU[i]  # state.U[iU] <-> y[jU]*scaleU
-            field   = dg.fieldU[iU]
-            scale   = dg.scaleU[iU]
-            if haskey(in.U,field)
-                vec[jU] = in.U[field] / scale
-            end
-        end
-    end
-    if haskey(in,:A)
-        for i = 1:length(dg.iA)
-            iA,jA   = dg.iA[i],dg.jA[i]  # state.A[iA] <-> y[jA]*scaleA
-            field   = dg.fieldA[iA]
-            scale   = dg.scaleA[iA]
-            if haskey(in.A,field)
-                vec[jA] = in.A[field] / scale
-            end
-        end
-    end
-    return vec
-end
-
 ######## Prepare assembler datastructure "asm"
 
 # asm[iarray,ieletyp][ieledof/i,iele] has value zero for terms from element gradient/hessian that are not to be added in. Otherwise, the value they
