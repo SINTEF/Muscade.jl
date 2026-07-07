@@ -140,14 +140,21 @@ function getdoftyp(model::Model,class::Symbol,field::Symbol)
 end
 getdofID(model::Model,class::Symbol,field::Symbol) = getdoftyp(model,class,field).dofID
 function getdofID(model::Model,class::Symbol,field::Symbol,nodID::AbstractVector{NodID})
-    dofID  = getdofID(model,class,field) 
-   i      = [model.dof[d].nodID ∈ nodID for d ∈ dofID]
-   return dofID[i]
- #   for i∈eachindex(nodID)
-
-
+    dofIDs  = Vector{DofID}(undef,length(nodID))
+    idoftyp = getidoftyp(model,class,field)
+    for (inodID,nodIDᵢ) ∈ enumerate(nodID)
+        nod = model.nod[nodIDᵢ.inod]
+        dofIDs[inodID] = DofID(:UNKNOWN,0)
+        for dofID ∈ nod.dofID
+            dof = model.dof[dofID.class][dofID.idof]
+            if dof.idoftyp == idoftyp
+                dofIDs[inodID] = dofID
+                break
+            end
+        end
+    end
+    return dofIDs
 end
-
 
 # Model construction - API
 
