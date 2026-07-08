@@ -72,7 +72,6 @@ module Muscade
     export solve
 
     include("SparseTools.jl")
-    public prepare,addin!
     
     include("FiniteDifferences.jl")
 
