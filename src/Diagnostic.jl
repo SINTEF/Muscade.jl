@@ -320,6 +320,12 @@ function addin!{mission}(out::Assemblystudy_scale,asm,iele,scale,eleobj::E,Λ,X:
     ∇L              = ∂{2,Nz}(L)
     add_value!(out.Lz ,asm[1],iele,∇L;Δt)
     add_∂!{1}( out.Lzz,asm[2],iele,∇L;Δt)
+    ## Create TestDiagnistic.jl before switching to the code below
+    # P,N,(Λ_,X_,U_,A_) = variate{2}((∂0(Λ), (∂0(X),),(∂0(U),),A);scale=(scale.Λ,(scale.X,),(scale.U,),scale.A))
+    # L,FB              = getlagrangian(eleobj, Λ_,X_,U_,A_ ,t,SP,dbg)
+    # ∇L                = ∂{P,N}(L)
+    # add_value!( out.Lz ,asm[1],iele,∇L;Δt)
+    # add_∂!{P-1}(out.Lzz,asm[2],iele,∇L;Δt)
 end
 
 #------------------------------------
@@ -533,6 +539,14 @@ function addin!{mission}(out::Assemblystudy_singular,asm,iele,scale,eleobj::E,Λ
     i               = vcat(:Λ∈out.iclasses ? iλ : 𝕫[],:X∈out.iclasses ? ix : 𝕫[],:U∈out.iclasses ? iu : 𝕫[],:A∈out.iclasses ? ia : 𝕫[])
     j               = vcat(:Λ∈out.jclasses ? iλ : 𝕫[],:X∈out.jclasses ? ix : 𝕫[],:U∈out.jclasses ? iu : 𝕫[],:A∈out.jclasses ? ia : 𝕫[])
     add_∂!{1}( out.Lij,asm[3],iele,∇L,i,j)
+    ## Create test/TestDiagnostic.jl before switching to the code below
+    # P,N,(Λ_,X_,U_,A_) = variate{2}(     (∂0(Λ), (∂0(X),),(∂0(U),),A);scale=(scale.Λ,(scale.X,),(scale.U,),scale.A))
+    # iλ,ix,iu,ia       = variate_indices((∂0(Λ), (∂0(X),),(∂0(U),),A))
+    # L,FB              = getlagrangian(eleobj, ∂0(Λ)+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A+ΔA,t,nothing,SP,dbg)
+    # ∇L                = ∂{P,N}(L)
+    # i                 = vcat(:Λ∈out.iclasses ? iλ : 𝕫[],:X∈out.iclasses ? ix : 𝕫[],:U∈out.iclasses ? iu : 𝕫[],:A∈out.iclasses ? ia : 𝕫[])
+    # j                 = vcat(:Λ∈out.jclasses ? iλ : 𝕫[],:X∈out.jclasses ? ix : 𝕫[],:U∈out.jclasses ? iu : 𝕫[],:A∈out.jclasses ? ia : 𝕫[])
+    # add_∂!{P-1}( out.Lij,asm[3],iele,∇L,i,j)
 end
 """
     matrix = Muscade.study_singular(state;SP,[iclasses=(Λ,:X,:U,:A)],[jclasses=iclasses],[verbose::𝕓=true],[dbg=(;)])
