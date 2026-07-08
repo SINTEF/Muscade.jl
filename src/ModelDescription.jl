@@ -105,7 +105,7 @@ getidof(E::DataType,class)        = findall(doflist(E).class.==class)
 
 where `class` can be any of `:X`, `:U`, `:A`: get the number of dofs of each
 specified dof-classes for the variable `model` or the type
-`Element`.  If no class is specified `getndof` return the asum of the number of dofs of all classes.
+`Element`.  If no class is specified `getndof` return the sum of the number of dofs of all classes.
 
 See also: [`describe`](@ref)
 """

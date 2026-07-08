@@ -449,7 +449,7 @@ struct DofConstraint{λclass,Nλ,Nx,Nu,Na,λinod,λfield,xinod,xfield,uinod,ufie
 
 end
 function DofConstraint(nod::Vector{Node};λclass::Symbol,
-                                         λinod::NTuple{Nλ,𝕫}=(),λfield::NTuple{Nλ,Symbol}=(),
+                                         λinod::NTuple{Nλ,𝕫}=(),λfield::NTuple{Nλ,Symbol}=(), # Nλ: number of constraints
                                          xinod::NTuple{Nx,𝕫}=(),xfield::NTuple{Nx,Symbol}=(),
                                          uinod::NTuple{Nu,𝕫}=(),ufield::NTuple{Nu,Symbol}=(),
                                          ainod::NTuple{Na,𝕫}=(),afield::NTuple{Na,Symbol}=(),
@@ -544,7 +544,7 @@ Hold(nod::Vector{Node};field::Symbol,λfield::Symbol=Symbol(:λ,field)) =
 """
     ElementConstraint{Teleobj,λinod,λfield,Nu,Treq,Tg,Tgargs,Tmode} <: AbstractElement
 
-An element to apply optimisation equality/inequality constraints on the element-results of 
+An element to apply a single optimisation equality/inequality constraint on the element-results of 
 another "target" element. The target element must *not* be added separately to the model.  Instead, the 
 `ElementType`, and the named arguments to the target element are provided as input to the 
 `ElementConstraint` constructor.
@@ -557,7 +557,7 @@ The Lagrangian multiplier introduced by this optimisation constraint is of class
 # Named arguments to the constructor
 
 - `λinod::𝕫`            The element-node number of the Lagrange multiplier.
-- `λfield::Symbol`      The field of the Lagrange multiplier.
+- `λfield::Symbol`      The field of the Lagrange multiplier (`λclass` is always `:X` )
 - `req`                 A request for element-results to be extracted from the target element, see [`@request`](@ref).
                         The request is formulated as if adressed directly to the target element.
 - `gₛ::𝕣=1.`             A scale for the gap.
@@ -595,7 +595,7 @@ ele1 = addelement!(model,ElementCoonstraint,[nod1];req=@request(Fh),
 
 See also: [`Hold`](@ref), [`DofConstraint`](@ref), [`off`](@ref), [`equal`](@ref), [`positive`](@ref), [`@request`](@ref), [`@functor`](@ref)
 """
-struct ElementConstraint{Teleobj,λinod,λfield,Nu,Treq,Tg,Tgargs,Tmode} <: AbstractElement
+struct ElementConstraint{Teleobj,λinod,λfield,Treq,Tg,Tgargs,Tmode} <: AbstractElement
     eleobj   :: Teleobj
     req      :: Treq
     gap      :: Tg    
@@ -605,30 +605,35 @@ end
 function ElementConstraint(nod::Vector{Node};λinod::𝕫, λfield::Symbol,
     req,gap::Tgap,gargs::Tgargs=(),mode::Tmode,ElementType,elementkwargs) where{Tgap<:Functor,Tgargs,Tmode<:Functor}
     eleobj   = ElementType(nod;elementkwargs...)
-    Nu       = getndof(typeof(eleobj),:U)
-    return ElementConstraint{typeof(eleobj),λinod,λfield,Nu,typeof((eleres=req,)),Tgap,Tgargs,Tmode}(eleobj,(eleres=req,),gap,gargs,mode)
+    return ElementConstraint{typeof(eleobj),λinod,λfield,typeof((eleres=req,)),Tgap,Tgargs,Tmode}(eleobj,(eleres=req,),gap,gargs,mode)
 end
 doflist( ::Type{<:ElementConstraint{Teleobj,λinod,λfield}}) where{Teleobj,λinod,λfield} =
-    (inod =(doflist(Teleobj).inod... ,λinod ),
-     class=(doflist(Teleobj).class...,:X    ),
-     field=(doflist(Teleobj).field...,λfield))
-@espy function lagrangian(o::ElementConstraint{Teleobj,λinod,λfield,Nu}, Λ,X,U,A,t,SP,dbg) where{Teleobj,λinod,λfield,Nu} 
-    req        = mergerequest(o.req)
-    γ          = default{:γ}(SP,0.)
-    m          = o.mode(t)
-    u          = getsomedofs(U,SVector{Nu}(1:Nu)) 
-    ☼λ         = ∂0(U)[Nu+1]
-    L,FB,☼eleres = getlagrangian(o.eleobj,Λ,X,u,A,t,SP,(dbg...,via=ElementConstraint),req.eleres)
-    ☼gap       = o.gap(eleres,t,o.gargs...)
+    (inod =(λinod , doflist(Teleobj).inod... ),
+     class=(:X    , doflist(Teleobj).class...),
+     field=(λfield, doflist(Teleobj).field...))
+@espy function lagrangian(o::ElementConstraint{Teleobj,λinod,λfield}, Λ,X,U,A,t,SP,dbg) where{Teleobj,λinod,λfield}
+    Nx           = getndof(Teleobj,:X) 
+    req          = mergerequest(o.req)
+    γ            = default{:γ}(SP,0.)
+    m            = o.mode(t)
+    ☼λ           = ∂0(X)[1]
+    Xe           = getsomedofs(X,SVector{Nx}(2:Nx+1)) 
+    Λe           = Λ[SVector{Nx}(2:Nx+1)] 
+    L,FB,☼eleres = getlagrangian(o.eleobj,Λe,Xe,U,A,t,SP,(dbg...,via=ElementConstraint),req.eleres)
+    ☼gap         = o.gap(eleres,t,o.gargs...)
     L += if    m==:equal;    -gap*λ   
     elseif     m==:positive; -KKT(λ,gap,γ) 
     elseif     m==:off;      -0.5λ^2 
     end
     return L,(λ=λ,g=gap,mode=m)
 end
-allocate_drawing(axis,eleobj::AbstractVector{Teleobj};kwargs...)                          where{Teleobj<:ElementConstraint} = allocate_drawing(axis,[eᵢ.eleobj for eᵢ∈eleobj];kwargs...)
-update_drawing(  axis,eleobj::AbstractVector{Teleobj},oldmut,opt, Λ,X,U,A,t,SP,dbg)       where{Teleobj<:ElementConstraint} = update_drawing(  axis,[eᵢ.eleobj for eᵢ∈eleobj],oldmut,opt, Λ,X,U,A,t,SP,dbg)  
-display_drawing!(axis,::Type{<:ElementConstraint{Teleobj}},obs,opt)                       where{Teleobj}                    = display_drawing!(axis,Teleobj,obs,opt)
+allocate_drawing(axis,eleobj::AbstractVector{Teleobj};kwargs...)                            where{Teleobj<:ElementConstraint} = allocate_drawing(axis,[eᵢ.eleobj for eᵢ∈eleobj];kwargs...)
+function update_drawing(  axis,eleobj::AbstractVector{Teleobj},oldmut,opt, Λ,X,U,A,t,SP,dbg)where{Teleobj<:ElementConstraint} 
+    Nx           = getndof(typeof(o),:X) 
+    x            = getsomedofs(X,SVector{Nx-1}(2:Nx)) 
+    update_drawing(  axis,[eᵢ.eleobj for eᵢ∈eleobj],oldmut,opt, Λ,x,U,A,t,SP,dbg)  
+end
+display_drawing!(axis,::Type{<:ElementConstraint{Teleobj}},obs,opt)                         where{Teleobj}                    = display_drawing!(axis,Teleobj,obs,opt)
 
 #-------------------------------------------------
 
