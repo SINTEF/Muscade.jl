@@ -79,7 +79,7 @@ A =  SVector{Na}(0. for i=1:Na)
 L,FB  = Muscade.lagrangian(el, Λ+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A+ΔA, 0.,nothing,(testall=true,))                 
 
 @testset "ElementConstraint" begin
-     @test d == (inod = (1, 1, 1, 2, 2, 1), class = (:X, :X, :X, :A, :A, :U), field = (:tx1, :tx2, :rx3,  :ΔL, :Δbuoyancy, :λ))
+     @test d == (inod = (1, 1, 1, 2, 2, 1), class = (:X, :X, :X, :A, :A, :X), field = (:tx1, :tx2, :rx3,  :ΔL, :Δbuoyancy, :λ))
      @test value{1}(L) ≈ -1.926851845351649e11
      @test ∂{1,Nz}(L) ≈ [-438861.1307445675, 9278.602091074139, 1.8715107899328927e6, 2.322235123921358e10, -4.9097753633879846e8, -9.903105530914653e10, -1.926851845351649e11, 6.735986859485705e12, -3.853703690703298e11]
 end
@@ -92,5 +92,4 @@ L,FB,eleres  = Muscade.lagrangian(el, Λ+ΔΛ, X,U,A, 0.,nothing,(testall=true,)
      @test eleres.eleres.cr ≈ 87.79184120068672
      @test eleres.eleres.Fh ≈ 438959.2060034336
 end
-
 end

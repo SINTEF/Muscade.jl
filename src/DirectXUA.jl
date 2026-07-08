@@ -189,14 +189,22 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,el
     DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,NDΛ,NDX,NDU,NDA}(out,asm,L,iele,Δt)
 end
 # Specialised to accelerate ElementCost and ElementConstraint
-function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,eleobj::ElementCost,no_second_order::Val{false}, # TODO can we compact this?
-                           Λ::NTuple{1   ,SVector{Nx}},
-                           X::NTuple{NDX_,SVector{Nx}},
-                           U::NTuple{NDU_,SVector{Nu}},
-                           A::            SVector{Na} ,t,Δt,SP,dbg) where{mission,NDΛ,NDX,NDU,NDA,NDX_,NDU_,Nx,Nu,Na} 
-         addin!{mission}(out,asm,iele,scale,eleobj,Val(true),Λ,X,U,A,t,Δt,SP,dbg) 
-end
-function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,eleobj::ElementCost,no_second_order::Val{true}, 
+# function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,eleobj::Union{ElementCost,ElementConstraint},no_second_order::Val{false}, 
+#                            Λ::NTuple{1   ,SVector{Nx}},
+#                            X::NTuple{NDX_,SVector{Nx}},
+#                            U::NTuple{NDU_,SVector{Nu}},
+#                            A::            SVector{Na} ,t,Δt,SP,dbg) where{mission,NDΛ,NDX,NDU,NDA,NDX_,NDU_,Nx,Nu,Na} 
+#          addin!{mission}(out,asm,iele,scale,eleobj,Val(true),Λ,X,U,A,t,Δt,SP,dbg) 
+# end
+# # function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,eleobj::ElementConstraint,no_second_order::Val{false}, 
+# #                          Λ::NTuple{1   ,SVector{Nx}},
+# #                          X::NTuple{NDX_,SVector{Nx}},
+# #                          U::NTuple{NDU_,SVector{Nu}},
+# #                          A::            SVector{Na} ,t,Δt,SP,dbg) where{mission,NDΛ,NDX,NDU,NDA,NDX_,NDU_,Nx,Nu,Na} 
+# #          addin!{mission}(out,asm,iele,scale,eleobj,Val(true),Λ,X,U,A,t,Δt,SP,dbg) 
+# # end
+#function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,eleobj::ElementCost,no_second_order::Val{true}, 
+function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,eleobj::ElementCost,no_second_order, 
                            Λ::NTuple{1   ,SVector{Nx}},
                            X::NTuple{NDX_,SVector{Nx}},
                            U::NTuple{NDU_,SVector{Nu}},
@@ -218,14 +226,8 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,el
     L               = Λ[1] ∘₁ R + cost
     DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,NDΛ,NDX,NDU,NDA}(out,asm,L,iele,Δt)
 end
-function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,eleobj::ElementConstraint,no_second_order::Val{false}, 
-                         Λ::NTuple{1   ,SVector{Nx}},
-                         X::NTuple{NDX_,SVector{Nx}},
-                         U::NTuple{NDU_,SVector{Nu}},
-                         A::            SVector{Na} ,t,Δt,SP,dbg) where{mission,NDΛ,NDX,NDU,NDA,NDX_,NDU_,Nx,Nu,Na} 
-         addin!{mission}(out,asm,iele,scale,eleobj,Val(true),Λ,X,U,A,t,Δt,SP,dbg) 
-end
-function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,eleobj::ElementConstraint,no_second_order::Val{true}, 
+#function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,eleobj::ElementConstraint,no_second_order::Val{true}, 
+function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,eleobj::ElementConstraint,no_second_order, 
                            Λ::NTuple{1   ,SVector{Nx}},
                            X::NTuple{NDX_,SVector{Nx}},
                            U::NTuple{NDU_,SVector{Nu}},

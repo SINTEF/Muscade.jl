@@ -507,7 +507,7 @@ mutable struct Assemblystudy_singular{Tzz,Ticlasses,Tjclasses}  <:Assembly
     iclasses :: Ticlasses
     jclasses :: Tjclasses
 end   
-function prepare(::Type{Assemblystudy_singular},model,dis,iclasses=(Λ,:X,:U,:A),jclasses=iclasses) 
+function prepare(::Type{Assemblystudy_singular},model,dis,iclasses=(:Λ,:X,:U,:A),jclasses=iclasses) 
     idofgr             = selecteddofs(model,dis,iclasses) 
     jdofgr             = selecteddofs(model,dis,jclasses) 
     ni                 = getndof(idofgr)

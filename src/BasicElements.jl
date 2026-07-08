@@ -606,12 +606,11 @@ function ElementConstraint(nod::Vector{Node};λinod::𝕫, λfield::Symbol,
     req,gap::Tgap,gargs::Tgargs=(),mode::Tmode,ElementType,elementkwargs) where{Tgap<:Functor,Tgargs,Tmode<:Functor}
     eleobj   = ElementType(nod;elementkwargs...)
     Nu       = getndof(typeof(eleobj),:U)
-    tmp = ElementConstraint{typeof(eleobj),λinod,λfield,Nu,typeof((eleres=req,)),Tgap,Tgargs,Tmode}(eleobj,(eleres=req,),gap,gargs,mode)
-    return tmp
+    return ElementConstraint{typeof(eleobj),λinod,λfield,Nu,typeof((eleres=req,)),Tgap,Tgargs,Tmode}(eleobj,(eleres=req,),gap,gargs,mode)
 end
 doflist( ::Type{<:ElementConstraint{Teleobj,λinod,λfield}}) where{Teleobj,λinod,λfield} =
-    (inod =(doflist(Teleobj).inod... ,λinod),
-     class=(doflist(Teleobj).class...,:U),
+    (inod =(doflist(Teleobj).inod... ,λinod ),
+     class=(doflist(Teleobj).class...,:X    ),
      field=(doflist(Teleobj).field...,λfield))
 @espy function lagrangian(o::ElementConstraint{Teleobj,λinod,λfield,Nu}, Λ,X,U,A,t,SP,dbg) where{Teleobj,λinod,λfield,Nu} 
     req        = mergerequest(o.req)
