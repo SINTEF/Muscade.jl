@@ -313,7 +313,7 @@ function addin!{mission}(out::Assemblystudy_scale,asm,iele,scale,eleobj::E,Λ,X:
                                          U::NTuple{Nuder,<:SVector{Nu}},A::SVector{Na},t,Δt,SP,dbg) where{mission,E,Nxder,Nx,Nuder,Nu,Na} # TODO make Nx,Nu,Na types
     Nz              = 2Nx+Nu+Na                        # Z =[Λ;X;U;A]       
     scaleZ          = SVector(scale.Λ...,scale.X...,scale.U...,scale.A...)
-    ΔZ              = variate{2,Nz}(δ{1,Nz,𝕣}(scaleZ),scaleZ)                 
+    ΔZ              = Muscade.variate_{2,Nz}(δ_{1,Nz,𝕣}(scaleZ),scaleZ)                 
     iλ,ix,iu,ia     = gradientpartition(Nx,Nx,Nu,Na) # index into element vectors ΔZ and Lz
     ΔΛ,ΔX,ΔU,ΔA     = view(ΔZ,iλ),view(ΔZ,ix),view(ΔZ,iu),view(ΔZ,ia) 
     L,FB            = getlagrangian(eleobj, ∂0(Λ)+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A+ΔA,t,SP,dbg)
@@ -386,7 +386,7 @@ function study_scale(state::State;SP=nothing,verbose::𝕓=true,dbg=(;))
     assemble!{:ok}(out,asm,dis,model,state,idmult,(dbg...,solver=:study_scale))
     state.SP           = tmp
     Z                  = zeros(getndof(dofgr))
-    getdof!(state,0,Z,dofgr) 
+    get!(state,1,Z,dofgr) 
     type,types         = listdoftypes(dis)
     matfrob            = ∞norm(out.Lzz,type,types)
     vecfrob            = ∞norm(out.Lz ,type,types)
@@ -525,7 +525,7 @@ function addin!{mission}(out::Assemblystudy_singular,asm,iele,scale,eleobj::E,Λ
 
     Nz              = 2Nx+Nu+Na       
     scaleZ          = SVector(scale.Λ...,scale.X...,scale.U...,scale.A...)
-    ΔZ              = variate{2,Nz}(δ{1,Nz,𝕣}(scaleZ),scaleZ)                 
+    ΔZ              = Muscade.variate_{2,Nz}(δ_{1,Nz,𝕣}(scaleZ),scaleZ)                 
     iλ,ix,iu,ia     = gradientpartition(Nx,Nx,Nu,Na) # index into element vectors ΔZ and Lz
     ΔΛ,ΔX,ΔU,ΔA     = view(ΔZ,iλ),view(ΔZ,ix),view(ΔZ,iu),view(ΔZ,ia)
     L,FB            = getlagrangian(eleobj, ∂0(Λ)+ΔΛ, (∂0(X)+ΔX,),(∂0(U)+ΔU,),A+ΔA,t,nothing,SP,dbg)
@@ -559,7 +559,7 @@ function study_singular(state::State;SP,iclasses=(Λ,:X,:U,:A),jclasses=iclasses
     end    
     for iker = 1:nker
         @printf("\n\nBase vector #%i of the null-space:\n\n",iker)
-        set!(mech[iker],0,view(kernel,:,iker),jdofgr)
+        set!(mech[iker],1,view(kernel,:,iker),jdofgr)
         describe(mech[iker])
     end
     return out.Lij

@@ -85,7 +85,7 @@ struct Acost{Na,inod,field,Tcost,Tcostargs} <: AbstractElement
 end
 Acost(nod::Vector{Node};inod::NTuple{Na,𝕫}=(),field::NTuple{Na,Symbol}=(),cost::Tcost,costargs::Tcostargs=()) where{Na,Tcost<:Functor,Tcostargs} = Acost{Na,inod,field,Tcost,Tcostargs}(cost,costargs)
 doflist(::Type{<:Acost{Na,inod,field}}) where{Na,inod,field} = (inod =inod,class=ntuple(i->:A,Na),field=field)
-@espy function lagrangian(o::Acost,Λ,X,U,A,t,SP,dbg)  
+@espy function lagrangian(o::Acost,A,SP,dbg)  
     ☼cost = o.cost(    A  ,o.costargs...)
     return cost,noFB
 end
@@ -475,10 +475,9 @@ doflist(::Type{<:DofConstraint{λclass,Nλ,Nx,Nu,Na,λinod,λfield,xinod,xfield,
     iλ         = SVector{Nλ}(1:Nλ)
     ix         = SVector{Nx}(Nλ+1:Nλ+Nx)
     γ          = default{:γ}(SP,0.) # γ=SP.γ - default 0
-    P          = constants(∂0(X),t)
     m          = o.mode(t)
     ☼λ,x       = ∂0(X)[iλ], ∂0(X)[ix]    
-    x∂         = variate{P,Nx}(x) 
+    P,_,x∂     = variate(x,context=(X,U,A,t))
     ☼gap,g∂x   = value_∂{P,Nx}(o.gap(x∂,t,o.gargs...)) 
     R = if     m==:equal;    SVector{Nλ+Nx}(-gap...       ,(       -λ∘₁g∂x)...) # - sign: λ interpreted as an external force on generalised dof g∂x
     elseif     m==:positive; SVector{Nλ+Nx}(-S(λ,gap,γ)...,(       -λ∘₁g∂x)...) 

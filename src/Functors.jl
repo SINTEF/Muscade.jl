@@ -8,13 +8,20 @@ struct FunctionFromVector{X,Y} <:Function
     x::X  
     y::Y
 end
-FunctionFromVector(x::AbstractRange,y::AbstractVector{R}) where{R<:Real} = FunctionFromVector{typeof(x),typeof(y)}(x,y)
-function (f::FunctionFromVector)(x)
+function (f::FunctionFromVector{<:AbstractRange})(x)
+    @assert first(f.x)≤x≤last(f.x)
     ix = (x-first(f.x))/step(f.x) +1
-    @assert 1≤ix≤length(f.x)
-
     i  = min(trunc(𝕫,ix),length(f.x)-1)
     di = ix-i
+    return f.y[i]*(1-di)+f.y[i+1]*di
+end
+function (f::FunctionFromVector{<:AbstractVector})(x)
+    @assert first(f.x)≤x≤last(f.x)
+    i = findlast(i->i≤x,f.x)
+    if i==length(f.x) 
+        i -=1
+    end
+    di = (x-f.x[i])/(f.x[i+1]-f.x[i])
     return f.y[i]*(1-di)+f.y[i+1]*di
 end
 

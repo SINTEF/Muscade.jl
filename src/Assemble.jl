@@ -155,8 +155,32 @@ function State{nΛder,nXder,nUder}(state;time=state.time,Λ=state.Λ,X=state.X,U
     state.dis   = dis
     return state
 end
-# A deep copy - except for SP,model and dis
+"""
+    s2 = copy(s1::State)
+
+Copy a state so that `s1` and `s2` do not share memory.
+
+(Actualy the `State`s will stil share the same `Model`, but no operations are provided to mutate it).
+
+    s2 = copy(s1;[time=t])
+
+create a copied `State` with time `t`. 
+
+See also: [`initialize!`](@ref), [`setdof!`](@ref)
+"""
 Base.copy(s::State;time=s.time,SP=s.SP) = State(time,deepcopy(s.Λ),deepcopy(s.X),deepcopy(s.U),deepcopy(s.A),SP,s.model,s.dis) 
+
+function Base.show(io::IO,o::State{nΛder,nXder,nUder,TSP}) where{nΛder,nXder,nUder,TSP}
+    print(io,"State{",nΛder,",",nXder,",",nUder,",",TSP,"}(model=:",o.model.ID,", time=",o.time,", ...)")
+end
+function Base.show(io::IO,o::Vector{State{nΛder,nXder,nUder,TSP}}) where{nΛder,nXder,nUder,TSP}
+    println(io,length(o),"-element Vector{State{",nΛder,",",nXder,",",nUder,",",TSP,"}}:")
+    for (i,oᵢ) ∈ enumerate(o)
+        println(io," ",i,": model=:",oᵢ.model.ID,", time=",oᵢ.time)
+    end
+end
+
+
 
 
 #### DofGroup
@@ -165,7 +189,7 @@ Base.copy(s::State;time=s.time,SP=s.SP) = State(time,deepcopy(s.Λ),deepcopy(s.X
 # of the dofs of the model.
 
 struct DofGroup 
-    nX     :: 𝕫 # of the _model
+    nX     :: 𝕫 # of the _model_
     nU     :: 𝕫
     nA     :: 𝕫
 
@@ -216,20 +240,20 @@ function increment!(s::State,ider::𝕫,y::AbstractVector{𝕣},gr::DofGroup)
     if ider==1          for i ∈ eachindex(gr.iA); s.A[      gr.iA[i]] += y[gr.jA[i]] * gr.scaleA[i]; end end
 end
 function set!(s::State,ider::𝕫,y::AbstractVector{𝕣},gr::DofGroup) 
-    s.Λ[ider+1] .= 0
-    s.X[ider+1] .= 0
-    s.U[ider+1] .= 0
-    s.A         .= 0
-    for i ∈ eachindex(gr.iΛ); s.Λ[ider+1][gr.iΛ[i]] = y[gr.jΛ[i]] * gr.scaleΛ[i]; end
-    for i ∈ eachindex(gr.iX); s.X[ider+1][gr.iX[i]] = y[gr.jX[i]] * gr.scaleX[i]; end
-    for i ∈ eachindex(gr.iU); s.U[ider+1][gr.iU[i]] = y[gr.jU[i]] * gr.scaleU[i]; end
-    for i ∈ eachindex(gr.iA); s.A[        gr.iA[i]] = y[gr.jA[i]] * gr.scaleA[i]; end
+    if ider≤length(s.Λ) s.Λ[ider] .= 0 end
+    if ider≤length(s.X) s.X[ider] .= 0 end
+    if ider≤length(s.U) s.U[ider] .= 0 end
+    if ider==1          s.A       .= 0 end
+    if ider≤length(s.Λ) for i ∈ eachindex(gr.iΛ); s.Λ[ider][gr.iΛ[i]] = y[gr.jΛ[i]] * gr.scaleΛ[i]; end end
+    if ider≤length(s.X) for i ∈ eachindex(gr.iX); s.X[ider][gr.iX[i]] = y[gr.jX[i]] * gr.scaleX[i]; end end
+    if ider≤length(s.U) for i ∈ eachindex(gr.iU); s.U[ider][gr.iU[i]] = y[gr.jU[i]] * gr.scaleU[i]; end end
+    if ider==1          for i ∈ eachindex(gr.iA); s.A[      gr.iA[i]] = y[gr.jA[i]] * gr.scaleA[i]; end end
 end
-function getdof!(s::State,ider::𝕫,y::AbstractVector{𝕣},gr::DofGroup) 
-    for i ∈ eachindex(gr.iΛ); y[gr.jΛ[i]] = s.Λ[ider+1][gr.iΛ[i]] / gr.scaleΛ[i]; end
-    for i ∈ eachindex(gr.iX); y[gr.jX[i]] = s.X[ider+1][gr.iX[i]] / gr.scaleX[i]; end
-    for i ∈ eachindex(gr.iU); y[gr.jU[i]] = s.U[ider+1][gr.iU[i]] / gr.scaleU[i]; end
-    for i ∈ eachindex(gr.iA); y[gr.jA[i]] = s.A[        gr.iA[i]] / gr.scaleA[i]; end
+function get!(s::State,ider::𝕫,y::AbstractVector{𝕣},gr::DofGroup) 
+    if ider≤length(s.Λ)for i ∈ eachindex(gr.iΛ); y[gr.jΛ[i]] = s.Λ[ider][gr.iΛ[i]] / gr.scaleΛ[i]; end end
+    if ider≤length(s.X)for i ∈ eachindex(gr.iX); y[gr.jX[i]] = s.X[ider][gr.iX[i]] / gr.scaleX[i]; end end
+    if ider≤length(s.U)for i ∈ eachindex(gr.iU); y[gr.jU[i]] = s.U[ider][gr.iU[i]] / gr.scaleU[i]; end end
+    if ider==1         for i ∈ eachindex(gr.iA); y[gr.jA[i]] = s.A[      gr.iA[i]] / gr.scaleA[i]; end end
 end
 # create a tuple (Λ,X,U,A) of indices into the dofgroup - with zeros for modeldofs not in dofgroup
 # so the model's iλ-th Λdof is found in y[Λ[iλ]]
@@ -467,6 +491,9 @@ struct assemble_!{mission} end
 struct assembleA!{mission} end
 struct assembleA_!{mission} end
 struct addin!{mission} end
+
+# standard assembler, everything except time-independant A-cost
+# Assemble a state using the values of variables in the state.
 function assemble!{mission}(out::Assembly,asm,dis,model,state,Δt,dbg) where{mission}
     zero!(out)
     for ieletyp = 1:lastindex(model.eleobj)
@@ -474,36 +501,41 @@ function assemble!{mission}(out::Assembly,asm,dis,model,state,Δt,dbg) where{mis
         assemble_!{mission}(out,view(asm,:,ieletyp),dis.dis[ieletyp],eleobj,state,state.time,Δt,state.SP,(dbg...,ieletyp=ieletyp))
     end
 end
-assemble_!{mission}(out::Assembly,asm,dis,eleobj::Acost,state,t,Δt,SP,dbg) where{mission} = nothing
-function assemble_!{mission}(out::Assembly,asm,dis,eleobj,state::State{nΛder,nXder,nUder},t,Δt,SP,dbg) where{mission,nΛder,nXder,nUder}
+assemble_!{         mission}(out::Assembly,asm,dis,eleobj::Vector{<:Acost},state::State{nΛder,nXder,nUder},t,Δt,SP,dbg) where{mission,nΛder,nXder,nUder} = nothing
+function assemble_!{mission}(out::Assembly,asm,dis,eleobj                 ,state::State{nΛder,nXder,nUder},t,Δt,SP,dbg) where{mission,nΛder,nXder,nUder}
     for iele  = 1:lastindex(eleobj)
         index = dis.index[iele]
         Λe    = NTuple{nΛder}(λ[index.X] for λ∈state.Λ)
         Xe    = NTuple{nXder}(x[index.X] for x∈state.X)
         Ue    = NTuple{nUder}(u[index.U] for u∈state.U)
-        Ae    = state.A[index.A]
-        addin!{mission}(out,asm,iele,dis.scale,eleobj[iele],Λe,Xe,Ue,Ae, t,Δt,SP,(dbg...,iele=iele)) # defined by solver.  Called for each element. But the asm that is passed
-    end                                                                              # is of the form asm[iarray][i,iele], because addin! will add to all arrays in one pass
-end
-function assemble!{mission}(out::Assembly,asm,dis,model,Λ,X,U,A,t,Δt,dbg) where{mission}
-    zero!(out)
-    for ieletyp = 1:lastindex(model.eleobj)
-        eleobj  = model.eleobj[ieletyp]
-        assemble_!{mission}(out,view(asm,:,ieletyp),dis.dis[ieletyp],eleobj,Λ,X,U,A,t,Δt,nothing,(dbg...,ieletyp=ieletyp))
-    end
-end
-assemble_!{mission}(out::Assembly,asm,dis,eleobj::Acost,Λ,X,U,A,t,Δt,SP,dbg) where{mission} = nothing
-function assemble_!{mission}(out::Assembly,asm,dis,eleobj,Λ::NTuple{nΛder},X::NTuple{nXder},U::NTuple{nUder},A,t,Δt,SP,dbg) where{mission,nΛder,nXder,nUder}
-    for iele  = 1:lastindex(eleobj)
-        index = dis.index[iele]
-        Λe    = NTuple{nΛder}(λ[index.X] for λ∈Λ)
-        Xe    = NTuple{nXder}(x[index.X] for x∈X)
-        Ue    = NTuple{nUder}(u[index.U] for u∈U)
-        Ae    = A[index.A]
+        Ae    =         state.A[index.A]
         addin!{mission}(out,asm,iele,dis.scale,eleobj[iele],Λe,Xe,Ue,Ae, t,Δt,SP,(dbg...,iele=iele)) # defined by solver.  Called for each element. But the asm that is passed
     end                                                                              # is of the form asm[iarray][i,iele], because addin! will add to all arrays in one pass
 end
 
+# TODO stateless assembler.  Who uses this??? 
+# if we keep this: make standard assemble! above call the assemble_! below
+#
+# function assemble!{mission}(out::Assembly,asm,dis,model,Λ,X,U,A,t,Δt,dbg) where{mission}
+#     zero!(out)
+#     for ieletyp = 1:lastindex(model.eleobj)
+#         eleobj  = model.eleobj[ieletyp]
+#         assemble_!{mission}(out,view(asm,:,ieletyp),dis.dis[ieletyp],eleobj,Λ,X,U,A,t,Δt,nothing,(dbg...,ieletyp=ieletyp))
+#     end
+# end
+# assemble_!{mission}(out::Assembly,asm,dis,eleobj::Acost,Λ,X,U,A,t,Δt,SP,dbg) where{mission} = nothing
+# function assemble_!{mission}(out::Assembly,asm,dis,eleobj,Λ::NTuple{nΛder},X::NTuple{nXder},U::NTuple{nUder},A,t,Δt,SP,dbg) where{mission,nΛder,nXder,nUder}
+#     for iele  = 1:lastindex(eleobj)
+#         index = dis.index[iele]
+#         Λe    = NTuple{nΛder}(λ[index.X] for λ∈Λ)
+#         Xe    = NTuple{nXder}(x[index.X] for x∈X)
+#         Ue    = NTuple{nUder}(u[index.U] for u∈U)
+#         Ae    = A[index.A]
+#         addin!{mission}(out,asm,iele,dis.scale,eleobj[iele],Λe,Xe,Ue,Ae, t,Δt,SP,(dbg...,iele=iele)) # defined by solver.  Called for each element. But the asm that is passed
+#     end                                                                              # is of the form asm[iarray][i,iele], because addin! will add to all arrays in one pass
+# end
+
+# assemble the time-independant A-cost
 function assembleA!{mission}(out::Assembly,asm,dis,model,state,dbg) where{mission}
     zero!(out)
     for ieletyp = 1:lastindex(model.eleobj)
@@ -544,6 +576,11 @@ function zero!(out::AbstractSparseArray)
         out.nzval[i] = 0
     end
 end
+function zero!(out::Tuple)
+    for oᵢ ∈ out
+        zero!(oᵢ)
+    end
+end
 
 #### extract value or derivatives from a SVector 'a' of adiffs, and add it directly into vector, full matrix or nzval of sparse matrix 'out'.
 # given a vector a
@@ -553,10 +590,10 @@ end
 # idasm: where in the second dim of out to put data (if transpose: first)
 #
 # out[asm[:   ,iele]] += a
-# out[asm[iasm,iele]] += a      # pick: 'a' is only a part of the element vector (FreqXU)   
+# out[asm[iasm,iele]] += a      # build: 'a' is only a part of the element vector (FreqXU)   
 # out[asm[:,   iele]] += a[ia]  # split: parts of 'a' are assembled (DirectXUA)   
 # out[asm[iasm,iele]] += a[ia]  # not used
-function add_value!(out::𝕣1,asm,iele,a::SVector{Na,<:ℝ},ia=1:Na;iasm=idvec,Δt=idmult) where{Na}
+function add_value!(out::𝕣1,asm,iele,a::SVector{Na,<:ℝ},ia=1:Na ; iasm=idvec,Δt=idmult) where{Na}
     for (i,iaᵢ) ∈ enumerate(ia)
         iout = asm[iasm[i],iele]
         if iout≠0 
@@ -564,12 +601,19 @@ function add_value!(out::𝕣1,asm,iele,a::SVector{Na,<:ℝ},ia=1:Na;iasm=idvec,
         end
     end
 end   
-function add_value!(out::𝕣0,a,ia::𝕫;Δt=idmult)  # # Lr, scalar in Newmakr-β context
-    out[] += VALUE(a[ia])*Δt
-end
 
 struct   add_∂!{P,S,T} end # to allow syntax with type-parameter P: precedence, S: :plus|:minus, T: :transpose|:notranspose
-function add_∂!{P,S,T}(out::Array,asm,iele,a::SVector{Na,∂ℝ{P,Nda,R}},ia=1:Na,ida=1:Nda;iasm=idvec,idasm=idvec,Δt=idmult) where{P,Nda,R,Na,S,T}
+#### derivatives from a SVector 'a' of adiffs, and add it directly into full matrix or nzval of sparse matrix 'out'.
+# given a vector a
+# ia:    where in the vector to pick data
+# ida:   where in the partials to pick data
+# iasm:  where in first dim of out to put data      (if transpose: second)
+# idasm: where in the second dim of out to put data (if transpose: first)
+#
+# ∀ i,j out[asm[iasm[i]+length(ia)*idasm[j]-1,iele]] += a[ia[i]].dx[ida[j]]  
+#
+# out::Array is deliberately vague, encompassing 𝕣2 and sparse.nzval
+function add_∂!{P,S,T}(out::Array,asm,iele,a::SVector{Na,∂ℝ{P,Nda,R}},ia=1:Na,ida=1:Nda ; iasm=idvec,idasm=idvec,Δt=idmult) where{P,Nda,R,Na,S,T}
     for (i,iaᵢ) ∈ enumerate(ia), (j,idaⱼ) ∈ enumerate(ida)
         k = if T==:transpose   idasm[j]+length(ida)*( iasm[i]-1)   
         elseif T==:notranspose iasm[ i]+length( ia)*(idasm[j]-1)  
@@ -585,11 +629,11 @@ function add_∂!{P,S,T}(out::Array,asm,iele,a::SVector{Na,∂ℝ{P,Nda,R}},ia=1
     end
 end  
 add_∂!{P    }(                                     args...;kwargs...) where{P         } = add_∂!{P,:plus             }(args...;kwargs...) 
-add_∂!{P  ,S}(                                     args...;kwargs...) where{P,S       } = add_∂!{P,S    ,:notranspose}(args...;kwargs...) 
+add_∂!{P,S  }(                                     args...;kwargs...) where{P,S       } = add_∂!{P,S    ,:notranspose}(args...;kwargs...) 
 add_∂!{P,S,T}(out::SparseMatrixCSC,                args...;kwargs...) where{P,S,T     } = add_∂!{P,S    ,T           }(out.nzval, args...;kwargs...)
 add_∂!{P,S,T}(out::Array,asm,iele,a::SVector{Na,R},args...;kwargs...) where{P,S,T,Na,R} = nothing # if P does not match
 
-function add_∂!{P,S,T}(out::Vector,asm, iele, a::SVector{Na,∂ℝ{P,Nda,R}},ia,ida::𝕫,Δt=idmult) where{P,S,T,Nda,R,Na} # Lλr::Vector in Newmark-β context
+function add_∂!{P,S}(out::Vector,asm, iele, a::SVector{Na,∂ℝ{P,Nda,R}},ia,ida::𝕫 ; Δt=idmult) where{P,S,Nda,R,Na} # Lλr::Vector in Newmark-β context
     for (i,iaᵢ) ∈ enumerate(ia)
         iout = asm[i,iele]
         if iout≠0
@@ -644,40 +688,52 @@ end
 # has residual with no second order
 function getresidual(eleobj::Eleobj,hasres::Val{true},haslag,nso::Val{true}, X::NTuple{Ndx,SVector{Nx}}, 
         U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na} ,t::ℝ,SP,dbg,req)     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
-    P = constants(X,U,A,t)-1    
-    X1,U1,A1,t1 = to_order{max(1,P)}((X,U,A,t))
+    P,N = precedence((X,U,A,t)),npartial((X,U,A,t)) 
+    X1,U1,A1,t1 = to_order{min(1,P),N}((X,U,A,t))
     R,FB,eleres = residual(  eleobj,  X1,U1,A1,t1,SP,dbg,req)
-    return to_order{P}(R),FB,to_order{P}(eleres) 
+    return to_order{P,N}(R),FB,to_order{P,N}(eleres) 
 end
 function getresidual(eleobj::Eleobj,hasres::Val{true},haslag,nso::Val{true}, X::NTuple{Ndx,SVector{Nx}}, 
         U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na} ,t::ℝ,SP,dbg    )     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
-    P           = constants(X,U,A,t)-1
-    X1,U1,A1,t1 = to_order{max(1,P)}((X,U,A,t))
+    P,N = precedence((X,U,A,t)),npartial((X,U,A,t)) 
+    X1,U1,A1,t1 = to_order{min(1,P),N}((X,U,A,t))
     R,FB        = residual(  eleobj,  X1,U1,A1,t1,SP,dbg    )
-    return to_order{P}(R),FB 
+    return to_order{P,N}(R),FB 
 end
 
 # has lagrangian
 function getresidual(eleobj::Eleobj,hasres::Val{false},haslag::Val{true},nso, X::NTuple{Ndx,SVector{Nx}}, 
         U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na} ,t::ℝ,SP,dbg,req)     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
-    P            = constants(∂0(X),∂0(U),A,t)
-    Λ            = δ{P,Nx,𝕣}() 
+    P            = precedence(∂0(X),∂0(U),A,t)
+    Λ            = δ_{P+1,Nx,𝕣}() # legal only because lagrangian is linear in Λ
     L,FB,eleres  = lagrangian(eleobj,Λ,X,U,A,t,SP,dbg,req)    
-    R            = ∂{P,Nx}(L)
+    R            = ∂{P+1,Nx}(L)
     return R,FB,eleres
 end
 function getresidual(eleobj::Eleobj,hasres::Val{false},haslag::Val{true},nso, X::NTuple{Ndx,SVector{Nx}}, 
         U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na} ,t::ℝ,SP,dbg   )     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
-    P            = constants(∂0(X),∂0(U),A,t)
-    Λ            = δ{P,Nx,𝕣}() 
+    P            = precedence(∂0(X),∂0(U),A,t)
+    Λ            = δ_{P+1,Nx,𝕣}() # legal only because lagrangian is linear in Λ
     L,FB         = lagrangian(eleobj,Λ,X,U,A,t,SP,dbg   )    
-    R            = ∂{P,Nx}(L)
+    R            = ∂{P+1,Nx}(L)
     return R,FB
 end
 
 # has nothing !?!
 getresidual(eleobj::Eleobj,hasres::Val{false},haslag::Val{false},nso, X,U,A,t,SP,dbg,req...) where{Eleobj} =
     muscadeerror((dbg...,t=t,SP=SP),@sprintf("Element %s must have method 'Muscade.lagrangian' or/and 'Muscade.residual' with correct interface",Eleobj))
+
+# Acost
+function getlagrangian(eleobj::Acost, A::SVector, SP, dbg,req) 
+    L,FB,eleres = lagrangian(eleobj,A,SP,dbg,req)    
+    hasnan(L,FB) && muscadeerror((dbg...,t=t,SP=SP),"lagrangian(Acost,...) returned NaN in L, FB or derivatives") 
+    return L,FB,eleres  
+end
+function getlagrangian(eleobj::Acost, A::SVector, SP, dbg) 
+    L,FB = lagrangian(eleobj,A,SP,dbg)    
+    hasnan(L,FB) && muscadeerror((dbg...,t=t,SP=SP),@sprintf("lagrangian(Acost,...) returned NaN in L, FB or derivatives",Eleobj)) 
+    return L,FB  
+end
 
 # dispatcher
 function getlagrangian(eleobj::Eleobj, Λ::SVector{Nx}, X::NTuple{Ndx,SVector{Nx}}, 
@@ -720,18 +776,18 @@ end
 # has residual with no second order
 function getlagrangian(eleobj::Eleobj,hasres::Val{true},haslag::Val{false},nso::Val{true}, Λ::SVector{Nx}, X::NTuple{Ndx,SVector{Nx}}, 
         U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na}, t::ℝ,SP,dbg,req)     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
-    P           = constants(X,U,A,t)-1
-    X1,U1,A1,t1 = to_order{max(1,P)}((X,U,A,t)) 
+    P,N = precedence((X,U,A,t)),npartial((X,U,A,t)) 
+    X1,U1,A1,t1 = to_order{min(1,P),N}((X,U,A,t)) 
     R,FB,eleres = residual(  eleobj,  X1,U1,A1,t1,SP,dbg,req)
-    L           = Λ ∘₁ to_order{P}(R) # to avoid loosing symmetry of Hessian...
-    return L,FB,to_order{P}(eleres) 
+    L           = Λ ∘₁ to_order{P,N}(R) # to avoid loosing symmetry of Hessian...
+    return L,FB,to_order{P,N}(eleres) 
 end
 function getlagrangian(eleobj::Eleobj,hasres::Val{true},haslag::Val{false},nso::Val{true}, Λ::SVector{Nx}, X::NTuple{Ndx,SVector{Nx}}, 
         U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na}, t::ℝ,SP,dbg    )     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
-    P           = constants(X,U,A,t)-1
-    X1,U1,A1,t1 = to_order{max(1,P)}((X,U,A,t)) 
+    P,N = precedence((X,U,A,t)),npartial((X,U,A,t)) 
+    X1,U1,A1,t1 = to_order{min(1,P),N}((X,U,A,t)) 
     R,FB        = residual(  eleobj,  X1,U1,A1,t1,SP,dbg    )
-    L           = Λ ∘₁ to_order{P}(R) # to avoid loosing symmetry of Hessian...
+    L           = Λ ∘₁ to_order{P,N}(R) # to avoid loosing symmetry of Hessian...
     return L,FB 
 end
 

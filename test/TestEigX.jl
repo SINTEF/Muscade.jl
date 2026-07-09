@@ -1,4 +1,4 @@
-module TestEigX
+#module TestEigX
 using Muscade, StaticArrays,Test,Random
 
 include("SomeElements.jl")
@@ -37,6 +37,20 @@ state           = increment(initialstate,eiginc,imod,A)
     @test state.X[3][1:2:end] ≈ [-0.2937262712953869, -0.6962620392508903, -0.6613336756803813, -0.2137967604399907, 0.36006958839215825, 0.694478296097603]
 end
 
+eiginc          = solve(EigX{:fullℝ};state=initialstate,verbose=false)
+imod            = [1,    2]
+A               = [1,4+5im] 
+state           = increment(initialstate,eiginc,imod,A)
+
+@testset "EigXfullR" begin
+    @test eiginc.ω[1:nmod]    ≈ [ 0.143146493914704,    0.42677293340604844,    0.7024494006334382,    0.9650405646123343,    1.209654848799371]
+    @test state.X[1][1:2:end] ≈ [1.7338129265935287, 4.177182755457795, 4.192402275285353, 1.9005876862087123, -1.1387295193620908, -2.9254875682906434]
+    @test state.X[2][1:2:end] ≈ [-0.8521204984886861, -2.015355547777684, -1.8990540291889357, -0.5770550457522317, 1.1113125586121952, 2.0941148057104684]
+    @test state.X[3][1:2:end] ≈ [-0.2937262712953869, -0.6962620392508903, -0.6613336756803813, -0.2137967604399907, 0.36006958839215825, 0.694478296097603]
+end
+
+
+
 eiginc          = solve(EigX{ℂ};state=initialstate,nmod,verbose=false)
 imod            = [1,    2]
 A               = [1,4+5im] 
@@ -49,4 +63,18 @@ state           = increment(initialstate,eiginc,imod,A)
     @test state.X[3][1:2:end] ≈  [0.02223145453650511, 0.06504555832867998, 0.10303553062324605, 0.13338382896767445, 0.15383965890798573, 0.1628859051167022] atol=1e-6
 end
 
+eiginc          = solve(EigX{:fullℂ};state=initialstate,verbose=false)
+imod            = [1,    2] # modes not in same order as in EigX{ℂ}
+A               = [1,4+5im] 
+state           = increment(initialstate,eiginc,imod,A)
+
+@testset "EigXfullC" begin
+    @test abs.(eiginc.p[1:nmod])    ≈ [0.10517722364770998, 2.078080371921441, 2.0780803719214407, 1.627145730632568, 1.627145730632568]
+    @test state.X[1][1:2:end] ≈  [-0.5204803125167823, -1.380280640445008, -1.7515434548282411, -1.475561386659547, -0.5922598565042344, 0.6684291616961805] atol=1e-6
+    @test state.X[2][1:2:end] ≈  [0.36685998329180775, 0.9968795551054147, 1.3457604481290728, 1.3172451101745886, 0.9238884000674046, 0.2830867264304562] atol=1e-6
+    @test state.X[3][1:2:end] ≈  [2.944311399320866, 7.9759926110463315, 10.686332896448118, 10.28674621116262, 6.894023935357853, 1.4962965862803947] atol=1e-6
 end
+
+
+
+#end

@@ -14,8 +14,8 @@ SP0 = (γ=0.,)
 #---------------------------------------------------------
 
 @functor with() g(x,t)     = SVector(.3x[1] + .4x[2])
-Xctc       = Muscade.variate{1,3}(SVector{3}(10.,4,-3)) # contact
-Xgap       = Muscade.variate{1,3}(SVector{3}(10.,4,3))  # gap
+Xctc       = Muscade.Muscade.variate_{1,3}(SVector{3}(10.,4,-3)) # contact
+Xgap       = Muscade.Muscade.variate_{1,3}(SVector{3}(10.,4,3))  # gap
 U          = SVector{0,𝕣}()
 A          = SVector{0,𝕣}()
 C          = Muscade.DofConstraint{:X,    1 ,2 ,0 ,0 ,(1,) ,(:λ,) ,(1,1),(:t1,:t2),()   ,()    ,()   ,()    }
@@ -82,8 +82,8 @@ end
 # Multiple X constraints
 
 @functor with() g(x,t) = x
-Xctc       = Muscade.variate{1,4}(SVector{4}(10.,3.,0,0)) # contact
-Xgap       = Muscade.variate{1,4}(SVector{4}( 0.,0.,2,1)) # gap
+Xctc       = Muscade.Muscade.variate_{1,4}(SVector{4}(10.,3.,0,0)) # contact
+Xgap       = Muscade.Muscade.variate_{1,4}(SVector{4}( 0.,0.,2,1)) # gap
 U          = SVector{0,𝕣}()
 A          = SVector{0,𝕣}()
 C          = Muscade.DofConstraint{:X,    2 ,2 ,0 ,0 ,(1,1) ,(:λ1,:λ2) ,(1,1),(:t1,:t2),()   ,()    ,()   ,()    }
@@ -140,8 +140,8 @@ end
 #---------------------------------------------------------
 
 @functor with() g(x,u,a,t) = SVector(.3u[1] + .4u[2])
-Uctc       = Muscade.variate{2,3}(Muscade.variate{1,3}(SVector{3}(10.,4,-3))) # contact
-Ugap       = Muscade.variate{2,3}(Muscade.variate{1,3}(SVector{3}(10.,4, 3))) # gap
+Uctc       = Muscade.Muscade.variate_{2,3}(Muscade.Muscade.variate_{1,3}(SVector{3}(10.,4,-3))) # contact
+Ugap       = Muscade.Muscade.variate_{2,3}(Muscade.Muscade.variate_{1,3}(SVector{3}(10.,4, 3))) # gap
 Λ          = SVector{0,𝕣}()
 X          = SVector{0,𝕣}()
 A          = SVector{0,𝕣}()

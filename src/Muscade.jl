@@ -21,15 +21,13 @@ module Muscade
     include("OffsetVector.jl")
 
     include("Adiff.jl")
-    export  ∂ℝ #\partial \bbR
-    export  variate,δ,directional # \delta
+    export  ∂ℝ #\partial\BbbR
     export  value,VALUE,∂,value_∂ # \partial, \nabla
-    export  constants
     public  precedence,npartial #,norm
 
     include("Taylor.jl")
-    export motion,motion⁻¹,revariate,chainrule,apply
-    export composevalue,composeJacobian 
+    export motion,motion⁻¹,variate,variate0,revariate,chainrule,apply,AllElements
+    export chainrule_Jacobian 
     public Taylor,McLaurin
     
     include("Functors.jl")

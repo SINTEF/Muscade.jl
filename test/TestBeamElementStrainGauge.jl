@@ -6,7 +6,7 @@ model            = Model(:TestModel)
 node1            = addnode!(model,𝕣[0,0,0])
 node2            = addnode!(model,𝕣[4,0,0])
 elnod            = [model.nod[n.inod] for n∈[node1,node2]]
-mat              = BeamCrossSection(EA=10.,EI₂=3.,EI₃=3.,GJ=4.,μ=1.,ι₁=1.0)
+mat              = BeamCrossSection(EA=10.,EI₂=3.,EI₃=3.,GJ=4.,μ=1.,ι₁=1.0,w=10.)
 P                = SMatrix{3,5}(0.,.5,0.,  0.,0,.5,   0.,-.5,0.,  0.,0,-.5,  0.,.5,0.   )
 D                = SMatrix{3,5}(1.,0.,0.,  1.,0.,0.,  1.,0.,0.,   1.,0.,0.,  1/√2,0,1/√2)
 L                = 0.1
@@ -23,7 +23,7 @@ instrumentedbeam = EulerBeam3DwithStrainGauge(elnod;P,D,elementkwargs=(mat=mat,o
     @test instrumentedbeam.K1           ≈ SVector(0.,0.,0.,0.,.25) 
     @test instrumentedbeam.K2           ≈ SVector(-0.5, 0, 0.5, 0,-.25)
     @test instrumentedbeam.K3           ≈ SVector(0, -0.5, 0, 0.5,0) 
-    @test typeof(instrumentedbeam)      ==  EulerBeam3DwithStrainGauge{5, EulerBeam3D{BeamCrossSection, false}, @NamedTuple{strain::@NamedTuple{ε::Nothing, κ::Nothing}}}
+    @test typeof(instrumentedbeam)      ==  EulerBeam3DwithStrainGauge{5, EulerBeam3D{BeamCrossSection{Functor{:g̃_default, @NamedTuple{}}}, false}, @NamedTuple{strain::@NamedTuple{ε::Nothing, κ::Nothing}}} 
 end
 
 Λ   =  SVector(0,0,0, 0,.1,0, 0,0,0, 0,-.1,0)

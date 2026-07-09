@@ -15,7 +15,7 @@ d  = Muscade.doflist(typeof(el))
 Nx,Nu,Na        = 3,0,2   
 Nz              = 2Nx+Nu+Na     
 iλ,ix,iu,ia     = Muscade.gradientpartition(Nx,Nx,Nu,Na) 
-ΔZ              = δ{1,Nz,𝕣}()                 
+ΔZ              = Muscade.δ_{1,Nz,𝕣}()                 
 ΔΛ,ΔX,ΔU,ΔA     = view(ΔZ,iλ),view(ΔZ,ix),view(ΔZ,iu),view(ΔZ,ia) 
 Λ =  SVector{Nx}(0. for i=1:Nx)
 X = (SVector{Nx}(1. for i=1:Nx),)
@@ -69,7 +69,7 @@ d               = Muscade.doflist(typeof(el))
 Nx,Nu,Na        = 3,0+1,2   
 Nz              = 2Nx+Nu+Na     
 iλ,ix,iu,ia     = Muscade.gradientpartition(Nx,Nx,Nu,Na) 
-ΔZ              = δ{1,Nz,𝕣}()                 
+ΔZ              = Muscade.δ_{1,Nz,𝕣}()                 
 ΔΛ,ΔX,ΔU,ΔA     = view(ΔZ,iλ),view(ΔZ,ix),view(ΔZ,iu),view(ΔZ,ia) 
 Λ =  SVector{Nx}(0. for i=1:Nx)
 X = (SVector{Nx}(1. for i=1:Nx),)

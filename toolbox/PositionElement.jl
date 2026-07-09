@@ -24,7 +24,7 @@ an `ElementCost`.
 
 # Requestables:
 
-- `a` `a[isensor]` is the 
+- `a` `a[isensor]` is the XXXXXXXXXXXX TODO
 - `x`  `x[oder+1][:,isensor]` contains the position, velocity and acceleration (oder=0,1,2) of the sensor
        which position was described in the `isensor`-th column of `P`. 
 - `rᵢ` `rₑ[oder+1]` is a vector containing a zero vector, the intrinsic rotation rate vector and its time derivative (oder=0,1,2), for the element's node.  
@@ -58,8 +58,7 @@ Muscade.doflist(::Type{<:Position3D}) = (inod  = (1  ,1  ,1  ,1  ,1  ,1  ),
 Muscade.no_second_order(::Type{<:Position3D}) = Val(true)
 
 @espy function Muscade.residual(o::Position3D{Nsensor},   X,U,A,t,SP,dbg) where{Nsensor}
-    P,ND   = constants(X),length(X)
-    X_     = motion{P}(X)
+    P,ND,X_     = motion(X)
     Δx_    = X_[SVector(1,2,3)]
     r_     = X_[SVector(4,5,6)]
     R_     = Rodrigues(r_)

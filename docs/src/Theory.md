@@ -1,4 +1,4 @@
-# Theory
+# [Theory](@id theory)
 
 ## Introduction
 

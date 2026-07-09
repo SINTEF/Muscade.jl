@@ -1,6 +1,9 @@
 # # Dynamic analysis of a beam
 #
 # We perform the dynamic analysis of a steel catenary riser (SCR) subject to forced top motions. We compare the results against the corresponding SIMA/RIFLEX example case. The riser consists of three segments with two different cross-sections.  
+#
+# NB: In two places in this script, `solve` is called with optional `verbose=false`, because this script is part of the generation
+# of `Muscade`'s online documentation.  Setting `verbose=true` would be more relevant in other contexts.
 using Muscade, StaticArrays, GLMakie, Muscade.Toolbox, Interpolations, CSV, DataFrames
 
 # Read RIFLEX motions, tensions, bending moment and curvatures time series (verification data)
@@ -95,7 +98,7 @@ addelement!(model,DofConstraint,[nodeList[3][end]]; λclass=:X, xinod=(1,),xfiel
 initialstate    = initialize!(model);
 staticLoadSteps = (-10:.2:0)*1.
 nStaticLoadSteps = length(staticLoadSteps)
-staticStates           = solve(SweepX{0};initialstate,time=staticLoadSteps,verbose=true,maxΔx=1e-6,maxiter=100);
+staticStates           = solve(SweepX{0};initialstate,time=staticLoadSteps,verbose=false,maxΔx=1e-6,maxiter=100);
 
 # Plot the static analysis sequence
 fig      = Figure(size = (1000,1000))

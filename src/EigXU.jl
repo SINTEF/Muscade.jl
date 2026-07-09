@@ -16,8 +16,7 @@ function make_λxu_sparsepattern(out)
     β       = [1,1,2,2,2,3,3,3]  #   [. . .]
     return sparse(α,β,L2.(α,β))  # = [. . .]
 end
-
-function assemblebigmat!(L2::Vector{Sparse𝕣2},L2bigasm::SparseMatrixCSC,asm,model,dis,out::AssemblyDirect{OX,OU,0},dbg) where{OX,OU}
+function assemblebigmat!(L2::Vector{Sparse𝕣2},L2bigasm::SparseMatrixCSC,asm,model,dis,out::AssemblyDirect,dbg) 
     # does not call assemble!: solve has previously called assemble! to prepare bigasm, so out.L2 is already set,
     for L2ᵢ∈L2
         zero!(L2ᵢ)
@@ -28,14 +27,16 @@ function assemblebigmat!(L2::Vector{Sparse𝕣2},L2bigasm::SparseMatrixCSC,asm,m
             for     αder = 1:size(Lαβ,1)
                 for βder = 1:size(Lαβ,2)
                     ider =  αder+βder-1   
-                    sgn  = isodd(αder) ? +1 : -1 # TODO Antisymmetry for odd derivatives? conjugation? Check theory.  See also DirectXUA
-                    addin!(L2bigasm,L2[ider],Lαβ[αder,βder],α,β,sgn) 
+                    if isassigned(Lαβ,αder,βder)
+                        sgn  = isodd(αder) ? +1 : -1 # TODO Antisymmetry for odd derivatives? conjugation? Check theory.  See also DirectXUA
+                        addin!(L2bigasm,L2[ider],Lαβ[αder,βder],α,β,sgn) 
+                    end
                 end
             end
         end
     end
 end
-function assemblebigvec!(L1,L1bigasm::𝕫1,asm,model,dis,out::AssemblyDirect{OX,OU,0},state,Δt,dbg) where{OX,OU}
+function assemblebigvec!(L1,L1bigasm::𝕫1,asm,model,dis,out::AssemblyDirect,state,Δt,dbg) 
     zero!.(L1)
     assemble!{:vectors}(out,asm,dis,model,state,Δt,(dbg...,asm=:assemblebigvec!)) # first assemble model vectors
     for β ∈ λxu                                                                # then collate them into
@@ -45,7 +46,6 @@ function assemblebigvec!(L1,L1bigasm::𝕫1,asm,model,dis,out::AssemblyDirect{OX
         end
     end
 end
-
 struct EigXUincrement{Tω}
     nmod  :: 𝕫
     dofgr :: DofGroup
@@ -56,10 +56,12 @@ struct EigXUincrement{Tω}
     ΔΛXU  :: Vector{𝕣11} # [iω][imod][idof]
 end
 
-
-
 """
 	EigXU{OX,OU}
+
+!!! warning    
+    `EigXU` is currently not working well due to problems with the sparse eigenvalue solver.
+    In addition, the solver is still experimental
 
 Study the combinations of load and response that are least detected by sensor systems.
 
@@ -71,7 +73,7 @@ eiginc          = solve(EigXU{OX,OU};Δω, p, nmod,initialstate)
 ```
 
 The solver linearises the problem (computes the Hessian of the Lagrangian) at `initialstate` and solves 
-the ΛXU-eigenvalue problem at frequencies ωᵢ = Δω*i with i∈{0,...,2ᵖ-1}.
+the ΛXU-eigenvalue problem at frequencies ``ωᵢ = Δω*i`` with ``i∈{0,...,2ᵖ-1}``.
 
 
 # Parameters
@@ -103,11 +105,12 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
     initialstate::State,
     droptol::𝕣=1e-10,
     nmod::𝕫=5,
+    full::𝕓=false,
     σₓᵤ,
     kwargs...) where{OX,OU}
 
     #  Mostly constants
-    local LU
+    local ◺A
     model,dis             = initialstate.model, initialstate.dis
     nω                    = 2^p
     IA                    = 0
@@ -117,7 +120,8 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
     state₀                = State{1,OX+1,OU+1}(copy(initialstate))   
 
     verbose && @printf("    Preparing assembler\n")
-    out,asm,dofgr         = prepare(AssemblyDirect{OX,OU,IA},model,dis)   # model assembler for all arrays   
+    wanted                = Wanted{1,OX+1,OU+1,IA}(:all,:all) # TODO refine
+    out,asm,dofgr         = prepare(AssemblyDirect,model,dis,wanted)   # model assembler for all arrays   
 
     verbose && @printf("    Computing matrices\n")
     assemble!{:matrices}(out,asm,dis,model,state₀,idmult,(dbg...,solver=:EigXU,phase=:matrices))            # assemble all model matrices - in class-blocks
@@ -155,24 +159,24 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
         B.nzval          .= N[1]        + ωᵢ^2*N[2]        + ωᵢ^4*N[3]     
         A.nzval          .= L2[1].nzval + ωᵢ^2*L2[3].nzval + ωᵢ^4*L2[5].nzval     # complex if exponents 1 and 3 included
         try 
-            if iω==1 LU   = lu(A) 
-            else     lu!(LU ,A)
+            if iω==1 ◺A  = lu(A) 
+            else     lu!(◺A,A)
             end 
-            λ⁻¹, ΔΛXU[iω], ncv[iω] = geneig{:symmetric}(A,B,nmod;normalize=false,kwargs...)
-            nor[iω]                = 𝕣1(undef,ncv[iω])
-            λ[iω]                  = 1 ./λ⁻¹
-            for imod               = 1:ncv[iω]
-                Δ                  = ΔΛXU[iω][imod]
-                wrk[ixu]          .= view(Δ,ixu)                   # this copy can be optimised by viewing the classes in Δ, operating on out.L2[α,β][αder,βder], and combining over derivatives.  Is it worth the effort?   
-                Anorm              = √(ℜ(dot(wrk,A,wrk))/2)  # ΔΛXU is real, A is complex Hermitian, so square norm is real: (imag part is zero to machine precision)
-                if iω>1  &&  imod≤nmod  &&  sum(Δ[idof]*ΔΛXU[iω-1][imod][idof] for idof∈λxu_dofgr.jX)<0
-                    Anorm          = -Anorm
-                end
-                Δ                .*= 2.575829303549/Anorm          # corresponds to a probability of exceedance of 0.01                        
-                nor[iω][imod]      = √(ℜ(dot(Δ,B,Δ))/2) 
-            end
         catch 
             muscadewarning(@sprintf("Factorization of matrix A failed for ω=%f",ωᵢ));
+        end
+        λ⁻¹, ΔΛXU[iω], ncv[iω] = geneig{:symmetric}(◺A,B,nmod;normalize=false,kwargs...)
+        nor[iω]                = 𝕣1(undef,ncv[iω])
+        λ[iω]                  = 1 ./λ⁻¹
+        for imod               = 1:ncv[iω]
+            Δ                  = ΔΛXU[iω][imod]
+            wrk[ixu]          .= view(Δ,ixu)                   # this copy can be optimised by viewing the classes in Δ, operating on out.L2[α,β][αder,βder], and combining over derivatives.  Is it worth the effort?   
+            Anorm              = √(ℜ(dot(wrk,A,wrk))/2)  # ΔΛXU is real, A is complex Hermitian, so square norm is real: (imag part is zero to machine precision)
+            if iω>1  &&  imod≤nmod  &&  sum(Δ[idof]*ΔΛXU[iω-1][imod][idof] for idof∈λxu_dofgr.jX)<0
+                Anorm          = -Anorm
+            end
+            Δ                .*= 2.575829303549/Anorm          # corresponds to a probability of exceedance of 0.01                        
+            nor[iω][imod]      = √(ℜ(dot(Δ,B,Δ))/2) 
         end
     end    
     any(ncv.<nmod) && verbose && muscadewarning("Some eigensolutions did not converge",4)
