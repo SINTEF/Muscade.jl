@@ -436,11 +436,11 @@ The solver does not yet support interior point methods.
 - `initialstate`      an `AbstractVector` of `State`: one initial state for each experiment.
                       `initialstate` must be with zero time derivatives.  It does not
                       provide initial conditions for the problem, but an initial guess
-                      for the iterative solver.        
-- `initialtrajectory` an `AbstractVector` of Vector{`State`}: one initial trajectory for each experiment.
+                      for the iterative solver. Omitted if `initialtrajectory` is provided.    
+- `initialtrajectory` an `AbstractVector` of `Vector{State}`: one initial trajectory for each experiment.
                       `initialtrajectory` elements are also initial guess for the iterative solver, representing a time-dependant trajectory.
                       its elements must then match the specific timerange respective to the experiment they refer to.
-                      If not specified, initialstate is copied for each timestep to create the initial guess.       
+                      If not specified, `initialstate` is copied for each timestep to create the initial guess.       
 - `time`              an `AbstractVector` (of same length as `initialstate`) of `AbstractRange` 
                       of times at which to compute the steps.  Example: 0:0.1:5.                       
 - `maxiter=50`        maximum number of Newton-Raphson iterations. 
@@ -467,42 +467,44 @@ See also: [`solve`](@ref), [`initialize!`](@ref), [`SweepX`](@ref), [`FreqXU`](@
 struct DirectXUA{OX,OU,IA} <: AbstractSolver end 
 function solve(::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
     time::AbstractVector{AR},
-    initialstate::AbstractVector{STATE},
-    initialtrajectory::Union{Nothing,AbstractVector}=nothing,
+    initialstate::Union{Nothing,AbstractVector{STATE}},
+    initialtrajectory::Union{Nothing,AbstractVector},
     maxiter::ℤ=50,
     maxΔλ::ℝ=1e-5,maxΔx::ℝ=1e-5,maxΔu::ℝ=1e-5,maxΔa::ℝ=1e-5,
     saveiter::𝔹=false,
     wanted::Wanted=Wanted{1,OX+1,OU+1,IA}(:all,:all)) where{OX,OU,IA,AR<:AbstractRange{𝕣},STATE<:State}
 
+    xor(isnothing(initialstate),isnothing(initialtrajectory)) || muscadeerror("initialstate XOR initialtrajectory should be provided")
+
     #  Mostly constants
     local LU
     nexp,nstep,Δt         = length(time),length.(time),step.(time)
-    length(initialstate)== nexp || muscadeerror("initialstate and time must be of the same length=number of experiments") 
     γ                     = 0.
     nder                  = (1,OX+1,OU+1,IA)
     model,dis             = initialstate[1].model, initialstate[1].dis
     if IA==1  Δ², maxΔ²   = 𝕣1(undef,4), [maxΔλ^2,maxΔx^2,maxΔu^2,maxΔa^2] 
     else      Δ², maxΔ²   = 𝕣1(undef,3), [maxΔλ^2,maxΔx^2,maxΔu^2        ] 
     end
-
+    
     # State storage
     S                     = State{1,OX+1,OU+1,@NamedTuple{γ::Float64,iter::Int64}}
     state                 = [Vector{S}(undef,nstep[iexp]) for iexp=1:nexp] # state[iexp][istep]
     s                     = initialstate[1]
     if isnothing(initialtrajectory)
+        length(initialstate)== nexp || muscadeerror("initialstate length must be equal to the number of experiments")
         for (iexp,initialstateᵢ) ∈ enumerate(initialstate)
             for (istep,timeᵢ) = enumerate(time[iexp])
                 state[iexp][istep] = State{1,OX+1,OU+1}(timeᵢ,deepcopy(initialstateᵢ.Λ),deepcopy(initialstateᵢ.X),deepcopy(initialstateᵢ.U),s.A,(γ=0.,iter=1),s.model,s.dis) # all state[iexp][istep].A are === 
             end
         end
     else
-        length(initialtrajectory)== nexp || muscadeerror("initialtrajectory and time must be of the same length")
-        Ashared = initialtrajectory[1][1].A
+        length(initialtrajectory)== nexp || muscadeerror("initialtrajectory length must be equal to the number of experiments")
+        Ainit = initialtrajectory[1][1].A
         for (iexp,trajexp) ∈ enumerate(initialtrajectory)
-            length(trajexp)== nstep[iexp] || muscadeerror("initialtrajectory must match the time grid")
+            length(trajexp)== nstep[iexp] || muscadeerror("trajectories in `initialtrajectory` vector must match their associated time grid in `time` vector")
             for (istep,timeᵢ) = enumerate(time[iexp])
                 trajstate = trajexp[istep]
-                state[iexp][istep] = State{1,OX+1,OU+1}(timeᵢ,deepcopy(trajstate.Λ),deepcopy(trajstate.X),deepcopy(trajstate.U),Ashared,(γ=0.,iter=1),s.model,s.dis)
+                state[iexp][istep] = State{1,OX+1,OU+1}(timeᵢ,deepcopy(trajstate.Λ),deepcopy(trajstate.X),deepcopy(trajstate.U),Ainit,(γ=0.,iter=1),s.model,s.dis)
             end
         end
     end
@@ -553,5 +555,3 @@ function solve(::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
     end # for iter
     return
 end
-
-
