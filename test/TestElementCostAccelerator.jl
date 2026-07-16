@@ -18,6 +18,8 @@ elementkwargs = (mat=material,orient2=SVector(0.,1.,0.))
 el1             = addelement!(model,ElementCost      ,[n1,n2]; req, ElementType=EulerBeam3D, elementkwargs, cost                                         )
 el3             = addelement!(model,ElementConstraint,[n2,n3]; req, ElementType=EulerBeam3D, elementkwargs, gap ,λinod=1, λfield=:λκ₁, mode=Muscade.equal)
 
+# TODO test the addin! accelerator with constraint on cost on element, or constraint on strain on element.  I don't think this works...
+
 initialstate    = initialize!(model;time=0.)
 
 #end

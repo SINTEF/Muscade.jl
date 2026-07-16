@@ -209,7 +209,7 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
             else     lu!(◺A,A)
             end 
         catch 
-            muscadewarning(@sprintf("Factorization of matrix A failed for ω=%f",ωᵢ));
+            warning(@sprintf("Factorization of matrix A failed for ω=%f",ωᵢ));
         end
         λ⁻¹, ΔΛXU[iω], ncv[iω] = geneig{:symmetric}(◺A,B,nmod;normalize=false,kwargs...)
         nor[iω]                = 𝕣1(undef,ncv[iω])
@@ -225,7 +225,7 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
             nor[iω][imod]      = √(ℜ(dot(Δ,B,Δ))/2) 
         end
     end    
-    any(ncv.<nmod) && verbose && muscadewarning("Some eigensolutions did not converge",4)
+    any(ncv.<nmod) && verbose && warning("Some eigensolutions did not converge",4)
     pstate[] = EigXUincrement(nmod,allΛXUdofs(model,dis),ω,ncv,λ,nor,ΔΛXU)
     verbose && @printf("\n")
     return

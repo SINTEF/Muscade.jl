@@ -48,14 +48,20 @@ See also: [`∂0`](@ref),[`∂1`](@ref),[`getsomedofs`](@ref)
 ∂n(y,ider) = length(y) ≥ider+1 ? y[ider+1] : zilch(y[1]) # slow
 
 """
-    rotations = getsomedofs(X,SVector(3,6))
+    t3        = getsomedofs(X,3)
+    rotations = getsomedofs(X,SVector(4:6))
 
-Used by elements' `residual` or `lagrangian` to some degrees of freedom, and their
-time derivatives, from the variables `X` and `U`. 
+Used by elements' [`residual`](@ref), [`lagrangian`](@ref) or [`update_drawing`](@ref) to obtain 
+some degrees of freedom. 
 
-See also: [`∂0`](@ref),[`∂1`](@ref),[`∂2`](@ref)  
+`X` and `U` are provided as `NTuple`s of `SVector` (`Matrix` in the case of `update_drawing`](@ref)).
+`getsomedofs` forms a `NTuple` containing the selected array components.  Where e.g. `X` is a `SMatrix`,
+the indexing is applied to the first dimension (corresponding to the dofs) 
+
+See also: [`∂0`](@ref),[`∂1`](@ref),[`∂2`](@ref),[`motion`](@ref)  
 """
-getsomedofs(A::NTuple{Nder,SVector},ind) where{Nder} = ntuple(i->A[i][ind],Nder)
+getsomedofs(A::NTuple{Nder,SVector},ind) where{Nder} = ntuple(i->A[i][ind  ],Nder)
+getsomedofs(A::NTuple{Nder, Matrix},ind) where{Nder} = ntuple(i->A[i][ind,:],Nder)
 
 #const Dof{Ndof,Nder} = NTuple{Nder,SVector{Ndof}}
 
@@ -105,7 +111,7 @@ Elements that define `residual` are normaly mostly differentiated only to the fi
 excessive compilation and/or execution time.
 To allow differentiation to the second order (for elements with few dofs), implement a method after the below pattern:   
 
-    Muscade.no_second_order(     ::Type{<:MyElementType}) = Val(false)
+    Muscade.no_second_order(::Type{<:MyElementType}) = Val(true)
 """
 no_second_order(     ::Type{<:AbstractElement}) = Val(false)
 

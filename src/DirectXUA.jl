@@ -204,58 +204,58 @@ end
 # #          addin!{mission}(out,asm,iele,scale,eleobj,Val(true),Λ,X,U,A,t,Δt,SP,dbg) 
 # # end
 #function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,eleobj::ElementCost,no_second_order::Val{true}, 
-function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,eleobj::ElementCost,no_second_order, 
-                           Λ::NTuple{1   ,SVector{Nx}},
-                           X::NTuple{NDX_,SVector{Nx}},
-                           U::NTuple{NDU_,SVector{Nu}},
-                           A::            SVector{Na} ,t,Δt,SP,dbg) where{mission,NDΛ,NDX,NDU,NDA,NDX_,NDU_,Nx,Nu,Na} 
-    if     mission==:matrices     P=2
-    elseif mission==:vectors      P=1
-    end
-    if     NDA == 1  # NB: compile-time condition
-        _,_,(∂X,∂U,∂A) = variate{P-1}((X,U,A),scale=(AllElements(scale.X),Broacast(scale.U),scale.A))
-        R,FB,eleres = getresidual(eleobj.eleobj, ∂X,∂U,∂A,t,SP,(dbg...,via=:ElementCostAccelerator),eleobj.req.eleres)  
-    elseif NDA == 0
-        _,_,(∂X,∂U) = variate{P-1}((X,U ),scale=(AllElements(scale.X),AllElements(scale.U)))
-        R,FB,eleres = getresidual(eleobj.eleobj, ∂X,∂U,  A,t,SP,(dbg...,via=:ElementCostAccelerator),eleobj.req.eleres)  
-    end
-    _,_,Releres     = variate{P}(eleres)
+# function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,eleobj::ElementCost,no_second_order, 
+#                            Λ::NTuple{1   ,SVector{Nx}},
+#                            X::NTuple{NDX_,SVector{Nx}},
+#                            U::NTuple{NDU_,SVector{Nu}},
+#                            A::            SVector{Na} ,t,Δt,SP,dbg) where{mission,NDΛ,NDX,NDU,NDA,NDX_,NDU_,Nx,Nu,Na} 
+#     if     mission==:matrices     P=2
+#     elseif mission==:vectors      P=1
+#     end
+#     if     NDA == 1  # NB: compile-time condition
+#         _,_,(∂X,∂U,∂A) = variate{P-1}((X,U,A),scale=(AllElements(scale.X),Broacast(scale.U),scale.A))
+#         R,FB,eleres = getresidual(eleobj.eleobj, ∂X,∂U,∂A,t,SP,(dbg...,via=:ElementCostAccelerator),eleobj.req.eleres)  
+#     elseif NDA == 0
+#         _,_,(∂X,∂U) = variate{P-1}((X,U ),scale=(AllElements(scale.X),AllElements(scale.U)))
+#         R,FB,eleres = getresidual(eleobj.eleobj, ∂X,∂U,  A,t,SP,(dbg...,via=:ElementCostAccelerator),eleobj.req.eleres)  
+#     end
+#     _,_,Releres     = variate{P}(eleres)
     
-    Rcost           = eleobj.cost(Releres,t,eleobj.costargs...)
-    cost            = chainrule(Rcost,to_order{P,npartial(eleres)}(eleres))
-    L               = Λ[1] ∘₁ R + cost
-    DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,NDΛ,NDX,NDU,NDA}(out,asm,L,iele,Δt)
-end
-#function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,eleobj::ElementConstraint,no_second_order::Val{true}, 
-function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,eleobj::ElementConstraint,no_second_order, 
-                           Λ::NTuple{1   ,SVector{Nx}},
-                           X::NTuple{NDX_,SVector{Nx}},
-                           U::NTuple{NDU_,SVector{Nu}},
-                           A::            SVector{Na} ,t,Δt,SP,dbg) where{mission,NDΛ,NDX,NDU,NDA,NDX_,NDU_,Nx,Nu,Na} 
-# TODO Specialised code to accelerate constraints in DirectXUA, but... it does not set FB, and DirectXUA/solve has no line search...                                
-    if     mission==:matrices     P=2
-    elseif mission==:vectors      P=1
-    end
-    u               = getsomedofs(U,SVector{Nu}(1:Nu-1))
-    λ               = ∂0(U)[Nu]
-    γ               = default{:γ}(SP,0.)
-    m               = eleobj.mode(t)
-    if     NDA == 1  # NB: compile-time condition
-        _,_,(∂X,∂U,∂A) = variate{P-1}((X,U,A),scale=(AllElements(scale.X),AllElements(scale.U),scale.A))
-        R,FB,eleres = getresidual(eleobj.eleobj, ∂X,∂U,∂A,t,SP,(dbg...,via=:ElementCoonstraintAccelerator),eleobj.req)  
-    elseif NDA == 0
-        _,_,(∂X,∂U) = variate{P-1}((X,U ),scale=(AllElements(scale.X),AllElements(scale.U)))
-        R,FB,eleres = getresidual(eleobj.eleobj, ∂X,∂U,  A,t,SP,(dbg...,via=:ElementConstraintAccelerator),eleobj.req)  
-    end
-    _,_,Releres     = variate{P}(eleres)
-    Rgap            = eleobj.gap(eleres,t,eleobj.gargs...)
-    gap             = chainrule(Rgap,to_order{P,npartial(eleres)}(eleres))
-    L               = Λ[1] ∘₁ R +   if      m==:equal;    -gap*λ   
-                                    elseif  m==:positive; -KKT(λ,gap,γ) 
-                                    elseif  m==:off;      -0.5λ^2 
-                                    end
-    DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,NDΛ,NDX,NDU,NDA}(out,asm,L,iele,Δt)
-end
+#     Rcost           = eleobj.cost(Releres,t,eleobj.costargs...)
+#     cost            = chainrule(Rcost,to_order{P,npartial(eleres)}(eleres))
+#     L               = Λ[1] ∘₁ R + cost
+#     DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,NDΛ,NDX,NDU,NDA}(out,asm,L,iele,Δt)
+# end
+# #function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,eleobj::ElementConstraint,no_second_order::Val{true}, 
+# function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,eleobj::ElementConstraint,no_second_order, 
+#                            Λ::NTuple{1   ,SVector{Nx}},
+#                            X::NTuple{NDX_,SVector{Nx}},
+#                            U::NTuple{NDU_,SVector{Nu}},
+#                            A::            SVector{Na} ,t,Δt,SP,dbg) where{mission,NDΛ,NDX,NDU,NDA,NDX_,NDU_,Nx,Nu,Na} 
+# # TODO Specialised code to accelerate constraints in DirectXUA, but... it does not set FB, and DirectXUA/solve has no line search...                                
+#     if     mission==:matrices     P=2
+#     elseif mission==:vectors      P=1
+#     end
+#     u               = getsomedofs(U,SVector{Nu}(1:Nu-1))
+#     λ               = ∂0(U)[Nu]
+#     γ               = default{:γ}(SP,0.)
+#     m               = eleobj.mode(t)
+#     if     NDA == 1  # NB: compile-time condition
+#         _,_,(∂X,∂U,∂A) = variate{P-1}((X,U,A),scale=(AllElements(scale.X),AllElements(scale.U),scale.A))
+#         R,FB,eleres = getresidual(eleobj.eleobj, ∂X,∂U,∂A,t,SP,(dbg...,via=:ElementCoonstraintAccelerator),eleobj.req)  
+#     elseif NDA == 0
+#         _,_,(∂X,∂U) = variate{P-1}((X,U ),scale=(AllElements(scale.X),AllElements(scale.U)))
+#         R,FB,eleres = getresidual(eleobj.eleobj, ∂X,∂U,  A,t,SP,(dbg...,via=:ElementConstraintAccelerator),eleobj.req)  
+#     end
+#     _,_,Releres     = variate{P}(eleres)
+#     Rgap            = eleobj.gap(eleres,t,eleobj.gargs...)
+#     gap             = chainrule(Rgap,to_order{P,npartial(eleres)}(eleres))
+#     L               = Λ[1] ∘₁ R +   if      m==:equal;    -gap*λ   
+#                                     elseif  m==:positive; -KKT(λ,gap,γ) 
+#                                     elseif  m==:off;      -0.5λ^2 
+#                                     end
+#     DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,NDΛ,NDX,NDU,NDA}(out,asm,L,iele,Δt)
+# end
 
 
 ## Assembly of bigsparse for all time steps at once

@@ -63,6 +63,7 @@ module Muscade
     public off,equal,positive
     export DofCost,SingleDofCost,SingleUdof,ElementCost,Acost,SingleAcost
     export DofConstraint,Hold,ElementConstraint
+    export ElementCostAndConstraint
     export DofLoad
     public QuickFix
 

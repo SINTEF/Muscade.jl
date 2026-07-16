@@ -93,6 +93,8 @@ end
 """
     ElementCost{Teleobj,Treq,Tcost,Tcostargs} <: AbstractElement
 
+DEPRECATED.  Use ElementCostAndConstraint
+
 An element to apply costs on another "target" element's dofs and element-results.  
 The target element must *not* be added separately to the model.  Instead, the 
 `ElementType`, and the named arguments to the target element are provided
@@ -446,7 +448,6 @@ struct DofConstraint{λclass,Nλ,Nx,Nu,Na,λinod,λfield,xinod,xfield,uinod,ufie
     gap      :: Tg    # λclass==:X gap(x,t,gargs...) ,λclass==:U  gap(x,u,a,t,gargs...), λclass==:A gap(a,gargs...) 
     gargs    :: Tgargs
     mode     :: Tmode # mode(t)->symbol, or Symbol for Aconstraints
-
 end
 function DofConstraint(nod::Vector{Node};λclass::Symbol,
                                          λinod::NTuple{Nλ,𝕫}=(),λfield::NTuple{Nλ,Symbol}=(), # Nλ: number of constraints
@@ -544,6 +545,8 @@ Hold(nod::Vector{Node};field::Symbol,λfield::Symbol=Symbol(:λ,field)) =
 """
     ElementConstraint{Teleobj,λinod,λfield,Nu,Treq,Tg,Tgargs,Tmode} <: AbstractElement
 
+DEPRECATED Use ElementCostAndConstraint
+
 An element to apply a single optimisation equality/inequality constraint on the element-results of 
 another "target" element. The target element must *not* be added separately to the model.  Instead, the 
 `ElementType`, and the named arguments to the target element are provided as input to the 
@@ -634,6 +637,189 @@ function update_drawing(  axis,eleobj::AbstractVector{Teleobj},oldmut,opt, Λ,X,
     update_drawing(  axis,[eᵢ.eleobj for eᵢ∈eleobj],oldmut,opt, Λ,x,U,A,t,SP,dbg)  
 end
 display_drawing!(axis,::Type{<:ElementConstraint{Teleobj}},obs,opt)                         where{Teleobj}                    = display_drawing!(axis,Teleobj,obs,opt)
+
+
+#-------------------------------------------------
+#-------------------------------------------------
+#-------------------------------------------------
+
+
+struct ElementCostAndConstraint{NSO,ElementType,λxinod,λuinod,λxfield,λufield,Treq,Tg,Tgargs,Tmode,Tcost,Tcostargs} <: AbstractElement
+    eleobj   :: ElementType
+    req      :: Treq
+    gap      :: Tg    
+    gapargs  :: Tgargs
+    mode     :: Tmode 
+    cost     :: Tcost     
+    costargs :: Tcostargs
+end
+
+@inline function ElementCostAndConstraint(nod::Vector{Node};
+    λxinod::NTuple{Nλx,𝕫}=(),λxfield::NTuple{Nλx,Symbol}=(),
+    λuinod::NTuple{Nλu,𝕫}=(),λufield::NTuple{Nλu,Symbol}=(),
+    req,gap::Tgap=nothing,gapargs::Tgargs=(),mode::Tmode,
+    cost::Tcost=nothing,costargs::Tcostargs=(),
+    ElementType,elementkwargs=(;)
+    ) where{Tgap<:Functor,Nλx,Nλu,Tgargs,Tmode<:Functor,Tcost<:Functor,Tcostargs}
+
+    eleobj   = ElementType(nod;elementkwargs...)
+    NSO      = no_second_order(ElementType) 
+
+    @assert ~(ElementType isa ElementCostAndConstraint) "ElementCostAndConstraint cannot be nested"
+    return ElementCostAndConstraint{NSO,ElementType,λxinod,λuinod,λxfield,λufield,typeof((eleres=req,)),Tgap,Tgargs,Tmode,Tcost,Tcostargs}(
+                       eleobj,(eleres=req,),gap,gapargs,mode,cost,costargs)
+end
+
+
+function doflist( ::Type{<:ElementCostAndConstraint{NSO,ElementType,λxinod,λuinod,λxfield,λufield}}) where{NSO,ElementType,λxinod,λuinod,λxfield,λufield} 
+    λxclass = ntuple(i->:X,length(λxinod)) 
+    λuclass = ntuple(i->:U,length(λuinod)) 
+    (inod =(λxinod... , λuinod... , doflist(ElementType).inod... ),
+     class=(λxclass..., λuclass..., doflist(ElementType).class...),
+     field=(λxfield..., λufield..., doflist(ElementType).field...))
+end
+
+
+no_second_order(::Type{<:ElementCostAndConstraint{NSO}}) where{NSO} = NSO 
+
+
+@espy function lagrangian(o::ElementCostAndConstraint{Val(false),ElementType,λxinod,λuinod}, Λ,X,U,A,t,SP,dbg) where{ElementType,λxinod,λuinod}
+    Nx           = getndof(ElementType,:X) # refers to eleobj, not o
+    Nu           = getndof(ElementType,:U) # refers to eleobj, not o
+    Nλx          = length(λxinod)
+    Nλu          = length(λuinod)
+    iλx          = SVector{Nλx,𝕫}(    1:    Nλx)
+    iλu          = SVector{Nλu,𝕫}(    1:    Nλu)
+    ix           = SVector{Nx ,𝕫}(Nλx+1:Nλx+Nx )
+    iu           = SVector{Nu ,𝕫}(Nλu+1:Nλu+Nu )
+    req          = mergerequest(o.req)
+
+    Λe           = Λ[ix] 
+    Xe           = getsomedofs(X,ix) 
+    Ue           = getsomedofs(U,iu) 
+    L,FB,☼eleres = getlagrangian(o.eleobj,Λe,Xe,Ue,A,t,SP,(dbg...,via=ElementCostAndConstraint),req.eleres)
+
+    if typeof(o.cost) ≠ Nothing    
+        ☼cost    = o.cost(eleres,t,o.costargs...) 
+        L       += cost
+    end
+    if typeof(o.gap) ≠ Nothing   
+        γ        = default{:γ}(SP,0.)
+        ☼λ       = SVector(∂0(X)[iλx]...,∂0(U)[iλu]...) 
+        ☼gap     = o.gap( eleres,t,o.gapargs... )
+        ☼mode    = o.mode(t)
+        gap  isa SVector{Nλx+Nλu} || error("Functor `gap`  must return a SVector{length(λxinod)+length(λuinod)")
+        mode isa SVector{Nλx+Nλu} || error("Functor `mode` must return a SVector{length(λxinod)+length(λuinod)")
+        for iλ ∈ eachindex(λ)
+            λᵢ,mᵢ,gapᵢ = λ[iλ],mode[iλ],gap[iλ]
+            L -=if   mᵢ==:equal;    gapᵢ * λᵢ     
+            elseif   mᵢ==:positive; KKT(λᵢ,gapᵢ,γ) 
+            elseif   mᵢ==:off;      0.5*(λᵢ * λᵢ) 
+            end
+        end
+    end
+    return L,(λ=λ,g=gap,mode=mode)
+end
+
+
+allocate_drawing(       axis,eleobj::AbstractVector{Teleobj};kwargs...) where{Teleobj<:ElementCostAndConstraint} = allocate_drawing(axis,[eᵢ.eleobj for eᵢ∈eleobj];kwargs...)
+function update_drawing(axis,eleobj::AbstractVector{Teleobj},oldmut,opt, Λ,X,U,A,t,SP,dbg) where{Teleobj<:ElementCostAndConstraint{NSO,ElementType,λxinod,λuinod}} where{NSO,ElementType,λxinod,λuinod} 
+    Nx  = getndof(ElementType,:X) # refers to eleobj, not o
+    Nu  = getndof(ElementType,:U) # refers to eleobj, not o
+    Nλx = length(λxinod)
+    Nλu = length(λuinod)
+    ix  = SVector{Nx ,𝕫}(Nλx+1:Nλx+Nx )
+    iu  = SVector{Nu ,𝕫}(Nλu+1:Nλu+Nu )
+
+    Λe  = Λ[ix,:] 
+    Xe  = getsomedofs(X,ix) 
+    Ue  = getsomedofs(U,iu) 
+    mut = update_drawing(  axis,[eᵢ.eleobj for eᵢ∈eleobj],oldmut,opt, Λe,Xe,Ue,A,t,SP,dbg)  
+    return mut
+end
+display_drawing!(axis,::Type{<:ElementCostAndConstraint{NSO,Teleobj}},obs,opt) where{NSO,Teleobj} = display_drawing!(axis,Teleobj,obs,opt)
+
+
+
+# function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,eleobj::ElementCostAndConstraint{true,Teleobj,Nλ},no_second_order::Value{true}, 
+#                            Λ::NTuple{1   ,SVector{Nx}},
+#                            X::NTuple{NDX_,SVector{Nx}},
+#                            U::NTuple{NDU_,SVector{Nu}},
+#                            A::            SVector{Na} ,t,Δt,SP,dbg) where{mission,NDΛ,NDX,NDU,NDA,Teleobj,Nλ,NDX_,NDU_,Nx,Nu,Na} #Nλ: number of constraints of this element
+# # TODO Specialised code to accelerate constraints in DirectXUA, but... it does not set FB, and DirectXUA/solve has no line search...                                
+
+#     iλ           = SVector{Nλ}(1:Nλ)
+#     ix           = SVector{Nx}(Nλ+1:Nλ+Nx)
+#     req          = mergerequest(o.req)
+#     γ            = default{:γ}(SP,0.)
+#     m            = o.mode(t)
+#     Xe           = getsomedofs(X,ix) 
+#     Λe           = Λ[ix] 
+
+
+
+
+#     if     mission==:matrices     P=2
+#     elseif mission==:vectors      P=1
+#     end
+
+#     u               = getsomedofs(U,SVector{Nu}(1:Nu-1))
+#     λ               = ∂0(U)[Nu]
+#     γ               = default{:γ}(SP,0.)
+#     m               = eleobj.mode(t)
+#     if     NDA == 1  
+#         _,_,(∂X,∂U,∂A) = variate{P-1}((X,U,A),scale=(AllElements(scale.X),AllElements(scale.U),scale.A))
+#         R,FB,eleres = getresidual(eleobj.eleobj, ∂X,∂U,∂A,t,SP,(dbg...,via=:ElementCoonstraintAccelerator),eleobj.req)  
+#     elseif NDA == 0
+#         _,_,(∂X,∂U) = variate{P-1}((X,U ),scale=(AllElements(scale.X),AllElements(scale.U)))
+#         R,FB,eleres = getresidual(eleobj.eleobj, ∂X,∂U,  A,t,SP,(dbg...,via=:ElementConstraintAccelerator),eleobj.req)  
+#     end
+#     _,_,Releres     = variate{P}(eleres)
+#     Rgap            = eleobj.gap(eleres,t,eleobj.gargs...)
+#     gap             = chainrule(Rgap,to_order{P,npartial(eleres)}(eleres))
+#     L               = Λ[1] ∘₁ R +   if      m==:equal;    -gap*λ   
+#                                     elseif  m==:positive; -KKT(λ,gap,γ) 
+#                                     elseif  m==:off;      -0.5λ^2 
+#                                     end
+#     DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,NDΛ,NDX,NDU,NDA}(out,asm,L,iele,Δt)
+# end
+
+
+# function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,eleobj::ElementCost,no_second_order, 
+#                            Λ::NTuple{1   ,SVector{Nx}},
+#                            X::NTuple{NDX_,SVector{Nx}},
+#                            U::NTuple{NDU_,SVector{Nu}},
+#                            A::            SVector{Na} ,t,Δt,SP,dbg) where{mission,NDΛ,NDX,NDU,NDA,NDX_,NDU_,Nx,Nu,Na} 
+#     if     mission==:matrices     P=2
+#     elseif mission==:vectors      P=1
+#     end
+#     if     NDA == 1  # NB: compile-time condition
+#         _,_,(∂X,∂U,∂A) = variate{P-1}((X,U,A),scale=(AllElements(scale.X),Broacast(scale.U),scale.A))
+#         R,FB,eleres = getresidual(eleobj.eleobj, ∂X,∂U,∂A,t,SP,(dbg...,via=:ElementCostAccelerator),eleobj.req.eleres)  
+#     elseif NDA == 0
+#         _,_,(∂X,∂U) = variate{P-1}((X,U ),scale=(AllElements(scale.X),AllElements(scale.U)))
+#         R,FB,eleres = getresidual(eleobj.eleobj, ∂X,∂U,  A,t,SP,(dbg...,via=:ElementCostAccelerator),eleobj.req.eleres)  
+#     end
+#     _,_,Releres     = variate{P}(eleres)
+    
+#     Rcost           = eleobj.cost(Releres,t,eleobj.costargs...)
+#     cost            = chainrule(Rcost,to_order{P,npartial(eleres)}(eleres))
+#     L               = Λ[1] ∘₁ R + cost
+#     DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,NDΛ,NDX,NDU,NDA}(out,asm,L,iele,Δt)
+# end
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #-------------------------------------------------
 
