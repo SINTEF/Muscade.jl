@@ -15,54 +15,82 @@ const nclass = length(ind)
 ## Assembly of sparse for a single time step
 arrnum(α  )  =          α
 arrnum(α,β)  = nclass + β + nclass*(α-1) 
-mutable struct AssemblyDirect{OX,OU,IA}  <:Assembly
+
+
+mutable struct Wanted{NDΛ,NDX,NDU,NDA}  
+    L1 :: Vector{Vector{𝕓}}    # L1[α  ][αder     ]  α∈ λ,x,u,a
+    L2 :: Matrix{Matrix{𝕓}}    # L2[α,β][αder,βder]
+end  
+function wantL1(vectors::Symbol,nder)
+    vectors==:all || muscadeerror("Invalid vector spec in Wanted")
+    return [ [true           for i=1:nder[α]] for α∈λxua]
+end
+function wantL1(vectors::Tuple,nder)
+    L1   = [ [false          for i=1:nder[α]] for α∈λxua]
+    for s ∈ vectors
+        L1[s[1]][s[2]] = true
+    end
+    return L1
+end
+function wantL2(matrices::Symbol,nder)
+    matrices==:all || muscadeerror("Invalid matrix spec Wanted")
+    return [ [~(α==β==ind.Λ) for i=1:nder[α],j=1:nder[β]] for α∈λxua, β∈λxua]
+end
+function wantL2(matrices::Tuple,nder)
+    L2   = [ [false          for i=1:nder[α],j=1:nder[β]] for α∈λxua, β∈λxua]
+    for s ∈ matrices
+        L2[s[1],s[2]][s[3],s[4]] = true
+    end
+    return L2
+end
+function Wanted{NDΛ,NDX,NDU,NDA}(vectors::Union{Symbol,Tuple},matrices::Union{Symbol,Tuple}) where{NDΛ,NDX,NDU,NDA} 
+    nder = (NDΛ,NDX,NDU,NDA)
+    return Wanted{NDΛ,NDX,NDU,NDA}(wantL1(vectors,nder),wantL2(matrices,nder))
+end
+mutable struct AssemblyDirect{NDΛ,NDX,OU,NDA}  <:Assembly
     L1 :: Vector{Vector{𝕣1      }}    # L1[α  ][αder     ]  α∈ λ,x,u,a
     L2 :: Matrix{Matrix{Sparse𝕣2}}    # L2[α,β][αder,βder]
 end  
-function prepare(::Type{AssemblyDirect{OX,OU,IA}},model,dis;Xwhite=false,XUindep=false,UAindep=false,XAindep=false) where{OX,OU,IA}
+function prepare(::Type{AssemblyDirect},model,dis,wanted::Wanted{NDΛ,NDX,NDU,NDA}) where{NDΛ,NDX,NDU,NDA}
     dofgr    = (allΛdofs(model,dis),allXdofs(model,dis),allUdofs(model,dis),allAdofs(model,dis))
     ndof     = getndof.(dofgr)
     neletyp  = getneletyp(model)
     asm      = Matrix{𝕫2}(undef,nclass+nclass^2,neletyp) 
-    nder     = (1,OX+1,OU+1,IA)
-    L1       = Vector{Vector{Vector{𝕣}}}(undef,4)
+    nder     = (NDΛ,NDX,NDU,NDA)
+    L1       = Vector{Vector{𝕣1}}(undef,4)
     for α∈λxua
         nα   = nder[α]
         av   = asmvec!(view(asm,arrnum(α),:),dofgr[α],dis)
-        L1[α] = Vector{Vector{𝕣}}(undef,nα)
+        L1[α] = Vector{𝕣1}(undef,nα)
         for αder = 1:nα 
-            L1[α][αder] = copy(av)
+            if wanted.L1[α][αder] 
+                L1[α][αder] = copy(av)
+            end
         end
     end
     L2    = Matrix{Matrix{Sparse𝕣2}}(undef,4,4)
     for α∈λxua, β∈λxua
-        am = asmmat!(view(asm,arrnum(α,β),:),view(asm,arrnum(α),:),view(asm,arrnum(β),:),ndof[α],ndof[β])
+        am    = asmmat!(view(asm,arrnum(α,β),:),view(asm,arrnum(α),:),view(asm,arrnum(β),:),ndof[α],ndof[β])
         nα,nβ = nder[α], nder[β]
-        if            α==β==ind.Λ          nα,nβ=0,0 end   # Lλλ is always zero
-        if Xwhite  && α==β==ind.X          nα,nβ=1,1 end   # X-measurement error is white noise process
-        if XUindep && α==ind.X && β==ind.U nα,nβ=0,0 end   # X-measurements indep of U
-        if XUindep && α==ind.U && β==ind.X nα,nβ=0,0 end   # X-measurements indep of U
-        if XAindep && α==ind.X && β==ind.A nα,nβ=0,0 end   # X-measurements indep of A
-        if XAindep && α==ind.A && β==ind.X nα,nβ=0,0 end   # X-measurements indep of A
-        if UAindep && α==ind.U && β==ind.A nα,nβ=0,0 end   # U-load indep of A
-        if UAindep && α==ind.A && β==ind.U nα,nβ=0,0 end   # U-load indep of A
         L2[α,β] = Matrix{Sparse𝕣2}(undef,nα,nβ)
         for αder=1:nα,βder=1:nβ
-            L2[α,β][αder,βder] = copy(am)
+            if wanted.L2[α,β][αder,βder] 
+                L2[α,β][αder,βder] = copy(am)
+            end
         end
     end
-    out      = AssemblyDirect{OX,OU,IA}(L1,L2)
+    out      = AssemblyDirect{NDΛ,NDX,NDU,NDA}(L1,L2)
     return out,asm,dofgr
 end
-function zero!(out::AssemblyDirect) # who calls this???
+function zero!(out::AssemblyDirect) 
     for L1∈out.L1 
-        for ℓ1∈L1
-            zero!(ℓ1)
+        for i ∈ eachindex(L1)
+            isassigned(L1,i) && zero!(L1[i])
         end
     end
     for L2∈out.L2 
-        for ℓ2∈L2
-            zero!(ℓ2)
+        for i ∈ eachindex(L2)
+            isassigned(L2,i) && zero!(L2[i])
         end
     end
 end
@@ -71,151 +99,138 @@ function addin!{mission}(out::AssemblyDirect,asm,iele,scale,eleobj::Acost,A::SVe
     if     mission==:matrices     P=2
     elseif mission==:vectors      P=1
     end
-    ∂A  = revariate{P}(A)
-    ø   = nothing
-    C,_ = lagrangian(eleobj,ø,ø,ø,∂A,ø,ø ,dbg)
+    _,_,∂A  = variate{P}(A)
+#    ø   = nothing
+#    C,_ = getlagrangian(eleobj,ø,ø,ø,∂A,ø,ø ,dbg)
+    C,_ = getlagrangian(eleobj,∂A,nothing,dbg)
     ∇ₐC = ∂{P,Na}(C)
-    add_value!(out.L1[ind.A][1],asm[arrnum(ind.A)],iele,∇ₐC)
+    isassigned(out.L1[ind.A],1) && add_value!(out.L1[ind.A][1],asm[arrnum(ind.A)],iele,∇ₐC)
     if mission==:matrices
-        add_∂!{1}(out.L2[ind.A,ind.A][1,1],asm[arrnum(ind.A,ind.A)],iele,∇ₐC)
+        isassigned(out.L2[ind.A,ind.A],1,1) && add_∂!{1}(out.L2[ind.A,ind.A][1,1],asm[arrnum(ind.A,ind.A)],iele,∇ₐC)
     end
 end
-addin!{mission}(out::AssemblyDirect,asm,iele,scale,eleobj::Eleobj,Λ,X,U,A,t,Δt,SP,dbg) where{Eleobj,mission} =
+function addin!{mission}(out::AssemblyDirect,asm,iele,scale,eleobj::Eleobj,Λ,X,U,A,t,Δt,SP,dbg) where{Eleobj,mission} 
     addin!{mission}(out::AssemblyDirect,asm,iele,scale,eleobj,no_second_order(Eleobj),Λ,X,U,A,t,Δt,SP,dbg)
-function addin!{mission}(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::Eleobj,no_second_order::Val{true}, 
-                                Λ::NTuple{1  ,SVector{Nx}},
-                                X::NTuple{NDX,SVector{Nx}},
-                                U::NTuple{NDU,SVector{Nu}},
-                                A::           SVector{Na} ,t,Δt,SP,dbg) where{mission,OX,OU,IA,NDX,NDU,Nx,Nu,Na,Eleobj} 
-    @assert NDX==OX+1 @sprintf("got OX=%i and NDX=%i. Expected OX+1==NDX",OX,NDX)
-    @assert NDU==OU+1 @sprintf("got OU=%i and NDU=%i. Expected OU+1==NDU",OU,NDU)
-    ndof   = (Nx, Nx, Nu, Na)
-    nder   = (1,OX+1,OU+1,IA)
+end
+function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,eleobj::Eleobj,no_second_order::Val{true}, 
+                                Λ::NTuple{1   ,SVector{Nx}},
+                                X::NTuple{NDX_,SVector{Nx}},
+                                U::NTuple{NDU_,SVector{Nu}},
+                                A::            SVector{Na} ,t,Δt,SP,dbg) where{mission,NDΛ,NDX,NDU,NDA,NDX_,NDU_,Nx,Nu,Na,Eleobj} 
     if     mission==:matrices     P=1
     elseif mission==:vectors      P=0
     end
-    if IA == 1
-        ∂X,∂U,∂A = revariate{1}((;X,U,A),(;X=scale.X,U=scale.U,A=scale.A))
-        R,FB     = residual(eleobj, ∂X,∂U,∂A,t,SP,dbg)
+    if NDA == 1
+        _,_,(∂X,∂U,∂A) = variate{1}((X,U,A),scale=(AllElements(scale.X),AllElements(scale.U),scale.A)) 
+        R,FB     = getresidual(eleobj, ∂X,∂U,∂A,t,SP,dbg) 
     else
-        ∂X,∂U    = revariate{1}((;X,U  ),(;X=scale.X,U=scale.U))
-        R,FB     = residual(eleobj, ∂X,∂U,  A,t,SP,dbg)
+        _,_,(∂X,∂U)   = variate{1}((X,U ),scale=(AllElements(scale.X),AllElements(scale.U)))
+        R,FB     = getresidual(eleobj, ∂X,∂U,  A,t,SP,dbg)
     end        
-    iλ   = 1:ndof[ind.Λ]
-    Lλ   = out.L1[ind.Λ]
-    add_value!(Lλ[1] ,asm[arrnum(ind.Λ)],iele,R,iλ;Δt)   
+    ndof   = (Nx, Nx, Nu, Na)
+    nder   = (NDΛ,NDX,NDU,NDA)
+    iλ     = 1:ndof[ind.Λ]  ### TODO CHECK
+    Lλ     = out.L1[ind.Λ]
+    isassigned(Lλ,1) && add_value!(Lλ[1] ,asm[arrnum(ind.Λ)],iele,R,iλ;Δt)   
     if mission==:matrices
         pβ       = 0
-        for β∈xua, j=1:nder[β]
+        for β∈xua, βder=1:nder[β]
             iβ   = pβ.+(1:ndof[β])
             pβ  += ndof[β]
             Lλβ  = out.L2[ind.Λ,β]
             Lβλ  = out.L2[β,ind.Λ]
-            if j≤size(Lλβ,2) # ...but only add into existing matrices of L2, for better sparsity
-                add_∂!{1                 }(Lλβ[1,j],asm[arrnum(ind.Λ,β)],iele,R,iλ,iβ;Δt)
-                add_∂!{1,:plus,:transpose}(Lβλ[j,1],asm[arrnum(β,ind.Λ)],iele,R,iλ,iβ;Δt)
-            end
+            isassigned(Lλβ,1,βder) && add_∂!{1                 }(Lλβ[1,βder],asm[arrnum(ind.Λ,β)],iele,R,iλ,iβ;Δt)
+            isassigned(Lβλ,βder,1) && add_∂!{1,:plus,:transpose}(Lβλ[βder,1],asm[arrnum(β,ind.Λ)],iele,R,iλ,iβ;Δt)
         end
     end 
 end
-struct   DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,OX,OU,IA} end
-function DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,OX,OU,IA}(out,asm,L,iele,Δt) where{mission,Nx,Nu,Na,OX,OU,IA}
+struct   DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,NDΛ,NDX,NDU,NDA} end
+function DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,NDΛ,NDX,NDU,NDA}(out,asm,L,iele,Δt) where{mission,Nx,Nu,Na,NDΛ,NDX,NDU,NDA}
     if     mission==:matrices     P=2
     elseif mission==:vectors      P=1
     end
     ndof         = (Nx, Nx, Nu, Na)
-    nder         = (1,OX+1,OU+1,IA)
-    Np           = Nx + Nx*(OX+1) + Nu*(OU+1) + Na*IA # number of partials
+    nder         = (NDΛ,NDX,NDU,NDA)
+    Np           = Nx + Nx*(NDX) + Nu*(NDU) + Na*NDA # number of partials
     λxua         = 1:4
     ∇L           = ∂{P,Np}(L)
     pα           = 0   # points into the partials, 1 entry before the start of relevant partial derivative in α,ider-loop
-    for α∈λxua, i=1:nder[α]   # we must loop over all time derivatives to correctly point into the adiff-partials...
+    for α∈λxua, αder=1:nder[α]   # we must loop over all time derivatives to correctly point into the adiff-partials...
         iα       = pα.+(1:ndof[α])
         pα      += ndof[α]
         Lα       = out.L1[α]
-        if i≤size(Lα,1)  # ...but only add into existing vectors of L1, for speed
-            add_value!(Lα[i] ,asm[arrnum(α)],iele,∇L,iα;Δt)
-        end
+        isassigned(Lα,αder) && add_value!(Lα[αder] ,asm[arrnum(α)],iele,∇L,iα;Δt)
         if mission==:matrices
             pβ       = 0
-            for β∈λxua, j=1:nder[β]
+            for β∈λxua, βder=1:nder[β]
                 iβ   = pβ.+(1:ndof[β])
                 pβ  += ndof[β]
                 Lαβ = out.L2[α,β]
-                if i≤size(Lαβ,1) && j≤size(Lαβ,2) # ...but only add into existing matrices of L2, for better sparsity
-                    add_∂!{1}(Lαβ[i,j],asm[arrnum(α,β)],iele,∇L,iα,iβ;Δt)
-                end
+                isassigned(Lαβ,αder,βder) && add_∂!{1}(Lαβ[αder,βder],asm[arrnum(α,β)],iele,∇L,iα,iβ;Δt)
             end
         end
     end
 end    
-function addin!{mission}(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::Eleobj,no_second_order::Val{false}, 
-    Λ::NTuple{1  ,SVector{Nx}},
-    X::NTuple{NDX,SVector{Nx}},
-    U::NTuple{NDU,SVector{Nu}},
-    A::           SVector{Na} ,t,Δt,SP,dbg) where{mission,OX,OU,IA,NDX,NDU,Nx,Nu,Na,Eleobj} 
-
-    @assert NDX==OX+1 @sprintf("got OX=%i and NDX=%i. Expected OX+1==NDX",OX,NDX)
-    @assert NDU==OU+1 @sprintf("got OU=%i and NDU=%i. Expected OU+1==NDU",OU,NDU)
+function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,eleobj::Eleobj,no_second_order::Val{false}, 
+                           Λ::NTuple{1   ,SVector{Nx}},
+                           X::NTuple{NDX_,SVector{Nx}},
+                           U::NTuple{NDU_,SVector{Nu}},
+                           A::            SVector{Na} ,t,Δt,SP,dbg) where{mission,NDΛ,NDX,NDU,NDA,NDX_,NDU_,Nx,Nu,Na,Eleobj} 
     if     mission==:matrices     P=2
     elseif mission==:vectors      P=1
     end
-    if IA == 1   
-        ∂Λ,∂X,∂U,∂A = revariate{P}((;Λ=Λ[1],X,U,A),(;Λ=scale.Λ,X=scale.X,U=scale.U,A=scale.A))
+    if NDA == 1   
+        _,_,(∂Λ,∂X,∂U,∂A) = variate{P}((Λ[1],X,U,A),scale=(scale.Λ,AllElements(scale.X),AllElements(scale.U),scale.A))
         L,FB        = getlagrangian(eleobj, ∂Λ,∂X,∂U,∂A,t,SP,dbg)
     else
-        ∂Λ,∂X,∂U    = revariate{P}((;Λ=Λ[1],X,U),(;Λ=scale.Λ,X=scale.X,U=scale.U))
+        _,_,(∂Λ,∂X,∂U)  = variate{P}((Λ[1],X,U),scale=(scale.Λ,AllElements(scale.X),AllElements(scale.U)))
         L,FB        = getlagrangian(eleobj, ∂Λ,∂X,∂U,A  ,t,SP,dbg)
     end
-    DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,OX,OU,IA}(out,asm,L,iele,Δt)
+    DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,NDΛ,NDX,NDU,NDA}(out,asm,L,iele,Δt)
 end
 # Specialised to accelerate ElementCost and ElementConstraint
-function addin!{mission}(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::ElementCost,no_second_order::Val{false}, 
-                                Λ::NTuple{1  ,SVector{Nx}},
-                                X::NTuple{NDX,SVector{Nx}},
-                                U::NTuple{NDU,SVector{Nu}},
-                                A::           SVector{Na} ,t,Δt,SP,dbg) where{mission,OX,OU,IA,NDX,NDU,Nx,Nu,Na} 
+function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,eleobj::ElementCost,no_second_order::Val{false}, # TODO can we compact this?
+                           Λ::NTuple{1   ,SVector{Nx}},
+                           X::NTuple{NDX_,SVector{Nx}},
+                           U::NTuple{NDU_,SVector{Nu}},
+                           A::            SVector{Na} ,t,Δt,SP,dbg) where{mission,NDΛ,NDX,NDU,NDA,NDX_,NDU_,Nx,Nu,Na} 
          addin!{mission}(out,asm,iele,scale,eleobj,Val(true),Λ,X,U,A,t,Δt,SP,dbg) 
 end
-function addin!{mission}(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::ElementCost,no_second_order::Val{true}, 
-                                Λ::NTuple{1  ,SVector{Nx}},
-                                X::NTuple{NDX,SVector{Nx}},
-                                U::NTuple{NDU,SVector{Nu}},
-                                A::           SVector{Na} ,t,Δt,SP,dbg) where{mission,OX,OU,IA,NDX,NDU,Nx,Nu,Na} 
-    @assert NDX==OX+1 @sprintf("got OX=%i and NDX=%i. Expected OX+1==NDX",OX,NDX)
-    @assert NDU==OU+1 @sprintf("got OU=%i and NDU=%i. Expected OU+1==NDU",OU,NDU)
+function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,eleobj::ElementCost,no_second_order::Val{true}, 
+                           Λ::NTuple{1   ,SVector{Nx}},
+                           X::NTuple{NDX_,SVector{Nx}},
+                           U::NTuple{NDU_,SVector{Nu}},
+                           A::            SVector{Na} ,t,Δt,SP,dbg) where{mission,NDΛ,NDX,NDU,NDA,NDX_,NDU_,Nx,Nu,Na} 
     if     mission==:matrices     P=2
     elseif mission==:vectors      P=1
     end
-    if     IA == 1  # NB: compile-time condition
-        ∂X,∂U,∂A    = revariate{P-1}((;X,U,A),(;X=scale.X,U=scale.U,A=scale.A))
-        R,FB,eleres = residual(eleobj.eleobj, ∂X,∂U,∂A,t,SP,(dbg...,via=:ElementCostAccelerator),eleobj.req.eleres)  
-    elseif IA == 0
-        ∂X,∂U       = revariate{P-1}((;X,U ),(;X=scale.X,U=scale.U))
-        R,FB,eleres = residual(eleobj.eleobj, ∂X,∂U,  A,t,SP,(dbg...,via=:ElementCostAccelerator),eleobj.req.eleres)  
+    if     NDA == 1  # NB: compile-time condition
+        _,_,(∂X,∂U,∂A) = variate{P-1}((X,U,A),scale=(AllElements(scale.X),Broacast(scale.U),scale.A))
+        R,FB,eleres = getresidual(eleobj.eleobj, ∂X,∂U,∂A,t,SP,(dbg...,via=:ElementCostAccelerator),eleobj.req.eleres)  
+    elseif NDA == 0
+        _,_,(∂X,∂U)   = variate{P-1}((X,U ),scale=(AllElements(scale.X),AllElements(scale.U)))
+        R,FB,eleres = getresidual(eleobj.eleobj, ∂X,∂U,  A,t,SP,(dbg...,via=:ElementCostAccelerator),eleobj.req.eleres)  
     end
-    Releres         = revariate{P}(eleres)
+    _,_,Releres     = variate{P}(eleres)
     
     Rcost           = eleobj.cost(Releres,t,eleobj.costargs...)
-    cost            = chainrule(Rcost,to_order{P}(eleres))
+    cost            = chainrule(Rcost,to_order{P,npartial(eleres)}(eleres))
     L               = Λ[1] ∘₁ R + cost
-    DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,OX,OU,IA}(out,asm,L,iele,Δt)
+    DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,NDΛ,NDX,NDU,NDA}(out,asm,L,iele,Δt)
 end
-function addin!{mission}(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::ElementConstraint,no_second_order::Val{false}, 
-                                Λ::NTuple{1  ,SVector{Nx}},
-                                X::NTuple{NDX,SVector{Nx}},
-                                U::NTuple{NDU,SVector{Nu}},
-                                A::           SVector{Na} ,t,Δt,SP,dbg) where{mission,OX,OU,IA,NDX,NDU,Nx,Nu,Na} 
+function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,eleobj::ElementConstraint,no_second_order::Val{false}, 
+                         Λ::NTuple{1   ,SVector{Nx}},
+                         X::NTuple{NDX_,SVector{Nx}},
+                         U::NTuple{NDU_,SVector{Nu}},
+                         A::            SVector{Na} ,t,Δt,SP,dbg) where{mission,NDΛ,NDX,NDU,NDA,NDX_,NDU_,Nx,Nu,Na} 
          addin!{mission}(out,asm,iele,scale,eleobj,Val(true),Λ,X,U,A,t,Δt,SP,dbg) 
 end
-function addin!{mission}(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::ElementConstraint,no_second_order::Val{true}, 
-                                Λ::NTuple{1  ,SVector{Nx}},
-                                X::NTuple{NDX,SVector{Nx}},
-                                U::NTuple{NDU,SVector{Nu}},
-                                A::           SVector{Na} ,t,Δt,SP,dbg) where{mission,OX,OU,IA,NDX,NDU,Nx,Nu,Na} 
+function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,eleobj::ElementConstraint,no_second_order::Val{true}, 
+                           Λ::NTuple{1   ,SVector{Nx}},
+                           X::NTuple{NDX_,SVector{Nx}},
+                           U::NTuple{NDU_,SVector{Nu}},
+                           A::            SVector{Na} ,t,Δt,SP,dbg) where{mission,NDΛ,NDX,NDU,NDA,NDX_,NDU_,Nx,Nu,Na} 
 # TODO Specialised code to accelerate constraints in DirectXUA, but... it does not set FB, and DIrectXUA/solve has no line search...                                
-    @assert NDX==OX+1 @sprintf("got OX=%i and NDX=%i. Expected OX+1==NDX",OX,NDX)
-    @assert NDU==OU+1 @sprintf("got OU=%i and NDU=%i. Expected OU+1==NDU",OU,NDU)
     if     mission==:matrices     P=2
     elseif mission==:vectors      P=1
     end
@@ -223,26 +238,26 @@ function addin!{mission}(out::AssemblyDirect{OX,OU,IA},asm,iele,scale,eleobj::El
     λ               = ∂0(U)[Nu]
     γ               = default{:γ}(SP,0.)
     m               = eleobj.mode(t)
-    if     IA == 1  # NB: compile-time condition
-        ∂X,∂U,∂A    = revariate{P-1}((X=X,U=U,A=A),(;X=scale.X,U=scale.U,A=scale.A))
-        R,FB,eleres = residual(eleobj.eleobj, ∂X,∂U,∂A,t,SP,(dbg...,via=:ElementCoonstraintAccelerator),eleobj.req)  
-    elseif IA == 0
-        ∂X,∂U       = revariate{P-1}((X=X,U=U    ),(;X=scale.X,U=scale.U))
-        R,FB,eleres = residual(eleobj.eleobj, ∂X,∂U,  A,t,SP,(dbg...,via=:ElementConstraintAccelerator),eleobj.req)  
+    if     NDA == 1  # NB: compile-time condition
+        _,_,(∂X,∂U,∂A) = variate{P-1}((X,U,A),scale=(AllElements(scale.X),AllElements(scale.U),scale.A))
+        R,FB,eleres = getresidual(eleobj.eleobj, ∂X,∂U,∂A,t,SP,(dbg...,via=:ElementCoonstraintAccelerator),eleobj.req)  
+    elseif NDA == 0
+        _,_,(∂X,∂U) = variate{P-1}((X,U ),scale=(AllElements(scale.X),AllElements(scale.U)))
+        R,FB,eleres = getresidual(eleobj.eleobj, ∂X,∂U,  A,t,SP,(dbg...,via=:ElementConstraintAccelerator),eleobj.req)  
     end
-    Releres         = revariate{P}(eleres)
+    _,_,Releres     = variate{P}(eleres)
     Rgap            = eleobj.gap(eleres,t,eleobj.gargs...)
-    gap             = chainrule(Rgap,to_order{P}(eleres))
+    gap             = chainrule(Rgap,to_order{P,npartial(eleres)}(eleres))
     L               = Λ[1] ∘₁ R +   if      m==:equal;    -gap*λ   
                                     elseif  m==:positive; -KKT(λ,gap,γ) 
                                     elseif  m==:off;      -0.5λ^2 
                                     end
-    DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,OX,OU,IA}(out,asm,L,iele,Δt)
+    DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,NDΛ,NDX,NDU,NDA}(out,asm,L,iele,Δt)
 end
 
 
 ## Assembly of bigsparse for all time steps at once
-function makepattern(IA,nstep,out) 
+function makepattern(NDA,nstep,out) 
     # Looking at all steps, class, order of fdiff and Δstep, for rows and columns: which blocks are actualy nz?
     # return a sparse matrix of sparse matrices
     maxblock = 1 + sum(nstep)*90  
@@ -250,7 +265,7 @@ function makepattern(IA,nstep,out)
     βblk     = 𝕫1(undef,maxblock)
     nz       = Vector{Sparse𝕣2}(undef,maxblock)
     nblock   = 0
-    cumblk      = 0
+    cumblk   = 0
     for iexp = 1:length(nstep)
         for istep = 1:nstep[iexp]
             for     α∈λxu 
@@ -258,12 +273,14 @@ function makepattern(IA,nstep,out)
                     Lαβ = out.L2[α,β]
                     for     αder = 1:size(Lαβ,1)
                         for βder = 1:size(Lαβ,2)
-                            for     iα ∈ finitediff(αder-1,nstep[iexp],istep)
-                                for iβ ∈ finitediff(βder-1,nstep[iexp],istep)
-                                    nblock += 1   
-                                    αblk[nblock]=cumblk+3*(istep+iα.Δs-1)+α
-                                    βblk[nblock]=cumblk+3*(istep+iβ.Δs-1)+β
-                                    nz[  nblock]=Lαβ[1,1]  
+                            if isassigned(Lαβ,αder,βder)
+                                for     iα ∈ finitediff(αder-1,nstep[iexp],istep)
+                                    for iβ ∈ finitediff(βder-1,nstep[iexp],istep)
+                                        nblock += 1   
+                                        αblk[nblock]=cumblk+3*(istep+iα.Δs-1)+α
+                                        βblk[nblock]=cumblk+3*(istep+iβ.Δs-1)+β
+                                        nz[  nblock]=Lαβ[1,1]  
+                                    end
                                 end
                             end
                         end 
@@ -274,7 +291,7 @@ function makepattern(IA,nstep,out)
         cumblk += 3*nstep[iexp]
     end   
 
-    if IA==1
+    if NDA==1
         Ablk = 3*sum(nstep)+1
         nblock +=1
         αblk[nblock] = Ablk                      
@@ -286,7 +303,8 @@ function makepattern(IA,nstep,out)
                 for α∈λxu 
                     # loop over derivatives and finitediff is optimized out, as time derivatives will only 
                     # be added into superbloc already reached by non-derivatives. No, it's not a bug...
-                    if size(out.L2[ind.A,α],1)>0
+                    Laα = out.L2[ind.A,α]
+                    if size(Laα,1)>0 && isassigned(Laα,1)
                         nblock += 1
                         αblk[nblock] = Ablk                
                         βblk[nblock] = cumblk+3*(istep-1)+α          
@@ -303,28 +321,29 @@ function makepattern(IA,nstep,out)
     end
     u    = unique(i->(αblk[i],βblk[i]),1:nblock)
 
-    return sparse(αblk[u],βblk[u],nz[u])
+    return sparse(αblk[u],βblk[u],nz[u])   
 end
-function preparebig(IA,nstep,out) 
+function preparebig(NDA,nstep,out) 
     # create an assembler and allocate for the big linear system
-    pattern                  = makepattern(IA,nstep,out)
+    pattern                  = makepattern(NDA,nstep,out)
     # Muscade.spypattern(pattern)
     Lvv,Lvvasm,Lvasm,Lvdis   = prepare(pattern)
     Lv                       = 𝕣1(undef,size(Lvv,1))
     return Lvv,Lv,Lvvasm,Lvasm,Lvdis
 end
 struct assemblebig!{mission} end
-function assemblebig!{mission}(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out::AssemblyDirect{OX,OU,IA},state,nstep,Δt,SP,dbg) where{mission,OX,OU,IA}
+function assemblebig!{mission}(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out::AssemblyDirect{NDΛ,NDX,NDU,NDA},state,nstep,Δt,SP,dbg) where{mission,NDΛ,NDX,NDU,NDA}
     zero!(Lvv)
     zero!(Lv )
     cumblk = 0
-    if IA==1
+    if NDA==1
         Ablk = 3sum(nstep)+1  
         assembleA!{mission}(out,asm,dis,model,state[1][1],(dbg...,asm=:assemblebig!)) 
-        addin!(Lvasm ,Lv ,out.L1[ind.A      ][1  ],Ablk     )  
-        addin!(Lvvasm,Lvv,out.L2[ind.A,ind.A][1,1],Ablk,Ablk)
+        La, Laa = out.L1[ind.A], out.L2[ind.A,ind.A]
+        isassigned(La ,1  ) && addin!(Lvasm ,Lv ,out.L1[ind.A      ][1  ],Ablk     )  
+        isassigned(Laa,1,1) && addin!(Lvvasm,Lvv,out.L2[ind.A,ind.A][1,1],Ablk,Ablk)
     end    
-    class = IA==1 ? λxua : λxu
+    class = NDA==1 ? λxua : λxu
     for iexp = 1:length(nstep)
         for istep = 1:nstep[iexp]
             state[iexp][istep].SP   = SP
@@ -332,21 +351,25 @@ function assemblebig!{mission}(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out::AssemblyDi
             for β∈class
                 Lβ = out.L1[β]
                 for βder = 1:size(Lβ,1)
-                    s    = Δt[iexp]^(1-βder)
-                    for iβ ∈ finitediff(βder-1,nstep[iexp],istep)  # TODO transpose or not? Potential BUG to be revealed when cost on time derivative of X or U
-                        βblk = β==ind.A ? Ablk : cumblk+3*(istep+iβ.Δs-1)+β
-                        addin!(Lvasm,Lv ,Lβ[βder],βblk,iβ.w*s) 
+                    if isassigned(Lβ,βder)
+                        s    = Δt[iexp]^(1-βder)
+                        for iβ ∈ finitediff(βder-1,nstep[iexp],istep)  # TODO transpose or not? Potential BUG to be revealed when cost on time derivative of X or U
+                            βblk = β==ind.A ? Ablk : cumblk+3*(istep+iβ.Δs-1)+β
+                            addin!(Lvasm,Lv ,Lβ[βder],βblk,iβ.w*s) 
+                        end
                     end
                 end
             end
             for α∈class, β∈class
                 Lαβ = out.L2[α,β]
                 for αder=1:size(Lαβ,1), βder=1:size(Lαβ,2)
-                    s    = Δt[iexp]^(2-αder-βder)
-                    for iα∈finitediff(αder-1,nstep[iexp],istep), iβ∈finitediff(βder-1,nstep[iexp],istep) # No transposition here, that's thoroughly checked against decay.
-                        αblk = α==ind.A ? Ablk : cumblk+3*(istep+iα.Δs-1)+α
-                        βblk = β==ind.A ? Ablk : cumblk+3*(istep+iβ.Δs-1)+β
-                        addin!(Lvvasm,Lvv,Lαβ[αder,βder],αblk,βblk,iα.w*iβ.w*s) 
+                    if isassigned(Lαβ,αder,βder)
+                        s    = Δt[iexp]^(2-αder-βder)
+                        for iα∈finitediff(αder-1,nstep[iexp],istep), iβ∈finitediff(βder-1,nstep[iexp],istep) # No transposition here, that's thoroughly checked against decay.
+                            αblk = α==ind.A ? Ablk : cumblk+3*(istep+iα.Δs-1)+α
+                            βblk = β==ind.A ? Ablk : cumblk+3*(istep+iβ.Δs-1)+β
+                            addin!(Lvvasm,Lvv,Lαβ[αder,βder],αblk,βblk,iα.w*iβ.w*s) 
+                        end
                     end
                 end
             end
@@ -375,7 +398,7 @@ function decrementbig!(state,Δ²,Lvasm,dofgr,Δv,nder,Δt,nstep)
         end
         cumblk += 3*nstep[iexp]
     end    
-    if nder[4]==1 # IA==1
+    if nder[4]==1 # NDA==1
         Δa               = disblock(Lvasm,Δv,3*sum(nstep)+1)
         Δ²[ind.A]        = sum(Δa.^2)
         decrement!(state[1][1],1,Δa,dofgr[ind.A]) # all states share same A, so decrement only once
@@ -409,15 +432,12 @@ The solver does not yet support interior point methods.
 # Named arguments
 - `dbg=(;)`           a named tuple to trace the call tree (for debugging).
 - `verbose=true`      set to false to suppress printed output (for testing).
-- `silenterror=false` set to true to suppress print out of error (for testing) .
-- `initialstate`      an `AbstractVector` of `State`: one initial state for each experiment.
-                      `initialstate` must be with zero time derivatives.  It does not
-                      provide initial conditions for the problem, but an initial guess
-                      for the iterative solver.        
-- `initialtrajectory` an `AbstractVector` of Vector{`State`}: one initial trajectory for each experiment.
-                      `initialtrajectory` elements are also initial guess for the iterative solver, representing a time-dependant trajectory.
-                      its elements must then match the specific timerange respective to the experiment they refer to.
-                      If not specified, initialstate is copied for each timestep to create the initial guess.       
+- `silenterror=false` set to true to suppress print out of error (for testing).
+- `initialstate`      an `AbstractVector` of `State` or an `AbstractVector` of `Vector{State}`: one primer for each experiment.
+                      `initialstate` must be with zero time derivatives.  It does not provide initial conditions for the problem, 
+                      but an initial guess for the iterative solver. The solver needs a time-dependant trajectory as input: `initialstate` 
+                      either directly provides it with a `Vector{State}`, or allows the creation of it by copying the same `State` for every time step.
+                      By convention the Adofs for building this primer are taken from the first experiment, first state.
 - `time`              an `AbstractVector` (of same length as `initialstate`) of `AbstractRange` 
                       of times at which to compute the steps.  Example: 0:0.1:5.                       
 - `maxiter=50`        maximum number of Newton-Raphson iterations. 
@@ -444,42 +464,48 @@ See also: [`solve`](@ref), [`initialize!`](@ref), [`SweepX`](@ref), [`FreqXU`](@
 struct DirectXUA{OX,OU,IA} <: AbstractSolver end 
 function solve(::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
     time::AbstractVector{AR},
-    initialstate::AbstractVector{STATE},
-    initialtrajectory::Union{Nothing,AbstractVector}=nothing,
+    # TODO HAVE A SIMPLER ONLY ONE VARIABLE
+    # TODO BY CONVENTION WE USE THE Ainit THAT IS THE FIRST EXP and FIRST STATE
+    initialstate::Union{Nothing,AbstractVector},
     maxiter::ℤ=50,
     maxΔλ::ℝ=1e-5,maxΔx::ℝ=1e-5,maxΔu::ℝ=1e-5,maxΔa::ℝ=1e-5,
     saveiter::𝔹=false,
-    kwargs...) where{OX,OU,IA,AR<:AbstractRange{𝕣},STATE<:State}
+    wanted::Wanted=Wanted{1,OX+1,OU+1,IA}(:all,:all)) where{OX,OU,IA,AR<:AbstractRange{𝕣},STATE<:State}
 
     #  Mostly constants
     local LU
     nexp,nstep,Δt         = length(time),length.(time),step.(time)
-    length(initialstate)== nexp || muscadeerror("initialstate and time must be of the same length=number of experiments") 
     γ                     = 0.
     nder                  = (1,OX+1,OU+1,IA)
-    model,dis             = initialstate[1].model, initialstate[1].dis
     if IA==1  Δ², maxΔ²   = 𝕣1(undef,4), [maxΔλ^2,maxΔx^2,maxΔu^2,maxΔa^2] 
     else      Δ², maxΔ²   = 𝕣1(undef,3), [maxΔλ^2,maxΔx^2,maxΔu^2        ] 
     end
-
+    
     # State storage
     S                     = State{1,OX+1,OU+1,@NamedTuple{γ::Float64,iter::Int64}}
     state                 = [Vector{S}(undef,nstep[iexp]) for iexp=1:nexp] # state[iexp][istep]
     s                     = initialstate[1]
-    if isnothing(initialtrajectory)
+    
+    # Test input dimension compatibility
+    length(initialstate)== nexp || muscadeerror("initialstate length must be equal to the number of experiments")
+    
+    if isa(initialstate[1],Muscade.State)
+        model,dis             = initialstate[1].model, initialstate[1].dis
+        # Case where initialstate is an AbstractVector of State. A primer trajectory of state is created from a repetition of this state.
         for (iexp,initialstateᵢ) ∈ enumerate(initialstate)
             for (istep,timeᵢ) = enumerate(time[iexp])
-                state[iexp][istep] = State{1,OX+1,OU+1}(timeᵢ,deepcopy(initialstateᵢ.Λ),deepcopy(initialstateᵢ.X),deepcopy(initialstateᵢ.U),s.A,(γ=0.,iter=1),s.model,s.dis) # all state[iexp][istep].A are === 
+                state[iexp][istep] = State{1,OX+1,OU+1}(timeᵢ,deepcopy(initialstateᵢ.Λ),deepcopy(initialstateᵢ.X),deepcopy(initialstateᵢ.U),s.A,(γ=0.,iter=1),model,dis) # all state[iexp][istep].A are === 
             end
         end
     else
-        length(initialtrajectory)== nexp || muscadeerror("initialtrajectory and time must be of the same length")
-        Ashared = initialtrajectory[1][1].A
-        for (iexp,trajexp) ∈ enumerate(initialtrajectory)
-            length(trajexp)== nstep[iexp] || muscadeerror("initialtrajectory must match the time grid")
+        # Case where initialstate is already an AbstractVector of Vector{State}.
+        Ainit = initialstate[1][1].A
+        model,dis             = initialstate[1][1].model, initialstate[1][1].dis
+        for (iexp,trajexp) ∈ enumerate(initialstate)
+            length(trajexp)== nstep[iexp] || muscadeerror("trajectories in `initialstate` vector must match their associated time grid in `time` vector")
             for (istep,timeᵢ) = enumerate(time[iexp])
                 trajstate = trajexp[istep]
-                state[iexp][istep] = State{1,OX+1,OU+1}(timeᵢ,deepcopy(trajstate.Λ),deepcopy(trajstate.X),deepcopy(trajstate.U),Ashared,(γ=0.,iter=1),s.model,s.dis)
+                state[iexp][istep] = State{1,OX+1,OU+1}(timeᵢ,deepcopy(trajstate.Λ),deepcopy(trajstate.X),deepcopy(trajstate.U),Ainit,(γ=0.,iter=1),model,dis)
             end
         end
     end
@@ -492,7 +518,7 @@ function solve(::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
 
     # Prepare assembler
     verbose && @printf("\n    Preparing assembler\n")
-    out,asm,dofgr         = prepare(AssemblyDirect{OX,OU,IA},model,dis;kwargs...)          # mem and assembler for system at any given step
+    out,asm,dofgr         = prepare(AssemblyDirect,model,dis,wanted)          # mem and assembler for system at any given step
     assemble!{:matrices}(out,asm,dis,model,state[1][1],idmult,(dbg...,solver=:DirectXUA,phase=:sparsity))    # create a sample "out" for preparebig
     Lvv,Lv,Lvvasm,Lvasm,Lvdis = preparebig(IA,nstep,out)                                   # mem and assembler for big system
     cLvv                  = copy(Lvv)
@@ -530,5 +556,3 @@ function solve(::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
     end # for iter
     return
 end
-
-
