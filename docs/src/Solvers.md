@@ -14,11 +14,21 @@ See the reference manual [`EigX`](@ref).
 
 `SweepX{2}` is a Newmark-β solver for differential equations of order `2` in time. A typical application is in structural dynamics. 
 
-`SweepX` solves forward FEM problems (not optimisation-FEM) (see [Theory](@ref)).  However, `SweepX` can be applied to models that have ``U``- and ``A``-dofs. This is handled as follows: One input to `SweepX` is a `State`, which can come from [`initialize!`](@ref) or from the output of another solver. `SweepX` will keep the ``U``- and ``A``-dofs to the value in the input `State`. `initialize!` sets all dofs to zero, so when `SweepX` is given a `State` produced by `initialize!` the analysis starts with ``X``-dofs equal to zero, and ``U``- and ``A``-dofs are kept zero throughout the analysis. 
+`SweepX` solves forward FEM problems (not optimisation-FEM) (see [Theory](Theory.md)).  However, `SweepX` can be applied to models that have ``U``- and ``A``-dofs. This is handled as follows: One input to `SweepX` is a `State`, which can come from [`initialize!`](@ref) or from the output of another solver. `SweepX` will keep the ``U``- and ``A``-dofs to the value in the input `State`. `initialize!` sets all dofs to zero, so when `SweepX` is given a `State` produced by `initialize!` the analysis starts with ``X``-dofs equal to zero, and ``U``- and ``A``-dofs are kept zero throughout the analysis. 
 
 `SweepX` handles inequality constraints (for example defined with the built-in [`DofConstraint`](@ref) element) using a simplified interior point method.
 
 See the reference manual [`SweepX`](@ref).   
+
+## `SweepXA`: design optimisation
+
+Finds the design parameters `A` for which the response of the model, for given initial conditions, has minimum cost. The model will typicaly have costs contributions associated to the design parameters `A` ("expensive build"), and to the response parameters `X` ("this response of the system exceeds allowables stresses, leading to an expensive failure"). 
+
+For a given value of `A`, `SweepXA{OX}` does the same computations as `SweepX{OX}`.
+
+As for `SweepX`, `SweepXA` can be applied to models that have ``U``-dofs.  
+
+See the reference manual [`SweepXA`](@ref).   
 
 ## `DirectXUA`: non-linear inverse solver
 

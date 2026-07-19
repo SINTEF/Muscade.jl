@@ -1,4 +1,4 @@
-name: Running tests on all platforms
+name: Running tests on Linux
 on:
   push: 
     branches:

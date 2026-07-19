@@ -3,14 +3,6 @@ module TestRotations
 using Test, StaticArrays, LinearAlgebra
 using Muscade, Muscade.Toolbox
 
-θ = [0,1e-8,1e-6,1e-2,.1,1,π]
-@testset "sinc1" begin
-    @test Toolbox.sinc1.( θ)≈[1.0,1.0,0.9999999999998334,0.9999833334166666,0.9983341664682817,0.8414709848078965,0.0]
-    @test Toolbox.sinc1′.(θ)≈[ 0.0,-3.3333333333333334e-9,-3.3333333333329995e-7,-0.003333300000107897,-0.03330001190255594,-0.30116867893975674,-0.3183098861837907]
-    @test Toolbox.sinc1″.(θ)≈[-0.3333333333333333, -0.3333333333333333, -0.33333333333323334, -0.33332333339285697, -0.33233392841710757, -0.23913362692838303, 0.20264236728467552]
-    @test Toolbox.sinc1‴.(θ)≈[0.0, 2.0e-9, 1.999999999999762e-7, 0.001999976190568783, 0.019976199733646196, 0.1770985749170091, 0.12480067958459377]
-    @test Toolbox.sinc1⁗.(θ)≈[0.2,0.2,0.1999999999999286,0.19999285718915333,0.19928617712243368,0.13307670326700266,-0.14309499132952147]
-end
 # using GLMakie
 # fig      = Figure(size = (1200,1000))
 # display(fig) # open interactive window (gets closed down by "save")
@@ -29,27 +21,27 @@ end
 # end
 
 function scac1(x)
-    X = variate{1}(x)
+    X = Muscade.variate_{1}(x)
     Y = Toolbox.scac(X)
     return ∂{1}(Y)
 end
 function scac2(x)
-    X = variate{2}(variate{1}(x))
+    X = Muscade.variate_{2}(Muscade.variate_{1}(x))
     Y = Toolbox.scac(X)
     return ∂{1}(∂{2}(Y))
 end
 function scac3(x)
-    X = variate{3}(variate{2}(variate{1}(x)))
+    X = Muscade.variate_{3}(Muscade.variate_{2}(Muscade.variate_{1}(x)))
     Y = Toolbox.scac(X)
     return ∂{1}(∂{2}(∂{3}(Y)))
 end
 function scac4(x)
-    X = variate{4}(variate{3}(variate{2}(variate{1}(x))))
+    X = Muscade.variate_{4}(Muscade.variate_{3}(Muscade.variate_{2}(Muscade.variate_{1}(x))))
     Y = Toolbox.scac(X)
     return ∂{1}(∂{2}(∂{3}(∂{4}(Y))))
 end
 function scac5(x)
-    X = variate{5}(variate{4}(variate{3}(variate{2}(variate{1}(x)))))
+    X = Muscade.variate_{5}(Muscade.variate_{4}(Muscade.variate_{3}(Muscade.variate_{2}(Muscade.variate_{1}(x)))))
     Y = Toolbox.scac(X)
     return ∂{1}(∂{2}(∂{3}(∂{4}(∂{5}(Y)))))
 end
@@ -86,15 +78,15 @@ r = Toolbox.adjust(a,b)
 R = Toolbox.Rodrigues(r)
 u = R*a
 
-v1      = variate{1,3}(SA[.1,.2,.3])
+v1      = Muscade.variate_{1,3}(SA[.1,.2,.3])
 M1      = Toolbox.Rodrigues(v1)
 w1,w∂v1 = value_∂{1,3}(Toolbox.Rodrigues⁻¹(M1))
 
-v2      = variate{1,3}(SA[1e-7,2e-7,1e-8])
+v2      = Muscade.variate_{1,3}(SA[1e-7,2e-7,1e-8])
 M2      = Toolbox.Rodrigues(v2)
 w2,w∂v2 = value_∂{1,3}(Toolbox.Rodrigues⁻¹(M2))
 
-v3      = variate{1,3}(SA[0.,0.,0.])
+v3      = Muscade.variate_{1,3}(SA[0.,0.,0.])
 M3      = Toolbox.Rodrigues(v3)
 w3,w∂v3 = value_∂{1,3}(Toolbox.Rodrigues⁻¹(M3))
 

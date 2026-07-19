@@ -223,4 +223,4 @@ AdjustableSdofOscillator(nod::Vector{Node};K=1.::𝕣,C=0.::𝕣,M=0.::𝕣) = A
     return R,noFB
 end
 #Muscade.doflist( ::Type{AdjustableSdofOscillator})  = (inod =(1 ,1, 1, 1), class=(:X,:U,:A,:A), field=(:tx1,:tu1,:ΞK,:ΞC))
-Muscade.doflist( ::Type{AdjustableSdofOscillator})  = (inod =(1 ,1, 1), class=(:X,:U,:A), field=(:tx1,:tu1,:ΞK))
+Muscade.doflist( ::Type{AdjustableSdofOscillator})  = (inod =(1 ,1, 1), class=(:X,:U,:A), field=(:tx1,:tu1,:ΞC))

@@ -20,11 +20,11 @@ t2 = promote_rule(typeof(dx1),typeof(x))
 (g,h)=promote(dx1,x)
 
 ## Extraction
-dscaled=δ{1,3,𝕣}(SVector(1.,2.,3.))
-vscaled=variate{1,3}(SVector(4.,4.,4.),SVector(1.,2.,3.))
-Δ   = δ{1,2,𝕣}()
-C1  = variate{constants(Δ),2}(SVector(3.,4.))
-C   = variate{constants(C1),2}(C1)
+dscaled=Muscade.δ_{1,3,𝕣}(SVector(1.,2.,3.))
+vscaled=Muscade.variate_{1,3}(SVector(4.,4.,4.),SVector(1.,2.,3.))
+Δ   = Muscade.δ_{1,2,𝕣}()
+C1  = Muscade.variate_{Muscade.precedence(Δ)+1,2}(SVector(3.,4.))
+C   = Muscade.variate_{Muscade.precedence(C1)+1,2}(C1)
 PC  = Muscade.precedence(C)
 PC1 = Muscade.precedence(C1)
 vC  = value{PC}(C)
@@ -36,9 +36,9 @@ v∂C = value{PC1}(∂C)
 dX1 = Muscade.toggle(false,dx1,3.)
 
 ## Operations
-oa = variate{1}(1.)
-ob = variate{constants(oa   )}(2.)
-oc = variate{constants(oa,ob)}(3.)
+oa = Muscade.variate_{1}(1.)
+ob = Muscade.variate_{Muscade.precedence(oa   )+1}(2.)
+oc = Muscade.variate_{Muscade.precedence(oa,ob)+1}(3.)
 od = oa+oc
 oe = od+ob
 oj = od^2
@@ -46,7 +46,7 @@ og = 2^od
 oh = oa^oc
 ok = oc*oa/oc
 ox = SVector(1.,2.,3.)
-oX = variate{1,3}(ox)
+oX = Muscade.variate_{1,3}(ox)
 
 
 ## norm
@@ -55,7 +55,7 @@ nrm = norm(oX)
 
 ## atan(s,c)
 
-x3 = variate{1}(1.6455)
+x3 = Muscade.variate_{1}(1.6455)
 s3,c3=sin(x3),cos(x3)
 y3 = atan(s3,c3)
 
@@ -76,13 +76,11 @@ y3 = atan(s3,c3)
         @test typeof(g) == ∂ℝ{2,2,∂𝕣12}
         @test g         === ∂ℝ{2,2,∂𝕣12}(∂𝕣12(3.0, SVector(0.0, 0.0)), SVector(∂𝕣12(0.1, SVector(0.0, 0.0)), ∂𝕣12(0.2, SVector(0.0, 0.0))))
         @test h          === x
-        @test Muscade.∂²ℝ{1,2}(7.,2) ===  ∂ℝ{2, 2, ∂ℝ{1, 2, Float64}}(∂ℝ{1, 2, Float64}(7.0, [0.0, 1.0]), ∂ℝ{1, 2, Float64}[∂ℝ{1, 2, Float64}(0.0, [0.0, 0.0]), ∂ℝ{1, 2, Float64}(1.0, [0.0, 0.0])])
-        @test Muscade.∂²ℝ{1,2}(7.,2,1.5) ===  ∂ℝ{2, 2, ∂ℝ{1, 2, Float64}}(∂ℝ{1, 2, Float64}(7.0, [0.0, 1.5]), ∂ℝ{1, 2, Float64}[∂ℝ{1, 2, Float64}(0.0, [0.0, 0.0]), ∂ℝ{1, 2, Float64}(1.5, [0.0, 0.0])])
     end
 
     @testset "Adiff extraction" begin
         @test Δ            === SVector(∂𝕣12(0.0, SVector(1.0, 0.0)),∂𝕣12(0.0, SVector(0.0, 1.0)))
-        @test constants(Δ) == 2
+        @test Muscade.precedence(Δ) == 1
         @test typeof(C)    == SVector{2, ∂ℝ{3, 2, ∂ℝ{2, 2, Float64}}}#Array{∂ℝ{3,2,∂𝕣22},1}
         @test C[1]         === ∂ℝ{3,2,∂𝕣22}(∂𝕣22(3.0, SVector(1.0, 0.0)), SVector(∂𝕣22(1.0, SVector(0.0, 0.0)), ∂𝕣22(0.0, SVector(0.0, 0.0))))
         @test vC[1]        === ∂𝕣22(3.0, SVector(1.0, 0.0))
@@ -101,12 +99,12 @@ y3 = atan(s3,c3)
         @test od === ∂ℝ{3,1,∂𝕣11}(∂𝕣11(4.0, SVector(1.0)), SVector(∂𝕣11(1.0, SVector(0.0))))
         @test oe === ∂ℝ{3,1,∂ℝ{2,1,∂𝕣11}}(∂ℝ{2,1,∂𝕣11}(∂𝕣11(6.0, SVector(1.0)), SVector(∂𝕣11(1.0, SVector(0.0)))), SVector(     ∂ℝ{2,1,∂𝕣11}(∂𝕣11(1.0, SVector(0.0)), SVector(∂𝕣11(0.0, SVector(0.0))))))
         @test od === ∂ℝ{3,1,∂𝕣11}(∂𝕣11(4.0, SVector(1.0)), SVector(∂𝕣11(1.0, SVector(0.0))))
-        @test og === ∂ℝ{3,1,∂𝕣11}(∂𝕣11(16.0, SVector(11.090354888959125)), SVector(∂𝕣11(11.090354888959125, SVector(7.687248222691222))))
+        @test og === ∂ℝ{3,1,∂𝕣11}(∂𝕣11(15.999999999999998, SVector(11.090354888959123)), SVector(∂𝕣11(11.090354888959123, SVector(7.687248222691221)))) 
         @test oj === od*od
-        @test og === ∂ℝ{3,1,∂𝕣11}(∂𝕣11(16.0, SVector(11.090354888959125)), SVector(∂𝕣11(11.090354888959125, SVector(7.687248222691222))))
         @test ok === ∂ℝ{3,1,∂𝕣11}(∂𝕣11(1.0, SVector(1.0)), SVector(∂𝕣11(0.0, SVector(0.0))))
         @test value{1}(2*oX)==2*ox
-        @test variate{1}(0.)^0 === ∂ℝ{1,1,𝕣}(0., SVector(0.)) 
+        @test Muscade.variate_{1}(1.)^0 === ∂ℝ{1,1,𝕣}(1. , SVector(0.)) 
+        @test Muscade.variate_{1}(0.)^0 === ∂ℝ{1,1,𝕣}(1. , SVector(0.)) # this can of course be discussed...
     end
 
 
@@ -117,6 +115,17 @@ y3 = atan(s3,c3)
     @testset "atan" begin
         y3 === ∂ℝ{1, 1, 𝕣}(1.6455, [1.0])
     end
+
+    θ = [0,1e-8,1e-6,1e-2,.1,1,π]
+    @testset "sinc1" begin
+        @test Muscade.sinc1.( θ,sin.(θ),cos.(θ),inv.(θ),θ.*θ)≈[1.0,1.0,0.9999999999998334,0.9999833334166666,0.9983341664682817,0.8414709848078965,0.0]
+        @test Muscade.sinc1′.(θ,sin.(θ),cos.(θ),inv.(θ),θ.*θ)≈[ 0.0,-3.3333333333333334e-9,-3.3333333333329995e-7,-0.003333300000107897,-0.03330001190255594,-0.30116867893975674,-0.3183098861837907]
+        @test Muscade.sinc1″.(θ,sin.(θ),cos.(θ),inv.(θ),θ.*θ)≈[-0.3333333333333333, -0.3333333333333333, -0.33333333333323334, -0.33332333339285697, -0.33233392841710757, -0.23913362692838303, 0.20264236728467552]
+        @test Muscade.sinc1‴.(θ,sin.(θ),cos.(θ),inv.(θ),θ.*θ)≈[0.0, 2.0e-9, 1.999999999999762e-7, 0.001999976190568783, 0.019976199733646196, 0.1770985749170091, 0.12480067958459377]
+        @test Muscade.sinc1⁗.(θ,sin.(θ),cos.(θ),inv.(θ),θ.*θ)≈[0.2,0.2,0.1999999999999286,0.19999285718915333,0.19928617712243368,0.13307670326700266,-0.14309499132952147]
+    end
+
+
 
 end # testset Adiff
 

@@ -5,65 +5,79 @@ using Test,StaticArrays
 const X1 = (SVector{3,𝕣}(1,2,3),)
 const X2 = (SVector{3,𝕣}(1,2,3),SVector{3,𝕣}(4,5,6))
 const X3 = (SVector{3,𝕣}(1,2,3),SVector{3,𝕣}(4,5,6),SVector{3,𝕣}(7,8,9))
-const X4 = (variate{1,3}(SVector{3,𝕣}(1,2,3)),)
-const X5 = (variate{1,3}(SVector{3,𝕣}(1,2,3)),variate{1,3}(SVector{3,𝕣}(4,5,6)))
-const X6 = (variate{1,3}(SVector{3,𝕣}(1,2,3)),variate{1,3}(SVector{3,𝕣}(4,5,6)),variate{1,3}(SVector{3,𝕣}(7,8,9)))
+const X4 = (Muscade.variate_{1,3}(SVector{3,𝕣}(1,2,3)),)
+const X5 = (Muscade.variate_{1,3}(SVector{3,𝕣}(1,2,3)),Muscade.variate_{1,3}(SVector{3,𝕣}(4,5,6)))
+const X6 = (Muscade.variate_{1,3}(SVector{3,𝕣}(1,2,3)),Muscade.variate_{1,3}(SVector{3,𝕣}(4,5,6)),Muscade.variate_{1,3}(SVector{3,𝕣}(7,8,9)))
 
-Y1=motion{2}(X1)
-Y2=motion{2}(X2)
-Y3=motion{2}(X3)
-Y4=motion{3}(X4)
-Y5=motion{3}(X5)
-Y6=motion{3}(X6)
+P1,ND1,Y1 = motion(X1)
+P2,ND2,Y2 = motion(X2)
+P3,ND3,Y3 = motion(X3)
+P4,ND4,Y4 = motion(X4)
+P5,ND5,Y5 = motion(X5)
+P6,ND6,Y6 = motion(X6)
+
+Z1        = motion⁻¹{P1,ND1}(Y1)
+Z2        = motion⁻¹{P2,ND2}(Y2)
+Z3        = motion⁻¹{P3,ND3}(Y3)
+Z4        = motion⁻¹{P4,ND4}(Y4)
+Z5        = motion⁻¹{P5,ND5}(Y5)
+Z6        = motion⁻¹{P6,ND6}(Y6)
 
 @testset "motion" begin
     @test typeof(X1) == Tuple{SVector{3, 𝕣}}
     @test typeof(Y1) == SVector{3, 𝕣}
 
     @test typeof(X2) == Tuple{SVector{3, 𝕣}, SVector{3, 𝕣}}
-    @test typeof(Y2) == SVector{3, ∂ℝ{2, 1, 𝕣}} 
+    @test typeof(Y2) == SVector{3, ∂ℝ{1, 1, 𝕣}} 
 
     @test typeof(X3) == Tuple{SVector{3, 𝕣}, SVector{3, 𝕣}, SVector{3, 𝕣}}
-    @test typeof(Y3) == SVector{3, ∂ℝ{3, 1, ∂ℝ{2, 1, 𝕣}}}
+    @test typeof(Y3) == SVector{3, ∂ℝ{2, 1, ∂ℝ{1, 1, 𝕣}}}
 
     @test typeof(X4) == Tuple{SVector{3, ∂ℝ{1, 3, 𝕣}}}
     @test typeof(Y4) == SVector{3, ∂ℝ{1, 3, 𝕣}}
 
     @test typeof(X5) == Tuple{SVector{3, ∂ℝ{1, 3, 𝕣}}, SVector{3, ∂ℝ{1, 3, 𝕣}}}
-    @test typeof(Y5) == SVector{3, ∂ℝ{3, 1, ∂ℝ{1, 3, 𝕣}}}
+    @test typeof(Y5) == SVector{3, ∂ℝ{2, 1, ∂ℝ{1, 3, 𝕣}}}
 
     @test typeof(X6) == Tuple{SVector{3, ∂ℝ{1, 3, 𝕣}}, SVector{3, ∂ℝ{1, 3, 𝕣}}, SVector{3, ∂ℝ{1, 3, 𝕣}}}
-    @test typeof(Y6) == SVector{3, ∂ℝ{4, 1, ∂ℝ{3, 1, ∂ℝ{1, 3, 𝕣}}}}
+    @test typeof(Y6) == SVector{3, ∂ℝ{3, 1, ∂ℝ{2, 1, ∂ℝ{1, 3, 𝕣}}}}
 end
 
 @testset "motion⁻¹" begin
-    @test motion⁻¹{2,1,0}(Y1) === SVector{3,𝕣}(1,2,3)
-    @test motion⁻¹{2,1,1}(Y1) === SVector{3,𝕣}(0,0,0)
-    @test motion⁻¹{2,1,2}(Y1) === SVector{3,𝕣}(0,0,0)
+    @test Z1===X1
+    @test Z2===X2
+    @test Z3===X3
+    @test Z4===X4
+    @test Z5===X5
+    @test Z6===X6
 
-    @test motion⁻¹{2,2,0}(Y2) === SVector{3,𝕣}(1,2,3)
-    @test motion⁻¹{2,2,1}(Y2) === SVector{3,𝕣}(4,5,6)
-    @test motion⁻¹{2,2,2}(Y2) === SVector{3,𝕣}(0,0,0)
+    @test motion⁻¹{P1,ND1,0}(Y1) === SVector{3,𝕣}(1,2,3)
+    @test motion⁻¹{P1,ND1,1}(Y1) === SVector{3,𝕣}(0,0,0)
+    @test motion⁻¹{P1,ND1,2}(Y1) === SVector{3,𝕣}(0,0,0)
 
-    @test motion⁻¹{2,3,0}(Y3) === SVector{3,𝕣}(1,2,3)
-    @test motion⁻¹{2,3,1}(Y3) === SVector{3,𝕣}(4,5,6)
-    @test motion⁻¹{2,3,2}(Y3) === SVector{3,𝕣}(7,8,9)
+    @test motion⁻¹{P2,ND2,0}(Y2) === SVector{3,𝕣}(1,2,3)
+    @test motion⁻¹{P2,ND2,1}(Y2) === SVector{3,𝕣}(4,5,6)
+    @test motion⁻¹{P2,ND2,2}(Y2) === SVector{3,𝕣}(0,0,0)
 
-    @test motion⁻¹{3,1,0}(Y4) === variate{1,3}(SVector{3,𝕣}(1,2,3))
-    @test motion⁻¹{3,1,1}(Y4) === SVector{3,𝕣}(0,0,0)
-    @test motion⁻¹{3,1,2}(Y4) === SVector{3,𝕣}(0,0,0)
+    @test motion⁻¹{P3,ND3,0}(Y3) === SVector{3,𝕣}(1,2,3)
+    @test motion⁻¹{P3,ND3,1}(Y3) === SVector{3,𝕣}(4,5,6)
+    @test motion⁻¹{P3,ND3,2}(Y3) === SVector{3,𝕣}(7,8,9)
 
-    @test motion⁻¹{3,2,0}(Y5) === variate{1,3}(SVector{3,𝕣}(1,2,3))
-    @test motion⁻¹{3,2,1}(Y5) === variate{1,3}(SVector{3,𝕣}(4,5,6))
-    @test motion⁻¹{3,2,2}(Y5) === SVector{3,𝕣}(0,0,0)
+    @test motion⁻¹{P4,ND4,0}(Y4) === Muscade.variate_{1,3}(SVector{3,𝕣}(1,2,3))
+    @test motion⁻¹{P4,ND4,1}(Y4) === SVector{3,𝕣}(0,0,0)
+    @test motion⁻¹{P4,ND4,2}(Y4) === SVector{3,𝕣}(0,0,0)
 
-    @test motion⁻¹{3,3,0}(Y6) === variate{1,3}(SVector{3,𝕣}(1,2,3))
-    @test motion⁻¹{3,3,1}(Y6) === variate{1,3}(SVector{3,𝕣}(4,5,6))
-    @test motion⁻¹{3,3,2}(Y6) === variate{1,3}(SVector{3,𝕣}(7,8,9))
+    @test motion⁻¹{P5,ND5,0}(Y5) === Muscade.variate_{1,3}(SVector{3,𝕣}(1,2,3))
+    @test motion⁻¹{P5,ND5,1}(Y5) === Muscade.variate_{1,3}(SVector{3,𝕣}(4,5,6))
+    @test motion⁻¹{P5,ND5,2}(Y5) === SVector{3,𝕣}(0,0,0)
 
-    @test motion⁻¹{2,1}(Y1) === (SVector{3,𝕣}(1,2,3),)
-    @test motion⁻¹{2,2}(Y2) === (SVector{3,𝕣}(1,2,3),SVector{3,𝕣}(4,5,6))
-    @test motion⁻¹{2,3}(Y3) === (SVector{3,𝕣}(1,2,3),SVector{3,𝕣}(4,5,6),SVector{3,𝕣}(7,8,9))
+    @test motion⁻¹{P6,ND6,0}(Y6) === Muscade.variate_{1,3}(SVector{3,𝕣}(1,2,3))
+    @test motion⁻¹{P6,ND6,1}(Y6) === Muscade.variate_{1,3}(SVector{3,𝕣}(4,5,6))
+    @test motion⁻¹{P6,ND6,2}(Y6) === Muscade.variate_{1,3}(SVector{3,𝕣}(7,8,9))
+
+    @test motion⁻¹{P1,ND1}(Y1) === (SVector{3,𝕣}(1,2,3),)
+    @test motion⁻¹{P2,ND2}(Y2) === (SVector{3,𝕣}(1,2,3),SVector{3,𝕣}(4,5,6))
+    @test motion⁻¹{P3,ND3}(Y3) === (SVector{3,𝕣}(1,2,3),SVector{3,𝕣}(4,5,6),SVector{3,𝕣}(7,8,9))
 end
 
 a = SVector(3.,4.)
@@ -80,20 +94,21 @@ h(X) = SVector(3.,4.)
 k(X) = 5.
 w(X) = (f(X),g(X),h(X),k(X))
 X₀   = SVector(0.,0.,1.)
-vX₀  = variate{1,3}(X₀)
-
+vX₀  = Muscade.variate_{1,3}(X₀)
+wX₀  = Muscade.variate_{2,3}(vX₀)
 @testset "Muscade.fast" begin
     @test Muscade.apply{:chainrule}(w, X₀) === w( X₀)
     @test Muscade.apply{:chainrule}(w,vX₀) === w(vX₀)
+    @test Muscade.apply{:chainrule}(w,wX₀) === w(wX₀)
 end
 
-yy    = Muscade.to_order{1}((revariate{1}(SVector(4.,5.,6.)),revariate{2}(SVector(7.,8.,9.)) ))  
+yy    = Muscade.to_order{1,3}((revariate{1}(SVector(4.,5.,6.)),revariate{2}(SVector(7.,8.,9.)) ))  
 @testset "firstorderonly" begin
     @test yy[1] === revariate{1}(SVector(4.,5.,6.)) 
     @test yy[2] === revariate{1}(SVector(7.,8.,9.)) 
-    @test Muscade.to_order{0}(3.) == 3.0
-    @test Muscade.to_order{1}(3.) == ∂ℝ{1, 0, Float64}(3.0, Float64[])
-    @test Muscade.to_order{2}(3.) == ∂ℝ{2, 0, ∂ℝ{1, 0, Float64}}(∂ℝ{1, 0, Float64}(3.0, Float64[]), ∂ℝ{1, 0, Float64}[])
+    @test Muscade.to_order{0,0}(3.) == 3.0
+    @test Muscade.to_order{1,0}(3.) == ∂ℝ{1, 0, 𝕣}(3.0, 𝕣[])
+    @test Muscade.to_order{2,0}(3.) == ∂ℝ{2, 0, ∂ℝ{1, 0, 𝕣}}(∂ℝ{1, 0, 𝕣}(3.0, 𝕣[]), ∂ℝ{1, 0, 𝕣}[])
 end
 
 
@@ -101,7 +116,7 @@ end
 #### chainrule with NamedTuple
 
 x      = SVector(1.,2.,2.5,3.)
-X      = variate{1,4}(x)
+X      = Muscade.variate_{1,4}(x)
 ε      = SMatrix{2,2}((X.^2)...)
 eleres = (part=(ε = ε, x = X), y = 2x[2],z = 3.)
 
@@ -126,43 +141,118 @@ end
 # 10: Neleres
 Releres  = Muscade.revariate{2}(eleres)
 Rq       = cost(Releres)
-q        = Muscade.chainrule(Rq,Muscade.to_order{2}(eleres))   # TODO this hangs. verify the output of to_order{2}(eleres) carefully.  There are empty partials.
-q2       = cost(Muscade.to_order{2}(eleres))
+q        = Muscade.chainrule(Rq,Muscade.to_order{2,4}(eleres))   
+q2       = cost(Muscade.to_order{2,4}(eleres))
 
 @testset "chainrule NamedTuple" begin
     @test Muscade.flat_eltype(Muscade.revariate{2}(eleres))             == ∂ℝ{2, 10, ∂ℝ{1, 10, 𝕣}}
     @test Muscade.flat_eltype(Rq)                                       == ∂ℝ{2, 10, ∂ℝ{1, 10, 𝕣}}
     @test Muscade.flat_eltype(q)                                        == ∂ℝ{2, 4 , ∂ℝ{1, 4 , 𝕣}} 
-    @test Muscade.flat_eltype(Muscade.to_order{2}(eleres))                   == ∂ℝ{2, 4 , ∂ℝ{1, 4 , 𝕣}} 
+    @test Muscade.flat_eltype(Muscade.to_order{2,4}(eleres))            == ∂ℝ{2, 4 , ∂ℝ{1, 4 , 𝕣}} 
     @test Muscade.flat_eltype(q2)                                       == ∂ℝ{2, 4 , ∂ℝ{1, 4 , 𝕣}} 
     @test q == q2
 end
 
 @testset "inferred" begin
-    @inferred Muscade.revariate{2}(eleres)
-    @inferred Muscade.to_order{2}(Muscade.flatten(eleres))
-    @inferred Muscade.chainrule(Rq,Muscade.to_order{2}(Muscade.flatten(eleres)))
+    @inferred revariate{2}(eleres)
+    @inferred Muscade.to_order{2,4}(Muscade.flatten(eleres))
+    @inferred Muscade.chainrule(Rq,Muscade.to_order{2,4}(Muscade.flatten(eleres)))
 end
 
-X     = (SVector(1.,2.),SVector(3.,4.))
-U     = SVector(5.,6.,7.)
-scale = (X=SVector(10.,10.),U=SVector(2.,2.,2.))
-d     = Muscade.revariate{2}((;X,U),scale)
+@testset "multiple derivative" begin
+    a       = SVector(1.,2.,3.)
+    b       = SVector(3.,4.)
+    Pa,Na,A = variate{2}(a)
+    Pb,Nb,B = variate(b) # A and B not compatible
+    _ ,_ ,C = variate{2}(a,scale=AllElements(2.))
+    _ ,_ ,D = variate{2}(a,scale=SVector(2.,2.,2.))
+    A0      = Muscade.zerovalue(A[1])
 
-@testset "scaled revariate" begin
-    @test typeof(d) ==  @NamedTuple{X::Tuple{SVector{2,∂ℝ{2,7,∂ℝ{1,7,𝕣}}}, SVector{2,∂ℝ{2,7,∂ℝ{1,7,𝕣}}}}, U::SVector{3,∂ℝ{2,7,∂ℝ{1,7,𝕣}}}}
-    @test d.X[2][2] === ∂ℝ{2,7,∂ℝ{1,7,𝕣}}(∂ℝ{1,7,𝕣}(4.0,[0.0,0.0,0.0,10.,0.0,0.0,0.0]),
-                                ∂ℝ{1,7,𝕣}[∂ℝ{1,7,𝕣}(0.0,[0.0,0.0,0.0,0.0,0.0,0.0,0.0]),
-                                          ∂ℝ{1,7,𝕣}(0.0,[0.0,0.0,0.0,0.0,0.0,0.0,0.0]),
-                                          ∂ℝ{1,7,𝕣}(0.0,[0.0,0.0,0.0,0.0,0.0,0.0,0.0]),
-                                          ∂ℝ{1,7,𝕣}(10.,[0.0,0.0,0.0,0.0,0.0,0.0,0.0]),
-                                          ∂ℝ{1,7,𝕣}(0.0,[0.0,0.0,0.0,0.0,0.0,0.0,0.0]),
-                                          ∂ℝ{1,7,𝕣}(0.0,[0.0,0.0,0.0,0.0,0.0,0.0,0.0]),
-                                          ∂ℝ{1,7,𝕣}(0.0,[0.0,0.0,0.0,0.0,0.0,0.0,0.0])])
+    @test Muscade.npartials((a=A,b=b)) == (3,3) 
+    @test_throws AssertionError Muscade.npartials((a=A,b=B))   
+
+    @test Pa==2
+    @test Na==3
+    @test A0  ===∂ℝ{2,3,∂ℝ{1,3,𝕣}}(∂ℝ{1,3,𝕣}(0,[1,0,0]),∂ℝ{1,3,𝕣}[∂ℝ{1,3,𝕣}(1,[0,0,0]),∂ℝ{1,3,𝕣}(0,[0,0,0]),∂ℝ{1,3,𝕣}(0,[0,0,0])])
+    @test A[1]===∂ℝ{2,3,∂ℝ{1,3,𝕣}}(∂ℝ{1,3,𝕣}(1,[1,0,0]),∂ℝ{1,3,𝕣}[∂ℝ{1,3,𝕣}(1,[0,0,0]),∂ℝ{1,3,𝕣}(0,[0,0,0]),∂ℝ{1,3,𝕣}(0,[0,0,0])])
+    @test A[2]===∂ℝ{2,3,∂ℝ{1,3,𝕣}}(∂ℝ{1,3,𝕣}(2,[0,1,0]),∂ℝ{1,3,𝕣}[∂ℝ{1,3,𝕣}(0,[0,0,0]),∂ℝ{1,3,𝕣}(1,[0,0,0]),∂ℝ{1,3,𝕣}(0,[0,0,0])])
+    @test A[3]===∂ℝ{2,3,∂ℝ{1,3,𝕣}}(∂ℝ{1,3,𝕣}(3,[0,0,1]),∂ℝ{1,3,𝕣}[∂ℝ{1,3,𝕣}(0,[0,0,0]),∂ℝ{1,3,𝕣}(0,[0,0,0]),∂ℝ{1,3,𝕣}(1,[0,0,0])])
+    @test Pb==1
+    @test Nb==2
+    @test B[1]===∂ℝ{1,2,𝕣}(3,[1,0])
+    @test B[2]===∂ℝ{1,2,𝕣}(4,[0,1])
+    @test C[1]===∂ℝ{2,3,∂ℝ{1,3,𝕣}}(∂ℝ{1,3,𝕣}(1,[2,0,0]),∂ℝ{1,3,𝕣}[∂ℝ{1,3,𝕣}(2,[0,0,0]),∂ℝ{1,3,𝕣}(0,[0,0,0]),∂ℝ{1,3,𝕣}(0,[0,0,0])])
+    @test C[2]===∂ℝ{2,3,∂ℝ{1,3,𝕣}}(∂ℝ{1,3,𝕣}(2,[0,2,0]),∂ℝ{1,3,𝕣}[∂ℝ{1,3,𝕣}(0,[0,0,0]),∂ℝ{1,3,𝕣}(2,[0,0,0]),∂ℝ{1,3,𝕣}(0,[0,0,0])])
+    @test C[3]===∂ℝ{2,3,∂ℝ{1,3,𝕣}}(∂ℝ{1,3,𝕣}(3,[0,0,2]),∂ℝ{1,3,𝕣}[∂ℝ{1,3,𝕣}(0,[0,0,0]),∂ℝ{1,3,𝕣}(0,[0,0,0]),∂ℝ{1,3,𝕣}(2,[0,0,0])])
+    @test D[1]===∂ℝ{2,3,∂ℝ{1,3,𝕣}}(∂ℝ{1,3,𝕣}(1,[2,0,0]),∂ℝ{1,3,𝕣}[∂ℝ{1,3,𝕣}(2,[0,0,0]),∂ℝ{1,3,𝕣}(0,[0,0,0]),∂ℝ{1,3,𝕣}(0,[0,0,0])])
+    @test D[2]===∂ℝ{2,3,∂ℝ{1,3,𝕣}}(∂ℝ{1,3,𝕣}(2,[0,2,0]),∂ℝ{1,3,𝕣}[∂ℝ{1,3,𝕣}(0,[0,0,0]),∂ℝ{1,3,𝕣}(2,[0,0,0]),∂ℝ{1,3,𝕣}(0,[0,0,0])])
+    @test D[3]===∂ℝ{2,3,∂ℝ{1,3,𝕣}}(∂ℝ{1,3,𝕣}(3,[0,0,2]),∂ℝ{1,3,𝕣}[∂ℝ{1,3,𝕣}(0,[0,0,0]),∂ℝ{1,3,𝕣}(0,[0,0,0]),∂ℝ{1,3,𝕣}(2,[0,0,0])])
 end
 
 
+@testset "joint derivative" begin
+    a       = SVector(1.,2.,3.)
+    b       = SVector(3.,4.)
+    P,N,(A,B) = variate((a,b)) 
 
- 
+    @test P==1
+    @test N==5
+    @test A[1]===∂ℝ{1,5,𝕣}(1,[1,0,0,0,0])
+    @test A[2]===∂ℝ{1,5,𝕣}(2,[0,1,0,0,0])
+    @test A[3]===∂ℝ{1,5,𝕣}(3,[0,0,1,0,0])
+    @test B[1]===∂ℝ{1,5,𝕣}(3,[0,0,0,1,0])
+    @test B[2]===∂ℝ{1,5,𝕣}(4,[0,0,0,0,1])
+end
+
+@testset "nested derivative" begin
+    a       = SVector(1.,2.,3.)
+    b       = SVector(3.,4.)
+    Pa,Na,A  = variate{1}(a)
+    Pb,Nb,B  = variate{1}(b,context=(A,0.)) 
+    _ ,_ ,Bs = variate{1}(b,context=A,scale=AllElements(2.)) 
+
+    Pb0,Nb0,B0 = variate0{1}(b,context=A) 
+    @test Pb==2
+    @test Nb==2
+    @test B[1]===∂ℝ{2,2,∂ℝ{1,3,𝕣}}(∂ℝ{1,3,𝕣}(3,[0,0,0]),∂ℝ{1,3,𝕣}[∂ℝ{1,3,𝕣}(1,[0,0,0]),∂ℝ{1,3,𝕣}(0,[0,0,0])])
+    @test B[2]===∂ℝ{2,2,∂ℝ{1,3,𝕣}}(∂ℝ{1,3,𝕣}(4,[0,0,0]),∂ℝ{1,3,𝕣}[∂ℝ{1,3,𝕣}(0,[0,0,0]),∂ℝ{1,3,𝕣}(1,[0,0,0])])
+    @test Muscade.npartials(B)==(2,3)
+
+    @test Pb0==2
+    @test Nb0==2
+    @test B0[1]===∂ℝ{2,2,∂ℝ{1,3,𝕣}}(∂ℝ{1,3,𝕣}(0,[0,0,0]),∂ℝ{1,3,𝕣}[∂ℝ{1,3,𝕣}(1,[0,0,0]),∂ℝ{1,3,𝕣}(0,[0,0,0])])
+    @test B0[2]===∂ℝ{2,2,∂ℝ{1,3,𝕣}}(∂ℝ{1,3,𝕣}(0,[0,0,0]),∂ℝ{1,3,𝕣}[∂ℝ{1,3,𝕣}(0,[0,0,0]),∂ℝ{1,3,𝕣}(1,[0,0,0])])
+
+    @test Bs[1]===∂ℝ{2,2,∂ℝ{1,3,𝕣}}(∂ℝ{1,3,𝕣}(3,[0,0,0]),∂ℝ{1,3,𝕣}[∂ℝ{1,3,𝕣}(2,[0,0,0]),∂ℝ{1,3,𝕣}(0,[0,0,0])])
+    @test Bs[2]===∂ℝ{2,2,∂ℝ{1,3,𝕣}}(∂ℝ{1,3,𝕣}(4,[0,0,0]),∂ℝ{1,3,𝕣}[∂ℝ{1,3,𝕣}(0,[0,0,0]),∂ℝ{1,3,𝕣}(2,[0,0,0])])
+end
+
+@testset "revariate" begin
+    a         = SVector(1.,2.,3.)
+    b         = SVector(3.,4.)
+    P,N,(A,B) = variate{2}((a,b),scale=AllElements(AllElements(2.))) 
+    B_        = revariate(B)
+    Bm1       = revariate{1}(B)
+    A2,B2     = revariate((A,B))
+    @test B_[1]===∂ℝ{2,2,∂ℝ{1,2,𝕣}}(∂ℝ{1,2,𝕣}(3,[1,0]),∂ℝ{1,2,𝕣}[∂ℝ{1,2,𝕣}(1,[0,0]),∂ℝ{1,2,𝕣}(0,[0,0])])
+    @test B_[2]===∂ℝ{2,2,∂ℝ{1,2,𝕣}}(∂ℝ{1,2,𝕣}(4,[0,1]),∂ℝ{1,2,𝕣}[∂ℝ{1,2,𝕣}(0,[0,0]),∂ℝ{1,2,𝕣}(1,[0,0])])
+    @test B2[1]==∂ℝ{2,5,∂ℝ{1,5,𝕣}}(∂ℝ{1,5,𝕣}(3,[0,0,0,1,0]),∂ℝ{1,5,𝕣}[∂ℝ{1,5,𝕣}(0,[0,0,0,0,0]),∂ℝ{1,5,𝕣}(0,[0,0,0,0,0]),∂ℝ{1,5,𝕣}(0,[0,0,0,0,0]),∂ℝ{1,5,𝕣}(1,[0,0,0,0,0]),∂ℝ{1,5,𝕣}(0,[0,0,0,0,0])])
+    @test Bm1[1]===∂ℝ{1,2,𝕣}(3,[1,0])
+end
+
+@testset "chainrule_Jacobian" begin
+    x         = SVector(1.,2.,3.)
+    u         = SVector(4.,5.)
+    P,N,(X,U) = variate{2}((x,u))
+    TX1       = revariate{1}(X)
+    TY1       = TX1.^2
+    Y∂X1      = chainrule_Jacobian(TY1,X)
+    TX2       = revariate(X) # revariate{2}, implicit
+    TY2       = TX2.^2
+    Y∂X2      = chainrule_Jacobian(TY2,X)
+
+    @test Y∂X1 === SMatrix{3,3,𝕣}(2,0,0, 0,4,0, 0,0,6)
+    @test Y∂X2[1,1] === ∂ℝ{2,5,∂ℝ{1,5,𝕣}}(∂ℝ{1,5,𝕣}(2,[2,0,0,0,0]),∂ℝ{1,5,𝕣}[∂ℝ{1,5,𝕣}(2,[0,0,0,0,0]),∂ℝ{1,5,𝕣}(0,[0,0,0,0,0]),∂ℝ{1,5,𝕣}(0,[0,0,0,0,0]),∂ℝ{1,5,𝕣}(0,[0,0,0,0,0]),∂ℝ{1,5,𝕣}(0,[0,0,0,0,0])])
+end
 
 end # module

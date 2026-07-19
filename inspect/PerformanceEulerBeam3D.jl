@@ -21,7 +21,7 @@ const t         = 0.
 const SP        = (;)
 const dbg       = (status=:testing,)
 const x         = SVector(1.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.,0.)
-const xv        = variate{1,12}(x)
+const xv        = Muscade.variate_{1,12}(x)
 const X         = (xv,)
 const U         = (SVector{0,𝕣}(),)
 const A         = SVector{0,𝕣}()

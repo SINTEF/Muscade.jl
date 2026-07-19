@@ -44,64 +44,69 @@ addin!{:step}(out::AssemblySweepX{2},asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:
 addin!{:iter}(out::AssemblySweepX{2},asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{0}},U,A,t,Δt,SP,dbg) where{Nxder} = return
 function addin!{:step}(out::AssemblySweepX{2},asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A,t,Δt,SP,dbg) where{Nxder,Nx}
     a₁,a₂,a₃,b₁,b₂,b₃ = out.c.a₁,out.c.a₂,out.c.a₃,out.c.b₁,out.c.b₂,out.c.b₃
-    x,x′,x″    = ∂0(X),∂1(X),∂2(X)
-    δX,δr      = reδ{1}((;X=x,r=0.),(;X=scale.X,r=1.))
+    x,x′,x″    = X
+    _,_,(δX,δr)= variate0((x=x,r=0.),scale=(x=scale.X,r=1.))
+    iX,ir      = variate_indices((x,0.)) 
     a          = a₂*x′ + a₃*x″
     b          = b₂*x′ + b₃*x″
     vx         = x  +    δX
-    vx′        = x′ + a₁*δX + a*δr 
-    vx″        = x″ + b₁*δX + b*δr
+    vx′        = x′ + a₁*δX - a*δr 
+    vx″        = x″ + b₁*δX - b*δr
     Lλ,FB      = getresidual(eleobj,(vx,vx′,vx″),U,A,t,SP,dbg)
     Lλ         = Lλ .* scale.X
-    add_value!(       out.Lλ ,asm[1],iele,Lλ             )  # rhs  = R    
-    add_∂!{1,:minus}( out.Lλ ,asm[1],iele,Lλ,1:Nx,(Nx+1,))  # rhs +=  -C⋅a -M⋅b 
-    add_∂!{1       }( out.Lλx,asm[2],iele,Lλ,1:Nx,1:Nx   )  # Mat  =  K + a₁C + b₁M
+    add_value!(out.Lλ ,asm[1],iele,Lλ         )  # rhs  = R    
+    add_∂!{1}( out.Lλ ,asm[1],iele,Lλ,iX,(ir,))  # rhs +=  -C⋅a -M⋅b 
+    add_∂!{1}( out.Lλx,asm[2],iele,Lλ,iX,iX   )  # Mat  =  K + a₁C + b₁M
 end
 function addin!{:iter}(out::AssemblySweepX{2},asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A,t,Δt,SP,dbg) where{Nxder,Nx} 
     a₁,b₁      = out.c.a₁,out.c.b₁
-    δX         = δ{1,Nx,𝕣}(scale.X)
-    Lλ,FB      = getresidual(eleobj,(∂0(X)+δX, ∂1(X)+a₁*δX, ∂2(X)+b₁*δX),U,A,t,SP,dbg)
+    x,x′,x″    = X
+    δX         = δ_{1,Nx,𝕣}(scale.X)
+    Lλ,FB      = getresidual(eleobj,(x+δX, x′+a₁*δX, x″+b₁*δX),U,A,t,SP,dbg)
     Lλ         = Lλ .* scale.X
     add_value!(out.Lλ ,asm[1],iele,Lλ          )
     add_∂!{1}( out.Lλx,asm[2],iele,Lλ,1:Nx,1:Nx)
 end
 function addin!{:step}(out::AssemblySweepX{1},asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A,t,Δt,SP,dbg) where{Nxder,Nx}
     a₁,a₂      = out.c.a₁,out.c.a₂
-    x,x′       = ∂0(X),∂1(X)
-    δX,δr      = reδ{1}((;X=x,r=0.),(;X=scale.X,r=1.))
+    x,x′       = X
+    _,_,(δX,δr)= variate0((;X=x,r=0.),scale=(;X=scale.X,r=1.))
     a          = a₂*x′
     vx         = x  +    δX   
-    vx′        = x′ + a₁*δX + a*δr  
+    vx′        = x′ + a₁*δX - a*δr  
     Lλ,FB      = getresidual(eleobj,(vx,vx′),U,A,t,SP,dbg)
     Lλ         = Lλ .* scale.X
-    add_value!(out.Lλ ,asm[1],iele,Lλ                    )  # rhs  = R    
-    add_∂!{1,:minus}( out.Lλ ,asm[1],iele,Lλ,1:Nx,(Nx+1,))  # rhs +=  -C⋅a 
-    add_∂!{1}( out.Lλx,asm[2],iele,Lλ,1:Nx,1:Nx          )  # Mat  = K + C/Δt 
+    add_value!(out.Lλ ,asm[1],iele,Lλ             )  # rhs  = R    
+    add_∂!{1}( out.Lλ ,asm[1],iele,Lλ,1:Nx,(Nx+1,))  # rhs +=  -C⋅a 
+    add_∂!{1}( out.Lλx,asm[2],iele,Lλ,1:Nx,1:Nx   )  # Mat  = K + C/Δt 
 end
 function addin!{:iter}(out::AssemblySweepX{1},asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A,t,Δt,SP,dbg) where{Nxder,Nx}
     a₁         = out.c.a₁
-    δX         = δ{1,Nx,𝕣}(scale.X)
-    Lλ,FB      = getresidual(eleobj,(∂0(X)+δX, ∂1(X)+a₁*δX),U,A,t,SP,dbg)
+    x,x′       = X
+    δX         = δ_{1,Nx,𝕣}(scale.X)
+    Lλ,FB      = getresidual(eleobj,(x+δX, x′+a₁*δX),U,A,t,SP,dbg)
     Lλ         = Lλ .* scale.X
     add_value!(out.Lλ ,asm[1],iele,Lλ           )  # rhs  = R    
     add_∂!{1}( out.Lλx,asm[2],iele,Lλ,1:Nx,1:Nx )  # Mat  = K + C/Δt 
 end
 
 function addin!{Both}(out::AssemblySweepX{0},asm,iele,scale,eleobj,Λ,X::NTuple{Nxder,<:SVector{Nx}},U,A,t,Δt,SP,dbg) where{Both,Nxder,Nx} 
-    δX         = δ{1,Nx,𝕣}(scale.X)
-    Lλ,FB      = getresidual(eleobj,(∂0(X)+δX,),U,A,t,SP,dbg)
+    x,         = X
+    δX         = δ_{1,Nx,𝕣}(scale.X)
+    Lλ,FB      = getresidual(eleobj,(x+δX,),U,A,t,SP,dbg)
     Lλ         = Lλ .* scale.X
     add_value!(out.Lλ ,asm[1],iele,Lλ)
     add_∂!{1}( out.Lλx,asm[2],iele,Lλ)
 end
 
 struct   Newmarkβdecrement!{OX} end
-function Newmarkβdecrement!{2}(state,Δx ,Xdofgr,c,firstiter, a,b,x′,x″,Δx′,Δx″,args...) # x′, x″ are just mutable memory, neither input nor output.
+
+function Newmarkβdecrement!{2}(state::State,Δx ,Xdofgr,c,firstiter, a,b,x′,x″,Δx′,Δx″,args...) # x′, x″ are just mutable memory, neither input nor output.
     a₁,a₂,a₃,b₁,b₂,b₃ = c.a₁,c.a₂,c.a₃,c.b₁,c.b₂,c.b₃
 
     if firstiter
-        getdof!(state,1,x′,Xdofgr) 
-        getdof!(state,2,x″,Xdofgr) 
+        get!(state,2,x′,Xdofgr) 
+        get!(state,3,x″,Xdofgr) 
         a       .= a₂*x′.+ a₃*x″ 
         b       .= b₂*x′.+ b₃*x″
         Δx′     .= a₁*Δx .+ a
@@ -114,11 +119,11 @@ function Newmarkβdecrement!{2}(state,Δx ,Xdofgr,c,firstiter, a,b,x′,x″,Δx
     decrement!(state,2,Δx′,Xdofgr)
     decrement!(state,3,Δx″,Xdofgr)
 end
-function Newmarkβdecrement!{1}(state,Δx ,Xdofgr,c,firstiter, a,x′,Δx′,args...)
+function Newmarkβdecrement!{1}(state::State,Δx ,Xdofgr,c,firstiter, a,x′,Δx′,args...)
     a₁,a₂ = c.a₁,c.a₂
 
     if firstiter
-        getdof!(state,1,x′,Xdofgr) 
+        get!(state,2,x′,Xdofgr) 
         a       .= a₂*x′
         Δx′     .= a₁*Δx .+ a
     else
@@ -127,7 +132,7 @@ function Newmarkβdecrement!{1}(state,Δx ,Xdofgr,c,firstiter, a,x′,Δx′,arg
     decrement!(state,1,Δx ,Xdofgr)
     decrement!(state,2,Δx′,Xdofgr)
 end
-function Newmarkβdecrement!{0}(state,Δx ,Xdofgr,args...)
+function Newmarkβdecrement!{0}(state::State,Δx ,Xdofgr,args...)
     decrement!(state,1,Δx ,Xdofgr)
 end
 
@@ -188,7 +193,7 @@ function solve(SX::Type{SweepX{OX}},pstate,verbose,dbg;
     model,dis        = initialstate.model,initialstate.dis
     out,asm,Xdofgr   = prepare(AssemblySweepX{OX},model,dis)  
     nXdof            = getndof(Xdofgr)
-    buffer           = ntuple(i->𝕣1(undef,nXdof), 6)  
+    buffer           = NTuple{6}(𝕣1(undef,nXdof) for i=1:6)  
     citer            = 0
     cΔx²,cLλ²        = maxΔx^2,maxLλ^2
     state            = State{1,OX+1,1}(copy(initialstate)) 

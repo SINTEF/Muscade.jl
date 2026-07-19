@@ -76,6 +76,14 @@ mutable struct Model
     locked      :: 𝕓
 end
 
+function Base.show(io::IO,o::Model)
+    printstyled(io,":",o.ID;color=:green,bold=false)
+    lock = o.locked ? " (locked): " : " (unlocked): "
+    print(io,lock)
+    print(io,length(o.nod)," nodes, ",sum(length.(o.ele))," elements of ",length(o.ele)," types, ")
+    print(io,getndof(o,:X)," X-dofs, ",getndof(o,:U)," U-dofs, ",getndof(o,:A)," A-dofs")
+end
+
 # Model construction - private
 
 firstindex(x)                     = any(x) ? findfirst(x) : 0
