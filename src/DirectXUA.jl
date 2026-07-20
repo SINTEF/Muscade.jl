@@ -145,24 +145,24 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,el
     end 
 end
 struct   DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,NDΛ,NDX,NDU,NDA} end
-function DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,NDΛ,NDX,NDU,NDA}(out,asm,L,iele,Δt) where{mission,Nx,Nu,Na,NDΛ,NDX,NDU,NDA}
+function DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,NDΛ,NDX,NDU,NDA}(out,asm,L,iele,Δt,class=λxua) where{mission,Nx,Nu,Na,NDΛ,NDX,NDU,NDA}
     if     mission==:matrices     P=2
     elseif mission==:vectors      P=1
     end
     ndof         = (Nx, Nx, Nu, Na)
     nder         = (NDΛ,NDX,NDU,NDA)
-    Np           = Nx + Nx*(NDX) + Nu*(NDU) + Na*NDA # number of partials
-    λxua         = 1:4
+    Np           = npartial(L)
+    @assert Np   == Nx + Nx*(NDX) + Nu*(NDU) + Na*NDA # number of partials
     ∇L           = ∂{P,Np}(L)
     pα           = 0   # points into the partials, 1 entry before the start of relevant partial derivative in α,ider-loop
-    for α∈λxua, αder=1:nder[α]   # we must loop over all time derivatives to correctly point into the adiff-partials...
+    for α∈class, αder=1:nder[α]   # we must loop over all time derivatives to correctly point into the adiff-partials...
         iα       = pα.+(1:ndof[α])
         pα      += ndof[α]
         Lα       = out.L1[α]
         isassigned(Lα,αder) && add_value!(Lα[αder] ,asm[arrnum(α)],iele,∇L,iα;Δt)
         if mission==:matrices
             pβ       = 0
-            for β∈λxua, βder=1:nder[β]
+            for β∈class, βder=1:nder[β]
                 iβ   = pβ.+(1:ndof[β])
                 pβ  += ndof[β]
                 Lαβ = out.L2[α,β]
@@ -181,10 +181,10 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,el
     end
     if NDA == 1   
         _,_,(∂Λ,∂X,∂U,∂A) = variate{P}((Λ[1],X,U,A),scale=(scale.Λ,AllElements(scale.X),AllElements(scale.U),scale.A))
-        L,FB        = getlagrangian(eleobj, ∂Λ,∂X,∂U,∂A,t,SP,dbg)
+        L,FB              = getlagrangian(eleobj, ∂Λ,∂X,∂U,∂A,t,SP,dbg)
     else
         _,_,(∂Λ,∂X,∂U)  = variate{P}((Λ[1],X,U),scale=(scale.Λ,AllElements(scale.X),AllElements(scale.U)))
-        L,FB        = getlagrangian(eleobj, ∂Λ,∂X,∂U,A  ,t,SP,dbg)
+        L,FB            = getlagrangian(eleobj, ∂Λ,∂X,∂U,A  ,t,SP,dbg)
     end
     DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,NDΛ,NDX,NDU,NDA}(out,asm,L,iele,Δt)
 end
@@ -256,6 +256,93 @@ end
 #                                     end
 #     DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,NDΛ,NDX,NDU,NDA}(out,asm,L,iele,Δt)
 # end
+
+
+function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,o::ElementCostAndConstraint{NSO,ElementType,λxinod,λuinod},no_second_order::Val{true}, 
+                           Λ::NTuple{1   ,SVector{Nx}},
+                           X::NTuple{NDX_,SVector{Nx}},
+                           U::NTuple{NDU_,SVector{Nu}},
+                           A::            SVector{Na} ,t,Δt,SP,dbg) where{mission,NDΛ,NDX,NDU,NDA,NSO,ElementType,λxinod,λuinod,NDX_,NDU_,Nx,Nu,Na} 
+
+    iλx,iλu,ix,iu      = dofpartition(typeof(o))
+    Nλ                 = length(iλx)+length(iλu) # !!! not length(Λ) !!!
+    if     mission==:matrices     P=2
+    elseif mission==:vectors      P=1
+    end
+     
+    Xe                 = getsomedofs(X,ix) 
+    Ue                 = getsomedofs(U,iu) 
+
+    if     NDA == 1  
+        _,_,(∂X,∂U,∂A) = variate{P-1}((X,U,A),scale=(AllElements(scale.X),AllElements(scale.U),scale.A))
+        R,FB,eleres    = getresidual(o.eleobj, ∂X,∂U,∂A,t,SP,(dbg...,via=:ElementDofAndCoonstraintAccelerator),o.req.eleres)  
+        class          = xua
+    elseif NDA == 0
+        _,_,(∂X,∂U)    = variate{P-1}((X,U  ),scale=(AllElements(scale.X),AllElements(scale.U)        ))
+        R,FB,eleres    = getresidual(o.eleobj, ∂X,∂U, A,t,SP,(dbg...,via=:ElementDofAndConstraintAccelerator),o.req.eleres)  
+        class          = xu
+    end
+
+    iΛ                 = 1:Nx
+    Lλ                 = out.L1[ind.Λ]
+    isassigned(Lλ,1) && add_value!(Lλ[1] ,asm[arrnum(ind.Λ)],iele,R,iΛ;Δt)
+    if mission==:matrices
+        ndof           = (Nx, Nx, Nu, Na)
+        nder           = (NDΛ,NDX,NDU,NDA)
+        pβ             = 0
+        for β∈class, βder=1:nder[β]
+            iβ         = pβ.+(1:ndof[β])
+            pβ        += ndof[β]
+            Lλβ        = out.L2[ind.Λ,β]
+            Lβλ        = out.L2[β,ind.Λ]
+            isassigned(Lλβ,1,βder) && add_∂!{1,:plus,:notranspose}(Lλβ[1,βder],asm[arrnum(ind.Λ,β)],iele,R,iΛ,iβ;Δt)
+            isassigned(Lβλ,βder,1) && add_∂!{1,:plus,  :transpose}(Lβλ[βder,1],asm[arrnum(β,ind.Λ)],iele,R,iβ,iΛ;Δt)
+        end
+    end
+
+
+    Releres            = revariate{P}(eleres) 
+    @show Releres
+
+    if typeof(o.cost)  ≠ Nothing  
+        Rcost          = o.cost(Releres,t,o.costargs...)
+        cost           = chainrule(Rcost,to_order{P,npartial(eleres)}(eleres))  
+        @show Rcost
+        @show cost
+        DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,NDΛ,NDX,NDU,NDA}(out,asm,cost,iele,Δt)
+    end
+    if typeof(o.gap)   ≠ Nothing   
+        γ              = default{:γ}(SP,0.)
+        λ              = SVector(∂0(X)[iλx]...,∂0(U)[iλu]...) # NOT VARIATED!!!  
+
+        Rgap           = o.gap(Releres,t,o.gapargs...)
+        gap            = chainrule(Rgap,to_order{P,npartial(eleres)}(eleres))
+        mode           = o.mode(t)
+        @show Rgap
+        @show gap
+
+        gap  isa SVector{Nλ} || error( "Functor `gap` must return a SVector{length(λxinod)+length(λuinod)}")
+        mode isa SVector{Nλ} || error("Functor `mode` must return a SVector{length(λxinod)+length(λuinod)}")
+        for iλ ∈ eachindex(λ)
+            λᵢ,mᵢ,gapᵢ = λ[iλ],mode[iλ],gap[iλ]
+            ΔL_=if   mᵢ==:equal;    gapᵢ * λᵢ     
+            elseif   mᵢ==:positive; KKT(λᵢ,gapᵢ,γ) 
+            elseif   mᵢ==:off;      0.5*(λᵢ * λᵢ) 
+            end
+            @show L
+            if λ==1 L  = -ΔL_
+            else    L -=  ΔL_  
+            end
+            @show gapᵢ
+            @show λᵢ
+            @show ΔL_
+            @show L    
+        end
+        DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,NDΛ,NDX,NDU,NDA}(out,asm,cost,iele,Δt)
+    end   
+
+end
+
 
 
 ## Assembly of bigsparse for all time steps at once

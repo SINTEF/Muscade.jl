@@ -396,11 +396,15 @@ Taylor(y::Tuple,x₀,x) = McLaurin(y,x-x₀)
     chainrule(Ty,x)
 
 Apply a chain rule in automatic differentiation.  For example 
+
     Tx = revariate(x)
     Ty = f(Tx)
     y  = chainrule(Ty,x)    
+
 is faster than
+
     y  = f(x)
+
 if the length of `x` is smaller than the length of its partials.
 
 See also: [`revariate`](@ref), [`apply`](@ref)    

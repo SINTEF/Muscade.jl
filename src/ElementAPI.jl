@@ -54,16 +54,14 @@ See also: [`∂0`](@ref),[`∂1`](@ref),[`getsomedofs`](@ref)
 Used by elements' [`residual`](@ref), [`lagrangian`](@ref) or [`update_drawing`](@ref) to obtain 
 some degrees of freedom. 
 
-`X` and `U` are provided as `NTuple`s of `SVector` (`Matrix` in the case of `update_drawing`](@ref)).
-`getsomedofs` forms a `NTuple` containing the selected array components.  Where e.g. `X` is a `SMatrix`,
+`X` and `U` are provided as `NTuple`s of `SVector` (of `Matrix` in the case of `update_drawing`](@ref)).
+`getsomedofs` forms a `NTuple` containing the selected array components.  Where e.g. `X` is a `Matrix`,
 the indexing is applied to the first dimension (corresponding to the dofs) 
 
 See also: [`∂0`](@ref),[`∂1`](@ref),[`∂2`](@ref),[`motion`](@ref)  
 """
 getsomedofs(A::NTuple{Nder,SVector},ind) where{Nder} = ntuple(i->A[i][ind  ],Nder)
-getsomedofs(A::NTuple{Nder, Matrix},ind) where{Nder} = ntuple(i->A[i][ind,:],Nder)
-
-#const Dof{Ndof,Nder} = NTuple{Nder,SVector{Ndof}}
+getsomedofs(A::NTuple{Nder, Matrix},ind) where{Nder} = ntuple(i->view(A[i],ind,:),Nder)
 
 """
     c = coord(node)

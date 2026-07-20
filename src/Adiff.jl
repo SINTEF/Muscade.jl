@@ -473,20 +473,24 @@ This differs from Julia's `sinc(x) = sin(π*x)/(π*x)`.
 end
 
 # Print addifs
-const subscripts = ('₁','₂','₃','₄','₅','₆','₇','₈','₉')
-#string_(a::Float64) = strip(@sprintf("%18.16g",a))
-string_(a::Float64) = strip(replace(@sprintf("%5.3g",a),"e+0"=>"e","e+"=>"e","e-0"=>"e-"))
+const subscripts    = ('₀','₁','₂','₃','₄','₅','₆','₇','₈','₉')
+string_(a::Float64) = a==0 ? '⋅' : strip(replace(@sprintf("%5.3g",a),"e+0"=>"e","e+"=>"e","e-0"=>"e-"))   
 function string_(a::∂ℝ{P,N,R}) where{P,N,R}
-    p = subscripts[P]
-    x = string_(a.x)
-    dx = N==0 ? "" : @sprintf("%s",string_(a.dx[1]))
-    for i = 2:N
-       dx =   @sprintf("%s,%s",dx,string_(a.dx[i])) 
+    p    = subscripts[P+1]
+    str  = @sprintf("∂%s⟨",p)     
+    str *= string_(a.x)
+    str *= P==1 ? @sprintf("|%s",p) : @sprintf("|%s ",p)     
+    if N>0
+        str *= string_(a.dx[1])
+        for i = 2:N
+            str *= P==1 ? "," : ", " 
+            str *= string_(a.dx[i])
+        end
     end
-#    return @sprintf("%s+∂%s⟨%s⟩",x,p,dx) # \partial \langle \rangle mathematicaly-explicit
-    return @sprintf("∂%s⟨%s|%s⟩",p,x,dx) # \partial \langle \rangle mathematicaly-explicit
+    str *= "⟩"     
+    return str
 end
-#Base.show(io::IO,a::∂ℝ) = print(io,string_(a))
+Base.show(io::IO,a::∂ℝ) = print(io,string_(a))
 
 """
     Muscade.isapprox_dbg(a,b;kwargs...)
