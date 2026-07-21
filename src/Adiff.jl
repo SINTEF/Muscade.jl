@@ -492,6 +492,32 @@ function string_(a::∂ℝ{P,N,R}) where{P,N,R}
 end
 Base.show(io::IO,a::∂ℝ) = print(io,string_(a))
 
+# using StyledStrings
+# const subscripts    = ('₀','₁','₂','₃','₄','₅','₆','₇','₈','₉')
+# Pcolor(P)           = 1≤P≤5 ? (:bright_red, :bright_green, :yellow,:cyan,  :magenta)[P] : :bright_green 
+# colstr(s,c::Symbol) = styled"{$(c):$(s)}"
+# #colstr(s,c::Symbol) = styled"{bold,$(c):$(s)}"
+# colstr(s,p::Int)    = colstr(s,Pcolor(p))
+# string_(a::Float64) = a==0 ? colstr('⋅',:white) : strip(replace(@sprintf("%5.3g",a),"e+0"=>"e","e+"=>"e","e-0"=>"e-"))   
+# function string_(a::∂ℝ{P,N,R}) where{P,N,R}
+#     p    = subscripts[P+1]
+#     str  = colstr(@sprintf("∂%s⟨",p),P)     
+#     str *= string_(a.x)
+#     str *= colstr(P==1 ? @sprintf("|%s",p) : @sprintf("|%s ",p),P)     
+#     if N>0
+#         str *= string_(a.dx[1])
+#         for i = 2:N
+#             str *= colstr(P==1 ? "," : ", ",P) 
+#             str *= string_(a.dx[i])
+#         end
+#     end
+#     str *= colstr("⟩",P)     
+#     return str
+# end
+# Base.show(io::IO,a::∂ℝ) = print(io,string_(a))
+
+
+
 """
     Muscade.isapprox_dbg(a,b;kwargs...)
 

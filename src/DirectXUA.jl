@@ -152,7 +152,12 @@ function DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,NDΛ,NDX,NDU,NDA}(out,a
     ndof         = (Nx, Nx, Nu, Na)
     nder         = (NDΛ,NDX,NDU,NDA)
     Np           = npartial(L)
-    @assert Np   == Nx + Nx*(NDX) + Nu*(NDU) + Na*NDA # number of partials
+    if Np   ≠ Nx*NDΛ + Nx*NDX + Nu*NDU + Na*NDA
+        @show Np
+        @show ndof
+        @show nder
+    end
+    @assert Np   == Nx*NDΛ + Nx*NDX + Nu*NDU + Na*NDA # number of partials
     ∇L           = ∂{P,Np}(L)
     pα           = 0   # points into the partials, 1 entry before the start of relevant partial derivative in α,ider-loop
     for α∈class, αder=1:nder[α]   # we must loop over all time derivatives to correctly point into the adiff-partials...
@@ -302,14 +307,11 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,o:
 
 
     Releres            = revariate{P}(eleres) 
-    @show Releres
 
     if typeof(o.cost)  ≠ Nothing  
         Rcost          = o.cost(Releres,t,o.costargs...)
         cost           = chainrule(Rcost,to_order{P,npartial(eleres)}(eleres))  
-        @show Rcost
-        @show cost
-        DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,NDΛ,NDX,NDU,NDA}(out,asm,cost,iele,Δt)
+        DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,0,NDX,NDU,NDA}(out,asm,cost,iele,Δt)
     end
     if typeof(o.gap)   ≠ Nothing   
         γ              = default{:γ}(SP,0.)
@@ -329,16 +331,15 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,o:
             elseif   mᵢ==:positive; KKT(λᵢ,gapᵢ,γ) 
             elseif   mᵢ==:off;      0.5*(λᵢ * λᵢ) 
             end
-            @show L
-            if λ==1 L  = -ΔL_
-            else    L -=  ΔL_  
+            if iλ==1 L  = -ΔL_
+            else     L -=  ΔL_  
             end
             @show gapᵢ
             @show λᵢ
             @show ΔL_
             @show L    
         end
-        DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,NDΛ,NDX,NDU,NDA}(out,asm,cost,iele,Δt)
+        DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,0,NDX,NDU,NDA}(out,asm,cost,iele,Δt)
     end   
 
 end
