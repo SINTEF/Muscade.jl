@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This section presents the theory of how FEM-optimization problems are *defined* or formulated.  This is of interest both for the user of a `Muscade`-based application, and for someone implementing new elements to create such an application.
+This section presents the theory of how FEM-optimisation problems are *defined* or formulated.  This is of interest both for the user of a `Muscade`-based application, and for someone implementing new elements to create such an application.
 
 ## Classes of degrees of freedom
 
@@ -76,7 +76,7 @@ One example of built-in element defining a cost is [`DofCost`](@ref), an element
 
 Another built-in element is [`ElementCost`](@ref), an element to add a cost which is a function of an element-result. For example, a bar element can have "axial strain" as an internal value, that is, a value it computes that is neither a dof nor a residual. 
 
-## Constrained optimization
+## Constrained optimisation
 
 Making ``Q`` stationary under the equilibrium constraints ``R(X,U,A)=0`` is equivalent to finding a stationary point (a saddle point) of the *Lagrangian* ``L``
 
@@ -94,7 +94,7 @@ For evolution problems (involving a time-dependency), the dot product ``R(X,U,A)
 
 In the original finite element analysis, the *elements* in a model form a partition of a domain over which differential equations are to be solved. We will call these "physical elements".  These elements provide additive contributions to the system of equations ``R(X,U,A)=0``. Further contributions can come from external loads.
 
-When doing optimization-FEM in `Muscade`, the elements provide additive contributions to the Lagrangian scalar ``L``, instead of to the residual vector ``R``. Actually when creating a new element in `Muscade` to create an application, one can either implement a contribution to ``R`` by implementing a method `Muscade.residual` for the element, or a contribution to ``L`` by implementing `Muscade.lagrangian`.  For performance, whenever possible (for example when implementing a physical element), prefer `Muscade.residual`. 
+When doing optimisation-FEM in `Muscade`, the elements provide additive contributions to the Lagrangian scalar ``L``, instead of to the residual vector ``R``. Actually when creating a new element in `Muscade` to create an application, one can either implement a contribution to ``R`` by implementing a method `Muscade.residual` for the element, or a contribution to ``L`` by implementing `Muscade.lagrangian`.  For performance, whenever possible (for example when implementing a physical element), prefer `Muscade.residual`. 
 
 ## Physical and optimisation constraints
 
