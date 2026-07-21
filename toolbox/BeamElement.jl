@@ -120,7 +120,14 @@ yᵥ(ζ) =        ζ^2   - 1/4  # deflection due to differenttial rotation (bend
 """
     EulerBeam3D <: AbstractElement
 
-A three-dimensional Euler beam element, with two nodes, twelve X-dofs and three U-dofs.
+A three-dimensional Euler beam element, with two nodes and twelve X-dofs. An additonal third node carrying three U-dofs can optionally be added. 
+
+# Description of the degrees of freedom
+The node coordinates provided to the constructor of an `EulerBeam3D` define the "as-meshed" coordinates of the nodes. 
+The three X-dofs carried by each node with field names `:t1`, `:t2`, and `:t3` describe the displacement vector of that node with respect to the as-meshed coordinates in a cartesian global coordinate system. The three X-dofs carried by each node with field names `:r1`, `:r2`, and `:r3`, describe the rotation of this node, using a Rodrigues representation: the direction of (`:r1`,`:r2`,`:r3`) defines the axis of rotation, and the magnitude of this vector defines the angle of rotation (in gradian). 
+
+Three additional U-dofs can be added by calling [`addelement!`](@ref) with `EulerBeam3D{true}` instead of `EulerBeam3D`. These U-dofs, carried by a third node, and with field names `:t1`, `:t2`, and `:t3`, represent the three components of an unknown uniformly distributed load (unit will be force per unit length) on the beam, expressed in the global coordinate system.
+
 # Arguments to the constructor
 -   `nod   :: Vector{Node}` contains the element's nodes
 -   `mat   :: Mat` contains the material properties ([`BeamCrossSection`](@ref), for example)
@@ -389,8 +396,8 @@ function Muscade.update_drawing(axis,o::AbstractVector{EulerBeam3D{Tmat,Udof}},o
             rₛ₂              = Rodrigues(vᵧ₂)
             if opt.Udof
                 ucrest[:,1,iel] = node[:,1,iel]
-                ucrest[:,2,iel] = node[:,1,iel] + rₛₘ ∘₁ view(U₀,:,iel) * opt.Uscale
-                ucrest[:,3,iel] = node[:,2,iel] + rₛₘ ∘₁ view(U₀,:,iel) * opt.Uscale
+                ucrest[:,2,iel] = node[:,1,iel] + view(U₀,:,iel) * opt.Uscale
+                ucrest[:,3,iel] = node[:,2,iel] + view(U₀,:,iel) * opt.Uscale
                 ucrest[:,4,iel] = node[:,2,iel]
                 ucrest[:,5,iel].= NaN
             end
