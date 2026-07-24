@@ -16,7 +16,7 @@ module Muscade
     export ℝ2,ℤ2,𝕣2,𝕫2,𝔹2,𝕓2
     export ℝ11,ℤ11,𝕣11,𝕫11,𝔹11,𝕓11
     export default
-    public toggle,mod_onebased
+    public toggle,mod_onebased, @print
 
     include("OffsetVector.jl")
 

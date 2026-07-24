@@ -152,11 +152,6 @@ function DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,NDΛ,NDX,NDU,NDA}(out,a
     ndof         = (Nx, Nx, Nu, Na)
     nder         = (NDΛ,NDX,NDU,NDA)
     Np           = npartial(L)
-    if Np   ≠ Nx*NDΛ + Nx*NDX + Nu*NDU + Na*NDA
-        @show Np
-        @show ndof
-        @show nder
-    end
     @assert Np   == Nx*NDΛ + Nx*NDX + Nu*NDU + Na*NDA # number of partials
     ∇L           = ∂{P,Np}(L)
     pα           = 0   # points into the partials, 1 entry before the start of relevant partial derivative in α,ider-loop
@@ -164,6 +159,7 @@ function DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,NDΛ,NDX,NDU,NDA}(out,a
         iα       = pα.+(1:ndof[α])
         pα      += ndof[α]
         Lα       = out.L1[α]
+#        @show α,αder,iα,isassigned(Lα,αder)
         isassigned(Lα,αder) && add_value!(Lα[αder] ,asm[arrnum(α)],iele,∇L,iα;Δt)
         if mission==:matrices
             pβ       = 0
@@ -171,6 +167,7 @@ function DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,NDΛ,NDX,NDU,NDA}(out,a
                 iβ   = pβ.+(1:ndof[β])
                 pβ  += ndof[β]
                 Lαβ = out.L2[α,β]
+#                @show α,β,αder,βder,iα,iβ,isassigned(Lαβ,αder,βder)
                 isassigned(Lαβ,αder,βder) && add_∂!{1}(Lαβ[αder,βder],asm[arrnum(α,β)],iele,∇L,iα,iβ;Δt)
             end
         end
@@ -193,74 +190,12 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,el
     end
     DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,NDΛ,NDX,NDU,NDA}(out,asm,L,iele,Δt)
 end
-# Specialised to accelerate ElementCost and ElementConstraint
-# function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,eleobj::Union{ElementCost,ElementConstraint},no_second_order::Val{false}, 
-#                            Λ::NTuple{1   ,SVector{Nx}},
-#                            X::NTuple{NDX_,SVector{Nx}},
-#                            U::NTuple{NDU_,SVector{Nu}},
-#                            A::            SVector{Na} ,t,Δt,SP,dbg) where{mission,NDΛ,NDX,NDU,NDA,NDX_,NDU_,Nx,Nu,Na} 
-#          addin!{mission}(out,asm,iele,scale,eleobj,Val(true),Λ,X,U,A,t,Δt,SP,dbg) 
-# end
-# # function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,eleobj::ElementConstraint,no_second_order::Val{false}, 
-# #                          Λ::NTuple{1   ,SVector{Nx}},
-# #                          X::NTuple{NDX_,SVector{Nx}},
-# #                          U::NTuple{NDU_,SVector{Nu}},
-# #                          A::            SVector{Na} ,t,Δt,SP,dbg) where{mission,NDΛ,NDX,NDU,NDA,NDX_,NDU_,Nx,Nu,Na} 
-# #          addin!{mission}(out,asm,iele,scale,eleobj,Val(true),Λ,X,U,A,t,Δt,SP,dbg) 
-# # end
-#function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,eleobj::ElementCost,no_second_order::Val{true}, 
-# function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,eleobj::ElementCost,no_second_order, 
-#                            Λ::NTuple{1   ,SVector{Nx}},
-#                            X::NTuple{NDX_,SVector{Nx}},
-#                            U::NTuple{NDU_,SVector{Nu}},
-#                            A::            SVector{Na} ,t,Δt,SP,dbg) where{mission,NDΛ,NDX,NDU,NDA,NDX_,NDU_,Nx,Nu,Na} 
-#     if     mission==:matrices     P=2
-#     elseif mission==:vectors      P=1
-#     end
-#     if     NDA == 1  # NB: compile-time condition
-#         _,_,(∂X,∂U,∂A) = variate{P-1}((X,U,A),scale=(AllElements(scale.X),Broacast(scale.U),scale.A))
-#         R,FB,eleres = getresidual(eleobj.eleobj, ∂X,∂U,∂A,t,SP,(dbg...,via=:ElementCostAccelerator),eleobj.req.eleres)  
-#     elseif NDA == 0
-#         _,_,(∂X,∂U) = variate{P-1}((X,U ),scale=(AllElements(scale.X),AllElements(scale.U)))
-#         R,FB,eleres = getresidual(eleobj.eleobj, ∂X,∂U,  A,t,SP,(dbg...,via=:ElementCostAccelerator),eleobj.req.eleres)  
-#     end
-#     _,_,Releres     = variate{P}(eleres)
-    
-#     Rcost           = eleobj.cost(Releres,t,eleobj.costargs...)
-#     cost            = chainrule(Rcost,to_order{P,npartial(eleres)}(eleres))
-#     L               = Λ[1] ∘₁ R + cost
-#     DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,NDΛ,NDX,NDU,NDA}(out,asm,L,iele,Δt)
-# end
-# #function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,eleobj::ElementConstraint,no_second_order::Val{true}, 
-# function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,eleobj::ElementConstraint,no_second_order, 
-#                            Λ::NTuple{1   ,SVector{Nx}},
-#                            X::NTuple{NDX_,SVector{Nx}},
-#                            U::NTuple{NDU_,SVector{Nu}},
-#                            A::            SVector{Na} ,t,Δt,SP,dbg) where{mission,NDΛ,NDX,NDU,NDA,NDX_,NDU_,Nx,Nu,Na} 
-# # TODO Specialised code to accelerate constraints in DirectXUA, but... it does not set FB, and DirectXUA/solve has no line search...                                
-#     if     mission==:matrices     P=2
-#     elseif mission==:vectors      P=1
-#     end
-#     u               = getsomedofs(U,SVector{Nu}(1:Nu-1))
-#     λ               = ∂0(U)[Nu]
-#     γ               = default{:γ}(SP,0.)
-#     m               = eleobj.mode(t)
-#     if     NDA == 1  # NB: compile-time condition
-#         _,_,(∂X,∂U,∂A) = variate{P-1}((X,U,A),scale=(AllElements(scale.X),AllElements(scale.U),scale.A))
-#         R,FB,eleres = getresidual(eleobj.eleobj, ∂X,∂U,∂A,t,SP,(dbg...,via=:ElementCoonstraintAccelerator),eleobj.req)  
-#     elseif NDA == 0
-#         _,_,(∂X,∂U) = variate{P-1}((X,U ),scale=(AllElements(scale.X),AllElements(scale.U)))
-#         R,FB,eleres = getresidual(eleobj.eleobj, ∂X,∂U,  A,t,SP,(dbg...,via=:ElementConstraintAccelerator),eleobj.req)  
-#     end
-#     _,_,Releres     = variate{P}(eleres)
-#     Rgap            = eleobj.gap(eleres,t,eleobj.gargs...)
-#     gap             = chainrule(Rgap,to_order{P,npartial(eleres)}(eleres))
-#     L               = Λ[1] ∘₁ R +   if      m==:equal;    -gap*λ   
-#                                     elseif  m==:positive; -KKT(λ,gap,γ) 
-#                                     elseif  m==:off;      -0.5λ^2 
-#                                     end
-#     DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,NDΛ,NDX,NDU,NDA}(out,asm,L,iele,Δt)
-# end
+
+
+
+
+#####################################################
+
 
 
 function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,o::ElementCostAndConstraint{NSO,ElementType,λxinod,λuinod},no_second_order::Val{true}, 
@@ -269,62 +204,79 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,o:
                            U::NTuple{NDU_,SVector{Nu}},
                            A::            SVector{Na} ,t,Δt,SP,dbg) where{mission,NDΛ,NDX,NDU,NDA,NSO,ElementType,λxinod,λuinod,NDX_,NDU_,Nx,Nu,Na} 
 
-    iλx,iλu,ix,iu      = dofpartition(typeof(o))
-    Nλ                 = length(iλx)+length(iλu) # !!! not length(Λ) !!!
+# Possible optimisation: adiff wrt eX,eU,A only, and create functionality to expand partials (for KKT operations with λX, λU)
+# This affect the add_∂! calls
+    local L
+
+    iλX,ieX,iλU,ieU,iλA,ieA = dofpartition(typeof(o))
+    ieΛ,Nλ                  = ieX,Nx                  
+    ncstr                   = length(iλX)+length(iλU) 
     if     mission==:matrices     P=2
     elseif mission==:vectors      P=1
     end
      
-    Xe                 = getsomedofs(X,ix) 
-    Ue                 = getsomedofs(U,iu) 
-
     if     NDA == 1  
-        _,_,(∂X,∂U,∂A) = variate{P-1}((X,U,A),scale=(AllElements(scale.X),AllElements(scale.U),scale.A))
-        R,FB,eleres    = getresidual(o.eleobj, ∂X,∂U,∂A,t,SP,(dbg...,via=:ElementDofAndCoonstraintAccelerator),o.req.eleres)  
-        class          = xua
+        _,N∂,(∂X,∂U,∂A)  = variate{P-1}((X,U,A),scale=(AllElements(scale.X),AllElements(scale.U),scale.A))
+        ∂eX              = getsomedofs(∂X,ieX) 
+        ∂eU              = getsomedofs(∂U,ieU) 
+        eR,FB,eleres     = getresidual(o.eleobj, ∂eX,∂eU,∂A,t,SP,(dbg...,via=:ElementDofAndCoonstraintAccelerator),o.req.eleres)  
+        class            = xua
     elseif NDA == 0
-        _,_,(∂X,∂U)    = variate{P-1}((X,U  ),scale=(AllElements(scale.X),AllElements(scale.U)        ))
-        R,FB,eleres    = getresidual(o.eleobj, ∂X,∂U, A,t,SP,(dbg...,via=:ElementDofAndConstraintAccelerator),o.req.eleres)  
-        class          = xu
+        _,N∂,(∂X,∂U)     = variate{P-1}((X,U  ),scale=(AllElements(scale.X),AllElements(scale.U)        ))
+        ∂eX              = getsomedofs(∂X,ieX) 
+        ∂eU              = getsomedofs(∂U,ieU) 
+        eR,FB,eleres     = getresidual(o.eleobj, ∂eX,∂eU, A,t,SP,(dbg...,via=:ElementDofAndConstraintAccelerator),o.req.eleres)  
+        class            = xu
     end
 
-    iΛ                 = 1:Nx
-    Lλ                 = out.L1[ind.Λ]
-    isassigned(Lλ,1) && add_value!(Lλ[1] ,asm[arrnum(ind.Λ)],iele,R,iΛ;Δt)
-    if mission==:matrices
-        ndof           = (Nx, Nx, Nu, Na)
-        nder           = (NDΛ,NDX,NDU,NDA)
-        pβ             = 0
+    Lλ                   = out.L1[ind.Λ]
+    # out[asm[iasm,iele]] += R[ia]
+    isassigned(Lλ,1) && add_value!(Lλ[1] ,asm[arrnum(ind.Λ)],iele,eR;iasm=ieΛ,Δt) #  I have a vector R from o.eleobj, and I assemble it at the end of o's vector
+
+
+    if mission==:matrices # K,C,M
+        ndof             = (Nλ , Nx, Nu, Na)
+        iedof            = (ieΛ,ieX,ieU,ieA) # where in target's 2nd dim to put
+        nder             = (NDΛ,NDX,NDU,NDA)
+        iα               = SVector{length(ieΛ)}(1:length(ieΛ)) # and NOT ieα: where in eR (not R) to pick
+        pβ               = 0
         for β∈class, βder=1:nder[β]
-            iβ         = pβ.+(1:ndof[β])
-            pβ        += ndof[β]
-            Lλβ        = out.L2[ind.Λ,β]
-            Lβλ        = out.L2[β,ind.Λ]
-            isassigned(Lλβ,1,βder) && add_∂!{1,:plus,:notranspose}(Lλβ[1,βder],asm[arrnum(ind.Λ,β)],iele,R,iΛ,iβ;Δt)
-            isassigned(Lβλ,βder,1) && add_∂!{1,:plus,  :transpose}(Lβλ[βder,1],asm[arrnum(β,ind.Λ)],iele,R,iβ,iΛ;Δt)
+            ieβ          = pβ.+iedof[β]   # which of eR's partials to pick
+            pβ          += ndof[β]
+            Lλβ          = out.L2[ind.Λ,β]
+            Lβλ          = out.L2[β,ind.Λ]
+            # ∀i,j out[asm[ieΛᵢ+Nλ*(iedof[β]-1),iele]] += R[iαᵢ].dx[ieβⱼ]
+            isassigned(Lλβ,1,βder) && add_∂!{1,:plus,:notranspose}(Lλβ[1,βder],asm[arrnum(ind.Λ,β)],iele,eR,iα,ieβ;nasm=Nλ,ndasm=ndof[β],iasm=iedof[ind.Λ],idasm=iedof[β],Δt)  
+            isassigned(Lβλ,βder,1) && add_∂!{1,:plus,  :transpose}(Lβλ[βder,1],asm[arrnum(β,ind.Λ)],iele,eR,iα,ieβ;nasm=Nλ,ndasm=ndof[β],iasm=iedof[ind.Λ],idasm=iedof[β],Δt)  
         end
     end
-
 
     Releres            = revariate{P}(eleres) 
 
     if typeof(o.cost)  ≠ Nothing  
         Rcost          = o.cost(Releres,t,o.costargs...)
-        cost           = chainrule(Rcost,to_order{P,npartial(eleres)}(eleres))  
+        cost           = chainrule(Rcost,to_order{P,N∂}(eleres))
         DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,0,NDX,NDU,NDA}(out,asm,cost,iele,Δt)
+        # @show :aftercost, Matrix(out.L2[ind.X,ind.X][1,1])
+        # @show :aftercost, Matrix(out.L2[ind.X,ind.X][2,2])
+        # @show :aftercost, Matrix(out.L2[ind.X,ind.X][3,3])
     end
+
     if typeof(o.gap)   ≠ Nothing   
         γ              = default{:γ}(SP,0.)
-        λ              = SVector(∂0(X)[iλx]...,∂0(U)[iλu]...) # NOT VARIATED!!!  
+        λ_             = SVector(∂0(∂X)[iλX]...,∂0(∂U)[iλU]...) 
+        λ              = to_order{P,N∂}(λ_) 
 
-        Rgap           = o.gap(Releres,t,o.gapargs...)
-        gap            = chainrule(Rgap,to_order{P,npartial(eleres)}(eleres))
+        Rgap           = o.gap(Releres,t,o.gapargs...)                         #             2nd order derivative of gap wrt eleres
+        gap            = chainrule(Rgap,to_order{P,N∂}(eleres))  # approximate 2nd order derivative of gap wrt ∂X,∂U,∂A
         mode           = o.mode(t)
-        @show Rgap
-        @show gap
+        # @show λ_
+        # @show λ
+        # @show Rgap
+        # @show gap
 
-        gap  isa SVector{Nλ} || error( "Functor `gap` must return a SVector{length(λxinod)+length(λuinod)}")
-        mode isa SVector{Nλ} || error("Functor `mode` must return a SVector{length(λxinod)+length(λuinod)}")
+        gap  isa SVector{ncstr} || error( "Functor `gap` must return a SVector{length(λxinod)+length(λuinod)}")
+        mode isa SVector{ncstr} || error("Functor `mode` must return a SVector{length(λxinod)+length(λuinod)}")
         for iλ ∈ eachindex(λ)
             λᵢ,mᵢ,gapᵢ = λ[iλ],mode[iλ],gap[iλ]
             ΔL_=if   mᵢ==:equal;    gapᵢ * λᵢ     
@@ -334,12 +286,14 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,o:
             if iλ==1 L  = -ΔL_
             else     L -=  ΔL_  
             end
-            @show gapᵢ
-            @show λᵢ
-            @show ΔL_
-            @show L    
+            # @show gapᵢ
+            # @show λᵢ
+            # @show ΔL_
+            # @show L  
         end
+#        @show :beforeconstraint Matrix(out.L2[ind.Λ,ind.X][1,1])
         DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,0,NDX,NDU,NDA}(out,asm,cost,iele,Δt)
+#        @show :afterconstraint Matrix(out.L2[ind.Λ,ind.X][1,1])
     end   
 
 end

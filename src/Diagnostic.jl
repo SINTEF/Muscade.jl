@@ -16,7 +16,7 @@ Print out information about `model`.
 Provide a description of the dofs stored in `state`.
 `class` can be either `:all`, `:Λ`, `:ΛX`, `:X`, `:U`, `:A` or `:scale`.
 
-See also: [`addelement!`](@ref), [`addnode!`](@ref)
+See also: [`get`](@ref) to obtain data instead of printing to screen.
 """
 function describe(model::Model,eleID::EleID)
     local ele

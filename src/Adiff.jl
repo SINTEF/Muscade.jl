@@ -492,7 +492,7 @@ function string_(a::∂ℝ{P,N,R}) where{P,N,R}
 end
 Base.show(io::IO,a::∂ℝ) = print(io,string_(a))
 
-# using StyledStrings
+# using StyledStrings # this package has a hex on it
 # const subscripts    = ('₀','₁','₂','₃','₄','₅','₆','₇','₈','₉')
 # Pcolor(P)           = 1≤P≤5 ? (:bright_red, :bright_green, :yellow,:cyan,  :magenta)[P] : :bright_green 
 # colstr(s,c::Symbol) = styled"{$(c):$(s)}"

@@ -666,7 +666,7 @@ end
     NSO      = no_second_order(ElementType) 
 
     @assert ~(ElementType isa ElementCostAndConstraint) "ElementCostAndConstraint cannot be nested"
-    return ElementCostAndConstraint{NSO,ElementType,λxinod,λuinod,λxfield,λufield,typeof((eleres=req,)),Tgap,Tgargs,Tmode,Tcost,Tcostargs}(
+    ElementCostAndConstraint{NSO,ElementType,λxinod,λuinod,λxfield,λufield,typeof((eleres=req,)),Tgap,Tgargs,Tmode,Tcost,Tcostargs}(
                        eleobj,(eleres=req,),gap,gapargs,mode,cost,costargs)
 end
 
@@ -683,46 +683,48 @@ end
     Nλu          = length(λuinod)
     Nx           = getndof(ElementType,:X) # refers to o.eleobj, not o
     Nu           = getndof(ElementType,:U) # refers to o.eleobj, not o
+    Na           = getndof(ElementType,:A) # refers to o.eleobj, not o
     iλx          = SVector{Nλx,𝕫}(    1:    Nλx)
     iλu          = SVector{Nλu,𝕫}(    1:    Nλu)
+    iλa          = SVector{0  ,𝕫}(             )
     ix           = SVector{Nx ,𝕫}(Nλx+1:Nλx+Nx )
     iu           = SVector{Nu ,𝕫}(Nλu+1:Nλu+Nu )
-    return iλx,iλu,ix,iu
+    ia           = SVector{Na ,𝕫}(    1:    Na )
+    return iλx,ix,iλu,iu,iλa,ia
 end
 
 no_second_order(::Type{<:ElementCostAndConstraint{NSO}}) where{NSO} = NSO 
 
 allocate_drawing(       axis,o::AbstractVector{Teleobj};kwargs...) where{Teleobj<:ElementCostAndConstraint} = allocate_drawing(axis,[eᵢ.eleobj for eᵢ∈o];kwargs...)
 function update_drawing(axis,o::AbstractVector{Teleobj},oldmut,opt, Λ,X,U,A,t,SP,dbg) where{Teleobj<:ElementCostAndConstraint{NSO,ElementType,λxinod,λuinod}} where{NSO,ElementType,λxinod,λuinod} 
-    _,_,ix,iu = dofpartition(eltype(o))
-    Λe        = view(Λ,ix,:) 
-    Xe        = getsomedofs(X,ix) 
-    Ue        = getsomedofs(U,iu) 
-    mut       = update_drawing(  axis,[oᵢ.eleobj for oᵢ∈o],oldmut,opt, Λe,Xe,Ue,A,t,SP,dbg)  
+    _,ix,_,iu,_,_ = dofpartition(eltype(o))
+    Λe            = view(Λ,ix,:) 
+    Xe            = getsomedofs(X,ix) 
+    Ue            = getsomedofs(U,iu) 
+    mut           = update_drawing(  axis,[oᵢ.eleobj for oᵢ∈o],oldmut,opt, Λe,Xe,Ue,A,t,SP,dbg)  
     return mut
 end
 display_drawing!(axis,::Type{<:ElementCostAndConstraint{NSO,Teleobj}},obs,opt) where{NSO,Teleobj} = display_drawing!(axis,Teleobj,obs,opt)
 
 
 @espy function lagrangian(o::ElementCostAndConstraint{Val(false),ElementType,λxinod,λuinod}, Λ,X,U,A,t,SP,dbg) where{ElementType,λxinod,λuinod}
-    iλx,iλu,ix,iu = dofpartition(typeof(o))
-    Nλ            = length(iλx)+length(iλu)
-    req           = mergerequest(o.req)
-
-    Λe            = Λ[ix] 
-    Xe            = getsomedofs(X,ix) 
-    Ue            = getsomedofs(U,iu) 
-    L,FB,☼eleres  = getlagrangian(o.eleobj,Λe,Xe,Ue,A,t,SP,(dbg...,via=ElementCostAndConstraint),req.eleres)
+    iλx,ix,iλu,iu,_,_ = dofpartition(typeof(o))
+    Nλ                = length(iλx)+length(iλu)
+    req               = mergerequest(o.req)
+    Λe                = Λ[ix] 
+    Xe                = getsomedofs(X,ix) 
+    Ue                = getsomedofs(U,iu) 
+    L,FB,☼eleres      = getlagrangian(o.eleobj,Λe,Xe,Ue,A,t,SP,(dbg...,via=ElementCostAndConstraint),req.eleres)
 
     if typeof(o.cost) ≠ Nothing    
-        ☼cost     = o.cost(eleres,t,o.costargs...) 
-        L        += cost
+        ☼cost         = o.cost(eleres,t,o.costargs...) 
+        L            += cost
     end
     if typeof(o.gap) ≠ Nothing   
-        γ         = default{:γ}(SP,0.)
-        ☼λ        = SVector(∂0(X)[iλx]...,∂0(U)[iλu]...) 
-        ☼gap      = o.gap( eleres,t,o.gapargs... )
-        ☼mode     = o.mode(t)
+        γ            = default{:γ}(SP,0.)
+        ☼λ           = SVector(∂0(X)[iλx]...,∂0(U)[iλu]...) 
+        ☼gap         = o.gap( eleres,t,o.gapargs... )
+        ☼mode        = o.mode(t)
         gap  isa SVector{Nλ} || error("Functor `gap`  must return a SVector{length(λxinod)+length(λuinod)}")
         mode isa SVector{Nλ} || error("Functor `mode` must return a SVector{length(λxinod)+length(λuinod)}")
         for iλ ∈ eachindex(λ)

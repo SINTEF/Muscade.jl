@@ -424,7 +424,7 @@ where `nodID` is returned by `addnode!`, returns a datastructure:
 end
 
 """
-    get(model::Model,nodID::dofID)
+    get(model::Model,dofID::dofID)
 
 where `dofID` is found in the output of `get(model,eleID)` and `get(model,nodID)`, returns a datastructure:
 - `class`, dofclass `:X`, `:U` or `:A`

@@ -1,4 +1,4 @@
-#module TestElementCostAndConstraint
+module TestElementCostAndConstraint
 
 using Test,StaticArrays
 using Muscade
@@ -12,10 +12,8 @@ n2              = addnode!(model,𝕣[])         # Anod for anchor
 @functor with() cost(eleres,t) =            eleres.Fh^2
 @functor with() gap( eleres,t) = SVector{1}(eleres.Fh^2)
 @functor with() mode(       t) = SVector{1}(:equal     )
-kwargs = (;ElementType=AnchorLine, elementkwargs=(Δxₘtop=[5.,0,0], xₘbot=[250.,0], L=290., buoyancy=-5e3),
-                req=@request(Fh), gap, λxinod=(1,), λxfield=(:λ,), mode,
-                cost)
-elcoco  = ElementCostAndConstraint(model.nod;kwargs...)
+elcoco  = ElementCostAndConstraint(model.nod;ElementType=AnchorLine, elementkwargs=(Δxₘtop=[5.,0,0], xₘbot=[250.,0], L=290., buoyancy=-5e3),
+                req=@request(Fh), gap, λxinod=(1,), λxfield=(:λ,), mode, cost)
 Nx,Nu,Na        = 3+1,0,2   
 λ               =  SVector{Nx,𝕣}(1. for i=1:Nx)
 x               = (SVector{Nx,𝕣}(1. for i=1:Nx),)
@@ -71,10 +69,28 @@ end
 
 ## Test addin!(AssemblyDirect,...)
 
-addelement!(model,ElementCostAndConstraint,[n1,n2];kwargs...)
-OX,OU,IA              = 0,0,0
-wanted                = Muscade.Wanted{1,OX+1,OU+1,IA}(:all,:all)
+req                            = @request((damping,C))
+@functor with() cost(eleres,t) =            eleres.damping^2
+@functor with() gap( eleres,t) = SVector{2}(eleres.damping^2,eleres.C) # λX,λU
+@functor with() mode(       t) = SVector{2}(:equal          ,:equal  )
+
+model                 = Model()
+n1                    = addnode!(model,[0.])
+e1                    = addelement!(model,ElementCostAndConstraint,[n1];  
+                              ElementType=AdjustableSdofOscillator,elementkwargs=(K=1.,C=.1,M=1.),
+                              req, gap, λxinod=(1,), λxfield=(:λx,), λuinod=(1,), λufield=(:λu,), mode, cost)
 initialstate          = initialize!(model)
+
+OX,OU,IA              = 2,0,1
+Nx                    = 2
+Nu                    = 2
+Na                    = 1
+λ                     =             SVector{Nx,𝕣}(1. for i=1:Nx)
+x                     = ntuple(j -> SVector{Nx,𝕣}(1. for i=1:Nx), OX+1)
+u                     = ntuple(j -> SVector{Nu,𝕣}(1. for i=1:Nu), OU+1)
+a                     =             SVector{Na,𝕣}(0. for i=1:Na)
+
+wanted                = Muscade.Wanted{1,OX+1,OU+1,IA}(:all,:all)
 model,dis             = initialstate.model, initialstate.dis
 out,asm,dofgr         = Muscade.prepare(Muscade.AssemblyDirect,model,dis,wanted)          # mem and assembler for system at any given step
 Muscade.zero!(out)
@@ -83,7 +99,52 @@ asmᵢ                  = asm[:,ieletyp]
 scale                 = dis.dis[ieletyp].scale
 t,Δt                  = 0.,1.
 SP                    = nothing
-Muscade.addin!{:matrices}(out,asmᵢ,iele,scale,elcoco,Val(true),(λ,),x,u,a,t,Δt,SP,dbg)
+Muscade.addin!{:matrices}(out,asmᵢ,iele,scale,model.eleobj[1][1],Val(true),(λ,),x,u,a,t,Δt,SP,(;testall=true))
 
+iλ,ix,iu,ia=1,2,3,4
+@testset "drawing" begin
+     @test out.L1[iλ][1] ≈  [0.0, 1.1] 
+     @test out.L1[ix][1] ≈  [0,0]
+     @test out.L1[ix][2] ≈  [0,0.04]
+     @test out.L1[ix][3] ≈  [0,0]
+     @test out.L1[iu][1] ≈  [0,0]
+     @test out.L1[ia][1] ≈  [0.09210340371976185]
 
-;#end
+     @test out.L2[iλ,ix][1,1] ≈ [0 0;0 1]
+     @test out.L2[iλ,ix][1,2] ≈ [0 0;0 .1]
+     @test out.L2[iλ,ix][1,3] ≈ [0 0;0 1]
+     @test out.L2[ix,iλ][1,1] ≈ [0 0;0 1]'
+     @test out.L2[ix,iλ][2,1] ≈ [0 0;0 .1]'
+     @test out.L2[ix,iλ][3,1] ≈ [0 0;0 1]'
+
+     @test out.L2[iλ,iu][1,1] ≈ [0 0;0 -1]
+     @test out.L2[iu,iλ][1,1] ≈ [0 0;0 -1]'
+     
+     @test out.L2[iλ,ia][1,1] ≈ [0,  0.2302585092994046]
+     @test out.L2[ia,iλ][1,1] ≈ [0   0.2302585092994046]
+
+     @test out.L2[ix,ix][1,1] ≈ [0 0;0 0]
+     @test out.L2[ix,ix][1,2] ≈ [0 0;0 0]
+     @test out.L2[ix,ix][1,3] ≈ [0 0;0 0]
+     @test out.L2[ix,ix][2,1] ≈ [0 0;0 0]
+     @test out.L2[ix,ix][2,2] ≈ [0 0;0 0.04]
+     @test out.L2[ix,ix][2,3] ≈ [0 0;0 0]
+     @test out.L2[ix,ix][3,1] ≈ [0 0;0 0]
+     @test out.L2[ix,ix][3,2] ≈ [0 0;0 0]
+     @test out.L2[ix,ix][3,3] ≈ [0 0;0 0]
+
+     @test out.L2[iu,ix][1,1] ≈ [0 0;0 0]
+     @test out.L2[iu,ix][1,2] ≈ [0 0;0 0]
+     @test out.L2[iu,ix][1,3] ≈ [0 0;0 0]
+     @test out.L2[ix,iu][1,1] ≈ [0 0;0 0]
+     @test out.L2[ix,iu][2,1] ≈ [0 0;0 0]
+     @test out.L2[ix,iu][3,1] ≈ [0 0;0 0]
+
+     @test out.L2[ia,ix][1,1] ≈ [0 0]
+     @test out.L2[ia,ix][1,2] ≈ [0.0  0.09210340371976185]
+     @test out.L2[ia,ix][1,3] ≈ [0 0]
+     @test out.L2[ix,ia][1,1] ≈ [0,0]
+     @test out.L2[ix,ia][2,1] ≈ [0.0, 0.09210340371976185]
+     @test out.L2[ix,ia][3,1] ≈ [0,0]
+end
+end

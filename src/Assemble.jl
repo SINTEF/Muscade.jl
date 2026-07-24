@@ -562,17 +562,23 @@ struct   add_∂!{P,S,T} end # to allow syntax with type-parameter P: precedence
 # ia:    where in the vector to pick data
 # ida:   where in the partials to pick data
 # iasm:  where in first dim of out to put data      (if transpose: second)
-# idasm: where in the second dim of out to put data (if transpose: first)
+# idasm: where in the second dim of out to put data (if transpose: first )
+# nasm,nadsm: provide if Na,Nda are not length(ia),length(ida) (you are adding in a fraction of the element's array)
 #
 # ∀ i,j out[asm[iasm[i]+length(ia)*idasm[j]-1,iele]] += a[ia[i]].dx[ida[j]]  
 #
 # out::Array is deliberately vague, encompassing 𝕣2 and sparse.nzval
-function add_∂!{P,S,T}(out::Array,asm,iele,a::SVector{Na,∂ℝ{P,Nda,R}},ia=1:Na,ida=1:Nda ; iasm=idvec,idasm=idvec,Δt=idmult) where{P,Nda,R,Na,S,T}
+function add_∂!{P,S,T}(out::Array,asm,iele,a::SVector{Na,∂ℝ{P,Nda,R}},ia=1:Na,ida=1:Nda ; nasm=length(ia),ndasm=length(ida), iasm=idvec,idasm=idvec,Δt=idmult) where{P,Nda,R,Na,S,T}
+    # println("add_∂!")
+    # @show asm,iele,Na,Nda
+    # @show ia,ida,nasm,ndasm,iasm,idasm,T
     for (i,iaᵢ) ∈ enumerate(ia), (j,idaⱼ) ∈ enumerate(ida)
-        k = if T==:transpose   idasm[j]+length(ida)*( iasm[i]-1)   
-        elseif T==:notranspose iasm[ i]+length( ia)*(idasm[j]-1)  
+        k = if T==:transpose   idasm[j]+ndasm*( iasm[i]-1)   # k: flat index into receiving array
+        elseif T==:notranspose iasm[ i]+nasm *(idasm[j]-1)  
         else   muscadeerror((;T=T),"Illegal value of parameter T")    
         end
+        # @show i,iaᵢ,j,idaⱼ
+        # @show idasm[j],iasm[i],k
         iout = asm[k,iele]
         if iout≠0
             if     S==:plus   out[iout]+=a[iaᵢ].dx[idaⱼ]*Δt  
