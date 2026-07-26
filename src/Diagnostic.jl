@@ -1,10 +1,31 @@
 ##################  describe
+
+"""
+    str = sdump(complex(2.,3.))
+
+Same as `dump`, but returns a string
+"""
+function sdump(var;kwargs...)
+    pipe = IOBuffer()
+    dump(pipe,var;kwargs...)
+    String(take!(pipe))
+end
+using Printf
+"""
+    str = indent(str,n)
+
+Add `n` spaces at the begining of every line in `str`.    
+"""
+indent(str,n) = @sprintf("%s%s"," "^n,replace(str,"\n"=>@sprintf("\n%s"," "^n)))
 """
     describe(model,spec)
 
 Print out information about `model`.
 `spec` can be 
 - an `EleID` to describe an element,
+    additional optional keyword argument:
+    - [depth=0] Set to value>0 to show the data in the element object
+      up to `depth`.
 - a `DofID` to describe a dof.
 - a `NodID` to describe a node,
 - `:doftyp` to obtain a list of doftypes, 
@@ -16,18 +37,22 @@ Print out information about `model`.
 Provide a description of the dofs stored in `state`.
 `class` can be either `:all`, `:Λ`, `:ΛX`, `:X`, `:U`, `:A` or `:scale`.
 
+If an element type requires a customized printout of its data by `describe`,
+implement `str = Muscade.sdump(eleobj::MyElementType;maxdepth=depth)`. `describe` will
+add the initial indentation of 6 spaces to the begining of each line.
+
 See also: [`get`](@ref) to obtain data instead of printing to screen.
 """
-function describe(model::Model,eleID::EleID)
+function describe(model::Model,eleID::EleID;depth=0)
     local ele
     try 
         ele = get(model,eleID) 
     catch
         printstyled("Not a valid EleID\n",color=:red,bold=true)
     else
-        @printf "EleID(%i,%i) is a " eleID.ieletyp eleID.iele 
-        printstyled(@sprintf("%s\n",ele.eletyp),color=:cyan)
-        @printf "has nodes\n" 
+        printstyled(@sprintf("EleID(%i,%i)\n",eleID.ieletyp,eleID.iele),color=:cyan,underline=true) 
+        @printf("      %s\n",ele.eletyp)
+        printstyled("has nodes\n",color=:cyan) 
         for (inod,nod) ∈ enumerate(ele.nods)
             @printf "      %i: NodID(%i), coord=[" inod nod.nodID.inod
             for coord ∈ nod.coord
@@ -35,10 +60,18 @@ function describe(model::Model,eleID::EleID)
             end 
             @printf"]\n" 
         end
-        @printf "has dofs\n"
+        printstyled("has dofs\n",color=:cyan) 
         for (idof,dof) ∈ enumerate(ele.dofs)
             @printf "      %i: DofID(:%s,%i), NodID(%i), class=:%s, field=:%s, scale=%g\n" idof dof.class dof.dofID.idof dof.nodID.inod dof.class dof.field dof.scale
         end  
+        if depth>0
+            printstyled("has data\n",color=:cyan) 
+            eleobj = model.eleobj[eleID]
+            str    = sdump(eleobj,maxdepth=depth)
+            i      = findfirst("\n",str)[1]
+            str    = str[i+1:end]
+            print(indent(str,4))
+        end
     end  
 end
 
@@ -52,11 +85,12 @@ function describe(model::Model,dofID::DofID)
             @printf "Optimisation solvers introduce a one-to-one correspondance between :Λ-dofs and :X-dofs, \nbut :Λ-dofs are not part of the model description: try DofID(:X,...)\n"
         end
     else
-        @printf "DofID(:%s,%i), node=NodID(%i), class=:%s, field=:%s, scale=%g\n" dofID.class dofID.idof dof.nodID.inod dof.class dof.field dof.scale
-        @printf "is shared by elements:\n"
+        printstyled(@sprintf("DofID(:%s,%i)\n",dofID.class,dofID.idof),color=:cyan,underline=true)
+        @printf "      node=NodID(%i), class=:%s, field=:%s, scale=%g\n" dof.nodID.inod dof.class dof.field dof.scale
+        printstyled("is shared by elements\n",color=:cyan)
         for (iele,ele) ∈ enumerate(dof.eles)
             @printf "      %i: EleID(%i,%i), ielnod=%i, " iele ele.eleID.ieletyp ele.eleID.iele ele.ielnod 
-            printstyled(@sprintf("%s\n",ele.eletyp),color=:cyan)
+            @printf("%s\n",ele.eletyp.name.wrapper)
         end
     end        
 end
@@ -67,21 +101,22 @@ function describe(model::Model,nodID::NodID)
     catch
         printstyled("Not a valid NodID\n",color=:red,bold=true)
     else
-        @printf "NodID(%i), coord=[" nodID.inod
+        printstyled(@sprintf("NodID(%i)\n", nodID.inod),color=:cyan,underline=true)
+        @printf("      coord=[%g",nodID.inod)
         for coord∈nod.coord
-            @printf "%g " coord 
+            @printf ", %g" coord 
         end
         @printf "]\n" 
-        @printf "has dofs (degrees of freedom):\n"
+        printstyled("has dofs\n",color=:cyan)
         for idof ∈ eachindex(nod.dofs)
             dof = nod.dofs[idof]
             @printf "      %i:  DofID(:%s,%i), class=:%s, field=:%s, scale=%g\n" idof dof.dofID.class dof.dofID.idof dof.class dof.field dof.scale   
         end
-        @printf "is connected to elements:\n"
+        printstyled("is shared by elements\n",color=:cyan)
         for iele ∈ eachindex(nod.eles)
             ele = nod.eles[iele]
             @printf "      %i:  EleID(%i,%i), " iele ele.eleID.ieletyp ele.eleID.iele 
-            printstyled(@sprintf("%s\n",ele.eletyp),color=:cyan)
+            @printf("%s\n",ele.eletyp.name.wrapper)
         end
     end
  end
