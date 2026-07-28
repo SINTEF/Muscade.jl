@@ -96,6 +96,7 @@ module Muscade
 
     include("Diagnostic.jl")
     export describe  
+    public sdump
     public study_scale,study_singular,plot_matrix_sparsity
     public plot_block_matrix_sparsity,print_nz,Monitor,@typeof,print_element_array,diffed_lagrangian,diffed_residual
     public SpyAxis

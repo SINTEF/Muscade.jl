@@ -12,7 +12,7 @@ n2              = addnode!(model,𝕣[])         # Anod for anchor
 @functor with() cost(eleres,t) =            eleres.Fh^2
 @functor with() gap( eleres,t) = SVector{1}(eleres.Fh^2)
 @functor with() mode(       t) = SVector{1}(:equal     )
-elcoco  = ElementCostAndConstraint(model.nod;ElementType=AnchorLine, elementkwargs=(Δxₘtop=[5.,0,0], xₘbot=[250.,0], L=290., buoyancy=-5e3),
+elcoco  = ElementCostAndConstraint(model.nod;TargetElement=AnchorLine, elementkwargs=(Δxₘtop=[5.,0,0], xₘbot=[250.,0], L=290., buoyancy=-5e3),
                 req=@request(Fh), gap, λxinod=(1,), λxfield=(:λ,), mode, cost)
 Nx,Nu,Na        = 3+1,0,2   
 λ               =  SVector{Nx,𝕣}(1. for i=1:Nx)
@@ -77,7 +77,7 @@ req                            = @request((damping,C))
 model                 = Model()
 n1                    = addnode!(model,[0.])
 e1                    = addelement!(model,ElementCostAndConstraint,[n1];  
-                              ElementType=AdjustableSdofOscillator,elementkwargs=(K=1.,C=.1,M=1.),
+                              TargetElement=AdjustableSdofOscillator,elementkwargs=(K=1.,C=.1,M=1.),
                               req, gap, λxinod=(1,), λxfield=(:λx,), λuinod=(1,), λufield=(:λu,), mode, cost)
 initialstate          = initialize!(model)
 
@@ -99,16 +99,18 @@ asmᵢ                  = asm[:,ieletyp]
 scale                 = dis.dis[ieletyp].scale
 t,Δt                  = 0.,1.
 SP                    = nothing
-Muscade.addin!{:matrices}(out,asmᵢ,iele,scale,model.eleobj[1][1],Val(true),(λ,),x,u,a,t,Δt,SP,(;testall=true))
+Muscade.addin!{:matrices}(out,asmᵢ,iele,scale,model.eleobj[1][1],Val(true),(10λ,),x,u,a,t,Δt,SP,(;testall=true))
 
 iλ,ix,iu,ia=1,2,3,4
-@testset "drawing" begin
+
+
+@testset "addin! DirectXUA constraint" begin
      @test out.L1[iλ][1] ≈  [0.0, 1.1] 
-     @test out.L1[ix][1] ≈  [0,0]
-     @test out.L1[ix][2] ≈  [0,0.04]
+     @test out.L1[ix][1] ≈  [-0.01,0]
+     @test out.L1[ix][2] ≈  [0,0.00]
      @test out.L1[ix][3] ≈  [0,0]
-     @test out.L1[iu][1] ≈  [0,0]
-     @test out.L1[ia][1] ≈  [0.09210340371976185]
+     @test out.L1[iu][1] ≈  [-.1,0]
+     @test out.L1[ia][1] ≈  [-0.23025850929940464]
 
      @test out.L2[iλ,ix][1,1] ≈ [0 0;0 1]
      @test out.L2[iλ,ix][1,2] ≈ [0 0;0 .1]
@@ -124,10 +126,10 @@ iλ,ix,iu,ia=1,2,3,4
      @test out.L2[ia,iλ][1,1] ≈ [0   0.2302585092994046]
 
      @test out.L2[ix,ix][1,1] ≈ [0 0;0 0]
-     @test out.L2[ix,ix][1,2] ≈ [0 0;0 0]
+     @test out.L2[ix,ix][1,2] ≈ [0 -.02;0 0]
      @test out.L2[ix,ix][1,3] ≈ [0 0;0 0]
-     @test out.L2[ix,ix][2,1] ≈ [0 0;0 0]
-     @test out.L2[ix,ix][2,2] ≈ [0 0;0 0.04]
+     @test out.L2[ix,ix][2,1] ≈ [0 0;-.02 0]
+     @test out.L2[ix,ix][2,2] ≈ [0 0;0 0]
      @test out.L2[ix,ix][2,3] ≈ [0 0;0 0]
      @test out.L2[ix,ix][3,1] ≈ [0 0;0 0]
      @test out.L2[ix,ix][3,2] ≈ [0 0;0 0]
@@ -140,11 +142,11 @@ iλ,ix,iu,ia=1,2,3,4
      @test out.L2[ix,iu][2,1] ≈ [0 0;0 0]
      @test out.L2[ix,iu][3,1] ≈ [0 0;0 0]
 
-     @test out.L2[ia,ix][1,1] ≈ [0 0]
-     @test out.L2[ia,ix][1,2] ≈ [0.0  0.09210340371976185]
+     @test out.L2[ia,ix][1,1] ≈ [-0.046051701859880924 0]
+     @test out.L2[ia,ix][1,2] ≈ [0 0]
      @test out.L2[ia,ix][1,3] ≈ [0 0]
-     @test out.L2[ix,ia][1,1] ≈ [0,0]
-     @test out.L2[ix,ia][2,1] ≈ [0.0, 0.09210340371976185]
+     @test out.L2[ix,ia][1,1] ≈ [-0.046051701859880924,0]
+     @test out.L2[ix,ia][2,1] ≈ [0;0]
      @test out.L2[ix,ia][3,1] ≈ [0,0]
 end
 end

@@ -191,30 +191,21 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,el
     DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,NDΛ,NDX,NDU,NDA}(out,asm,L,iele,Δt)
 end
 
-
-
-
-#####################################################
-
-
-
-function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,o::ElementCostAndConstraint{NSO,ElementType,λxinod,λuinod},no_second_order::Val{true}, 
+function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,o::ElementCostAndConstraint{NSO,TargetElement,λxinod,λuinod},no_second_order::Val{true}, 
                            Λ::NTuple{1   ,SVector{Nx}},
                            X::NTuple{NDX_,SVector{Nx}},
                            U::NTuple{NDU_,SVector{Nu}},
-                           A::            SVector{Na} ,t,Δt,SP,dbg) where{mission,NDΛ,NDX,NDU,NDA,NSO,ElementType,λxinod,λuinod,NDX_,NDU_,Nx,Nu,Na} 
+                           A::            SVector{Na} ,t,Δt,SP,dbg) where{mission,NDΛ,NDX,NDU,NDA,NSO,TargetElement,λxinod,λuinod,NDX_,NDU_,Nx,Nu,Na} 
 
 # Possible optimisation: adiff wrt eX,eU,A only, and create functionality to expand partials (for KKT operations with λX, λU)
 # This affect the add_∂! calls
     local L
-
     iλX,ieX,iλU,ieU,iλA,ieA = dofpartition(typeof(o))
     ieΛ,Nλ                  = ieX,Nx                  
     ncstr                   = length(iλX)+length(iλU) 
     if     mission==:matrices     P=2
     elseif mission==:vectors      P=1
     end
-     
     if     NDA == 1  
         _,N∂,(∂X,∂U,∂A)  = variate{P-1}((X,U,A),scale=(AllElements(scale.X),AllElements(scale.U),scale.A))
         ∂eX              = getsomedofs(∂X,ieX) 
@@ -228,12 +219,9 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,o:
         eR,FB,eleres     = getresidual(o.eleobj, ∂eX,∂eU, A,t,SP,(dbg...,via=:ElementDofAndConstraintAccelerator),o.req.eleres)  
         class            = xu
     end
-
     Lλ                   = out.L1[ind.Λ]
     # out[asm[iasm,iele]] += R[ia]
     isassigned(Lλ,1) && add_value!(Lλ[1] ,asm[arrnum(ind.Λ)],iele,eR;iasm=ieΛ,Δt) #  I have a vector R from o.eleobj, and I assemble it at the end of o's vector
-
-
     if mission==:matrices # K,C,M
         ndof             = (Nλ , Nx, Nu, Na)
         iedof            = (ieΛ,ieX,ieU,ieA) # where in target's 2nd dim to put
@@ -250,31 +238,19 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,o:
             isassigned(Lβλ,βder,1) && add_∂!{1,:plus,  :transpose}(Lβλ[βder,1],asm[arrnum(β,ind.Λ)],iele,eR,iα,ieβ;nasm=Nλ,ndasm=ndof[β],iasm=iedof[ind.Λ],idasm=iedof[β],Δt)  
         end
     end
-
     Releres            = revariate{P}(eleres) 
-
     if typeof(o.cost)  ≠ Nothing  
         Rcost          = o.cost(Releres,t,o.costargs...)
         cost           = chainrule(Rcost,to_order{P,N∂}(eleres))
         DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,0,NDX,NDU,NDA}(out,asm,cost,iele,Δt)
-        # @show :aftercost, Matrix(out.L2[ind.X,ind.X][1,1])
-        # @show :aftercost, Matrix(out.L2[ind.X,ind.X][2,2])
-        # @show :aftercost, Matrix(out.L2[ind.X,ind.X][3,3])
     end
-
     if typeof(o.gap)   ≠ Nothing   
         γ              = default{:γ}(SP,0.)
         λ_             = SVector(∂0(∂X)[iλX]...,∂0(∂U)[iλU]...) 
         λ              = to_order{P,N∂}(λ_) 
-
-        Rgap           = o.gap(Releres,t,o.gapargs...)                         #             2nd order derivative of gap wrt eleres
+        Rgap           = o.gap(Releres,t,o.gapargs...)           #             2nd order derivative of gap wrt eleres
         gap            = chainrule(Rgap,to_order{P,N∂}(eleres))  # approximate 2nd order derivative of gap wrt ∂X,∂U,∂A
         mode           = o.mode(t)
-        # @show λ_
-        # @show λ
-        # @show Rgap
-        # @show gap
-
         gap  isa SVector{ncstr} || error( "Functor `gap` must return a SVector{length(λxinod)+length(λuinod)}")
         mode isa SVector{ncstr} || error("Functor `mode` must return a SVector{length(λxinod)+length(λuinod)}")
         for iλ ∈ eachindex(λ)
@@ -286,16 +262,9 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,o:
             if iλ==1 L  = -ΔL_
             else     L -=  ΔL_  
             end
-            # @show gapᵢ
-            # @show λᵢ
-            # @show ΔL_
-            # @show L  
         end
-#        @show :beforeconstraint Matrix(out.L2[ind.Λ,ind.X][1,1])
-        DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,0,NDX,NDU,NDA}(out,asm,cost,iele,Δt)
-#        @show :afterconstraint Matrix(out.L2[ind.Λ,ind.X][1,1])
+        DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,0,NDX,NDU,NDA}(out,asm,L,iele,Δt)
     end   
-
 end
 
 

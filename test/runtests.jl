@@ -53,6 +53,9 @@ module Runtest
         @testset "TestElementCost" begin
             include("TestElementCost.jl")
         end
+        @testset "TestElementCostAndConstraint" begin
+            include("TestElementCostAndConstraint.jl")
+        end
         @testset "TestRotations" begin
             include("TestRotations.jl")
         end
