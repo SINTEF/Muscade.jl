@@ -29,7 +29,7 @@ ele1 = addelement!(model,DofCost,[nod1],xinod=(1,),xfield=(:tx1,),
 Note that `X0` is within a `NamedTuple` in the call to `addelement!`, but not in the definition
 of the `Functor` `xcost`.
 
-See also: [`Acost`](@ref), [`SingleDofCost`](@ref), [`ElementCost`](@ref), [`addelement!`](@ref)  
+See also: [`Acost`](@ref), [`SingleDofCost`](@ref), [`ElementCostAndConstraint`](@ref), [`addelement!`](@ref)  
 """
 struct DofCost{Nx,Nu,Na,xinod,xfield,uinod,ufield,ainod,afield,Tcost,Tcostargs} <: AbstractElement
     cost     :: Tcost     
@@ -77,7 +77,7 @@ Note that `A0` is within a `NamedTuple` in the call to `addelement!`, but not in
 of the `Functor` `acost`.
 
 
-See also:  [`SingleAcost`](@ref), [`DofCost`](@ref), [`SingleDofCost`](@ref), [`ElementCost`](@ref), [`addelement!`](@ref)  
+See also:  [`SingleAcost`](@ref), [`DofCost`](@ref), [`SingleDofCost`](@ref), [`ElementCostAndConstraint`](@ref), [`addelement!`](@ref)  
 """
 struct Acost{Na,inod,field,Tcost,Tcostargs} <: AbstractElement
     cost     :: Tcost     
@@ -90,69 +90,6 @@ doflist(::Type{<:Acost{Na,inod,field}}) where{Na,inod,field} = (inod =inod,class
     return cost,noFB
 end
 
-"""
-    ElementCost{Teleobj,Treq,Tcost,Tcostargs} <: AbstractElement
-
-DEPRECATED.  Use ElementCostAndConstraint
-
-An element to apply costs on another "target" element's dofs and element-results.  
-The target element must *not* be added separately to the model.  Instead, the 
-`ElementType`, and the named arguments to the target element are provided
-as input to the `ElementCost` constructor.
-
-# Named arguments to the constructor
-- `req`                 A request for element-results to be extracted from the target element, see [`@request`](@ref).
-                        The request is formulated as if adressed directly to the target element.
-- `cost`                A cost `Functor` `cost(eleres,t,costargs...)→ℝ`. 
-                        `eleres` is the output of the above-mentionned request to the target element.  
-- `costargs::NTuple=()` or `NamedTuple` of additional arguments splatted when calling `cost`.
-- `ElementType`         The named of the constructor for the relevant element.
-- `elementkwargs`       A named tuple containing the named arguments of the `ElementType` constructor.     
-
-# Example
-```
-@functor with() cost(eleres,X,U,A,t;Fh0) = (eleres.Fh-Fh0)^2
-ele1 = addelement!(model,ElementCost,[nod1];req=@request(Fh),
-                   cost=cost,
-                   costargs = (;Fh0=0.27),
-                   ElementType=AnchorLine,
-                   elementkwargs=(Λₘtop=[5.,0,0], xₘbot=[250.,0], L=290., buoyancy=-5e3))
-```
-
-Note that `Fh0` is within a `NamedTuple` in the call to `addelement!`, but not in the definition
-of the `Functor` `cost`.
-
-# Requestable internal variables
-
-Not to be confused with the `req` provided as input to `addelement!` when adding an `ElementCost`, one can, after 
-the analysis, request results from `ElementCost`: 
-- `cost`                The cost introduced by this element
-- `eleres(...)`         where `...` is the list of requestables wanted from the target element.  The "prefix"  
-                        `eleres` is there to prevent possible confusion with variables requestable from `ElementCost`.  
-                        For example `@request cost` would extract the value of the `ElementCost`'s function `cost`, while
-                        `@request eleres(cost)` refers to the value of a variable called `cost` in the target element. 
-
-See also: [`SingleDofCost`](@ref), [`DofCost`](@ref), [`@request`](@ref), [`@functor`](@ref) 
-"""
-struct ElementCost{Teleobj,Treq,Tcost,Tcostargs} <: AbstractElement
-    eleobj   :: Teleobj
-    req      :: Treq
-    cost     :: Tcost     
-    costargs :: Tcostargs
-end
-function ElementCost(nod::Vector{Node};req,cost::Functor,costargs=(),ElementType,elementkwargs) 
-    eleobj   = ElementType(nod;elementkwargs...)
-    return ElementCost(eleobj,(eleres=req,),cost,costargs)
-end
-doflist( ::Type{<:ElementCost{Teleobj}}) where{Teleobj} = doflist(Teleobj)
-@espy function lagrangian(o::ElementCost, Λ,X,U,A,t,SP,dbg)
-    L,FB,☼eleres  = getlagrangian(o.eleobj,Λ,X,U,A,t,SP,(dbg...,via=ElementCost),o.req.eleres)
-    ☼cost         = o.cost(eleres,t,o.costargs...) 
-    return L+cost,FB
-end   
-allocate_drawing(axis,eleobj::AbstractVector{Teleobj};kwargs...)                    where{Teleobj<:ElementCost} = allocate_drawing(axis,[eᵢ.eleobj for eᵢ∈eleobj];kwargs...)
-update_drawing(  axis,eleobj::AbstractVector{Teleobj},oldmut,opt, Λ,X,U,A,t,SP,dbg) where{Teleobj<:ElementCost} = update_drawing(  axis,[eᵢ.eleobj for eᵢ∈eleobj],oldmut,opt, Λ,X,U,A,t,SP,dbg)  
-display_drawing!(axis,::Type{<:ElementCost{Teleobj}},obs,opt)                       where{Teleobj}              = display_drawing!(axis,Teleobj,obs,opt)
 
 """
     SingleAcost <: AbstractElement
@@ -181,7 +118,7 @@ e     = addelement!(model,SingleAcost,[node];field=:EI,
 Note that `3.` is within a `NamedTuple` in the call to `addelement!`, but `three` is not, in the definition
 of the `Functor` `acost`.
 
-See also: [`DofCost`](@ref), [`SingleDofCost`](@ref),  [`Acost`](@ref), [`ElementCost`](@ref)
+See also: [`DofCost`](@ref), [`SingleDofCost`](@ref),  [`Acost`](@ref), [`ElementCostAndConstraint`](@ref)
 """
 struct SingleAcost <: AbstractElement end
 #@noinline (o::Functor{:fA})(A::SVector,args...) = o.captured.cost(A[1],args...)
@@ -218,7 +155,7 @@ e     = addelement!(model,SingleDofCost,[node];class=:X,field=:tx,
 Note that `3.` is within a `NamedTuple` in the call to `addelement!`, but `three` is not, in the definition
 of the `Functor` `xcost`.
 
-See also: [`DofCost`](@ref), [`ElementCost`](@ref)
+See also: [`DofCost`](@ref), [`ElementCostAndConstraint`](@ref)
 """
 struct SingleDofCost <: AbstractElement end
 # 1) @functor macro is not called.  Instead, we have a method definition and a call to object constructor
@@ -260,7 +197,7 @@ e     = addelement!(model,SingleUdof,[node];Xfield=:tx,Ufield=:utx,
 Note that `3.` is within a `NamedTuple` in the call to `addelement!`, but `three` is not, in the definition
 of the `Functor` `ucost`.
 
-See also: [`DofCost`](@ref), [`ElementCost`](@ref)
+See also: [`DofCost`](@ref), [`ElementCostAndConstraint`](@ref)
 """
 struct SingleUdof{Tcost,Tcostargs,Xfield,Ufield} <: AbstractElement
     cost     :: Tcost     
@@ -348,7 +285,7 @@ A function which for any value `t` returns the symbol `off`.  Useful for specify
 the keyword argument `mode=off` in adding an element of type ``DofConstraint` to
 a `Model`.
 
-See also: [`DofConstraint`](@ref), [`ElementConstraint`](@ref), [`equal`](@ref), [`positive`](@ref)
+See also: [`DofConstraint`](@ref), [`ElementCostAndConstraint`](@ref), [`equal`](@ref), [`positive`](@ref)
 """
 off
 @functor with() equal(t)   = :equal
@@ -359,7 +296,7 @@ A function which for any value `t` returns the symbol `equal`.  Useful for speci
 the keyword argument `mode=equal` in adding an element of type ``DofConstraint` to
 a `Model`.
 
-See also: [`DofConstraint`](@ref), [`ElementConstraint`](@ref), [`off`](@ref), [`positive`](@ref)
+See also: [`DofConstraint`](@ref), [`ElementCostAndConstraint`](@ref), [`off`](@ref), [`positive`](@ref)
 """
 equal
 @functor with() positive(t) = :positive
@@ -370,7 +307,7 @@ A function which for any value `t` returns the symbol `positive`.  Useful for sp
 the keyword argument `mode=positive` in adding an element of type ``DofConstraint` to
 a `Model`.
 
-See also: [`DofConstraint`](@ref), [`ElementConstraint`](@ref), [`off`](@ref), [`equal`](@ref)
+See also: [`DofConstraint`](@ref), [`ElementCostAndConstraint`](@ref), [`off`](@ref), [`equal`](@ref)
 """
 positive
 """
@@ -442,7 +379,7 @@ X               = state[1].X[2]
   0.04500254313151041
 ```    
 
-See also: [`Hold`](@ref), [`ElementConstraint`](@ref), [`off`](@ref), [`equal`](@ref), [`positive`](@ref)
+See also: [`Hold`](@ref), [`ElementCostAndConstraint`](@ref), [`off`](@ref), [`equal`](@ref), [`positive`](@ref)
 """
 struct DofConstraint{λclass,Nλ,Nx,Nu,Na,λinod,λfield,xinod,xfield,uinod,ufield,ainod,afield,Tg<:Functor,Tgargs,Tmode<:Functor} <: AbstractElement
     gap      :: Tg    # λclass==:X gap(x,t,gargs...) ,λclass==:U  gap(x,u,a,t,gargs...), λclass==:A gap(a,gargs...) 
@@ -540,108 +477,6 @@ struct Hold <: AbstractElement end
 Hold(nod::Vector{Node};field::Symbol,λfield::Symbol=Symbol(:λ,field)) = 
     DofConstraint{:X   ,1,1, 0, 0,  (1,),(λfield,), (1,),(field,), (),(), (),(),    typeof(gap_for_hold_functor),typeof(()),typeof(equal)}(gap_for_hold_functor,(),equal)
 
-#-------------------------------------------------
-
-"""
-    ElementConstraint{Teleobj,λinod,λfield,Nu,Treq,Tg,Tgargs,Tmode} <: AbstractElement
-
-DEPRECATED Use ElementCostAndConstraint
-
-An element to apply a single optimisation equality/inequality constraint on the element-results of 
-another "target" element. The target element must *not* be added separately to the model.  Instead, the 
-`ElementType`, and the named arguments to the target element are provided as input to the 
-`ElementConstraint` constructor.
-
-This element generates a time varying optimisation constraint. For example: find `A`-parameters so that
-   at all times, the element-result von-Mises stress does not exceed a given value. 
-
-The Lagrangian multiplier introduced by this optimisation constraint is of class :U.   
-
-# Named arguments to the constructor
-
-- `λinod::𝕫`            The element-node number of the Lagrange multiplier.
-- `λfield::Symbol`      The field of the Lagrange multiplier (`λclass` is always `:X` )
-- `req`                 A request for element-results to be extracted from the target element, see [`@request`](@ref).
-                        The request is formulated as if adressed directly to the target element.
-- `gₛ::𝕣=1.`             A scale for the gap.
-- `λₛ::𝕣=1.`             A scale for the Lagrange multiplier.
-- `gap`                 A gap function `gap(eleres,t,gargs...)→ℝ`.
-                        `eleres` is the output of the above-mentionned request to the target element. 
-- `gargs::NTuple=()` or `NamedTuple`      Additional inputs to the gap function. 
-
-- `mode::Functor`      where `mode(t::ℝ) -> Symbol`, with value `:equal`, 
-                        `:positive` or `:off` at any time. An `:off` constraint 
-                        will set the Lagrange multiplier to zero.
-- `ElementType`         The named of the constructor for the relevant element 
-- `elementkwargs`       A named tuple containing the named arguments of the `ElementType` constructor.     
-
-# Requestable internal variables
-
-Not to be confused with the `req` provided as input to `addelement!` when adding an `ElementConstraint`, one can, after 
-the analysis, request results from `ElementConstraint` 
-- `λ`                   The constraints Lagrange multiplier
-- `gap`                 The constraints gap `Functor`
-- `eleres(...)`         where `...` is the list of requestables wanted from the target element.  The "prefix"  
-                        `eleres` is there to prevent possible confusion with variables requestable from `ElementConstraint`.  
-                        For example `@request gap` would extract the value of the `ElementConstraint`'s function `gap`, while
-                        `@request eleres(gap)` refers to the value of a variable called `gap` in the target element. 
-
-# Example
-
-```
-@functor with() gap(eleres,t) = eleres.Fh^2
-ele1 = addelement!(model,ElementCoonstraint,[nod1];req=@request(Fh),
-                   gap,λinod=1,λfield=:λ,mode=equal, 
-                   ElementType=AnchorLine,
-                   elementkwargs=(Δxₘtop=[5.,0,0], xₘbot=[250.,0],L=290., buoyancy=-5e3))
-```
-
-See also: [`Hold`](@ref), [`DofConstraint`](@ref), [`off`](@ref), [`equal`](@ref), [`positive`](@ref), [`@request`](@ref), [`@functor`](@ref)
-"""
-struct ElementConstraint{Teleobj,λinod,λfield,Treq,Tg,Tgargs,Tmode} <: AbstractElement
-    eleobj   :: Teleobj
-    req      :: Treq
-    gap      :: Tg    
-    gargs    :: Tgargs
-    mode     :: Tmode 
-end
-function ElementConstraint(nod::Vector{Node};λinod::𝕫, λfield::Symbol,
-    req,gap::Tgap,gargs::Tgargs=(),mode::Tmode,ElementType,elementkwargs) where{Tgap<:Functor,Tgargs,Tmode<:Functor}
-    eleobj   = ElementType(nod;elementkwargs...)
-    return ElementConstraint{typeof(eleobj),λinod,λfield,typeof((eleres=req,)),Tgap,Tgargs,Tmode}(eleobj,(eleres=req,),gap,gargs,mode)
-end
-doflist( ::Type{<:ElementConstraint{Teleobj,λinod,λfield}}) where{Teleobj,λinod,λfield} =
-    (inod =(λinod , doflist(Teleobj).inod... ),
-     class=(:X    , doflist(Teleobj).class...),
-     field=(λfield, doflist(Teleobj).field...))
-@espy function lagrangian(o::ElementConstraint{Teleobj,λinod,λfield}, Λ,X,U,A,t,SP,dbg) where{Teleobj,λinod,λfield}
-    Nx           = getndof(Teleobj,:X) 
-    req          = mergerequest(o.req)
-    γ            = default{:γ}(SP,0.)
-    m            = o.mode(t)
-    ☼λ           = ∂0(X)[1]
-    Xe           = getsomedofs(X,SVector{Nx}(2:Nx+1)) 
-    Λe           = Λ[SVector{Nx}(2:Nx+1)] 
-    L,FB,☼eleres = getlagrangian(o.eleobj,Λe,Xe,U,A,t,SP,(dbg...,via=ElementConstraint),req.eleres)
-    ☼gap         = o.gap(eleres,t,o.gargs...)
-    L += if    m==:equal;    -gap*λ   
-    elseif     m==:positive; -KKT(λ,gap,γ) 
-    elseif     m==:off;      -0.5λ^2 
-    end
-    return L,(λ=λ,g=gap,mode=m)
-end
-allocate_drawing(axis,eleobj::AbstractVector{Teleobj};kwargs...)                            where{Teleobj<:ElementConstraint} = allocate_drawing(axis,[eᵢ.eleobj for eᵢ∈eleobj];kwargs...)
-function update_drawing(  axis,eleobj::AbstractVector{Teleobj},oldmut,opt, Λ,X,U,A,t,SP,dbg)where{Teleobj<:ElementConstraint} 
-    Nx           = getndof(typeof(o),:X) 
-    x            = getsomedofs(X,SVector{Nx-1}(2:Nx)) 
-    update_drawing(  axis,[eᵢ.eleobj for eᵢ∈eleobj],oldmut,opt, Λ,x,U,A,t,SP,dbg)  
-end
-display_drawing!(axis,::Type{<:ElementConstraint{Teleobj}},obs,opt)                         where{Teleobj}                    = display_drawing!(axis,Teleobj,obs,opt)
-
-
-#-------------------------------------------------
-#-------------------------------------------------
-#-------------------------------------------------
 
 """
     ElementCostAndConstraint{TargetElement,λinod,λfield,Nu,Treq,Tg,Tgargs,Tmode} <: AbstractElement
@@ -688,19 +523,19 @@ from the *target* element, to evaluate cost or gaps.
 
 - `λ`                           The constraints Lagrange multiplier
 - `gap`                         The constraints gap `Functor`
-- `mode`                        The vector of modes for each cosntraint
+- `mode`                        The vector of modes for each constraint
 - `eleres(...)`                 where `...` is the list of requestables wanted from the target element.  The "prefix"  
-                                `eleres` is there to prevent possible confusion with variables requestable from `ElementConstraint`.  
+                                `eleres` is there to prevent possible confusion with variables requestable from `ElementCostAndConstraint`.  
                                 For example `@request gap` would extract the value of the `ElementCostAndConstraint`'s varable `gap`, while
                                 `@request eleres(gap)` refers to the value of a variable called `gap` in the target element. 
 
 
 See also: [`DofCost`](@ref), [`Hold`](@ref), [`DofConstraint`](@ref), [`off`](@ref), [`equal`](@ref), [`positive`](@ref), [`@request`](@ref), [`@functor`](@ref)
 """
-struct ElementCostAndConstraint{NSO,TargetElement,λxinod,λuinod,λxfield,λufield,Treq,Tg,Tgargs,Tmode,Tcost,Tcostargs} <: AbstractElement
+struct ElementCostAndConstraint{NSO,TargetElement,λxinod,λuinod,λxfield,λufield,Treq,Tgap,Tgargs,Tmode,Tcost,Tcostargs} <: AbstractElement
     eleobj   :: TargetElement
     req      :: Treq
-    gap      :: Tg    
+    gap      :: Tgap    
     gapargs  :: Tgargs
     mode     :: Tmode 
     cost     :: Tcost     
@@ -710,16 +545,16 @@ end
 @inline function ElementCostAndConstraint(nod::Vector{Node};
     λxinod::NTuple{Nλx,𝕫}=(),λxfield::NTuple{Nλx,Symbol}=(),
     λuinod::NTuple{Nλu,𝕫}=(),λufield::NTuple{Nλu,Symbol}=(),
-    req,gap::Tgap=nothing,gapargs::Tgargs=(),mode::Tmode,
+    req,gap::Tgap=nothing,gapargs::Tgargs=(),mode::Tmode=nothing,
     cost::Tcost=nothing,costargs::Tcostargs=(),
     TargetElement,elementkwargs=(;)
-    ) where{Tgap<:Functor,Nλx,Nλu,Tgargs,Tmode<:Functor,Tcost<:Functor,Tcostargs}
+    ) where{Tgap<:Union{Functor,Nothing},Nλx,Nλu,Tgargs,Tmode<:Union{Functor,Nothing},Tcost<:Union{Functor,Nothing},Tcostargs}
 
     eleobj   = TargetElement(nod;elementkwargs...)
     NSO      = no_second_order(TargetElement) 
 
     @assert ~(TargetElement isa ElementCostAndConstraint) "ElementCostAndConstraint cannot be nested"
-    ElementCostAndConstraint{NSO,TargetElement,λxinod,λuinod,λxfield,λufield,typeof((eleres=req,)),Tgap,Tgargs,Tmode,Tcost,Tcostargs}(
+    ElementCostAndConstraint{NSO,typeof(eleobj),λxinod,λuinod,λxfield,λufield,typeof((eleres=req,)),Tgap,Tgargs,Tmode,Tcost,Tcostargs}(
                        eleobj,(eleres=req,),gap,gapargs,mode,cost,costargs)
 end
 
@@ -748,18 +583,6 @@ end
 
 no_second_order(::Type{<:ElementCostAndConstraint{NSO}}) where{NSO} = NSO 
 
-allocate_drawing(       axis,o::AbstractVector{Teleobj};kwargs...) where{Teleobj<:ElementCostAndConstraint} = allocate_drawing(axis,[eᵢ.eleobj for eᵢ∈o];kwargs...)
-function update_drawing(axis,o::AbstractVector{Teleobj},oldmut,opt, Λ,X,U,A,t,SP,dbg) where{Teleobj<:ElementCostAndConstraint{NSO,TargetElement,λxinod,λuinod}} where{NSO,TargetElement,λxinod,λuinod} 
-    _,ix,_,iu,_,_ = dofpartition(eltype(o))
-    Λe            = view(Λ,ix,:) 
-    Xe            = getsomedofs(X,ix) 
-    Ue            = getsomedofs(U,iu) 
-    mut           = update_drawing(  axis,[oᵢ.eleobj for oᵢ∈o],oldmut,opt, Λe,Xe,Ue,A,t,SP,dbg)  
-    return mut
-end
-display_drawing!(axis,::Type{<:ElementCostAndConstraint{NSO,TargetElement}},obs,opt) where{NSO,TargetElement} = display_drawing!(axis,TargetElement,obs,opt)
-
-
 @espy function lagrangian(o::ElementCostAndConstraint{Val(false),TargetElement,λxinod,λuinod}, Λ,X,U,A,t,SP,dbg) where{TargetElement,λxinod,λuinod}
     iλx,ix,iλu,iu,_,_ = dofpartition(typeof(o))
     Nλ                = length(iλx)+length(iλu)
@@ -787,10 +610,25 @@ display_drawing!(axis,::Type{<:ElementCostAndConstraint{NSO,TargetElement}},obs,
             elseif   mᵢ==:off;      0.5*(λᵢ * λᵢ) 
             end
         end
+        return L,(λ=λ,g=gap,mode=mode)
     end
     # TODO Does not set FB, and DirectXUA/solve has no line search...                                
-    return L,(λ=λ,g=gap,mode=mode)
+    return L,noFB
 end
+
+allocate_drawing(       axis,o::AbstractVector{Teleobj};kwargs...) where{Teleobj<:ElementCostAndConstraint} = allocate_drawing(axis,[eᵢ.eleobj for eᵢ∈o];kwargs...)
+function update_drawing(axis,o::AbstractVector{Teleobj},oldmut,opt, Λ,X,U,A,t,SP,dbg) where{Teleobj<:ElementCostAndConstraint{NSO,TargetElement,λxinod,λuinod}} where{NSO,TargetElement,λxinod,λuinod} 
+    _,ix,_,iu,_,_ = dofpartition(eltype(o))
+    Λe            = view(Λ,ix,:) 
+    Xe            = getsomedofs(X,ix) 
+    Ue            = getsomedofs(U,iu) 
+    mut           = update_drawing(  axis,[oᵢ.eleobj for oᵢ∈o],oldmut,opt, Λe,Xe,Ue,A,t,SP,dbg)  
+    return mut
+end
+display_drawing!(axis,::Type{<:ElementCostAndConstraint{NSO,TargetElement}},obs,opt) where{NSO,TargetElement} = display_drawing!(axis,TargetElement,obs,opt)
+
+
+
 
 
 

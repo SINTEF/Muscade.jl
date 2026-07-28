@@ -50,9 +50,6 @@ module Runtest
         @testset "TestScale" begin
             include("TestScale.jl")
         end
-        @testset "TestElementCost" begin
-            include("TestElementCost.jl")
-        end
         @testset "TestElementCostAndConstraint" begin
             include("TestElementCostAndConstraint.jl")
         end
