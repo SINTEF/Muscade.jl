@@ -1,6 +1,6 @@
 name = "Muscade"
 uuid = "93488820-1883-11ed-0c34-05177b029e4d"
-version = "0.7.0"
+version = "0.8.0"
 authors = ["Philippe Maincon <philippe.maincon@sintef.no>", "Thomas Sauder <thomas.sauder@sintef.no>"]
 
 [deps]
@@ -13,14 +13,13 @@ Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
-StyledStrings = "f489334b-da3d-4c2e-b8f0-e476e12c162b"
 
 [compat]
+julia = "1.12"
 GLMakie = "0.13"
 KrylovKit = "0.10"
 MacroTools = "0.5"
 SparseArrays = "1"
 SpecialFunctions = "2"
 StaticArrays = "1"
-StyledStrings = "1.11.0"
-julia = "1.11"
+LinearAlgebra = "1"
