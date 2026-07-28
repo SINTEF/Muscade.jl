@@ -2,7 +2,7 @@
 
 ## Script as input
 
-`Muscade` being a framework for the development of optimization-FEM applications, it does not provide the elements needed to treat any specific application. It only provides a limited number of generic modeling capabilities, like fixing degrees of freedom (dofs) to describe boundary conditions, introducing holonomic constraints or costs on either dofs, or element-results (see [Built-in elements](@ref)).
+`Muscade` being a framework for the development of optimisation-FEM applications, it does not provide the elements needed to treat any specific application. It only provides a limited number of generic modeling capabilities, like fixing degrees of freedom (dofs) to describe boundary conditions, introducing holonomic constraints or costs on either dofs, or element-results (see [Built-in elements](@ref)).
 
 Hence to create a model, one will typicaly be `using` both `Muscade` and another package that provides a `Muscade`-based application (app).  The app provides specific elements for domains like continuum mechanics, marine structures, hydrogen diffusion etc.
 

@@ -5,9 +5,9 @@ CurrentModule = Muscade
 
 # [Introduction](@id purpose)
 
-## FEM-optimization problems
+## FEM-optimisation problems
 
-**[Muscade.jl](https://github.com/SINTEF/Muscade.jl) is a [Julia](https://julialang.org) package for the description and solution of optimization problems constrained by the equilibrium of a finite element (FEM) model.**  The mathematical problems solved by `Muscade` are defined by two components:
+**[Muscade.jl](https://github.com/SINTEF/Muscade.jl) is a [Julia](https://julialang.org) package for the description and solution of optimisation problems constrained by the equilibrium of a finite element (FEM) model.**  The mathematical problems solved by `Muscade` are defined by two components:
 
 1) A fairly classical FEM model (the constraints) - but with more *degrees of freedom* (refered to as "dofs" in the following) than usual: In `Muscade`, dofs are separated into three `classes`:
 
@@ -21,7 +21,7 @@ CurrentModule = Muscade
 
 ## Applications
 
-FEM-optimization problems include a variety of applications:
+FEM-optimisation problems include a variety of applications:
 
 **Load identification and monitoring**: Given incomplete and noisy measurements of the response `X` of a system, what are the loads `U` that are most likely to have caused a response close to what has been measured?  The target function describes prior knowledge of the load processes, and the type, value and precision of the measurements. 
 
@@ -35,23 +35,23 @@ FEM-optimization problems include a variety of applications:
 
 *A small-scale physical model of an anchored vessel is "kicked" in an ocean laboratory, and the vessel's oscillations registrered. The graph shows the identification, using `Muscade`, of the system's non-linear added mass, damping and stiffness for surge (oscillation in forward direction). The actual analysis also captures the interaction with other degrees of freedom (sway and yaw).* 
 
-**Design optimization**: What is the cheapest way to engineer a system whose strength is described by `A`, that will survive a set of loading conditions?  The target function describes a financial cost.
+**Design optimisation**: What is the cheapest way to engineer a system whose strength is described by `A`, that will survive a set of loading conditions?  The target function describes a financial cost.
 
 ![SharedAnchor](SharedAnchor.jpg)
 
 *Static optimisation of a shared anchor system for a lattice of offshore wind turbines.*
 
-**Reliability analysis**: Finding a design point. What is the most probable combination of external loads `U` and strength of the structure `A` that may cause the response `X` to exceed, in one of many ways, an acceptable limit? Here the target function in the optimization problem describes the probability density (or rather, its logarithm) of unknown loads and strength parameters.
+**Reliability analysis**: Finding a design point. What is the most probable combination of external loads `U` and strength of the structure `A` that may cause the response `X` to exceed, in one of many ways, an acceptable limit? Here the target function in the optimisation problem describes the probability density (or rather, its logarithm) of unknown loads and strength parameters.
 
 **Optimal control**: how to steer (`U`) a system with many dofs (`X`) to follow a target trajectory? The target function describes the cost of actuation and the cost of deviation from a target behaviour.
 
 ## `Muscade` and Lagrange multipliers
 
-There are two general approaches to constrained optimization problems.
+There are two general approaches to constrained optimisation problems.
 
-The first is a **change of variables** to eliminate the constraints.  In FEM-optimization, the FEM model is used to express the response as a function of unknow loads and/or model parameters.  This in turn allows to reexpress the target function in terms of unknow loads and/or model parameters: we now have an unconstrained optimization problem. One advantage of this approach is that it can be implemented using *existing* FEM software: The FEM software  is evaluated repeatedly by an optimization algorithm (FEM in the loop).  Such an implementation is useful in many applications, but it does not scale well to large numbers of parameters to optimize.  For example, this is not a good solution to identify the load history that must have acted on a dynamic structure to cause the response that has been partialy measured. Further, it is not easily applicable to problems in which the FEM model *alone* is indetermined because what would otherwise be specified as initial or boundary conditions is to be determined from the measurement data (See the model identification example above, where initial conditions were not provided as input).
+The first is a **change of variables** to eliminate the constraints.  In FEM-optimisation, the FEM model is used to express the response as a function of unknow loads and/or model parameters.  This in turn allows to reexpress the target function in terms of unknow loads and/or model parameters: we now have an unconstrained optimisation problem. One advantage of this approach is that it can be implemented using *existing* FEM software: The FEM software  is evaluated repeatedly by an optimisation algorithm (FEM in the loop).  Such an implementation is useful in many applications, but it does not scale well to large numbers of parameters to optimize.  For example, this is not a good solution to identify the load history that must have acted on a dynamic structure to cause the response that has been partialy measured. Further, it is not easily applicable to problems in which the FEM model *alone* is indetermined because what would otherwise be specified as initial or boundary conditions is to be determined from the measurement data (See the model identification example above, where initial conditions were not provided as input).
 
-The second approach to constrained optimization is to use **Lagrange multipliers** (also known in this context as adjoint state variables).  This approach requires dedicated solvers, and dedicated systems for the assembly of gradient vectors and Hessian matrices. `Muscade` provides such solvers (and more are to be added in the near future).  The "Lagrange multiplier"-approach also requires that elements provide partial derivatives and internal results to the solution algorithms, in a way that is not easily achievable within the architecture of existing FEM software. As a consequence, in `Muscade`, all element types required to model a given physical system need to be reimplemented, which is a serious drawback.  However, thanks to careful design of `Muscade`, as well as to the capabilities provided by the [Julia](https://julialang.org) programming language, implementing elements is significantly easier than it would be within a classical FE software. 
+The second approach to constrained optimisation is to use **Lagrange multipliers** (also known in this context as adjoint state variables).  This approach requires dedicated solvers, and dedicated systems for the assembly of gradient vectors and Hessian matrices. `Muscade` provides such solvers (and more are to be added in the near future).  The "Lagrange multiplier"-approach also requires that elements provide partial derivatives and internal results to the solution algorithms, in a way that is not easily achievable within the architecture of existing FEM software. As a consequence, in `Muscade`, all element types required to model a given physical system need to be reimplemented, which is a serious drawback.  However, thanks to careful design of `Muscade`, as well as to the capabilities provided by the [Julia](https://julialang.org) programming language, implementing elements is significantly easier than it would be within a classical FE software. 
 
 ## Elements in `Muscade`
 
