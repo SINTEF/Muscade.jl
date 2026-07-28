@@ -16,17 +16,17 @@ beam         = EulerBeam3D{false}(elnod;mat,orient2=SVector(0.,1.,0.))
 strainbeam = StrainGaugeOnEulerBeam3D(elnod;
                                          P             = SMatrix{3,4}(0.,0.,.05, 0.,0.05,0.,  0.,0.,-.05,  0.,-.05,0.),
                                          D             = SMatrix{3,4}(1.,0.,0.,  1.,0.,0.,    1.,0.,0.,    1.,0.,0.  ),
-                                         ElementType   = EulerBeam3D{true},
+                                         TargetElement   = EulerBeam3D{true},
                                          elementkwargs = (mat     = mat,
                                                           orient2 = SVector(0.,0.,1.)))
 @functor with(σε=1.) cost(eleres,X,U,A,t) = sum((eleres.ε/σε).^2)/2
 coststrainbeam = ElementCostAndConstraint(elnod;
                         req           = @request(ε),
                         cost          = cost,
-                        ElementType   = StrainGaugeOnEulerBeam3D,
+                        TargetElement   = StrainGaugeOnEulerBeam3D,
                         elementkwargs = (P             = SMatrix{3,4}(0.,0.,.05, 0.,0.05,0.,  0.,0.,-.05,  0.,-.05,0.),
                                          D             = SMatrix{3,4}(1.,0.,0.,  1.,0.,0.,    1.,0.,0.,    1.,0.,0.  ),
-                                         ElementType   = EulerBeam3D{true},
+                                         TargetElement   = EulerBeam3D{true},
                                          elementkwargs = (mat     = mat,
                                                           orient2 = SVector(0.,0.,1.))))
 

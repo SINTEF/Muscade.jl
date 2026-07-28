@@ -13,7 +13,7 @@ strain gauges are placed halfway along the `EulerBeam3D`. In an inverse analysis
    element halfway along its length. `P[1,:]` must be zero.
 - `D` `SMatrix{3,Nsensor,𝕣}`, the orientation of a strain gauge. If multiple strain gauges 
    are present at the same position, one can repeat the columns of `P`.
-- `ElementType=EulerBeam3D` the constructor to the wrapped element.  This is typicaly
+- `TargetElement=EulerBeam3D` the constructor to the wrapped element.  This is typicaly
    an `EulerBeam3D` but could be another element wrapping an `EulerBeam3D`.
 - `elementkwargs` a `NamedTuple` with the keyword arguments to the wrapped element.  See [`EulerBeam3D`](@ref)   
 
@@ -55,9 +55,9 @@ struct EulerBeam3DwithStrainGauge{Ngauge,Teleobj,Treq} <: AbstractElement
     K2       :: SVector{  Ngauge,𝕣}  
     K3       :: SVector{  Ngauge,𝕣}  
 end
-function EulerBeam3DwithStrainGauge(nod::Vector{Node};P,D,ElementType=EulerBeam3D,elementkwargs)  # Teleobj because we may wrap wrapped beams
+function EulerBeam3DwithStrainGauge(nod::Vector{Node};P,D,TargetElement=EulerBeam3D,elementkwargs)  # Teleobj because we may wrap wrapped beams
     req       = @request (ε,κ)
-    eleobj    = ElementType(nod;elementkwargs...)
+    eleobj    = TargetElement(nod;elementkwargs...)
     all(P[1,:].==0.) || muscadeerror("In arguments of EulerBeam3DwithStrainGauge, P[1,:] must all be zero")
     E         =  D[1,:].^2
     K1        =  D[1,:].*(D[3,:].*P[2,:].-D[2,:].*P[3,:])  

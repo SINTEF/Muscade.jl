@@ -180,7 +180,7 @@ Muscade.doflist(     ::Type{EulerBeam3D{Mat,true}}) where{Mat} =
          class= (:X,:X,:X,:X,:X,:X,:X,:X,:X,:X,:X,:X,:U,:U,:U),  
          field= (:t1,:t2,:t3,:r1,:r2,:r3, :t1,:t2,:t3,:r1,:r2,:r3,  :t1,:t2,:t3) )
 
-# ElementType for the EulerBeam3D element. Arguments: node list, material, and direction of the first bending axis in the global coordinate system.  
+# Element Type for the EulerBeam3D element. Arguments: node list, material, and direction of the first bending axis in the global coordinate system.  
 EulerBeam3D(nod;kwargs...) = EulerBeam3D{false}(nod;kwargs...) # by default, EulerBeam3D does not have Udof.
 function EulerBeam3D{Udof}(nod::Vector{Node};mat,orient2::SVector{ndim,𝕣}=SVector(0.,1.,0.)) where {Udof}
     c       = coord(nod)

@@ -58,7 +58,7 @@ addelement!(model,ElementCostAndConstraint,strainmesh;
                         TargetElement = EulerBeam3DwithStrainGauge,
                         elementkwargs = (P             = SMatrix{3,4}(0.,0.,.05, 0.,0.05,0.,  0.,0.,-.05,  0.,-.05,0.),
                                          D             = SMatrix{3,4}(1.,0.,0.,  1.,0.,0.,    1.,0.,0.,    1.,0.,0.  ),
-                                         ElementType   = EulerBeam3D{true},
+                                         TargetElement   = EulerBeam3D{true},
                                          elementkwargs = (mat     = mat,
                                                           orient2 = SVector(0.,0.,1.))))
 addelement!(model,ElementCostAndConstraint,accmesh;

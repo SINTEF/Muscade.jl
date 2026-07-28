@@ -749,18 +749,18 @@ Inputs and outputs are @show'n.
 
 # Named arguments to the constructor
 
-- `ElementType`         The the type of element to be monitored-
+- `TargetElement`         The the type of element to be monitored-
 - `trigger`             A function that takes `dbg` as an input and returns a boolean 
                         (`true`) to printout.
-- `elementkwargs`       a `NamedTuple` containing the named arguments of the `ElementType` constructor.
+- `elementkwargs`       a `NamedTuple` containing the named arguments of the `TargetElement` constructor.
 
 """
 struct Monitor{Teleobj,Ttrigger} <: AbstractElement
     eleobj   :: Teleobj
     trigger  :: Ttrigger
 end
-function Monitor(nod::Vector{Node};ElementType,trigger::Function,elementkwargs)
-    eleobj = ElementType(nod;elementkwargs...)
+function Monitor(nod::Vector{Node};TargetElement,trigger::Function,elementkwargs)
+    eleobj = TargetElement(nod;elementkwargs...)
     return Monitor(eleobj,trigger)
 end
 doflist( ::Type{<:Monitor{Teleobj}}) where{Teleobj} = doflist(Teleobj)
