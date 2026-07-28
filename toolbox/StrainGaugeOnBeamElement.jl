@@ -5,7 +5,7 @@ An element designed to wrap around an EulerBeam3D. The element makes no contribu
 to residual or Lagrangian besides the contribution made by the element it wraps.
 `EulerBeam3DwithStrainGauge` provides requestables allowing to model strain gauges. The
 strain gauges are placed halfway along the `EulerBeam3D`. In an inverse analysis, the
-`EulerBeam3DwithStrainGauge` is itself wraped by an `ElementCost` element.
+`EulerBeam3DwithStrainGauge` is itself wraped by an `ElementCostAndConstraint` element.
 
 # Keyword arguments when adding elements:
 

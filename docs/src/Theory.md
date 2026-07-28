@@ -74,7 +74,7 @@ One example of built-in element defining a cost is [`DofCost`](@ref), an element
 - A cost on a ``U``-dof, a surprisal expressing prior knowledge of the magnitude of forces that may be explaining measured response.
 - A cost on a ``X``-dof, a financial cost incured if a point in the model has a too high value, causing a failure.
 
-Another built-in element is [`ElementCost`](@ref), an element to add a cost which is a function of an element-result. For example, a bar element can have "axial strain" as an internal value, that is, a value it computes that is neither a dof nor a residual. 
+Another built-in element is [`ElementCostAndConstraint`](@ref), which can add a cost which is a function of an element-result. For example, a bar element can have "axial strain" as an internal value, that is, a value it computes that is neither a dof nor a residual. 
 
 ## Constrained optimization
 
