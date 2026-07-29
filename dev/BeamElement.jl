@@ -156,7 +156,7 @@ See also: [`BeamCrossSection`](@ref), [`Bar3D`](@ref)
 """
 struct EulerBeam3D{Mat,Uforce} <: AbstractElement
     cₘ       :: SVector{3,𝕣}     # Position of the middle of the element, as meshed
-    rₘ       :: Mat33{𝕣}         # Orientation of the element, as meshed, represented by a rotation matrix 
+    rₘ       :: SMatrix{3,3,𝕣}   # Orientation of the element, as meshed, represented by a rotation matrix 
     ζgp      :: SVector{ngp,𝕣}   # Location of the Gauss points for the normalized element with length 1
     ζnod     :: SVector{nXnod,𝕣} # Location of the nodes for the normalized element with length 1
     tgₘ      :: SVector{ndim,𝕣}  # Vector connecting the nodes of the element in the global coordinate system
@@ -187,7 +187,7 @@ Muscade.doflist(     ::Type{EulerBeam3D{Mat,true}}) where{Mat} =
          class= (:X,:X,:X,:X,:X,:X,:X,:X,:X,:X,:X,:X,:U,:U,:U),  
          field= (:t1,:t2,:t3,:r1,:r2,:r3, :t1,:t2,:t3,:r1,:r2,:r3,  :t1,:t2,:t3) )
 
-# ElementType for the EulerBeam3D element. Arguments: node list, material, and direction of the first bending axis in the global coordinate system.  
+# Element Type for the EulerBeam3D element. Arguments: node list, material, and direction of the first bending axis in the global coordinate system.  
 EulerBeam3D(nod;kwargs...) = EulerBeam3D{false}(nod;kwargs...) # by default, EulerBeam3D does not have Udof.
 function EulerBeam3D{Udof}(nod::Vector{Node};mat,orient2::SVector{ndim,𝕣}=SVector(0.,1.,0.)) where {Udof}
     c       = coord(nod)
