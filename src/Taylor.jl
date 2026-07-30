@@ -156,13 +156,13 @@ end
 
 # type for static parametrization
 """ 
-    V = variate{O}(v[;context,scale])
+    P,N,V = variate{O}(v[;context,scale])
 
 variate `v` to the `O`-th order. 
 
-    V = variate(v[;context,scale])
+    P,N,V = variate(v[;context,scale])
 
-variates `v` to the first order.
+variates `v` to the first order. `P` and `N` are the precedence and number of partials, respectively, of `V`.
 
 The variable `v` is a nested structure of `NamedTuple`s, `Tuple`s and `SArrays` of 
 `Real`s (possibly: `∂ℝ`s). `V` has the same structure as `v`. 
@@ -176,9 +176,9 @@ with variables obtained by `revariate`, `motion` or a separate call to `variate`
 `lagrangian` and `residual` (or variables computed from these), then the later variables
 must be included in `context`. `context` can be a variable or a ``tuple` of variables.  
 
-    V = variate(∂1{X};context=(Λ,X,U,t)) # A left out
-    W = V*t+∂0(X)                        # safe
-    Y = V*A[1]                           # not safe!!!
+    P,N,V = variate(∂1{X};context=(Λ,X,U,t)) # A left out
+    W     = V*t+∂0(X)                        # safe
+    Y     = V*A[1]                           # not safe!!!
 
 Not for use within elements: `scale` has the same structure as `v` except that `SArray`s and `NTuple`s can be replaced
 by `AllElement(scaling)` to apply `scaling to all elements in the `SArray` or `NTuple` in `v`. 
@@ -187,7 +187,7 @@ See also: [`motion`](@ref), [`revariate`](@ref), [`chainrule`](@ref), [`variate_
 """
 struct variate{O}   end
 """ 
-    V = variate0{O}(v[;context,scale])
+    P,N,V = variate0{O}(v[;context,scale])
 
 The same as [`variate`](@ref), but while all derivatives are as from [`variate`](@ref), all
 values are set to 0.
@@ -197,7 +197,7 @@ struct variate0{O}  end # former δ: returns outputs with VALUE=0
     V_ = revariate{P}(V)
 
 The variable `V` is a nested structure of `NamedTuple`s, `Tuple`s and `SArrays` of 
-`Real`s (possibly: `∂ℝ`s).
+`Real`s (possibly: `∂ℝ`s). By contract with `variate`, `revariate` does not output `P` or `N`.
 
 `V` is stripped of its partials, an revariated to order `P`.
 

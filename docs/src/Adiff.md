@@ -57,7 +57,7 @@ This structure is nested to represent higher derivatives, so `R` can itself be a
 
 ```julia
 v = SVector(2.,3.);
-P,N,x2=variate{2}(v);
+P,N,v2=variate{2}(v);
 v2
 ```
 
@@ -182,7 +182,7 @@ using Muscade: value,∂,variate0
 f(x)   = x.*x .+ sum(x)
 x      = SVector(1.,2.,3.)
 dir    = SVector(1.,0.,2.)
-P,N,δs = variate0(0.)[1]
+P,N,δs = variate0(0.)
 x1     = x + dir*δs
 y1     = f(x1)
 y      = value{P}(y1)
@@ -353,6 +353,8 @@ Dynamic solvers call `Muscade.residual` and `Muscade.lagrangian` with `X` and `U
 Finite elements solve differential equations by introducing interpolations schemes to represent fields within the element as a function of the degrees of freedom.  For example, this could be a relation of the type `ε₀ = kinematics(X₀)`, where `X₀` and `ε₀` are the nodal displacements and the strain at integration points.  In some elements, `kinematics` can be non-linear and complicated to differentiate. [`Toolbox.EulerBeam3D`](@ref) provide a good example of this. In some material models, the time derivative of `ε₁` can be required. The function `motion` uses directional derivatives to transform the `NTuple` `X` into nested `∂ℝ` `X_`. `X_` is used to call `kinematics`, and `motion⁻¹` used to recover a tuple containing the time derivatives of `ε`. This works whether `X` is already variated or not.
 
 ```julia
+using StaticArrays
+using Muscade: motion, motion⁻¹, ∂0,∂1
 kinematics(X₀) = sum(X₀.*X₀)
 X₀,X₁,X₂       = (SVector(1.),SVector(2.),SVector(3.))
 X              = (X₀,X₁,X₂) # argument to residual
