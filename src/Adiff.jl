@@ -172,10 +172,16 @@ Completely strip `Y` of partial derivatives.  Use only for debugging purpose.
 
 See also: [`precedence`](@ref), [`Muscade.variate_`](@ref), [`δ_`](@ref), [`value`](@ref), [`∂`](@ref), [`value_∂`](@ref)
 """
-@inline VALUE(a::Nothing )                     =        nothing
-@inline VALUE(a::ℝ )                           =        a
-@inline VALUE(a::∂ℝ)                           = VALUE( a.x)
-@inline VALUE(a::SA)                           = VALUE.(a)
+@inline VALUE(a::Nothing )    =        nothing
+@inline VALUE(a::ℝ )          =        a
+@inline VALUE(a::∂ℝ)          = VALUE( a.x)
+@inline VALUE(a::SA)          = VALUE.(a)
+@inline VALUE(a::Tuple     )  = (VALUE(first(a)),VALUE(Base.tail(a))...)
+@inline VALUE(a::Tuple{}   )  = ()
+@inline VALUE(a::NamedTuple)  = NamedTuple{keys(a)}(VALUE(values(a)))
+
+
+
 
 struct ∂{P,N}                  end 
 struct value{P,N}              end

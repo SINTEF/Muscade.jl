@@ -100,6 +100,7 @@ module Muscade
     public study_scale,study_singular,plot_matrix_sparsity
     public plot_block_matrix_sparsity,print_nz,Monitor,@typeof,print_element_array,diffed_lagrangian,diffed_residual
     public SpyAxis
+    # public @dbg,stackstring
 
     include("Output.jl")
     export setdof!,getdof,getresult,findlastassigned

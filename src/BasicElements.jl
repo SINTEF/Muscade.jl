@@ -364,7 +364,7 @@ e1              = addelement!(model,DofConstraint,[n1],λclass=:X,
                               λinod=(1,),λfield=(:λ1,), 
                               xinod=(1,),xfield=(:t1,),
                               gap=gap,
-                              mode=positive)
+                              mode=Muscade.positive)
 e2              = addelement!(model,Muscade.QuickFix  ,[n1],inod=(1,),field=(:t1,),
                               res=res
 initialstate    = initialize!(model)
@@ -591,7 +591,6 @@ no_second_order(::Type{<:ElementCostAndConstraint{NSO}}) where{NSO} = NSO
     Xe                = getsomedofs(X,ix) 
     Ue                = getsomedofs(U,iu) 
     L,FB,☼eleres      = getlagrangian(o.eleobj,Λe,Xe,Ue,A,t,SP,(dbg...,via=ElementCostAndConstraint),req.eleres)
-
     if typeof(o.cost) ≠ Nothing    
         ☼cost         = o.cost(eleres,t,o.costargs...) 
         L            += cost

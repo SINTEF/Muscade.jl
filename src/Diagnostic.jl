@@ -102,9 +102,9 @@ function describe(model::Model,nodID::NodID)
         printstyled("Not a valid NodID\n",color=:red,bold=true)
     else
         printstyled(@sprintf("NodID(%i)\n", nodID.inod),color=:cyan,underline=true)
-        @printf("      coord=[%g",nodID.inod)
+        @printf("      coord=[")
         for coord∈nod.coord
-            @printf ", %g" coord 
+            @printf "%g " coord 
         end
         @printf "]\n" 
         printstyled("has dofs\n",color=:cyan)
@@ -1023,6 +1023,5 @@ SpyAxis() = SpyAxis(Any[])
 GLMakie.lines!(  axis::SpyAxis,args...;kwargs...) = push!(axis.call,(fun=:lines!  ,args=args,kwargs=kwargs))
 GLMakie.scatter!(axis::SpyAxis,args...;kwargs...) = push!(axis.call,(fun=:scatter!,args=args,kwargs=kwargs))
 GLMakie.mesh!(   axis::SpyAxis,args...;kwargs...) = push!(axis.call,(fun=:mesh!   ,args=args,kwargs=kwargs))
-
 
 
