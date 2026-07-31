@@ -10,6 +10,9 @@ module Muscade
     using Base.Cartesian
     using GLMakie
 
+    include("Debug.jl")
+    public @dbg,stackstring
+
     include("Dialect.jl")
     export ℝ,ℤ,𝕣,𝕫,𝔹,𝕓,ℂ
     export ℝ1,ℤ1,𝕣1,𝕫1,𝔹1,𝕓1
@@ -100,7 +103,6 @@ module Muscade
     public study_scale,study_singular,plot_matrix_sparsity
     public plot_block_matrix_sparsity,print_nz,Monitor,@typeof,print_element_array,diffed_lagrangian,diffed_residual
     public SpyAxis
-    # public @dbg,stackstring
 
     include("Output.jl")
     export setdof!,getdof,getresult,findlastassigned
