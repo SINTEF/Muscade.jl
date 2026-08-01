@@ -26,7 +26,7 @@ struct NodID <: ID
     inod        :: 𝕫
 end
 struct Dof
-    ID          :: DofID       # global dof number, unique ID
+    dofID       :: DofID       # global dof number, unique ID
     nodID       :: NodID       # global number of associated node within class
     idoftyp     :: 𝕫
     eleID       :: Vector{EleID}
@@ -43,13 +43,13 @@ Example:
 See also: [`coord`](@ref) 
 """
 struct Node 
-    ID          :: NodID             # global node number, unique ID
+    nodID       :: NodID             # global node number, unique ID
     coord       :: 𝕣1                # all nodes in a model have coordinates in same space
     dofID       :: Vector{DofID}     # list of dofs on this node
     eleID       :: Vector{EleID}     # list of elements connected to the node
 end
 struct Element
-    ID          :: EleID             # global element number, unique ID
+    eleID       :: EleID             # global element number, unique ID
     ieletyp     :: 𝕫
     iele        :: 𝕫                 # number of element within type
     nodID       :: Vector{NodID}                
@@ -105,7 +105,7 @@ getidof(E::DataType,class)        = findall(doflist(E).class.==class)
 
 where `class` can be any of `:X`, `:U`, `:A`: get the number of dofs of each
 specified dof-classes for the variable `model` or the type
-`Element`.  If no class is specified `getndof` return the asum of the number of dofs of all classes.
+`Element`.  If no class is specified `getndof` return the sum of the number of dofs of all classes.
 
 See also: [`describe`](@ref)
 """
@@ -140,18 +140,28 @@ function getdoftyp(model::Model,class::Symbol,field::Symbol)
 end
 getdofID(model::Model,class::Symbol,field::Symbol) = getdoftyp(model,class,field).dofID
 function getdofID(model::Model,class::Symbol,field::Symbol,nodID::AbstractVector{NodID})
-    dofID  = getdofID(model,class,field) 
-    i      = [model.dof[d].nodID ∈ nodID for d ∈ dofID]
-    return dofID[i]
+    dofIDs  = Vector{DofID}(undef,length(nodID))
+    idoftyp = getidoftyp(model,class,field)
+    for (inodID,nodIDᵢ) ∈ enumerate(nodID)
+        nod = model.nod[nodIDᵢ.inod]
+        dofIDs[inodID] = DofID(:UNKNOWN,0)
+        for dofID ∈ nod.dofID
+            dof = model.dof[dofID.class][dofID.idof]
+            if dof.idoftyp == idoftyp
+                dofIDs[inodID] = dofID
+                break
+            end
+        end
+    end
+    return dofIDs
 end
-
 
 # Model construction - API
 
 """
     model = Model([ID=:my_model])
 
-Construct a blank `model`, which will be mutated to create a finite element [optimization] problem.
+Construct a blank `model`, which will be mutated to create a FEM-constrained optimisation problem.
 
 See also: [`addnode!`](@ref), [`addelement!`](@ref), [`describe`](@ref), [`solve`](@ref)  
 """
@@ -414,7 +424,7 @@ where `nodID` is returned by `addnode!`, returns a datastructure:
 end
 
 """
-    get(model::Model,nodID::dofID)
+    get(model::Model,dofID::dofID)
 
 where `dofID` is found in the output of `get(model,eleID)` and `get(model,nodID)`, returns a datastructure:
 - `class`, dofclass `:X`, `:U` or `:A`

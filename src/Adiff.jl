@@ -10,6 +10,11 @@ const Jℝ  = Union{AbstractIrrational, AbstractFloat, Integer, Rational   }
 struct ∂ℝ{P,N,R} <:ℝ where{R<:ℝ}  # P for precedence, N number of partials, R type of the variable (∂ℝ can be nested)
     x  :: R
     dx :: SV{N,R}
+    function ∂ℝ{P,N,R}(x,dx) where{P,N,R}
+        P == precedence(R)+1 || error("attempted to construct a ∂ℝ with P==",P," and precedence(R)==",precedence(R),". They must be equal.")
+        N == length(dx)      || error("attempted to construct a ∂ℝ with N==",N," and length(dx)==",length(dx),". They must be equal.")
+        new{P,N,R}(x,dx)
+    end
 end 
 const Jℝ∂ = Union{AbstractIrrational, AbstractFloat, Integer, Rational,∂ℝ}
 
@@ -37,7 +42,7 @@ Base.show(io::IO, ::T𝟘) = print(io,"𝟘")
 ∂ℝ{P,N,R}(x::𝕣             ) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(R(x),SV{N,R}(zero(R)                 for j=1:N))
 function ∂ℝ{P,N}(x::Rx,dx::SV{N,Rdx}) where{P,N,Rx<:ℝ,Rdx<:ℝ}
     R = promote_type(Rx,Rdx)
-    return ∂ℝ{P,N}(convert(R,x),convert.(R,dx))
+    return ∂ℝ{P,N,R}(convert(R,x),convert.(R,dx))
 end
 
 # zeros, ones
@@ -58,11 +63,11 @@ Base.eps(     ::Type{∂ℝ{P,N,R}}) where{P,N,R<:ℝ} = eps(R)
 Base.float(a::∂ℝ)                                = a
 
 # promote rules
-Base.promote_rule(::Type{∂ℝ{P ,N ,Ra}},::Type{∂ℝ{P,N,Rb}}) where{P ,N ,Ra<:ℝ,Rb<:ℝ} = ∂ℝ{P ,N ,promote_type(Ra,Rb)}
 Base.promote_rule(::Type{∂ℝ{Pa,Na,Ra}},::Type{       Rb }) where{Pa,Na,Ra<:ℝ,Rb<:ℝ} = ∂ℝ{Pa,Na,promote_type(Ra,Rb)}
-function Base.promote_rule(::Type{∂ℝ{Pa,Na,Ra}},::Type{∂ℝ{Pb,Nb,Rb}}) where{Pa,Pb,Na,Nb,Ra<:ℝ,Rb<:ℝ}
-    if  Pa>Pb ∂ℝ{Pa,Nb,promote_type(      Ra    ,∂ℝ{Pb,Nb,Rb})}
-    else      ∂ℝ{Pb,Nb,promote_type(∂ℝ{Pa,Na,Ra},      Rb    )}
+function Base.promote_rule(a::Type{∂ℝ{Pa,Na,Ra}},b::Type{∂ℝ{Pb,Nb,Rb}}) where{Pa,Pb,Na,Nb,Ra<:ℝ,Rb<:ℝ}
+    if     Pa>Pb ∂ℝ{Pa,Na,promote_type(         Ra ,∂ℝ{Pb,Nb,Rb})}
+    elseif Pa<Pb ∂ℝ{Pb,Nb,promote_type(∂ℝ{Pa,Na,Ra},         Rb )}
+    else   error("Not possible to promote ",a," and ",b,"to the same type.  Perturbation confusion?")
     end
 end
 
@@ -468,20 +473,50 @@ This differs from Julia's `sinc(x) = sin(π*x)/(π*x)`.
 end
 
 # Print addifs
-const subscripts = ('₁','₂','₃','₄','₅','₆','₇','₈','₉')
-#string_(a::Float64) = strip(@sprintf("%18.16g",a))
-string_(a::Float64) = strip(replace(@sprintf("%5.3g",a),"e+0"=>"e","e+"=>"e","e-0"=>"e-"))
+const subscripts    = ('₀','₁','₂','₃','₄','₅','₆','₇','₈','₉')
+string_(a::Float64) = a==0 ? '⋅' : strip(replace(@sprintf("%5.3g",a),"e+0"=>"e","e+"=>"e","e-0"=>"e-"))   
 function string_(a::∂ℝ{P,N,R}) where{P,N,R}
-    p = subscripts[P]
-    x = string_(a.x)
-    dx = N==0 ? "" : @sprintf("%s",string_(a.dx[1]))
-    for i = 2:N
-       dx =   @sprintf("%s,%s",dx,string_(a.dx[i])) 
+    p    = subscripts[P+1]
+    str  = @sprintf("∂%s⟨",p)     
+    str *= string_(a.x)
+    str *= P==1 ? @sprintf("|%s",p) : @sprintf("|%s ",p)     
+    if N>0
+        str *= string_(a.dx[1])
+        for i = 2:N
+            str *= P==1 ? "," : ", " 
+            str *= string_(a.dx[i])
+        end
     end
-#    return @sprintf("%s+∂%s⟨%s⟩",x,p,dx) # \partial \langle \rangle mathematicaly-explicit
-    return @sprintf("∂%s⟨%s|%s⟩",p,x,dx) # \partial \langle \rangle mathematicaly-explicit
+    str *= "⟩"     
+    return str
 end
 Base.show(io::IO,a::∂ℝ) = print(io,string_(a))
+
+# using StyledStrings # this package has a hex on it
+# const subscripts    = ('₀','₁','₂','₃','₄','₅','₆','₇','₈','₉')
+# Pcolor(P)           = 1≤P≤5 ? (:bright_red, :bright_green, :yellow,:cyan,  :magenta)[P] : :bright_green 
+# colstr(s,c::Symbol) = styled"{$(c):$(s)}"
+# #colstr(s,c::Symbol) = styled"{bold,$(c):$(s)}"
+# colstr(s,p::Int)    = colstr(s,Pcolor(p))
+# string_(a::Float64) = a==0 ? colstr('⋅',:white) : strip(replace(@sprintf("%5.3g",a),"e+0"=>"e","e+"=>"e","e-0"=>"e-"))   
+# function string_(a::∂ℝ{P,N,R}) where{P,N,R}
+#     p    = subscripts[P+1]
+#     str  = colstr(@sprintf("∂%s⟨",p),P)     
+#     str *= string_(a.x)
+#     str *= colstr(P==1 ? @sprintf("|%s",p) : @sprintf("|%s ",p),P)     
+#     if N>0
+#         str *= string_(a.dx[1])
+#         for i = 2:N
+#             str *= colstr(P==1 ? "," : ", ",P) 
+#             str *= string_(a.dx[i])
+#         end
+#     end
+#     str *= colstr("⟩",P)     
+#     return str
+# end
+# Base.show(io::IO,a::∂ℝ) = print(io,string_(a))
+
+
 
 """
     Muscade.isapprox_dbg(a,b;kwargs...)

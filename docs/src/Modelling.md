@@ -2,7 +2,7 @@
 
 ## Script as input
 
-`Muscade` being a framework for the development of optimization-FEM applications, it does not provide the elements needed to treat any specific application. It only provides a limited number of generic modeling capabilities, like fixing degrees of freedom (dofs) to describe boundary conditions, introducing holonomic constraints or costs on either dofs, or element-results (see [Built-in elements](@ref)).
+`Muscade` being a framework for the development of optimisation-FEM applications, it does not provide the elements needed to treat any specific application. It only provides a limited number of generic modeling capabilities, like fixing degrees of freedom (dofs) to describe boundary conditions, introducing holonomic constraints or costs on either dofs, or element-results (see [Built-in elements](@ref)).
 
 Hence to create a model, one will typicaly be `using` both `Muscade` and another package that provides a `Muscade`-based application (app).  The app provides specific elements for domains like continuum mechanics, marine structures, hydrogen diffusion etc.
 
@@ -86,11 +86,9 @@ With a few exceptions for testing and demonstration, `Muscade` does not provide 
 
 [`SingleUdof`](@ref) allows to define an unknown external nodal load and apply a cost to it.
 
-[`ElementCost`](@ref) adds a cost per unti of time on a combination of one element's dofs and element-results.
-
 [`DofConstraint`](@ref) adds a constraint to a combination of *values* (no time derivatives) of dofs. The constraints can switch over time between equality, inequality and "off". Inequality constraints are handled using a modified interior point method.
 
-[`ElementConstraint`](@ref) adds a constraint to a function of internal results from one element. The constraints can switch over time between equality, inequality and "off". Inequality constraints are handled using a modified interior point method.
+[`ElementCostAndConstraint`](@ref) adds a cost per unit time and constraints, that are function of internal results from one element. The constraints can switch over time between equality, inequality and "off". Inequality constraints are handled using a modified interior point method.
 
 [`Hold`](@ref) provides a simplified syntax to set a single ``X``-dof to zero.
 

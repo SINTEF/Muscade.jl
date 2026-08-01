@@ -61,7 +61,7 @@ instantiate(::Type{NamedTuple{k,F}}) where{k,F} = NamedTuple{k}(instantiate.(fie
 
     req = mergerequest(o.req)
 
-"Outer" elements like [`ElementCost`](@ref) and [`ElementConstraint`](@ref) use requests to apply a cost or a constraint to
+"Wrapping" elements like [`ElementCostAndConstraint`](@ref) use requests to apply a cost or a constraint to
 requestables from another "target" element. These outer elements must be coded carefully so that `getresult` can be used to extracted
 both requestable internal results from the outer and from the target element.
 
@@ -70,9 +70,9 @@ request for element to be obtained from the analysis.  The call to `mergerequest
 for the outer element will be modified by `@espy` to something like `req = mergerequest(o.req,req)`, to merge `o.req` of
 the outer element to any requests `req` transmitted by the user to extract results (or by an outer element to the outer element).    
 
-See the code of `ElementCost`'s constructor and `lagrange` method for an example.
+See the code of `ElementCostAndConstraint`'s constructor and `lagrange` method for an example.
 
-See also: [`ElementCost`](@ref), [`@request`](@ref), [`getresult`](@ref)
+See also: [`ElementCostAndConstraint`](@ref), [`@request`](@ref), [`getresult`](@ref)
 """
 @inline mergerequest(x)            = x
 mergerequest(x        , ::Nothing) = x

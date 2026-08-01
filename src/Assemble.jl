@@ -287,52 +287,6 @@ function selecteddofs(model::Model,dis,classes)
     return DofGroup(dis, iΛ,iX,iU,iA)
 end
 
-function makevecfromfields!(vec::AbstractVector,dg::DofGroup,in)
-    # in[:class][:doftype] = val
-    # vec   = zeros(getndof(dg))
-    if haskey(in,:Λ)
-        for i = 1:length(dg.iΛ)
-            iΛ,jΛ   = dg.iΛ[i],dg.jΛ[i]  # state.Λ[iΛ] <-> y[jΛ]*scaleΛ
-            field   = dg.fieldΛ[iΛ]
-            scale   = dg.scaleΛ[iΛ]
-            if haskey(in.Λ,field)
-                vec[jΛ] = in.Λ[field] / scale
-            end
-        end
-    end
-    if haskey(in,:X)
-        for i = 1:length(dg.iX)
-            iX,jX   = dg.iX[i],dg.jX[i]  # state.X[iX] <-> y[jX]*scaleX
-            field   = dg.fieldX[iX]
-            scale   = dg.scaleX[iX]
-            if haskey(in.X,field)
-                vec[jX] = in.X[field] / scale
-            end
-        end
-    end
-    if haskey(in,:U)
-        for i = 1:length(dg.iU)
-            iU,jU   = dg.iU[i],dg.jU[i]  # state.U[iU] <-> y[jU]*scaleU
-            field   = dg.fieldU[iU]
-            scale   = dg.scaleU[iU]
-            if haskey(in.U,field)
-                vec[jU] = in.U[field] / scale
-            end
-        end
-    end
-    if haskey(in,:A)
-        for i = 1:length(dg.iA)
-            iA,jA   = dg.iA[i],dg.jA[i]  # state.A[iA] <-> y[jA]*scaleA
-            field   = dg.fieldA[iA]
-            scale   = dg.scaleA[iA]
-            if haskey(in.A,field)
-                vec[jA] = in.A[field] / scale
-            end
-        end
-    end
-    return vec
-end
-
 ######## Prepare assembler datastructure "asm"
 
 # asm[iarray,ieletyp][ieledof/i,iele] has value zero for terms from element gradient/hessian that are not to be added in. Otherwise, the value they
@@ -608,17 +562,23 @@ struct   add_∂!{P,S,T} end # to allow syntax with type-parameter P: precedence
 # ia:    where in the vector to pick data
 # ida:   where in the partials to pick data
 # iasm:  where in first dim of out to put data      (if transpose: second)
-# idasm: where in the second dim of out to put data (if transpose: first)
+# idasm: where in the second dim of out to put data (if transpose: first )
+# nasm,nadsm: provide if Na,Nda are not length(ia),length(ida) (you are adding in a fraction of the element's array)
 #
 # ∀ i,j out[asm[iasm[i]+length(ia)*idasm[j]-1,iele]] += a[ia[i]].dx[ida[j]]  
 #
 # out::Array is deliberately vague, encompassing 𝕣2 and sparse.nzval
-function add_∂!{P,S,T}(out::Array,asm,iele,a::SVector{Na,∂ℝ{P,Nda,R}},ia=1:Na,ida=1:Nda ; iasm=idvec,idasm=idvec,Δt=idmult) where{P,Nda,R,Na,S,T}
+function add_∂!{P,S,T}(out::Array,asm,iele,a::SVector{Na,∂ℝ{P,Nda,R}},ia=1:Na,ida=1:Nda ; nasm=length(ia),ndasm=length(ida), iasm=idvec,idasm=idvec,Δt=idmult) where{P,Nda,R,Na,S,T}
+    # println("add_∂!")
+    # @show asm,iele,Na,Nda
+    # @show ia,ida,nasm,ndasm,iasm,idasm,T
     for (i,iaᵢ) ∈ enumerate(ia), (j,idaⱼ) ∈ enumerate(ida)
-        k = if T==:transpose   idasm[j]+length(ida)*( iasm[i]-1)   
-        elseif T==:notranspose iasm[ i]+length( ia)*(idasm[j]-1)  
+        k = if T==:transpose   idasm[j]+ndasm*( iasm[i]-1)   # k: flat index into receiving array
+        elseif T==:notranspose iasm[ i]+nasm *(idasm[j]-1)  
         else   muscadeerror((;T=T),"Illegal value of parameter T")    
         end
+        # @show i,iaᵢ,j,idaⱼ
+        # @show idasm[j],iasm[i],k
         iout = asm[k,iele]
         if iout≠0
             if     S==:plus   out[iout]+=a[iaᵢ].dx[idaⱼ]*Δt  
@@ -666,11 +626,13 @@ haslagrangian(::Eleobj) where{Eleobj} = Val(hasmethod(lagrangian,(Eleobj,NTuple,
 # dispatcher
 function getresidual(eleobj::Eleobj,X,U,A,t,SP,dbg,req) where{Eleobj} 
     R,FB,eleres = getresidual(eleobj,hasresidual(eleobj),haslagrangian(eleobj),no_second_order(Eleobj),X,U,A,t,SP,dbg,req) 
+    R isa SVector{length(X[1])} || muscadeerror(dbg,@sprintf("R, from residual(%s,...), must be a SVector of length nXdof",Eleobj))
     hasnan(R,FB) && muscadeerror((dbg...,t=t,SP=SP ),@sprintf("residual(%s,...) returned NaN in R, FB or derivatives",Eleobj))  
     return R,FB,eleres
 end
 function getresidual(eleobj::Eleobj,X,U,A,t,SP,dbg,req...) where{Eleobj} 
     R,FB     = getresidual(eleobj,hasresidual(eleobj),haslagrangian(eleobj),no_second_order(Eleobj),X,U,A,t,SP,dbg    ) 
+    R isa SVector{length(X[1])} || muscadeerror(dbg,@sprintf("R, from residual(%s,...), must be a SVector of length nXdof",Eleobj))
     hasnan(R,FB) && muscadeerror((dbg...,t=t,SP=SP ),@sprintf("residual(%s,...) returned NaN in R, FB or derivatives",Eleobj))  
     return R,FB
 end
@@ -704,18 +666,18 @@ end
 # has lagrangian
 function getresidual(eleobj::Eleobj,hasres::Val{false},haslag::Val{true},nso, X::NTuple{Ndx,SVector{Nx}}, 
         U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na} ,t::ℝ,SP,dbg,req)     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
-    P            = precedence(∂0(X),∂0(U),A,t)
-    Λ            = δ_{P+1,Nx,𝕣}() # legal only because lagrangian is linear in Λ
+    λ            = SVector{Nx,𝕣}(0. for i=1:Nx)
+    Pλ,_,Λ       = variate(λ,context=(X,U,A,t))
     L,FB,eleres  = lagrangian(eleobj,Λ,X,U,A,t,SP,dbg,req)    
-    R            = ∂{P+1,Nx}(L)
+    R            = ∂{Pλ,Nx}(L)
     return R,FB,eleres
 end
 function getresidual(eleobj::Eleobj,hasres::Val{false},haslag::Val{true},nso, X::NTuple{Ndx,SVector{Nx}}, 
         U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na} ,t::ℝ,SP,dbg   )     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
-    P            = precedence(∂0(X),∂0(U),A,t)
-    Λ            = δ_{P+1,Nx,𝕣}() # legal only because lagrangian is linear in Λ
+    λ            = SVector{Nx,𝕣}(0. for i=1:Nx)
+    Pλ,_,Λ       = variate(λ,context=(X,U,A,t))
     L,FB         = lagrangian(eleobj,Λ,X,U,A,t,SP,dbg   )    
-    R            = ∂{P+1,Nx}(L)
+    R            = ∂{Pλ,Nx}(L)
     return R,FB
 end
 
@@ -726,11 +688,13 @@ getresidual(eleobj::Eleobj,hasres::Val{false},haslag::Val{false},nso, X,U,A,t,SP
 # Acost
 function getlagrangian(eleobj::Acost, A::SVector, SP, dbg,req) 
     L,FB,eleres = lagrangian(eleobj,A,SP,dbg,req)    
+    L isa ℝ || muscadeerror(dbg,@sprintf("L, from lagrangian(%s,...), must be a ℝ, alias Real",Eleobj))
     hasnan(L,FB) && muscadeerror((dbg...,t=t,SP=SP),"lagrangian(Acost,...) returned NaN in L, FB or derivatives") 
     return L,FB,eleres  
 end
 function getlagrangian(eleobj::Acost, A::SVector, SP, dbg) 
     L,FB = lagrangian(eleobj,A,SP,dbg)    
+    L isa ℝ || muscadeerror(dbg,@sprintf("L, from lagrangian(%s,...), must be a ℝ, alias Real",Eleobj))
     hasnan(L,FB) && muscadeerror((dbg...,t=t,SP=SP),@sprintf("lagrangian(Acost,...) returned NaN in L, FB or derivatives",Eleobj)) 
     return L,FB  
 end
@@ -739,12 +703,14 @@ end
 function getlagrangian(eleobj::Eleobj, Λ::SVector{Nx}, X::NTuple{Ndx,SVector{Nx}}, 
         U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na}, t::ℝ,SP,dbg,req)     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
     L,FB,eleres = getlagrangian(eleobj,hasresidual(eleobj),haslagrangian(eleobj),no_second_order(Eleobj),Λ,X,U,A,t,SP,dbg,req)    
+    L isa ℝ || muscadeerror(dbg,@sprintf("L, from lagrangian(%s,...), must be a ℝ, alias Real",Eleobj))
     hasnan(L,FB) && muscadeerror((dbg...,t=t,SP=SP),@sprintf("lagrangian(%s,...) returned NaN in L, FB or derivatives",Eleobj)) 
     return L,FB,eleres  
 end
 function getlagrangian(eleobj::Eleobj, Λ::SVector{Nx}, X::NTuple{Ndx,SVector{Nx}}, 
         U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na}, t::ℝ,SP,dbg,req...)     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
     L,FB           = getlagrangian(eleobj,hasresidual(eleobj),haslagrangian(eleobj),no_second_order(Eleobj),Λ,X,U,A,t,SP,dbg       )    
+    L isa ℝ || muscadeerror(dbg,@sprintf("L, from lagrangian(%s,...), must be a ℝ, alias Real",Eleobj))
     hasnan(L,FB) && muscadeerror((dbg...,t=t,SP=SP),@sprintf("lagrangian(%s,...) returned NaN in L, FB or derivatives",Eleobj)) 
     return L,FB        
 end

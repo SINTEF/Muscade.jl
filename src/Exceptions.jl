@@ -36,11 +36,25 @@ function report(::MuscadeException)
     Base.show_backtrace(stdout,setdiff(cs[nex][2],backtrace())[2:end-1])
     print("\n\n")
 end
-function muscadewarning(str,indent=0)
+
+function warning(msg,indent=0)
     for i = 1:indent
         print(" ")
     end
-    printstyled("Warning: ",bold=true,color=:red)
-    printstyled(str,color=:red)
-    print("\n")
+    printstyled("Warning: ",color=:yellow,bold=true)
+    println(msg)
+end
+macro warn_once(msg)
+    printstyled("Warning",color=:yellow,bold=true)
+    println(": ",msg)
+    return :()
+end
+macro deprecated(old,new)
+    printstyled("Deprecated",color=:yellow,bold=true)
+    print(": replace ")
+    printstyled(old,color=:red,bold=true)
+    print(" with ")
+    printstyled(new,color=:green,bold=true)
+    println(". ",old," will be phased out in a future release.")
+    return :()
 end

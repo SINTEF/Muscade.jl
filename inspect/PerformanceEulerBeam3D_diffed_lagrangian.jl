@@ -4,13 +4,15 @@ using SnoopCompileCore, SnoopCompile#, Cthulu
 using Profile,ProfileView
 using BenchmarkTools
 using Muscade
+using Muscade.Toolbox
 using StaticArrays
 
-module TmpModule
-export BeamCrossSection, EulerBeam3D
-include("../toolbox/BeamElement.jl")
-include("../examples/StrainGaugeOnBeamElement.jl")
-end
+# module TmpModule
+#     export BeamCrossSection, EulerBeam3D,EulerBeam3DwithStrainGauge
+#     include("../toolbox/BeamElement.jl")
+#     include("../toolbox/StrainGaugeOnBeamElement.jl")
+# end
+
 
 model            = Model(:TestModel)
 node1            = addnode!(model,𝕣[0,0,0])
@@ -45,11 +47,11 @@ straincost = Functor{:straincost}(;)
 #     return cost
 # end
 
-#invs = @snoop_invalidations ElementCost(elnod;
-const costedbeam =  ElementCost(elnod;
+#invs = @snoop_invalidations ElementCostAndConstraint(elnod;
+const costedbeam =  ElementCostAndConstraint(elnod;
                             req = @request(ε),
                             cost=straincost,
-                            ElementType=StrainGaugeOnEulerBeam3D,
+                            TargetElement=EulerBeam3DwithStrainGauge,
                             elementkwargs = (P,D,
                                               elementkwargs=(mat=mat,orient2=SVector(0.,1.,0.))))
 

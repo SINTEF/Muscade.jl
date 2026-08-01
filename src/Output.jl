@@ -1,3 +1,4 @@
+
 ## Nodal results
 """
     dofres = getdof(state;[class=:X],field=:somefield,nodID=[nodids...],[order=0])
@@ -26,17 +27,17 @@ function getdof(state::Vector{S};class::Symbol=:X,field::Symbol,nodID::Vector{No
         end
         if class == :A
             for (idof,d) ∈ enumerate(dofID)
-                dofres[idof,istate] = sc[d.idof] 
+                dofres[idof,istate] = d.class==:UNKNOWN ? NaN : sc[d.idof] 
             end
         else
             if order+1 ≤ length(sc)
                 s = sc[order+1]
                 for (idof,d) ∈ enumerate(dofID)
-                    dofres[idof,istate] = s[d.idof] 
+                    dofres[idof,istate] = d.class==:UNKNOWN ? NaN : s[d.idof] 
                 end
             else
                 for (idof,d) ∈ enumerate(dofID)
-                    dofres[idof,istate] = 0. 
+                    dofres[idof,istate] = d.class==:UNKNOWN ? NaN : 0. 
                 end
             end
         end
@@ -67,7 +68,9 @@ function setdof!(state::State,dofval::𝕣1;class::Symbol=:X,field::Symbol,nodID
     dofID = getdofID(state.model,c,field,nodID)
     if class == :A 
         for (idof,d) ∈ enumerate(dofID)
-            state.A[d.idof] = dofval[idof]  
+            if d.class ≠ :UNKNOWN  
+                state.A[d.idof] = dofval[idof] 
+            end
         end
     else
         sc = if class==:Λ state.Λ
@@ -84,7 +87,9 @@ function setdof!(state::State,dofval::𝕣1;class::Symbol=:X,field::Symbol,nodID
         end
         s = sc[order+1] 
         for (idof,d) ∈ enumerate(dofID)
-            s[d.idof] = dofval[idof]  
+            if d.class ≠ :UNKNOWN 
+                s[d.idof] = dofval[idof]  
+            end
         end
     end
     return state
@@ -95,7 +100,9 @@ function setdof!(state::State,dofval::𝕣;class::Symbol=:X,field::Symbol,order:
     dofID = getdofID(state.model,c,field)
     if class == :A 
         for (idof,d) ∈ enumerate(dofID)
-            state.A[d.idof] = dofval[idof]  
+            if d.class ≠ :UNKNOWN 
+                state.A[d.idof] = dofval[idof]  
+            end
         end
     else
         sc = if class==:Λ state.Λ
@@ -112,7 +119,9 @@ function setdof!(state::State,dofval::𝕣;class::Symbol=:X,field::Symbol,order:
         end
         s = sc[order+1] 
         for (idof,d) ∈ enumerate(dofID)
-            s[d.idof] = dofval  
+            if d.class ≠ :UNKNOWN 
+                s[d.idof] = dofval  
+            end
         end
     end
     return state
