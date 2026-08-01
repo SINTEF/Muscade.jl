@@ -1,10 +1,3 @@
-function showstack()
-    s = stacktrace()
-    for sᵢ∈s
-        @printf(">>>%-40s %s\n", sᵢ.func, sᵢ.file) 
-    end
-end
-
 """
     Muscade.stackstring()
 
@@ -46,3 +39,25 @@ macro dbg(ex)
         end
     end)
 end
+
+"""
+    Muscade.scoop(A,[B...])
+
+Gather variables into a `Scoop` exception, and throw the exception.  This provides a 
+mechanism to "scoop up" arbitrary variables from inside a code - at the cost of interrupting it.
+
+The scooped variables can be accessed in the REPL as
+`A,B = Muscade.scoop(err)`
+
+or by catching the `error`:
+
+try
+    fishy()
+catch ex
+    @show ex.scooped
+end
+"""
+struct Scoop<: Exception scooped end
+Base.showerror(io::IO, ex::Scoop) = print(io,"Scoop, data = Muscade.scoop(err) to retrieve scooped data") 
+scoop(args...) = throw(Scoop(args))
+scoop(err::Base.ExceptionStack) = err.stack[1].exception.error.scooped

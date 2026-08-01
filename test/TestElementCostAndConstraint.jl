@@ -1,4 +1,4 @@
-module TestElementCostAndConstraint
+#module TestElementCostAndConstraint
 
 using Test,StaticArrays
 using Muscade
@@ -149,4 +149,4 @@ iλ,ix,iu,ia=1,2,3,4
      @test out.L2[ix,ia][2,1] ≈ [0;0]
      @test out.L2[ix,ia][3,1] ≈ [0,0]
 end
-end
+#end

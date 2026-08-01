@@ -279,10 +279,10 @@ KKT(λ::SVector{Nλ},g::SVector{Nλ},γ::𝕣) where{Nλ} = sum(KKT(λ[i],g[i],�
 
 @functor with() off(t)     = :off
 """
-    off(t) → :off
+    Muscade.off(t) → :off
 
 A function which for any value `t` returns the symbol `off`.  Useful for specifying
-the keyword argument `mode=off` in adding an element of type ``DofConstraint` to
+the keyword argument `mode=off` in adding an element of type `DofConstraint` to
 a `Model`.
 
 See also: [`DofConstraint`](@ref), [`ElementCostAndConstraint`](@ref), [`equal`](@ref), [`positive`](@ref)
@@ -290,10 +290,10 @@ See also: [`DofConstraint`](@ref), [`ElementCostAndConstraint`](@ref), [`equal`]
 off
 @functor with() equal(t)   = :equal
 """
-    equal(t) → :equal
+    Muscade.equal(t) → :equal
 
 A function which for any value `t` returns the symbol `equal`.  Useful for specifying
-the keyword argument `mode=equal` in adding an element of type ``DofConstraint` to
+the keyword argument `mode=equal` in adding an element of type `DofConstraint` to
 a `Model`.
 
 See also: [`DofConstraint`](@ref), [`ElementCostAndConstraint`](@ref), [`off`](@ref), [`positive`](@ref)
@@ -301,10 +301,10 @@ See also: [`DofConstraint`](@ref), [`ElementCostAndConstraint`](@ref), [`off`](@
 equal
 @functor with() positive(t) = :positive
 """
-    positive(t) → :positive
+    Muscade.positive(t) → :positive
 
 A function which for any value `t` returns the symbol `positive`.  Useful for specifying
-the keyword argument `mode=positive` in adding an element of type ``DofConstraint` to
+the keyword argument `mode=positive` in adding an element of type `DofConstraint` to
 a `Model`.
 
 See also: [`DofConstraint`](@ref), [`ElementCostAndConstraint`](@ref), [`off`](@ref), [`equal`](@ref)
@@ -595,6 +595,7 @@ no_second_order(::Type{<:ElementCostAndConstraint{NSO}}) where{NSO} = NSO
         ☼cost         = o.cost(eleres,t,o.costargs...) 
         L            += cost
     end
+    scoop(L)
     if typeof(o.gap) ≠ Nothing   
         γ            = default{:γ}(SP,0.)
         ☼λ           = SVector(∂0(X)[iλx]...,∂0(U)[iλu]...) 
@@ -625,27 +626,6 @@ function update_drawing(axis,o::AbstractVector{Teleobj},oldmut,opt, Λ,X,U,A,t,S
     return mut
 end
 display_drawing!(axis,::Type{<:ElementCostAndConstraint{NSO,TargetElement}},obs,opt) where{NSO,TargetElement} = display_drawing!(axis,TargetElement,obs,opt)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#-------------------------------------------------
 
 """
     Muscade.QuickFix <: AbstractElement

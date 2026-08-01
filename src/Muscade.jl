@@ -11,7 +11,7 @@ module Muscade
     using GLMakie
 
     include("Debug.jl")
-    public @dbg,stackstring
+    public @dbg,stackstring,scoop
 
     include("Dialect.jl")
     export ℝ,ℤ,𝕣,𝕫,𝔹,𝕓,ℂ
