@@ -483,31 +483,26 @@ function solve(::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
     # State storage
     S                     = State{1,OX+1,OU+1,@NamedTuple{γ::Float64,iter::Int64}}
     state                 = [Vector{S}(undef,nstep[iexp]) for iexp=1:nexp] # state[iexp][istep]
-    s                     = primerstate[1]
     
     # Test input dimension compatibility
     length(primerstate)== nexp || muscadeerror("primerstate length must be equal to the number of experiments")
     
-    if isa(primerstate[1],Muscade.State)
-        model,dis             = primerstate[1].model, primerstate[1].dis
-        # Case where primerstate is an AbstractVector of State. A primer trajectory of state is created from a repetition of this state.
-        for (iexp,primerstateᵢ) ∈ enumerate(primerstate)
-            for (istep,timeᵢ) = enumerate(time[iexp])
-                state[iexp][istep] = State{1,OX+1,OU+1}(timeᵢ,deepcopy(primerstateᵢ.Λ),deepcopy(primerstateᵢ.X),deepcopy(primerstateᵢ.U),s.A,(γ=0.,iter=1),model,dis) # all state[iexp][istep].A are === 
+    for (iexp,primerstateᵢ) ∈ enumerate(primerstate)
+        for (istep,timeᵢ) = enumerate(time[iexp])
+            if eltype(primerstate) <: Muscade.State
+                # Case where primerstate is an AbstractVector of State. A primer trajectory of state is created from a repetition of this state.
+                model,dis,Ainit            = primerstate[1].model, primerstate[1].dis, primerstate[1].A
+                primer = primerstateᵢ
+            else
+                # Case where primerstate is already an AbstractVector of Vector{State}.
+                length(primerstateᵢ)== nstep[iexp] || muscadeerror("trajectories in `primerstate` vector must match their associated time grid in `time` vector")
+                model,dis,Ainit            = primerstate[1][1].model, primerstate[1][1].dis, primerstate[1][1].A
+                primer = primerstateᵢ[istep]
             end
-        end
-    else
-        # Case where primerstate is already an AbstractVector of Vector{State}.
-        Ainit = primerstate[1][1].A
-        model,dis             = primerstate[1][1].model, primerstate[1][1].dis
-        for (iexp,trajexp) ∈ enumerate(primerstate)
-            length(trajexp)== nstep[iexp] || muscadeerror("trajectories in `primerstate` vector must match their associated time grid in `time` vector")
-            for (istep,timeᵢ) = enumerate(time[iexp])
-                trajstate = trajexp[istep]
-                state[iexp][istep] = State{1,OX+1,OU+1}(timeᵢ,deepcopy(trajstate.Λ),deepcopy(trajstate.X),deepcopy(trajstate.U),Ainit,(γ=0.,iter=1),model,dis)
-            end
+            state[iexp][istep] = State{1,OX+1,OU+1}(timeᵢ,deepcopy(primer.Λ),deepcopy(primer.X),deepcopy(primer.U),Ainit,(γ=0.,iter=1),model,dis)
         end
     end
+
     if saveiter
         stateiter         = Vector{Vector{Vector{S}}}(undef,maxiter) # stateiter[iiter][iexp][istep] 
         pstate[]          = stateiter
