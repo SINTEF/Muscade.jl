@@ -111,7 +111,7 @@ optimXAstate  = solve(SweepXA{2}; initialstate=XAinitialState, time=timeVec,
 
 # DirectXUA (slack convergence criteria and number of iterations)
 XUAinitialState    = initialize!(XUAmodel;time=0.);
-optimXUAstate   = solve(DirectXUA{2,0,1};initialstate=[XUAinitialState], time=[timeVec],
+optimXUAstate   = solve(DirectXUA{2,0,1};primerstate=[XUAinitialState], time=[timeVec],
                 maxiter=15, maxΔx=5e-2,maxΔλ=Inf,maxΔu=5e-2,maxΔa=1e-4,verbose=false);
 
 #  Gather results for comparison

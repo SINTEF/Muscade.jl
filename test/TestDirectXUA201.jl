@@ -48,7 +48,7 @@ x,x′,x″         = 0.,1.,0.
 initialstate2    = setdof!(initialstate,[x′];field=:tx1,nodID=[node],order=1)  # initial speed
 
 statewrong      = solve(SweepX{2};  initialstate=initialstate2,time= t,verbose=false,catcherror=true)
-state           = solve(DirectXUA{2,0,1};  initialstate=[initialstate],time= [t],verbose=false,catcherror=true,maxiter=50,maxΔa=1e-5,maxΔx=1e-5,maxΔu=1e-5,maxΔλ=Muscade.∞)
+state           = solve(DirectXUA{2,0,1};  primerstate=[initialstate],time= [t],verbose=false,catcherror=true,maxiter=50,maxΔa=1e-5,maxΔx=1e-5,maxΔu=1e-5,maxΔλ=Muscade.∞)
 
 A              = getdof(state[1][1];class=:A,field=:ΞC,nodID=[node])
 xfitted        = getdof(state[1];field=:tx1,nodID=[node])
@@ -97,7 +97,7 @@ let primer = initialstate
     end
 end
 
-statetraj = solve(DirectXUA{2,0,1};  initialstate=[traj],time= [t],verbose=false,catcherror=true,maxiter=20,maxΔa=1e-5,maxΔx=1e-5,maxΔu=1e-5,maxΔλ=Muscade.∞)
+statetraj = solve(DirectXUA{2,0,1};  primerstate=[traj],time= [t],verbose=false,catcherror=true,maxiter=20,maxΔa=1e-5,maxΔx=1e-5,maxΔu=1e-5,maxΔλ=Muscade.∞)
 A              = getdof(statetraj[1][1];class=:A,field=:ΞC,nodID=[node])
 xfittedtraj        = getdof(statetraj[1];field=:tx1,nodID=[node])
 xtraj        = getdof(traj;field=:tx1,nodID=[node])

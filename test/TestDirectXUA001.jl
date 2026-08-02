@@ -29,14 +29,14 @@ e10             = addelement!(model,SingleAcost   ,          field=:ΞL₀,[n4] 
 e11             = addelement!(model,SingleAcost   ,          field=:ΞEI,[n4]      ,cost=acost)
 initialstate    = initialize!(model)
 stateX          = solve(SweepX{0};  initialstate,time=[0.],verbose=false)
-stateXUA        = solve(DirectXUA{0,0,1};initialstate=[stateX[1]],time = [0:.1:1],verbose=false,maxiter=50)
+stateXUA        = solve(DirectXUA{0,0,1};primerstate=[stateX[1]],time = [0:.1:1],verbose=false,maxiter=50)
 iexp = 1
 @testset "solution" begin
     @test stateXUA[iexp][2].X[1]' ≈ [0.0125777  0.0125777  0.0  0.0  0.0  0.0  -0.0100126  1.26094e-5  1.26094e-5  -0.0100126] rtol=1e-4
     @test stateXUA[iexp][2].A'    ≈ [  -3.83011e-5  -0.0672263] rtol=1e-4
     @test stateXUA[iexp][2].A ≡ stateXUA[iexp][1].A
 end
-stateXUAcv           = solve(DirectXUA{0,0,1};initialstate=[stateX[1]],time = [0:.1:1],saveiter=true,verbose=false)
+stateXUAcv           = solve(DirectXUA{0,0,1};primerstate=[stateX[1]],time = [0:.1:1],saveiter=true,verbose=false)
 jiter = findlastassigned(stateXUAcv)
 @testset "saveiter" begin
     @test stateXUAcv[jiter][iexp][2].X[1] ≈ stateXUA[iexp][2].X[1]
@@ -46,7 +46,7 @@ jiter = findlastassigned(stateXUAcv)
     @test !(stateXUAcv[jiter][iexp][1].A == stateXUAcv[1][iexp][1].A)
 end
 
-stateXUAmult        = solve(DirectXUA{0,0,1};initialstate=[stateX[1],stateX[1]],time = [0:.1:1,.1:.1:1],verbose=false,maxiter=50)
+stateXUAmult        = solve(DirectXUA{0,0,1};primerstate=[stateX[1],stateX[1]],time = [0:.1:1,.1:.1:1],verbose=false,maxiter=50)
 @testset "multiple" begin
     @test stateXUAmult[1][2].A === stateXUAmult[2][3].A
 end
