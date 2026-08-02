@@ -433,13 +433,14 @@ The solver does not yet support interior point methods.
 - `dbg=(;)`           a named tuple to trace the call tree (for debugging).
 - `verbose=true`      set to false to suppress printed output (for testing).
 - `silenterror=false` set to true to suppress print out of error (for testing).
-- `primerstate`      an `AbstractVector` of `State` or an `AbstractVector` of `Vector{State}`: one primer for each experiment.
-                      `primerstate` must be with zero time derivatives.  It does not provide initial conditions for the problem, 
-                      but an initial guess for the iterative solver. The solver needs a time-dependant trajectory as input: `primerstate` 
-                      either directly provides it with a `Vector{State}`, or allows the creation of it by copying the same `State` for every time step.
+- `primerstate`       an `AbstractVector` of `State` (1) or an `AbstractVector` of `Vector{State}` (2). `primerstate` must be with zero time derivatives.
+                      It does not provide initial conditions for the problem, but an initial guess for the iterative solver.
+                      As DirectXUA solves multiple experiments at once, the i-th element of `primerstate` is an initial guess for the i-th experiment. 
+                      If provided with (1), the i-th initial guess is constructed internally with replicating the i-th input `State` for each timestep of the i-th timerange (see `time`).
+                      If provided with (2), the i-th initial guess is the input `Vector{State}`, if the length corresponds to the i-th timerange (see `time`).
                       By convention the Adofs for building this primer are taken from the first experiment, first state.
 - `time`              an `AbstractVector` (of same length as `primerstate`) of `AbstractRange` 
-                      of times at which to compute the steps.  Example: 0:0.1:5.                       
+                      of times at which to compute the steps, one for each experiment.  Example: 0:0.1:5.                       
 - `maxiter=50`        maximum number of Newton-Raphson iterations. 
 - `maxΔλ=1e-5`        convergence criteria: a norm of the scaled `Λ` increment.
 - `maxΔx=1e-5`        convergence criteria: a norm of the scaled `X` increment. 
