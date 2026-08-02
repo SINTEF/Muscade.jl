@@ -302,3 +302,4 @@ function symmetric!(A::Matrix)
     end 
     return A
 end
+

@@ -52,19 +52,19 @@ addelement!(model,EulerBeam3D{hasU},nakedmesh;mat=mat,orient2=SVector(0.,0.,1.))
 @functor with(σu) costU(u,t) =                 .5*(u/σu).^2
 @functor with(σx) costX(x,t) =                 .5*(x/σx).^2
 
-addelement!(model,ElementCost,strainmesh;
+addelement!(model,ElementCostAndConstraint,strainmesh;
                         req           = @request(ε),
                         cost          = costStrain,
-                        ElementType   = EulerBeam3DwithStrainGauge,
+                        TargetElement = EulerBeam3DwithStrainGauge,
                         elementkwargs = (P             = SMatrix{3,4}(0.,0.,.05, 0.,0.05,0.,  0.,0.,-.05,  0.,-.05,0.),
                                          D             = SMatrix{3,4}(1.,0.,0.,  1.,0.,0.,    1.,0.,0.,    1.,0.,0.  ),
-                                         ElementType   = EulerBeam3D{true},
+                                         TargetElement   = EulerBeam3D{true},
                                          elementkwargs = (mat     = mat,
                                                           orient2 = SVector(0.,0.,1.))))
-addelement!(model,ElementCost,accmesh;
+addelement!(model,ElementCostAndConstraint,accmesh;
                         req           = @request(a),
                         cost          = costAcc,
-                        ElementType   = Position3D,
+                        TargetElement = Position3D,
                         elementkwargs = (P             = SMatrix{3,3}(0.,0.,.1,  0.,0.,.1,  0.,0.,.1),
                                          D             = SMatrix{3,3}(1.,0.,0.,  0.,1.,0.,    0.,0.,1.) ))
 # Ucost

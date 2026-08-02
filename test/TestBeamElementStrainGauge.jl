@@ -96,10 +96,10 @@ end
     return cost
 end
 
-costedbeam =  ElementCost(elnod;
+costedbeam =  ElementCostAndConstraint(elnod;
                             req = @request(ε),
                             cost=straincost,
-                            ElementType=EulerBeam3DwithStrainGauge,
+                            TargetElement=EulerBeam3DwithStrainGauge,
                             elementkwargs = (P,D,
                                               elementkwargs=(mat=mat,orient2=SVector(0.,1.,0.))))
 

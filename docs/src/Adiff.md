@@ -81,7 +81,7 @@ using Muscade: variate,value,∂
 
 f(x)   = x.*x .+ sum(x)
 x      = SVector(1.,2.,3.)
-P,N,x1 = variate(x) # P==1,N=length(x)
+P,N,x1 = variate(x) # P=1,N=length(x)
 y1     = f(x1)
 y      = value{P}(y1)
 yₓ     = ∂{P,N}(y1)    
@@ -135,15 +135,15 @@ Joint derivatives are partial derivatives with respect to several variables, com
 using StaticArrays
 using Muscade: variate,variate_indices,value,∂,δ
 
-res(x,u)    = x.*x .+ sum(u) # SVector-valued 
+res(x,u)    = x.*x .+ sum(u)         # SVector-valued 
 x           = SVector(1.,2.)
 u           = SVector(3.,4.,5.)
-P,N,(x1,u1) = variate((x,u)) # note the parentheses
+P,N,(x1,u1) = variate((x,u))         # note the parentheses
 (ix,iu)     = variate_indices((x,u))
 r1          = res(x1,u1)
 r           = value{P}(r1)
-rₓ          = ∂{P,N}(r1)[:,ix] # the last index refers to  
-rᵤ          = ∂{P,N}(r1)[:,iu] # the partial derivatives   
+rₓ          = ∂{P,N}(r1)[:,ix]       # the last index refers to  
+rᵤ          = ∂{P,N}(r1)[:,iu]       # the partial derivatives   
 ```
 
 yields
@@ -239,10 +239,10 @@ The computations result in `ℓ2=∂₂⟨∂₁⟨ℓ|ℓₓ⟩|∂₁⟨ℓₓ
 
 To unpack this nested structure, we first use `value{2}(ℓ2) → ∂₁⟨ℓ|ℓₓ⟩` and `∂{2,N}(ℓ2) → ∂₁⟨ℓₓ|ℓₓₓ⟩`.  On these, we then use: 
 
-- `value{1}(∂₁⟨ℓ|ℓₓ⟩) → ℓ` 
-- `∂{1,N}(∂₁⟨ℓ|ℓₓ⟩) → ℓₓ` 
-- `value{1}(∂₁⟨ℓₓ|ℓₓₓ⟩) → ℓₓ`
-- `∂{1,N}(∂₁⟨ℓₓ|ℓₓₓ⟩) → ℓₓₓ` 
+- `ℓ = value{1}(∂₁⟨ℓ|ℓₓ⟩)` 
+- `ℓₓ = ∂{1,N}(∂₁⟨ℓ|ℓₓ⟩)` 
+- `ℓₓ = value{1}(∂₁⟨ℓₓ|ℓₓₓ⟩)`
+- `ℓₓₓ = ∂{1,N}(∂₁⟨ℓₓ|ℓₓₓ⟩)` 
 
 `ℓₓ` is stored twice in `ℓ2` and so can be extracted by two different paths.  
 
@@ -260,17 +260,17 @@ using Muscade: variate,value,∂,𝕣
 
 function f(x1) 
     a1     = x1.^2
-    P,N,a2 = variate(a1) # P==2
+    Pa,Na,a2 = variate(a1)         # P=2
     g2     = sum(a2)*sin(sum(a2))
-    gₐ     = ∂{P,N}(g2) 
+    gₐ     = ∂{Pa,Na}(g2) 
     return x.*x + sum(u).*gₐ 
 end
 
 x      = SVector(1.,2.,3.)
-P,N,x1 = variate(x) # P==1
+Px,Nx,x1 = variate(x)               # P=1
 y1     = f(x1)
-y      = value{P}(y1)
-yₓ     = ∂{P,N}(y1)    
+y      = value{Px}(y1)
+yₓ     = ∂{Px,Nx}(y1)    
 ```
 
 The function `f` calls `variate`, on `x1` which has itself been obtained by calling `variate`.  `x`, `x1` and `a2` have precedence 0, 1 and 2, respectively. The unpacking of the variables is as for higher order derivatives, but here, each segment of code takes care to unpack what it has variated.
@@ -288,7 +288,7 @@ using StaticArrays
 using Muscade: variate,value,∂,𝕣
 
 function residual(x1,u) 
-    Pu,Nu,u1 = variate(u)           # Pu==Px !!!
+    Pu,Nu,u1 = variate(u)           # Pu=Px !!!
     g1       = sum(x1)*sin(sum(u1)) # crash
     gᵤ       = ∂{Pu,Nu}(g1) 
     return sum(x1.*x1) + sum(u.*gᵤ) 
@@ -296,7 +296,7 @@ end
 
 x        = SVector(1.,2.,3.)
 u        = SVector(4.,5.)
-Px,Nx,x1 = variate(x)               # Px==1
+Px,Nx,x1 = variate(x)               # Px=1
 r1       = residual(x1,u)
 r        = value{Px}(r1)
 rₓ       = ∂{Px,Nx}(r1)    
@@ -311,7 +311,7 @@ using StaticArrays
 using Muscade: variate,value,∂,𝕣
 
 function residual(x1,u) 
-    Pu,Nu,u2 = variate(u,context=x1) # Pu==Px+1 
+    Pu,Nu,u2 = variate(u,context=x1) # Pu=Px+1 
     g2       = sum(x1)*sin(sum(u2))  # (u1 renamed u2)
     g1ᵤ      = ∂{Pu,Nu}(g2) 
     return sum(x1.*x1) + sum(u.*g1ᵤ) 
@@ -319,7 +319,7 @@ end
 
 x        = SVector(1.,2.,3.)
 u        = SVector(4.,5.)
-Px,Nx,x1 = variate(x)                # P==1
+Px,Nx,x1 = variate(x)                # Px==1
 r1       = residual(x1,u)
 r        = value{Px}(r1)
 rₓ       = ∂{Px,Nx}(r1)    
@@ -356,6 +356,7 @@ Finite elements solve differential equations by introducing interpolations schem
 kinematics(X₀) = sum(X₀.*X₀)
 X₀,X₁,X₂       = (SVector(1.),SVector(2.),SVector(3.))
 X              = (X₀,X₁,X₂) # argument to residual
+# in residual:
 (P,ND,X_)      = motion(X) 
 ε_             = kinematics(X_) 
 ε              = motion⁻¹{P,ND}(ε_)

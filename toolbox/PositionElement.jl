@@ -12,7 +12,7 @@ An 3D single-node element, to be connected to a node with both translation and
 rotation dofs.  The element makes zero contribution to residual or Lagrangian.  It
 only provides requestables allowing to model accelerometers and optical position
 measurements. For an inverse analysis, this is done by including the element in 
-an `ElementCost`.
+an `ElementCostAndConstraint`.
 
 # Keyword arguments when adding elements:
 

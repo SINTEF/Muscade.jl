@@ -298,20 +298,19 @@ end
 
 For use in conjunction with
     
-    TV   = revariate(V)
+    TV   = variate(V)
 
 `iV` has the same structure as `V` and `TV` but contains integers: the indices into the partials of `TV` 
 
 See also: [`revariate`](@ref)
 
 """
-variate_indices( a              ) = revariate_indices_(a,0)
-revariate_indices_(a::Tuple     ,i) = (revariate_indices_(first(a),i),revariate_indices_(Base.tail(a),i+flat_length(first(a)))...)
-revariate_indices_(a::Tuple{}   ,i) = ()
-revariate_indices_(a::NamedTuple,i) = NamedTuple{keys(a)}(revariate_indices_(values(a),i))
-#revariate_indices_(a::SArray    ,i) = i+1:i+flat_length(a)
-revariate_indices_(a::SArray    ,i) = SVector{flat_length(a),𝕫}(i+iₐ for iₐ∈1:flat_length(a))
-revariate_indices_(a::𝕣         ,i) = i+1
+variate_indices( a              ) = variate_indices_(a,0)
+variate_indices_(a::Tuple     ,i) = (variate_indices_(first(a),i),variate_indices_(Base.tail(a),i+flat_length(first(a)))...)
+variate_indices_(a::Tuple{}   ,i) = ()
+variate_indices_(a::NamedTuple,i) = NamedTuple{keys(a)}(variate_indices_(values(a),i))
+variate_indices_(a::SArray    ,i) = SVector{flat_length(a),𝕫}(i+iₐ for iₐ∈1:flat_length(a))
+variate_indices_(a::𝕣         ,i) = i+1
 
 """
     to_order{P,N}(V)
@@ -397,11 +396,15 @@ Taylor(y::Tuple,x₀,x) = McLaurin(y,x-x₀)
     chainrule(Ty,x)
 
 Apply a chain rule in automatic differentiation.  For example 
+
     Tx = revariate(x)
     Ty = f(Tx)
     y  = chainrule(Ty,x)    
+
 is faster than
+
     y  = f(x)
+
 if the length of `x` is smaller than the length of its partials.
 
 See also: [`revariate`](@ref), [`apply`](@ref)    

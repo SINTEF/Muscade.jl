@@ -16,7 +16,7 @@ module Muscade
     export ℝ2,ℤ2,𝕣2,𝕫2,𝔹2,𝕓2
     export ℝ11,ℤ11,𝕣11,𝕫11,𝔹11,𝕓11
     export default
-    public toggle,mod_onebased
+    public toggle,mod_onebased, @print
 
     include("OffsetVector.jl")
 
@@ -61,8 +61,9 @@ module Muscade
 
     include("BasicElements.jl")
     public off,equal,positive
-    export DofCost,SingleDofCost,SingleUdof,ElementCost,Acost,SingleAcost
+    export DofCost,SingleDofCost,SingleUdof,Acost,SingleAcost
     export DofConstraint,Hold,ElementConstraint
+    export ElementCostAndConstraint
     export DofLoad
     public QuickFix
 
@@ -72,7 +73,6 @@ module Muscade
     export solve
 
     include("SparseTools.jl")
-    public prepare,addin!
     
     include("FiniteDifferences.jl")
 
@@ -96,6 +96,7 @@ module Muscade
 
     include("Diagnostic.jl")
     export describe  
+    public sdump
     public study_scale,study_singular,plot_matrix_sparsity
     public plot_block_matrix_sparsity,print_nz,Monitor,@typeof,print_element_array,diffed_lagrangian,diffed_residual
     public SpyAxis

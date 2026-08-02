@@ -62,7 +62,14 @@ const nUdof      = 3 # Number of U-class degrees of freedom
 """
     Bar3D <: AbstractElement
 
-A three-dimensional bar element, with two nodes, six X-dofs and three U-dofs
+A three-dimensional bar element that comes in two flavors: with two nodes and six X-dofs, or with an additional third node that carries three U-dofs. 
+
+# Description of the degrees of freedom
+The node coordinates provided to the constructor of Bar3D define the "as-meshed" coordinates of the nodes. 
+The three X-dofs carried by each node, with field names `:t1`, `:t2`, and `:t3`, describe the displacement vector of that node with respect to the as-meshed coordinates in a cartesian global coordinate system. 
+
+Three additional U-dofs can be added by calling [`addelement!`](@ref) with `Bar3D{true}` instead of `Bar3D`. These U-dofs, carried by a third node, and with field names `:t1`, `:t2`, and `:t3`, represent the three components of an unknown uniformly distributed load (unit will be force per unit length) on the bar, expressed in the global coordinate system.
+
 # Arguments to the constructor
 -   `nod   :: Vector{Node}` contains the element's nodes
 -   `mat   :: Mat` contains the material properties ([`AxisymmetricBarCrossSection`](@ref), for example)
@@ -164,33 +171,27 @@ end;
 @espy function Muscade.residual(o::Bar3D{Mat,Udof},   X,U,A,t,SP,dbg) where{Mat,Udof}
     # Obtain motions (i.e. including velocity and accelerations) from X
     P,ND,x_      = motion(X)
-    # Motions of the nodes, center of the element
-    uᵧ₁,uᵧ₂   = vec3(x_,1:3), vec3(x_,4:6) 
-    c        = o.cₘ + 0.5*(uᵧ₁+uᵧ₂) 
+    # Motions of the nodes, center of the element (underscores are appended to motion'ed variables)
+    uᵧ₁_,uᵧ₂_   = vec3(x_,1:3), vec3(x_,4:6) 
+    c_        = o.cₘ + 0.5*(uᵧ₁_+uᵧ₂_) 
     # Element direction and length
-    tg      = o.tgₘ + uᵧ₂ - uᵧ₁
-    L       = norm(tg)
-    δ       = tg/L
-
+    tg_      = o.tgₘ + uᵧ₂_ - uᵧ₁_
+    L_       = norm(tg_)
+    δ_       = tg_/L_
     # Strains
-    ε_       = L/o.Lₛ - 1
+    ε_       = L_/o.Lₛ - 1.
     # Compute how strains vary with nodal displacements (will be used in the Princple of Virtual Work, PVW)
-    ε,δ = motion⁻¹{P,ND}(ε_,δ); δ₀ = ∂0(δ)
+    ε,δ = motion⁻¹{P,ND}(ε_,δ_); δ₀ = ∂0(δ)
     ε∂X₀ = 1/o.L₀*SVector{6}(-δ₀[1],-δ₀[2],-δ₀[3],δ₀[1],δ₀[2],δ₀[3]) 
-    # Compute Gauss point kinematics
-    gp = ntuple(ngp) do igp; 
-        x = c + tg * o.ζgp[igp]; 
-        @named(x); 
-    end
     # Compute loads at Gauss points
     gpContrib = ntuple(ngp) do igp
-        ζ = o.ζgp[igp]                          # Coordinate of the Gauss point along [-1/2,1/2]
-        # Compute how motions of Gauss point vary with nodal displacements (used in PVW below)
-        x∂X₀ = SMatrix{3,6}(ψ₁(ζ),0,0, 0,ψ₁(ζ),0, 0,0,ψ₁(ζ), ψ₂(ζ),0,0, 0,ψ₂(ζ),0, 0,0,ψ₂(ζ))   
-        x = motion⁻¹{P,ND}(gp[igp].x)          # Physical location of the Gauss point 
-        fᵢ,fₑ     = ☼resultants(o.mat,ε,x,δ,t)   # Compute loads from strains/motions, etc.
+        ζ = o.ζgp[igp]                         # Coordinate of the Gauss point along [-1/2,1/2]
+        x_ = c_ + tg_ * ζ                      # Compute motions of Gauss point
+        x = motion⁻¹{P,ND}(x_)                  
+        fᵢ,fₑ     = ☼resultants(o.mat,ε,x,δ,t) # Compute loads from strains/motions, etc.
         fₑ        = Udof ? fₑ-∂0(U) : fₑ       # If there are unknown loads, they're added here (U is per unit length)
-        #  Application of PVW, local contribution of the integral over the element
+        x∂X₀ = SMatrix{3,6}(ψ₁(ζ),0,0, 0,ψ₁(ζ),0, 0,0,ψ₁(ζ), ψ₂(ζ),0,0, 0,ψ₂(ζ),0, 0,0,ψ₂(ζ))           
+        #  Application of PVW, local contribution of the integral over the element        
         R_        = ( fᵢ ∘₀ ε∂X₀ + fₑ ∘₁ x∂X₀ ) * o.wgp[igp]   
         @named(R_);
     end

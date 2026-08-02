@@ -1,4 +1,4 @@
-#module TestEigX
+module TestEigX
 using Muscade, StaticArrays,Test,Random
 
 include("SomeElements.jl")
@@ -77,4 +77,4 @@ end
 
 
 
-#end
+end
