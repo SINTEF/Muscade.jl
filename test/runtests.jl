@@ -44,6 +44,9 @@ module Runtest
         @testset "TestDirectXUA001" begin
             include("TestDirectXUA001.jl")
         end
+        @testset "TestDirectXUA201" begin
+            include("TestDirectXUA201.jl")
+        end
         @testset "TestFreqXU" begin
             include("TestFreqXU.jl")
         end

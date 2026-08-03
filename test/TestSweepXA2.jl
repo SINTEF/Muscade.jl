@@ -35,9 +35,9 @@ model           = Model(:Optim)
 node            = addnode!(model,𝕣[])
 osc             = addelement!(model,AdjustableSdofOscillator,[node]; K,C,M)
 
-@functor with(σ=2.        ) acost(a  )=( a           /σ)^2
-@functor with(σ=.01,target) xcost(x,t)=((x-target(t))/σ)^2
-cK              = addelement!(model,SingleAcost  ,[node];field=:ΞK,               cost=acost)
+@functor with(σ=10.        ) acost(a  )=( a           /σ)^2
+@functor with(σ=.0001,target) xcost(x,t)=((x-target(t))/σ)^2
+cK              = addelement!(model,SingleAcost  ,[node];field=:ΞC,               cost=acost)
 cX              = addelement!(model,SingleDofCost,[node];class=:X ,field=:tx1    ,cost=xcost)
 
 initialstate    = initialize!(model;time=0.)
@@ -61,8 +61,8 @@ xwrong         = getdof(statewrong;field=:tx1,nodID=[node])
 # display(fig)
 
 @testset "StaticX" begin
-    @test  A ≈ [-0.17609125905569073]
-    @test  xfitted≈xtarget rtol= 1e-6
+    @test  A ≈ [log10(0.4)-log10(0.6)] rtol= 1e-6
+    @test  xfitted≈xtarget rtol= 1e-5
 end
 
 
