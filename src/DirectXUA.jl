@@ -496,20 +496,23 @@ function solve(::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
     # State storage
     S                     = State{1,OX+1,OU+1,@NamedTuple{γ::Float64,iter::Int64}}
     state                 = [Vector{S}(undef,nstep[iexp]) for iexp=1:nexp] # state[iexp][istep]
-    
+    if eltype(primerstate) <: Muscade.State
+        model,dis,Ainit = primerstate[1].model, primerstate[1].dis, primerstate[1].A 
+    else
+        model,dis,Ainit = primerstate[1][1].model, primerstate[1][1].dis, primerstate[1][1].A
+    end
+
     # Test input dimension compatibility
     length(primerstate)== nexp || muscadeerror("primerstate length must be equal to the number of experiments")
-    
+
     for (iexp,primerstateᵢ) ∈ enumerate(primerstate)
         for (istep,timeᵢ) = enumerate(time[iexp])
             if eltype(primerstate) <: Muscade.State
                 # Case where primerstate is an AbstractVector of State. A primer trajectory of state is created from a repetition of this state.
-                model,dis,Ainit            = primerstate[1].model, primerstate[1].dis, primerstate[1].A
                 primer = primerstateᵢ
             else
                 # Case where primerstate is already an AbstractVector of Vector{State}.
                 length(primerstateᵢ)== nstep[iexp] || muscadeerror("trajectories in `primerstate` vector must match their associated time grid in `time` vector")
-                model,dis,Ainit            = primerstate[1][1].model, primerstate[1][1].dis, primerstate[1][1].A
                 primer = primerstateᵢ[istep]
             end
             state[iexp][istep] = State{1,OX+1,OU+1}(timeᵢ,deepcopy(primer.Λ),deepcopy(primer.X),deepcopy(primer.U),Ainit,(γ=0.,iter=1),model,dis)
