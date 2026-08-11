@@ -311,6 +311,10 @@ The macro will generate two versions of `Muscade.lagrangian` and/or `Muscade.res
 solve the numerical problem.  Another with additional input and output variables, and code inserted into the body
 of the function to extract results wanted by the user.
 
+!!! important
+    `☼` must not appear within a `if`, `for` or `while` statement: the compiler must be able to demonstrate that `☼` will be reached 
+    once and only once.
+
 See [`Muscade.@espy`](@ref) for a complete guide on code anotations. 
 
 ### Immutables and Gauss quadrature

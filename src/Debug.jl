@@ -1,16 +1,19 @@
 """
     Muscade.stackstring()
 
-Produces a concise string representation of the stacktrace.
+Produces a concise `Vector{Sring}` representation of the stacktrace.
 """
 function stackstring(cut)
     stk = stacktrace()
-    str = ""
+    str = Vector{String}(undef,0)
     for i∈cut+1:length(stk)
         if stk[i].file == Symbol(".\\boot.jl") || stk[i].func == Symbol("top-level scope")
             break
         end
-        str = @sprintf(">%s%s",stk[i].func,str)
+        push!(str,@sprintf("%s",stk[i].func))
+        if str[end]=="macro expansion"
+            str[end]="macro"
+        end
     end
     str
 end
@@ -23,18 +26,25 @@ Similar to @show, but prints code location.
 macro dbg(ex)
     path,file = splitdir(String(__source__.file))
     line = __source__.line
-    stk = gensym()
-    sho = gensym()
+    stk     = gensym(:stk)
+    stklen  = gensym(:stklen)
+    stkᵢ    = gensym(:stkᵢ)
+    sho     = gensym(:sho)
     esc(quote
         printstyled("@dbg ";color=:yellow)
         printstyled(@sprintf("%-30s ",@sprintf("%s:%i",$file,$line));color=:light_black)
         $stk = Muscade.stackstring(1)
+        $stklen = sum(length.($stk).+1)
+        for $stkᵢ ∈ $stk  
+            printstyled(">";bold=true)
+            printstyled($stkᵢ;color=:light_black)
+        end
         $sho = @sprintf("%-15s = %s",$(Meta.quot(ex)),$(ex))
-        if length($stk)<50 && length($sho)<100    
-            printstyled(@sprintf("%-50s "   ,$stk);color=:blue)
+        if $stklen<50 && length($sho)<100  
+            print(" "^(50-$stklen))
             println($sho)
         else                                    
-            printstyled(@sprintf("%s\n     ",$stk);color=:blue)
+            println()
             println($(Meta.quot(ex))," = ",$(ex))
         end
     end)

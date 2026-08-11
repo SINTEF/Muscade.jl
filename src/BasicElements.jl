@@ -253,23 +253,23 @@ end
 
 #McCormick(a,b)= α->a*exp(-(α/b)^2)            # provided as input to solvers, used by their Addin
 
-S(λ,g,γ) = λ.*g.-γ # complementary slacknesses 
+∂KKT(λ,g,γ) = λ.*g.-γ # complementary slacknesses 
 
 KKT(λ::𝕣        ,g::𝕣         ,γ::𝕣)                 = 0 # A pseudo-potential with strange derivatives
-KKT(λ::∂ℝ{P,N,R},g::∂ℝ{P,N,R},γ::𝕣) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(0, λ.x*g.dx + S(λ.x,g.x,γ)*λ.dx)
-KKT(λ:: ℝ       ,g::∂ℝ{P,N,R},γ::𝕣) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(0, λ.x*g.dx                    )
-KKT(λ:: 𝕣       ,g::∂ℝ{P,N,R},γ::𝕣) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(0, λ  *g.dx                    )
-KKT(λ::∂ℝ{P,N,R},g:: ℝ       ,γ::𝕣) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(0,            S(λ.x,g.x,γ)*λ.dx)
+KKT(λ::∂ℝ{P,N,R},g::∂ℝ{P,N,R},γ::𝕣) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(0, λ.x*g.dx + ∂KKT(λ.x,g.x,γ)*λ.dx)
+KKT(λ:: ℝ       ,g::∂ℝ{P,N,R},γ::𝕣) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(0, λ.x*g.dx                       )
+KKT(λ:: 𝕣       ,g::∂ℝ{P,N,R},γ::𝕣) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(0, λ  *g.dx                       )
+KKT(λ::∂ℝ{P,N,R},g:: ℝ       ,γ::𝕣) where{P,N,R<:ℝ} = ∂ℝ{P,N,R}(0,            ∂KKT(λ.x,g.x,γ)*λ.dx)
 function KKT(λ::∂ℝ{Pλ,Nλ,Rλ},g::∂ℝ{Pg,Ng,Rg},γ::𝕣) where{Pλ,Pg,Nλ,Ng,Rλ<:ℝ,Rg<:ℝ}
     if Pλ==Pg
         R = promote_type(Rλ,Rg)
-        return ∂ℝ{Pλ,Nλ}(convert(R,KKT(λ.x,g.x,γ)),convert.(R,     λ.x*g.dx + S(λ.x,g.x,γ)*λ.dx))
+        return ∂ℝ{Pλ,Nλ}(convert(R,KKT(λ.x,g.x,γ)),convert.(R,     λ.x*g.dx + ∂KKT(λ.x,g.x,γ)*λ.dx))
     elseif Pλ> Pg
         R = promote_type(Rλ,typeof(b))
-        return ∂ℝ{Pλ,Nλ}(convert(R,KKT(λ  ,g.x,γ)),convert.(R,     λ.x*g.dx                    ))
+        return ∂ℝ{Pλ,Nλ}(convert(R,KKT(λ  ,g.x,γ)),convert.(R,     λ.x*g.dx                       ))
     else
         R = promote_type(typeof(a),Rg)
-        return ∂ℝ{Pg,Ng}(convert(R,KKT(λ.x,g  ,γ)),convert.(R,                S(λ.x,g.x,γ)*λ.dx))
+        return ∂ℝ{Pg,Ng}(convert(R,KKT(λ.x,g  ,γ)),convert.(R,                ∂KKT(λ.x,g.x,γ)*λ.dx))
     end
 end
 KKT(λ::SVector{Nλ},g::SVector{Nλ},γ::𝕣) where{Nλ} = sum(KKT(λ[i],g[i],γ) for i=1:Nλ) 
@@ -417,9 +417,9 @@ doflist(::Type{<:DofConstraint{λclass,Nλ,Nx,Nu,Na,λinod,λfield,xinod,xfield,
     ☼λ,x       = ∂0(X)[iλ], ∂0(X)[ix]    
     P,_,x∂     = variate(x,context=(X,U,A,t))
     ☼gap,g∂x   = value_∂{P,Nx}(o.gap(x∂,t,o.gargs...)) 
-    R = if     m==:equal;    SVector{Nλ+Nx}(-gap...       ,(       -λ∘₁g∂x)...) # - sign: λ interpreted as an external force on generalised dof g∂x
-    elseif     m==:positive; SVector{Nλ+Nx}(-S(λ,gap,γ)...,(       -λ∘₁g∂x)...) 
-    elseif     m==:off;      SVector{Nλ+Nx}(-λ...         , ntuple(i->0,Nx)...) 
+    R = if     m==:equal;    SVector{Nλ+Nx}(-gap...          ,(       -λ∘₁g∂x)...) # - sign: λ interpreted as an external force on generalised dof g∂x
+    elseif     m==:positive; SVector{Nλ+Nx}(-∂KKT(λ,gap,γ)...,(       -λ∘₁g∂x)...) 
+    elseif     m==:off;      SVector{Nλ+Nx}(-λ...            , ntuple(i->0,Nx)...) 
     end
     return R,(λ=λ,g=gap,mode=m)
 end
@@ -585,34 +585,56 @@ no_second_order(::Type{<:ElementCostAndConstraint{NSO}}) where{NSO} = NSO
 
 @espy function lagrangian(o::ElementCostAndConstraint{Val(false),TargetElement,λxinod,λuinod}, Λ,X,U,A,t,SP,dbg) where{TargetElement,λxinod,λuinod}
     iλx,ix,iλu,iu,_,_ = dofpartition(typeof(o))
-    Nλ                = length(iλx)+length(iλu)
+    Nλx,Nλu           = length(iλx),length(iλu)
     req               = mergerequest(o.req)
+    ♢λ                = SVector(∂0(X)[iλx]...,∂0(U)[iλu]...)
     Λe                = Λ[ix] 
     Xe                = getsomedofs(X,ix) 
     Ue                = getsomedofs(U,iu) 
-    L,FB,☼eleres      = getlagrangian(o.eleobj,Λe,Xe,Ue,A,t,SP,(dbg...,via=ElementCostAndConstraint),req.eleres)
-    if typeof(o.cost) ≠ Nothing    
-        ☼cost         = o.cost(eleres,t,o.costargs...) 
-        L            += cost
+    if Nλx > 0
+        Pv,Nv,Xev     = variate(Xe,context=(Λ,U,A,t)) # TODO MAYBE: make it directional derivative in direction Λe ??? Careful, Λe is adiffed itself !!!
+        Lv,FB,eleresv = getlagrangian(o.eleobj,Λe,Xev,Ue,A,t,SP,(dbg...,via=ElementCostAndConstraint),req.eleres)
+        L             = value{Pv}(Lv)
+        eleres        = value{Pv}(eleresv)
+    else
+        L,FB,eleres   = getlagrangian(o.eleobj,Λe,Xe,Ue,A,t,SP,(dbg...,via=ElementCostAndConstraint),req.eleres)
     end
-    scoop(L)
-    if typeof(o.gap) ≠ Nothing   
+    local eleres
+    ☼eleres = eleres
+    if typeof(o.cost) ≠ Nothing    
+        cost          = o.cost(eleres,t,o.costargs...) 
+        L            += cost
+    else
+        cost          = 0.
+    end
+    local cost
+    ☼cost = cost
+    if Nλx > 0 || Nλu > 0   
         γ            = default{:γ}(SP,0.)
-        ☼λ           = SVector(∂0(X)[iλx]...,∂0(U)[iλu]...) 
-        ☼gap         = o.gap( eleres,t,o.gapargs... )
-        ☼mode        = o.mode(t)
-        gap  isa SVector{Nλ} || error("Functor `gap`  must return a SVector{length(λxinod)+length(λuinod)}")
-        mode isa SVector{Nλ} || error("Functor `mode` must return a SVector{length(λxinod)+length(λuinod)}")
-        for iλ ∈ eachindex(λ)
-            λᵢ,mᵢ,gapᵢ = λ[iλ],mode[iλ],gap[iλ]
+        if Nλx >0
+            gapv     = o.gap(eleresv,t,o.gapargs... )
+            gap,∇ₓₑgap = value_∂{Pv,Nv}(gapv)
+        else
+            gap      = o.gap(eleres,t,o.gapargs... )
+        end
+        mode         = o.mode(t)
+        for iλ ∈ iλx
+            Λᵢ, λᵢ,mᵢ,gapᵢ,∇ₓₑgapᵢ = Λ[iλ],∂0(X)[iλ],mode[iλ],gap[iλ],∇ₓₑgap[iλ,:]
+            L -=if   mᵢ==:equal;    Λe ∘₁ ∇ₓₑgapᵢ .* λᵢ  + Λᵢ *        gapᵢ    
+            elseif   mᵢ==:positive; Λe ∘₁ ∇ₓₑgapᵢ .* λᵢ  + Λᵢ *∂KKT(λᵢ,gapᵢ,γ) 
+            elseif   mᵢ==:off;                             Λᵢ.*     λᵢ 
+            end
+        end
+        for iλ ∈ iλu.+Nλx
+            λᵢ,mᵢ,gapᵢ = ∂0(U)[iλ],mode[iλ],gap[iλ]
             L -=if   mᵢ==:equal;    gapᵢ * λᵢ     
             elseif   mᵢ==:positive; KKT(λᵢ,gapᵢ,γ) 
             elseif   mᵢ==:off;      0.5*(λᵢ * λᵢ) 
             end
         end
-        return L,(λ=λ,g=gap,mode=mode)
+        return L,noFB  #(λ=λ,g=gap,mode=mode)
     end
-    # TODO Does not set FB, and DirectXUA/solve has no line search...                                
+    #TODO Does not set FB, and DirectXUA/solve has no line search...     
     return L,noFB
 end
 

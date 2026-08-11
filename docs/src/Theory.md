@@ -98,7 +98,7 @@ When doing optimisation-FEM in `Muscade`, the elements provide additive contribu
 
 ## Physical and optimisation constraints
 
-**Physical constraints** (including contact or Dirichlet/essential boundary conditions) are added to the model by using an element that adds adds a dof of class ``X`` to the model.  This new dof ``X_λ`` is a Lagrange multiplier for the constraint. If we note ``R``, ``X`` and ``Λ`` the list of dofs before adding the constraint element and ``R^*``, ``X^*`` and ``Λ^*`` after, then  
+**Physical constraints** (including contact or Dirichlet/essential boundary conditions) are added to the model by using an element that adds adds dofs of class ``X`` to the model.  These new dofs ``X_λ`` are Lagrange multipliers for the constraints ``g_x(X,U,A)=0``. If we note ``R``, ``X`` and ``Λ`` the list of dofs before adding the constraints and ``R^*``, ``X^*`` and ``Λ^*`` after, then  
 
 ```math
 L^*(\Lambda^*,X^*,U,A) = Q(X,U,A)  + R^*(X^*,U,A) \cdot Λ^* 
@@ -110,13 +110,13 @@ with
 \begin{aligned}
 Λ^* &= [Λ,Λ_λ]\\
 X^* &= [X,X_λ]\\
-R^*(X^*,U,A) &= \left[R(X,U,A) - ∇g_x(X,U,A) \cdot X_λ \; , \; g_x(X,U,A)\right]
+R^*(X^*,U,A) &= \left[R(X,U,A) - ∇_x g_x(X,U,A) \cdot X_λ \; , \; g_x(X,U,A)\right]
 \end{aligned}
 ```
 
 **Optimisation constraints** allow to define that some situations are impossible, or inacceptable. For example, in a design optimisation analysis, excessive stresses would lead to failure, so would be constrained to remain under a given threshold. In a tracking or optimal control problem, an actuator force may not exceed some limit for the actuator's capacity.
 
-Optimisation constraints that have to be verified at every step (for example stresses that must remain below a critical level, at any time) require a Lagrange multiplier that changes over time, and that is thus of class ``U``. Optimisation constraints that act only on ``A``-dofs (for example, there is a limit to the strength of steel we can order)  require a Lagrange multiplier of class ``A``.  With optimisation constraints, the Lagrangian is of the form
+Optimisation constraints that have to be verified at every step (for example stresses that must remain below a critical level, at any time) require Lagrange multipliers that change over time, and that are thus of class ``U``. Optimisation constraints that act only on ``A``-dofs (for example, there is a limit to the strength of steel we can order)  require Lagrange multipliers of class ``A``.  With optimisation constraints, the Lagrangian is of the form
 
 ```math
 L^*(\Lambda,X,U^*,A^*) = Q^*(X,U^*,A^*)  + R(X,U,A) \cdot Λ 

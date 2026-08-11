@@ -373,8 +373,7 @@ end
   be used if there is only one variable left of the assignement.
 - The name of a function being called must be preceded by `☼` if the
   definition of the function is itself preceeded by the macro-call `@espy`.
-- `for`-loops are not supported. `do`-loops must be used: to be efficient, 
-  `residual` and `lagrangian` must not allocate and thus use immutables.
+- Neither `☼` not `♢` may not appear within a `if`, `for` or `while` statement. 
 - One-line function definition is not supported.  
 - The keyword `return` must be explicitly used, and if must be followed
   the a comma separated list of output variables. Syntaxes like

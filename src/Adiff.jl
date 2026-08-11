@@ -172,13 +172,13 @@ Completely strip `Y` of partial derivatives.  Use only for debugging purpose.
 
 See also: [`precedence`](@ref), [`Muscade.variate_`](@ref), [`δ_`](@ref), [`value`](@ref), [`∂`](@ref), [`value_∂`](@ref)
 """
-@inline VALUE(a::Nothing )    =        nothing
-@inline VALUE(a::ℝ )          =        a
-@inline VALUE(a::∂ℝ)          = VALUE( a.x)
-@inline VALUE(a::SA)          = VALUE.(a)
-@inline VALUE(a::Tuple     )  = (VALUE(first(a)),VALUE(Base.tail(a))...)
-@inline VALUE(a::Tuple{}   )  = ()
-@inline VALUE(a::NamedTuple)  = NamedTuple{keys(a)}(VALUE(values(a)))
+@inline VALUE(a::Nothing )      =        nothing
+@inline VALUE(a::ℝ )            =        a
+@inline VALUE(a::∂ℝ)            = VALUE( a.x)
+@inline VALUE(a::AbstractArray) = VALUE.(a)
+@inline VALUE(a::Tuple     )    = (VALUE(first(a)),VALUE(Base.tail(a))...)
+@inline VALUE( ::Tuple{}   )    = ()
+@inline VALUE(a::NamedTuple)    = NamedTuple{keys(a)}(VALUE(values(a)))
 
 
 
@@ -199,6 +199,7 @@ See also: [`precedence`](@ref), [`Muscade.variate_`](@ref), [`δ_`](@ref), [`∂
 @inline value{P}(a::R         ) where{P     ,R<:ℝ} = a
 @inline value{P}(a::SA        ) where{P          } = value{P}.(a)
 @inline value{P}(a::Tuple     ) where{P          } = Tuple(value{P}(aᵢ) for aᵢ∈a) 
+@inline value{P}(a::NamedTuple) where{P          } = NamedTuple{keys(a)}(value{P}(values(a)))
 
 # ∂{P}(a) is handled as ∂{P,1}(a) and returns a scalar 
 """

@@ -220,7 +220,7 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,o:
         class            = xu
     end
     Lλ                   = out.L1[ind.Λ]
-    # out[asm[iasm,iele]] += R[ia]
+    ## out[asm[iasm,iele]] += R[ia]
     isassigned(Lλ,1) && add_value!(Lλ[1] ,asm[arrnum(ind.Λ)],iele,eR;iasm=ieΛ,Δt) #  I have a vector R from o.eleobj, and I assemble it at the end of o's vector
     if mission==:matrices # K,C,M
         ndof             = (Nλ , Nx, Nu, Na)
