@@ -215,26 +215,32 @@ was created by the syntax `Muscade.variate_{P}`.
 
 See also: [`precedence`](@ref), [`Muscade.variate_`](@ref), [`δ_`](@ref), [`value`](@ref), [`VALUE`](@ref), [`value_∂`](@ref)
 """
-@inline ∂{P,N}(a::     ∂ℝ{P ,N,R} ) where{     P,N,R   } =        a.dx
-@inline ∂{P,N}(a::     ∂ℝ{Pa,N,R} ) where{  Pa,P,N,R   } = P>Pa ? SV{  N,R}(zero(R)    for i=1:N      ) : error("extracting ∂ with invalid precedence")
-@inline ∂{P,N}(a::             R  ) where{     P,N,R<:ℝ} =        SV{  N,R}(zero(R)    for i=1:N      )
-@inline ∂{P,N}(a::SV{M,∂ℝ{P ,N,R}}) where{M,   P,N,R   } =        SM{M,N,R}(a[i].dx[j] for i=1:M,j∈1:N) # ∂(a,x)[i,j] = ∂a[i]/∂x[j]
-@inline ∂{P,N}(a::SV{M,∂ℝ{Pa,N,R}}) where{M,Pa,P,N,R   } = P>Pa ? SM{M,N,R}(a[i].dx[j] for i=1:M,j∈1:N) : error("extracting ∂ with invalid precedence")# ∂(a,x)[i,j] = ∂a[i]/∂x[j]
-@inline ∂{P,N}(a::SV{M,        R }) where{M,   P,N,R   } =        SM{M,N,R}(zero(R)    for i=1:M,j=1:N)
-@inline ∂{P  }(a::             R  ) where{     P,  R<:ℝ} =        zero(R)
-@inline ∂{P  }(a::     ∂ℝ{P,1,R} ) where{      P,  R   } =        a.dx[1]
-@inline ∂{P  }(a::SV{N,∂ℝ{P,1,R}}) where{      P,N,R   } =        SV{  N,R}(a[i].dx[1] for i=1:N     ) # ∂(a,x)[i]    = ∂a[i]/∂x
+@inline ∂{P,N}(a::     ∂ℝ{P ,N ,R} ) where{        P,N,R   } =        a.dx
+@inline ∂{P,N}(a::     ∂ℝ{Pa,Na,R} ) where{  Pa,Na,P,N,R   } = P>Pa ? SV{  N,R}(zero(R)    for i=1:N      ) : error("extracting ∂ with invalid precedence")
+@inline ∂{P,N}(a::     ∂ℝ{P ,Na,R} ) where{     Na,P,N,R   } =                                                error("extracting ∂ with invalid npartial")
+@inline ∂{P,N}(a::              R  ) where{        P,N,R<:ℝ} =        SV{  N,R}(zero(R)    for i=1:N      )
+@inline ∂{P,N}(a::SV{M,∂ℝ{P ,N ,R}}) where{M,      P,N,R   } =        SM{M,N,R}(a[i].dx[j] for i=1:M,j∈1:N) # ∂(a,x)[i,j] = ∂a[i]/∂x[j]
+@inline ∂{P,N}(a::SV{M,∂ℝ{Pa,Na,R}}) where{M,Pa,Na,P,N,R   } = P>Pa ? SM{M,N,R}(a[i].dx[j] for i=1:M,j∈1:N) : error("extracting ∂ with invalid precedence")# ∂(a,x)[i,j] = ∂a[i]/∂x[j]
+@inline ∂{P,N}(a::SV{M,∂ℝ{P ,Na,R}}) where{M,   Na,P,N,R   } =                                                error("extracting ∂ with invalid npartial")
+@inline ∂{P,N}(a::SV{M,         R }) where{M,      P,N,R   } =        SM{M,N,R}(zero(R)    for i=1:M,j=1:N)
+@inline ∂{P  }(a::              R  ) where{        P,  R<:ℝ} =        zero(R)
+@inline ∂{P  }(a::     ∂ℝ{P ,1 ,R} ) where{        P,  R   } =        a.dx[1]
+@inline ∂{P  }(a::SV{N,∂ℝ{P ,1 ,R}}) where{        P,N,R   } =        SV{  N,R}(a[i].dx[1] for i=1:N     ) # ∂(a,x)[i]    = ∂a[i]/∂x
 
-@inline ∂{P,N}(a::SM{      M1,M2       ,∂ℝ{P, N,R}}) where{M1,M2,         P,N,R} =        SA{Tuple{M1,M2,N       },R}(a[i].dx[j] for i∈eachindex(a),j∈1:N) # ∂(a,x)[i,...,j] = ∂a[i,...]/∂x[j]
-@inline ∂{P,N}(a::SM{      M1,M2       ,∂ℝ{Pa,N,R}}) where{M1,M2,      Pa,P,N,R} = P>Pa ? SA{Tuple{M1,M2,N       },R}(a[i].dx[j] for i∈eachindex(a),j∈1:N) : error("extracting ∂ with invalid precedence")# ∂(a,x)[i,...,j] = ∂a[i,...]/∂x[j]
-@inline ∂{P,N}(a::SM{      M1,M2       ,        R }) where{M1,M2,         P,N,R} =        SA{Tuple{M1,M2,N       },R}(zero(R)    for i∈eachindex(a),j∈1:N)
-@inline ∂{P,N}(a::SA{Tuple{M1,M2,M3   },∂ℝ{P, N,R}}) where{M1,M2,M3,      P,N,R} =        SA{Tuple{M1,M2,M3    ,N},R}(a[i].dx[j] for i∈eachindex(a),j∈1:N) # ∂(a,x)[i,...,j] = ∂a[i,...]/∂x[j]
-@inline ∂{P,N}(a::SA{Tuple{M1,M2,M3   },∂ℝ{Pa,N,R}}) where{M1,M2,M3,   Pa,P,N,R} = P>Pa ? SA{Tuple{M1,M2,M3    ,N},R}(a[i].dx[j] for i∈eachindex(a),j∈1:N) : error("extracting ∂ with invalid precedence")# ∂(a,x)[i,...,j] = ∂a[i,...]/∂x[j]
-@inline ∂{P,N}(a::SA{Tuple{M1,M2,M3   },        R }) where{M1,M2,M3,      P,N,R} =        SA{Tuple{M1,M2,M3    ,N},R}(zero(R)    for i∈eachindex(a),j∈1:N)
-@inline ∂{P,N}(a::SA{Tuple{M1,M2,M3,M4},∂ℝ{P, N,R}}) where{M1,M2,M3,M4,   P,N,R} =        SA{Tuple{M1,M2,M3,M4 ,N},R}(a[i].dx[j] for i∈eachindex(a),j∈1:N) # ∂(a,x)[i,...,j] = ∂a[i,...]/∂x[j]
-@inline ∂{P,N}(a::SA{Tuple{M1,M2,M3,M4},∂ℝ{Pa,N,R}}) where{M1,M2,M3,M4,Pa,P,N,R} = P>Pa ? SA{Tuple{M1,M2,M3,M4 ,N},R}(a[i].dx[j] for i∈eachindex(a),j∈1:N) : error("extracting ∂ with invalid precedence")# ∂(a,x)[i,...,j] = ∂a[i,...]/∂x[j]
-@inline ∂{P,N}(a::SA{Tuple{M1,M2,M3,M4},        R }) where{M1,M2,M3,M4,   P,N,R} =        SA{Tuple{M1,M2,M3,M4 ,N},R}(zero(R)    for i∈eachindex(a),j∈1:N)
-@inline ∂{P,N}(a::Tuple                            ) where{               P,N  } = Tuple(∂{P,N}(aᵢ) for aᵢ∈a) 
+@inline ∂{P,N}(a::SM{      M1,M2       ,∂ℝ{P, N ,R}}) where{M1,M2,            P,N,R} =        SA{Tuple{M1,M2,N       },R}(a[i].dx[j] for i∈eachindex(a),j∈1:N) # ∂(a,x)[i,...,j] = ∂a[i,...]/∂x[j]
+@inline ∂{P,N}(a::SM{      M1,M2       ,∂ℝ{Pa,Na,R}}) where{M1,M2,      Pa,Na,P,N,R} = P>Pa ? SA{Tuple{M1,M2,N       },R}(a[i].dx[j] for i∈eachindex(a),j∈1:N) : error("extracting ∂ with invalid precedence")# ∂(a,x)[i,...,j] = ∂a[i,...]/∂x[j]
+@inline ∂{P,N}(a::SM{      M1,M2       ,∂ℝ{P ,Na,R}}) where{M1,M2,         Na,P,N,R} =                                                                           error("extracting ∂ with invalid npartial")
+@inline ∂{P,N}(a::SM{      M1,M2       ,         R }) where{M1,M2,            P,N,R} =        SA{Tuple{M1,M2,N       },R}(zero(R)    for i∈eachindex(a),j∈1:N)
+@inline ∂{P,N}(a::SA{Tuple{M1,M2,M3   },∂ℝ{P, N ,R}}) where{M1,M2,M3,         P,N,R} =        SA{Tuple{M1,M2,M3    ,N},R}(a[i].dx[j] for i∈eachindex(a),j∈1:N) # ∂(a,x)[i,...,j] = ∂a[i,...]/∂x[j]
+@inline ∂{P,N}(a::SA{Tuple{M1,M2,M3   },∂ℝ{Pa,Na,R}}) where{M1,M2,M3,   Pa,Na,P,N,R} = P>Pa ? SA{Tuple{M1,M2,M3    ,N},R}(a[i].dx[j] for i∈eachindex(a),j∈1:N) : error("extracting ∂ with invalid precedence")# ∂(a,x)[i,...,j] = ∂a[i,...]/∂x[j]
+@inline ∂{P,N}(a::SA{Tuple{M1,M2,M3   },∂ℝ{P ,Na,R}}) where{M1,M2,M3,      Na,P,N,R} =                                                                           error("extracting ∂ with invalid npartial")
+@inline ∂{P,N}(a::SA{Tuple{M1,M2,M3   },         R }) where{M1,M2,M3,         P,N,R} =        SA{Tuple{M1,M2,M3    ,N},R}(zero(R)    for i∈eachindex(a),j∈1:N)
+@inline ∂{P,N}(a::SA{Tuple{M1,M2,M3,M4},∂ℝ{P, N ,R}}) where{M1,M2,M3,M4,      P,N,R} =        SA{Tuple{M1,M2,M3,M4 ,N},R}(a[i].dx[j] for i∈eachindex(a),j∈1:N) # ∂(a,x)[i,...,j] = ∂a[i,...]/∂x[j]
+@inline ∂{P,N}(a::SA{Tuple{M1,M2,M3,M4},∂ℝ{Pa,Na,R}}) where{M1,M2,M3,M4,Pa,Na,P,N,R} = P>Pa ? SA{Tuple{M1,M2,M3,M4 ,N},R}(a[i].dx[j] for i∈eachindex(a),j∈1:N) : error("extracting ∂ with invalid precedence")# ∂(a,x)[i,...,j] = ∂a[i,...]/∂x[j]
+@inline ∂{P,N}(a::SA{Tuple{M1,M2,M3,M4},∂ℝ{P ,Na,R}}) where{M1,M2,M3,M4,   Na,P,N,R} =                                                                           error("extracting ∂ with invalid npartial")
+@inline ∂{P,N}(a::SA{Tuple{M1,M2,M3,M4},         R }) where{M1,M2,M3,M4,      P,N,R} =        SA{Tuple{M1,M2,M3,M4 ,N},R}(zero(R)    for i∈eachindex(a),j∈1:N)
+@inline ∂{P,N}(a::Tuple                             ) where{                  P,N  } = Tuple(∂{P,N}(aᵢ) for aᵢ∈a) 
+@inline ∂{P,N}(a::NamedTuple                        ) where{P                      } = NamedTuple{keys(a)}(∂{P,N}(values(a)))
 """
     y,yₓ = value_∂{P,N}(Y)
     y,y′ = value_∂{P  }(Y)
