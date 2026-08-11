@@ -240,7 +240,7 @@ See also: [`precedence`](@ref), [`Muscade.variate_`](@ref), [`δ_`](@ref), [`val
 @inline ∂{P,N}(a::SA{Tuple{M1,M2,M3,M4},∂ℝ{P ,Na,R}}) where{M1,M2,M3,M4,   Na,P,N,R} =                                                                           error("extracting ∂ with invalid npartial")
 @inline ∂{P,N}(a::SA{Tuple{M1,M2,M3,M4},         R }) where{M1,M2,M3,M4,      P,N,R} =        SA{Tuple{M1,M2,M3,M4 ,N},R}(zero(R)    for i∈eachindex(a),j∈1:N)
 @inline ∂{P,N}(a::Tuple                             ) where{                  P,N  } = Tuple(∂{P,N}(aᵢ) for aᵢ∈a) 
-@inline ∂{P,N}(a::NamedTuple                        ) where{P                      } = NamedTuple{keys(a)}(∂{P,N}(values(a)))
+@inline ∂{P,N}(a::NamedTuple                        ) where{P,N                    } = NamedTuple{keys(a)}(∂{P,N}(values(a)))
 """
     y,yₓ = value_∂{P,N}(Y)
     y,y′ = value_∂{P  }(Y)
