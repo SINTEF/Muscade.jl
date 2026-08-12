@@ -38,3 +38,24 @@ In the REPL, type `]` (to go into package management mode), followed by
 ## Using the newest features of Muscade.jl
 
 Some newer features, which have the vocation to be part of the next release, are generally pushed to the [dev branch](https://github.com/SINTEF/Muscade.jl/tree/dev). Pull that branch from the project repository, and in package mode, type `dev /path/to/local/copy/of/Muscade.jl`. The dev branch also has its online [documentation](https://sintef.github.io/Muscade.jl/dev/).
+
+# Citation
+
+If you use this package in published work, please cite (review on-going):
+
+> P. Maincon and T. Sauder, "Muscade.jl : a Julia package for 
+> FEM-constrained optimisation", ssrn:7268625
+> (2026). https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7268625
+
+```bibtex
+@article{MainconSauder2026,
+  author  = {Maincon, P. and Sauder, T.},
+  title   = {Muscade.jl : a Julia package for FEM-constrained optimisation},
+  journal = {SoftareX},
+  year    = {2026},
+  doi     = {10.2139/ssrn.7268625},
+  url     = {https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7268625},
+}
+```
+
+Machine-readable metadata is in [`CITATION.cff`](CITATION.cff).
