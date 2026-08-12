@@ -1,0 +1,51 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite the article in `preferred-citation`."
+title: "Muscade.jl"
+abstract: "a Julia package for FEM-constrained optimisation"
+type: software
+authors:
+  - given-names: Philippe
+    family-names: Maincon
+    email: philippe.maincon@sintef.no
+    affiliation: "SINTEF Ocean"
+    orcid: "https://orcid.org/0000-0002-5234-6113"
+  - given-names: Thomas
+    family-names: Sauder
+    email: thomas.sauder@sintef.no
+    affiliation: "SINTEF Ocean"
+    orcid: "https://orcid.org/0000-0001-7445-7239"
+version: 0.8.0
+date-released: "2026-07-29"
+license: MIT
+repository-code: "https://https://github.com/SINTEF/Muscade.jl"
+keywords:
+  - Julia
+  - FEM
+  - inverse problems
+  - FEM-constrained optimisation
+  - load estimation
+  - model recalibration
+  - sensor fusion
+preferred-citation:
+  type: article
+  title: "Muscade.jl : a Julia package for FEM-constrained optimisation"
+  authors:
+  - given-names: Philippe
+    family-names: Maincon
+    email: philippe.maincon@sintef.no
+    affiliation: "SINTEF Ocean"
+    orcid: "https://orcid.org/0000-0002-5234-6113"
+  - given-names: Thomas
+    family-names: Sauder
+    email: thomas.sauder@sintef.no
+    affiliation: "SINTEF Ocean"
+    orcid: "https://orcid.org/0000-0001-7445-7239"
+  year: 2026
+  month: 7
+  journal: "SoftwareX"
+  identifiers:
+    - type: other
+      value: "ssrn:7268625"
+      description: "papers.ssrn.com"
+  doi: "10.2139/ssrn.7268625"
+  url: "https://https://papers.ssrn.com/sol3/papers.cfm?abstract_id=7268625"
