@@ -31,12 +31,13 @@ macro dbg(ex)
     stkᵢ    = gensym(:stkᵢ)
     sho     = gensym(:sho)
     esc(quote
-        printstyled("@dbg ";color=:yellow)
+        printstyled("@dbg ";color=:yellow,bold=true)
         printstyled(@sprintf("%-30s ",@sprintf("%s:%i",$file,$line));color=:light_black)
         $stk = Muscade.stackstring(1)
         $stklen = sum(length.($stk).+1)
         for $stkᵢ ∈ $stk  
-            printstyled(">";bold=true)
+#            printstyled(">";bold=true)
+            print("►")
             printstyled($stkᵢ;color=:light_black)
         end
         $sho = @sprintf("%-15s = %s",$(Meta.quot(ex)),$(ex))

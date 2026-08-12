@@ -599,16 +599,14 @@ no_second_order(::Type{<:ElementCostAndConstraint{NSO}}) where{NSO} = NSO
     else
         L,FB,eleres   = getlagrangian(o.eleobj,Λe,Xe,Ue,A,t,SP,(dbg...,via=ElementCostAndConstraint),req.eleres)
     end
-    local eleres
-    ☼eleres = eleres
+    local ☼eleres
     if typeof(o.cost) ≠ Nothing    
         cost          = o.cost(eleres,t,o.costargs...) 
         L            += cost
     else
         cost          = 0.
     end
-    local cost
-    ☼cost = cost
+    local ☼cost
     if Nλx > 0 || Nλu > 0   
         γ            = default{:γ}(SP,0.)
         if Nλx >0

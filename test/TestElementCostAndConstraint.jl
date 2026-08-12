@@ -47,10 +47,7 @@ L,FB            = Muscade.lagrangian(elcoco, Λ,X,U,A, 0.,nothing,dbg)
      @test ∂{1,Nz}(L) ≈ [-1.926851845351649e11, 2.3221912378082836e10, -4.909682577367074e8, -9.902918379835745e10, -7.62996816062726e10, 3.3129419089208664e10, -1.0430356765960333e9, -2.028735837473837e11, 9.611778704183535e12, -5.379682903546137e11]
 end
 
-
-
 ## Test Xdiffedresidual for SweepX
-
 
 _,Nz,(X,δr)  = variate((x,0.))
 R,FB = Muscade.Xdiffedresidual(elcoco,X,u,a,0.,nothing,dbg)
@@ -64,8 +61,6 @@ r,K = value_∂{1,Nz}(R)
                -4.90978e8      -521.472        1792.85       7037.43      0.0
                -9.90311e10     -1.12679e5      7037.43       1.63964e6    0.0] rtol = 1e-3
 end
-
-
 
 # ## Test draw
 

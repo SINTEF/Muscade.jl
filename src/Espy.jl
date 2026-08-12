@@ -2,7 +2,7 @@
 ######################## Helper functions
 ☼tag(s::Symbol)  = string(s)[1]=='☼' # \sun  
 ☼tag(s)          = false
-♢tag(s::Symbol)  = string(s)[1]=='♢' # \diamond  
+♢tag(s::Symbol)  = string(s)[1]=='♢' # \lozenge  
 ♢tag(s)          = false
 ☼tail(s::Symbol) = Symbol(string(s)[4:end])
 tail(s::Symbol)  = Symbol(string(s)[2:end])
@@ -226,6 +226,29 @@ function code_recursion(ex::Expr,out,req,trace=-999999)
        @capture(ex, [a_ for i_=it_])
         out_new = out                     # 1) anotation is forbidden in this context
         code = ex                         # 2) processing an equality introduces a LineNumber, at an illegal place within the syntax
+    elseif @capture(ex, local args__)
+        printtrace(trace,"local")
+        local_args = code_clean_function(ex)
+        write  = Vector{Expr}(undef,0)                                          # will contain the macros to insert
+        out_new = out 
+        for arg ∈ args
+            if ☼tag(arg) 
+                arg = ☼tail(arg)
+                w,out_new = code_write_to_out(out_new,req,arg,trace+1)
+                push!(write,w)                                        # @espy_record out req b
+            end
+        end
+        if length(write)==0
+            code = local_args
+        else
+            code = quote
+                $local_args
+                $(write...)
+          #     $left
+            end
+        end
+        printtrace(trace,"done")
+
     elseif @capture(ex,  left_ = right_   )
         printtrace(trace,"assign")
         trace += 1
@@ -243,7 +266,7 @@ function code_recursion(ex::Expr,out,req,trace=-999999)
         elseif @capture(left,   (args__,)    )                                               # (a,☼b) = ...
             printtrace(trace,"(a,☼b) = ...")
             write  = Vector{Expr}(undef,0)                                          # will contain the macros to insert
-            @capture(left,   (args__,)    )
+         #   @capture(left,   (args__,)    )
             left   = code_clean_function(left)
             assignement,out_new = code_assigment_rhs(left,right,out,req,trace+1)
             for arg ∈ args
@@ -368,17 +391,33 @@ end
 - The keyword `function` is preceded by the macro-call `@espy`.  
 - The name of requestable variables is preceded by `☼` (`\\sun`). 
   Such anotation must always appear on the left of an assigment. 
-- If the name of a variable is preceded by `♢` (`\\diamond`), then
+- If the name of a variable is preceded by `♢` (`\\lozenge`), then
   the variable is evaluated only if requested. Such a notation can only
   be used if there is only one variable left of the assignement.
 - The name of a function being called must be preceded by `☼` if the
   definition of the function is itself preceeded by the macro-call `@espy`.
-- Neither `☼` nor `♢` may appear within a `if`, `for` or `while` statement. 
 - One-line function definition is not supported.  
 - The keyword `return` must be explicitly used, and if must be followed
   the a comma separated list of output variables. Syntaxes like
   `return if...` are not supported.  
-                
+- Neither `☼` nor `♢` may appear within a `if`, `for` or `while` statement. 
+  The following is an example of how to handle this.              
+
+```
+@espy function foo(x) 
+    if x>0
+        a = 1
+    else
+        a = 2
+    end
+    local ☼a
+    a = 0
+    return a
+end
+```
+
+Note the placement of `local` *after* the `if` construct: the value of `a`
+will be captured where `local ☼a` is situated.
 
 See also: [`@request`](@ref), [`@espydbg`](@ref), [`getresult`](@ref)
 """

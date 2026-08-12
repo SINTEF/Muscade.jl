@@ -219,6 +219,8 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,o:
         eR,FB,eleres     = getresidual(o.eleobj, ∂eX,∂eU, A,t,SP,(dbg...,via=:ElementDofAndConstraintAccelerator),o.req.eleres)  
         class            = xu
     end
+    local eleres
+    ☼eleres = eleres
     Lλ                   = out.L1[ind.Λ]
     ## out[asm[iasm,iele]] += R[ia]
     isassigned(Lλ,1) && add_value!(Lλ[1] ,asm[arrnum(ind.Λ)],iele,eR;iasm=ieΛ,Δt) #  I have a vector R from o.eleobj, and I assemble it at the end of o's vector
@@ -243,7 +245,11 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,o:
         Rcost          = o.cost(Releres,t,o.costargs...)
         cost           = chainrule(Rcost,to_order{P,N∂}(eleres))
         DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,0,NDX,NDU,NDA}(out,asm,cost,iele,Δt)
+    else
+        cost          = 0.
     end
+    local cost
+    ☼cost = cost
     if typeof(o.gap)   ≠ Nothing   
         γ              = default{:γ}(SP,0.)
         λ_             = SVector(∂0(∂X)[iλX]...,∂0(∂U)[iλU]...) 
@@ -251,8 +257,6 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,o:
         Rgap           = o.gap(Releres,t,o.gapargs...)           #             2nd order derivative of gap wrt eleres
         gap            = chainrule(Rgap,to_order{P,N∂}(eleres))  # approximate 2nd order derivative of gap wrt ∂X,∂U,∂A
         mode           = o.mode(t)
-        gap  isa SVector{ncstr} || error( "Functor `gap` must return a SVector{length(λxinod)+length(λuinod)}")
-        mode isa SVector{ncstr} || error("Functor `mode` must return a SVector{length(λxinod)+length(λuinod)}")
         for iλ ∈ eachindex(λ)
             λᵢ,mᵢ,gapᵢ = λ[iλ],mode[iλ],gap[iλ]
             ΔL_=if   mᵢ==:equal;    gapᵢ * λᵢ     

@@ -36,6 +36,7 @@ exbar = @macroexpand @espy function bar(x,y,z)
         j = i^2
         k = i+j
     end
+    local ☼j,☼k
     t = ntuple(ngp) do igp
         a = vec(igp,igp^2)
         b = vec(1.,1.)
@@ -161,6 +162,7 @@ exbar_ = quote
             j = i ^ 2
             k = i + j
         end
+        local j,k
         t = ntuple(ngp) do igp
                 a = vec(igp, igp ^ 2)
                 b = vec(1.0, 1.0)
@@ -187,41 +189,51 @@ exbar_ = quote
             j = i ^ 2
             k = i + j
         end
+        local j, k
+        out_003 = if haskey(req_001, :j)
+                (out_002..., j = j)
+            else
+                out_002
+            end
+        out_004 = if haskey(req_001, :k)
+                (out_003..., k = k)
+            else
+                out_003
+            end
         req_001_gp = if haskey(req_001, :gp)
                 req_001.gp
             else
                 nothing
             end
         t = ntuple(ngp) do igp
-                out_002_gp = (;)
+                out_004_gp = (;)
                 a = vec(igp, igp ^ 2)
                 b = vec(1.0, 1.0)
                 c = b * b'
-                out_002_gp_001 = if haskey(req_001_gp, :c)
-                        (out_002_gp..., c = c)
+                out_004_gp_001 = if haskey(req_001_gp, :c)
+                        (out_004_gp..., c = c)
                     else
-                        out_002_gp
+                        out_004_gp
                     end
                 c
                 if haskey(req_001_gp, :square)
                     square = c ^ 2
-                    out_002_gp_002 = (out_002_gp_001..., square = square)
+                    out_004_gp_002 = (out_004_gp_001..., square = square)
                 else
-                    out_002_gp_002 = out_002_gp_001
+                    out_004_gp_002 = out_004_gp_001
                 end
                 r = vcat(a, reshape(c, 4))
-                (r = r, out = out_002_gp_002)
+                (r = r, out = out_004_gp_002)
             end
-        out_003 = if haskey(req_001, :gp)
-                (out_002..., gp = NTuple{ngp}(((t[igp]).out for igp = 1:ngp)))
+        out_005 = if haskey(req_001, :gp)
+                (out_004..., gp = NTuple{ngp}(((t[igp]).out for igp = 1:ngp)))
             else
-                out_002
+                out_004
             end
         r = sum((i->(t[i]).r), ngp)
-        return (r, nothing, out_003)
+        return (r, nothing, out_005)
     end
 end
-
 exmerge_ = quote
     function lagrangian(o::ElementConstraint{Teleobj, λinod, λfield, Nu}, Λ, X, U, A, t, SP, dbg) where {Teleobj, λinod, λfield, Nu}
         req = mergerequest(o.req)
