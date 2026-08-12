@@ -389,26 +389,25 @@ The following is an example of anotated code:
 end
 ```
 - The keyword `function` is preceded by the macro-call `@espy`.  
+- One-line function definition is not supported.
 - The name of requestable variables is preceded by `☼` (`\\sun`). 
-  Such anotation must always appear on the left of an assigment. 
+  Such anotation must always appear on the left of an assigment,
+  with the exception of the `local` construct discussed in the following. 
 - If the name of a variable is preceded by `♢` (`\\lozenge`), then
   the variable is evaluated only if requested. Such a notation can only
   be used if there is only one variable left of the assignement.
-- The name of a function being called must be preceded by `☼` if the
-  definition of the function is itself preceeded by the macro-call `@espy`.
-- One-line function definition is not supported.  
-- The keyword `return` must be explicitly used, and if must be followed
-  the a comma separated list of output variables. Syntaxes like
+- The name of a sub-function being called must be preceded by `☼` if the
+  definition of the sub-function is itself preceeded by the macro-call `@espy`.
+- The keyword `return` must be explicitly used, and it must be followed
+  by a comma-separated list of output variables. Syntaxes like
   `return if...` are not supported.  
 - Neither `☼` nor `♢` may appear within a `if`, `for` or `while` statement. 
   The following is an example of how to handle this.              
 
 ```
 @espy function foo(x) 
-    if x>0
-        a = 1
-    else
-        a = 2
+    for i = 1:10
+        a = i
     end
     local ☼a
     a = 0
@@ -416,8 +415,8 @@ end
 end
 ```
 
-Note the placement of `local` *after* the `if` construct: the value of `a`
-will be captured where `local ☼a` is situated.
+Note the placement of `local  ☼a` *after* the `for` construct: the value of `a`
+will be captured where `local ☼a` is situated. 
 
 See also: [`@request`](@ref), [`@espydbg`](@ref), [`getresult`](@ref)
 """
