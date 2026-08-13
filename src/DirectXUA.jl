@@ -201,6 +201,7 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,o:
 # This affect the add_∂! calls
     local L
     iλX,ieX,iλU,ieU,iλA,ieA = dofpartition(typeof(o))
+    Nλx,Nλu                 = length(iλx),length(iλu)
     ieΛ,Nλ                  = ieX,Nx                  
     ncstr                   = length(iλX)+length(iλU) 
     if     mission==:matrices     P=2

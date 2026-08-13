@@ -522,7 +522,8 @@ This is distinct from the `req` input described above, which relate to element r
 from the *target* element, to evaluate cost or gaps.
 
 - `λ`                           The constraints Lagrange multiplier
-- `gap`                         The constraints gap `Functor`
+- `cost`                        The value of the cost
+- `gap`                         The value of the constraints gap `Functor`
 - `mode`                        The vector of modes for each constraint
 - `eleres(...)`                 where `...` is the list of requestables wanted from the target element.  The "prefix"  
                                 `eleres` is there to prevent possible confusion with variables requestable from `ElementCostAndConstraint`.  
@@ -572,77 +573,76 @@ end
     Nx           = getndof(TargetElement,:X) # refers to o.eleobj, not o
     Nu           = getndof(TargetElement,:U) # refers to o.eleobj, not o
     Na           = getndof(TargetElement,:A) # refers to o.eleobj, not o
-    iλx          = SVector{Nλx,𝕫}(    1:    Nλx)
-    iλu          = SVector{Nλu,𝕫}(    1:    Nλu)
-    iλa          = SVector{0  ,𝕫}(             )
-    ix           = SVector{Nx ,𝕫}(Nλx+1:Nλx+Nx )
-    iu           = SVector{Nu ,𝕫}(Nλu+1:Nλu+Nu )
-    ia           = SVector{Na ,𝕫}(    1:    Na )
-    return iλx,ix,iλu,iu,iλa,ia
+    iλX          = SVector{Nλx,𝕫}(    1:    Nλx)
+    iλU          = SVector{Nλu,𝕫}(    1:    Nλu)
+    iλA          = SVector{0  ,𝕫}(             )
+    ieX          = SVector{Nx ,𝕫}(Nλx+1:Nλx+Nx )
+    ieU          = SVector{Nu ,𝕫}(Nλu+1:Nλu+Nu )
+    ieA          = SVector{Na ,𝕫}(    1:    Na )
+    return iλX,ieX,iλU,ieU,iλA,ieA
 end
 
 no_second_order(::Type{<:ElementCostAndConstraint{NSO}}) where{NSO} = NSO 
 
 @espy function lagrangian(o::ElementCostAndConstraint{Val(false),TargetElement,λxinod,λuinod}, Λ,X,U,A,t,SP,dbg) where{TargetElement,λxinod,λuinod}
-    iλx,ix,iλu,iu,_,_ = dofpartition(typeof(o))
-    Nλx,Nλu           = length(iλx),length(iλu)
+    iλX,ieX,iλU,ieU,_,_ = dofpartition(typeof(o))
+    Nλx,Nλu           = length(iλX),length(iλU)
     req               = mergerequest(o.req)
-    ♢λ                = SVector(∂0(X)[iλx]...,∂0(U)[iλu]...)
-    Λe                = Λ[ix] 
-    Xe                = getsomedofs(X,ix) 
-    Ue                = getsomedofs(U,iu) 
+    ♢λ                = SVector(∂0(X)[iλX]...,∂0(U)[iλU]...)
+    eΛ                = Λ[ieX] 
+    eX                = getsomedofs(X,ieX) 
+    eU                = getsomedofs(U,ieU) 
     if Nλx > 0
-        Pv,Nv,Xev     = variate(Xe,context=(Λ,U,A,t)) # TODO MAYBE: make it directional derivative in direction Λe ??? Careful, Λe is adiffed itself !!!
-        Lv,FB,eleresv = getlagrangian(o.eleobj,Λe,Xev,Ue,A,t,SP,(dbg...,via=ElementCostAndConstraint),req.eleres)
+        Pv,Nv,eXv     = variate(eX,context=(Λ,U,A,t)) # TODO MAYBE: make it directional derivative in direction eΛ ??? Careful, eΛ is adiffed itself !!!
+        Lv,FB,eleresv = getlagrangian(o.eleobj,eΛ,eXv,eU,A,t,SP,(dbg...,via=ElementCostAndConstraint),req.eleres)
         L             = value{Pv}(Lv)
         eleres        = value{Pv}(eleresv)
     else
-        L,FB,eleres   = getlagrangian(o.eleobj,Λe,Xe,Ue,A,t,SP,(dbg...,via=ElementCostAndConstraint),req.eleres)
+        L,FB,eleres   = getlagrangian(o.eleobj,eΛ,eX,eU,A,t,SP,(dbg...,via=ElementCostAndConstraint),req.eleres)
     end
-    local ☼eleres
     if typeof(o.cost) ≠ Nothing    
         cost          = o.cost(eleres,t,o.costargs...) 
         L            += cost
     else
-        cost          = 0.
+        cost          = nothing
     end
-    local ☼cost
     if Nλx > 0 || Nλu > 0   
         γ            = default{:γ}(SP,0.)
         if Nλx >0
             gapv     = o.gap(eleresv,t,o.gapargs... )
-            gap,∇ₓₑgap = value_∂{Pv,Nv}(gapv)
+            gap,g∂x  = value_∂{Pv,Nv}(gapv)
         else
             gap      = o.gap(eleres,t,o.gapargs... )
         end
         mode         = o.mode(t)
-        for iλ ∈ iλx
-            Λᵢ, λᵢ,mᵢ,gapᵢ,∇ₓₑgapᵢ = Λ[iλ],∂0(X)[iλ],mode[iλ],gap[iλ],∇ₓₑgap[iλ,:]
-            L -=if   mᵢ==:equal;    Λe ∘₁ ∇ₓₑgapᵢ .* λᵢ  + Λᵢ *        gapᵢ    
-            elseif   mᵢ==:positive; Λe ∘₁ ∇ₓₑgapᵢ .* λᵢ  + Λᵢ *∂KKT(λᵢ,gapᵢ,γ) 
+        for iλ ∈ iλX
+            Λᵢ, λᵢ,mᵢ,gapᵢ,g∂xᵢ = Λ[iλ],∂0(X)[iλ],mode[iλ],gap[iλ],g∂x[iλ,:]
+            L -=if   mᵢ==:equal;    eΛ ∘₁ g∂xᵢ .* λᵢ  + Λᵢ *        gapᵢ    
+            elseif   mᵢ==:positive; eΛ ∘₁ g∂xᵢ .* λᵢ  + Λᵢ *∂KKT(λᵢ,gapᵢ,γ) 
             elseif   mᵢ==:off;                             Λᵢ.*     λᵢ 
             end
         end
-        for iλ ∈ iλu.+Nλx
+        for iλ ∈ iλU.+Nλx
             λᵢ,mᵢ,gapᵢ = ∂0(U)[iλ],mode[iλ],gap[iλ]
             L -=if   mᵢ==:equal;    gapᵢ * λᵢ     
             elseif   mᵢ==:positive; KKT(λᵢ,gapᵢ,γ) 
             elseif   mᵢ==:off;      0.5*(λᵢ * λᵢ) 
             end
         end
-        return L,noFB  #(λ=λ,g=gap,mode=mode)
+    else
+        mode,gap = nothing,nothing
     end
-    #TODO Does not set FB, and DirectXUA/solve has no line search...     
+    local ☼eleres,☼cost,☼mode,☼gap
     return L,noFB
 end
 
 allocate_drawing(       axis,o::AbstractVector{Teleobj};kwargs...) where{Teleobj<:ElementCostAndConstraint} = allocate_drawing(axis,[eᵢ.eleobj for eᵢ∈o];kwargs...)
 function update_drawing(axis,o::AbstractVector{Teleobj},oldmut,opt, Λ,X,U,A,t,SP,dbg) where{Teleobj<:ElementCostAndConstraint{NSO,TargetElement,λxinod,λuinod}} where{NSO,TargetElement,λxinod,λuinod} 
-    _,ix,_,iu,_,_ = dofpartition(eltype(o))
-    Λe            = view(Λ,ix,:) 
-    Xe            = getsomedofs(X,ix) 
-    Ue            = getsomedofs(U,iu) 
-    mut           = update_drawing(  axis,[oᵢ.eleobj for oᵢ∈o],oldmut,opt, Λe,Xe,Ue,A,t,SP,dbg)  
+    _,ieX,_,ieU,_,_ = dofpartition(eltype(o))
+    eΛ            = view(Λ,ieX,:) 
+    eX            = getsomedofs(X,ieX) 
+    eU            = getsomedofs(U,ieU) 
+    mut           = update_drawing(  axis,[oᵢ.eleobj for oᵢ∈o],oldmut,opt, eΛ,eX,eU,A,t,SP,dbg)  
     return mut
 end
 display_drawing!(axis,::Type{<:ElementCostAndConstraint{NSO,TargetElement}},obs,opt) where{NSO,TargetElement} = display_drawing!(axis,TargetElement,obs,opt)
