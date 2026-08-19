@@ -7,18 +7,22 @@ struct RangeInterpolator{Nc,X,Y} <:Interpolator
     Δx⁻¹::Float64 # average time step
 end
 Nout(o::RangeInterpolator{Nc}) where{Nc} = Nc
-function findinterval(o::RangeInterpolator,x) 
+function findinterval(o::RangeInterpolator{Nc,X,Y},x) where{Nc,X<:AbstractRange,Y}
     i⁻ = floor(Int64,(x-o.x0)*o.Δx⁻¹)+1
     i⁻ = max(1            ,i⁻)
     i⁻ = min(length(o.x)-1,i⁻)
-    if o.x isa AbstractVector # quasi-range
-        while i⁻>1 && x<o.x[i⁻]  
-            i⁻ -=1
-        end
-        while i⁻<length(o.x)-1 && x>o.x[i⁻+1]  
-            i⁻ +=1
-        end
-    end 
+    return i⁻
+end
+function findinterval(o::RangeInterpolator{Nc,X,Y},x) where{Nc,X<:AbstractVector,Y}
+    i⁻ = floor(Int64,(x-o.x0)*o.Δx⁻¹)+1
+    i⁻ = max(1            ,i⁻)
+    i⁻ = min(length(o.x)-1,i⁻)
+    while i⁻>1 && x<o.x[i⁻]  
+        i⁻ -=1
+    end
+    while i⁻<length(o.x)-1 && x>o.x[i⁻+1]  
+        i⁻ +=1
+    end
     return i⁻
 end
 
