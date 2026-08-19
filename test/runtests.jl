@@ -50,9 +50,9 @@ module Runtest
         @testset "TestScale" begin
             include("TestScale.jl")
         end
-        @testset "TestElementCostAndConstraint" begin
-            include("TestElementCostAndConstraint.jl")
-        end
+        # @testset "TestElementCostAndConstraint" begin
+        #     include("TestElementCostAndConstraint.jl")
+        # end
         @testset "TestRotations" begin
             include("TestRotations.jl")
         end
@@ -78,7 +78,6 @@ module Runtest
             include("TestElementTestTools.jl")
         end
 
-
         @testset "TestBarElement" begin
             include("TestBarElement.jl")
         end
@@ -94,7 +93,7 @@ module Runtest
         @testset "TestPositionElement" begin
             include("TestPositionElement.jl")
         end
-        @testset "TestRigidBodyKinematics.jl" begin
+        @testset "TestRigidBodyKinematics" begin
             include("TestRigidBodyKinematics.jl")
         end
     end

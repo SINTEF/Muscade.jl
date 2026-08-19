@@ -559,8 +559,8 @@ end
 struct   add_∂!{P,S,T} end # to allow syntax with type-parameter P: precedence, S: :plus|:minus, T: :transpose|:notranspose
 #### derivatives from a SVector 'a' of adiffs, and add it directly into full matrix or nzval of sparse matrix 'out'.
 # given a vector a
-# ia:    where in the vector to pick data
-# ida:   where in the partials to pick data
+# ia:    where in the vector `a` to pick data
+# ida:   where in the partials of `a` to pick data
 # iasm:  where in first dim of out to put data      (if transpose: second)
 # idasm: where in the second dim of out to put data (if transpose: first )
 # nasm,nadsm: provide if Na,Nda are not length(ia),length(ida) (you are adding in a fraction of the element's array)

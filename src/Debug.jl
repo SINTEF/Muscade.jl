@@ -1,7 +1,8 @@
 """
     Muscade.stackstring()
 
-Produces a concise `Vector{Sring}` representation of the stacktrace.
+Produces a concise `Vector{String}` representation of the stacktrace, with
+inner functions before outer functions
 """
 function stackstring(cut)
     stk = stacktrace()
@@ -10,9 +11,12 @@ function stackstring(cut)
         if stk[i].file == Symbol(".\\boot.jl") || stk[i].func == Symbol("top-level scope")
             break
         end
-        push!(str,@sprintf("%s",stk[i].func))
-        if str[end]=="macro expansion"
-            str[end]="macro"
+        strᵢ = @sprintf("%s",stk[i].func)
+        if !(length(strᵢ)≥3 && strᵢ[1:3]=="#_#") # @inline macros add a slice to the stack
+            push!(str,strᵢ)
+            if str[end]=="macro expansion"
+                str[end]="macro"
+            end
         end
     end
     str
@@ -23,7 +27,38 @@ end
 Similar to @show, but prints code location.    
 
 """
-macro dbg(ex)
+macro dbg(ex...)
+    fullname = String(__source__.file)
+    _,file   = splitdir(fullname)
+    line     = __source__.line
+    stk      = gensym(:stk)
+    stkᵢ     = gensym(:stkᵢ)
+    code = quote
+        printstyled("● ";color=:light_green) # \mdlgblkcircle
+        printstyled(@sprintf("%s:%i\n",$file,$line);color=:light_green,bold=true)
+      #  printstyled(@sprintf("  %s\n",$fullname);color=:green)
+        $stk = Muscade.stackstring(2)
+        print("  ")
+        for $stkᵢ ∈ reverse($stk)  
+            printstyled("▸ ",$stkᵢ," ";color=:green)
+        end
+        println()
+    end
+    for exᵢ ∈ ex    
+        code = quote 
+            $(code)
+            printstyled(@sprintf("  %25s = ",$(string(exᵢ)));color=:green)
+            @printf("%s\n",$(exᵢ))
+        end                     
+    end
+    code = quote 
+        $(code)
+        println()
+    end                     
+    return esc(code)
+end
+
+macro dbg1(ex)
     path,file = splitdir(String(__source__.file))
     line = __source__.line
     stk     = gensym(:stk)
@@ -31,25 +66,29 @@ macro dbg(ex)
     stkᵢ    = gensym(:stkᵢ)
     sho     = gensym(:sho)
     esc(quote
-        printstyled("@dbg ";color=:yellow,bold=true)
+        printstyled("● ";color=:light_green) # \mdlgblkcircle
         printstyled(@sprintf("%-30s ",@sprintf("%s:%i",$file,$line));color=:light_black)
         $stk = Muscade.stackstring(1)
         $stklen = sum(length.($stk).+1)
-        for $stkᵢ ∈ $stk  
-#            printstyled(">";bold=true)
-            print("►")
+        for $stkᵢ ∈ reverse($stk)  
+            printstyled("▸";color=:yellow) # \smallblacktriangleleft
             printstyled($stkᵢ;color=:light_black)
         end
-        $sho = @sprintf("%-15s = %s",$(Meta.quot(ex)),$(ex))
-        if $stklen<50 && length($sho)<100  
+        $sho = @sprintf("%-25s = %s",$(Meta.quot(ex)),$(ex))
+        if $stklen<50 && length($sho)<100  # oneliner
             print(" "^(50-$stklen))
-            println($sho)
-        else                                    
+#            println($sho)
+            @printf("%-25s ",$(Meta.quot(ex)))
+            printstyled(" = ";color=:yellow,bold=true)
+            println($(ex))
+        else       # multiline                             
             println()
-            println($(Meta.quot(ex))," = ",$(ex))
+            println("  ",$(Meta.quot(ex))," = ",$(ex))
         end
     end)
 end
+
+
 
 """
     Muscade.scoop(A,[B...])
