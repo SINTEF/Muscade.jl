@@ -24,8 +24,8 @@ x,x′,x″         = 0.,1.,0.
 initialstate    = setdof!(initialstate,[x′];field=:tx1,nodID=[node],order=1)  # initial speed
 
 state0          = solve(SweepX{ 2};  initialstate,time= t,verbose=false,catcherror=true)
-xtarget         = getdof(state0;field=:tx1,nodID=[node])
-target          = Muscade.FunctionFromVector(t,xtarget)
+xtarget         = getdof(state0;field=:tx1,nodID=[node])[1,:]
+target          = interpolator(t,xtarget)
 
 ### Optimize
 
@@ -48,8 +48,8 @@ state           = solve(SweepXA{2};  initialstate,time= t,verbose=false,catcherr
 statewrong      = solve(SweepX{ 2};  initialstate,time= t,verbose=false,catcherror=true)
 
 A              = getdof(state[1];class=:A,field=:ΞC,nodID=[node])
-xfitted        = getdof(state;field=:tx1,nodID=[node])
-xwrong         = getdof(statewrong;field=:tx1,nodID=[node])
+xfitted        = getdof(state;field=:tx1,nodID=[node])[1,:]
+xwrong         = getdof(statewrong;field=:tx1,nodID=[node])[1,:]
 
 # # Adjust the damping in the green model to match the red measurements
 # using GLMakie

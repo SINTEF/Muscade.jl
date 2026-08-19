@@ -43,6 +43,41 @@ b = 1
 
 end
 
+
+n  = 5
+X  = (0:n-1)#
+Xd = [0.1,.95,2.,3.03,3.99]
+Y1 = X
+Y2 = [X';X'.+1]
+
+A1 = interpolator(X ,Y1)                  # range
+B1 = interpolator(Xd,Y1;quasirange=true ) # quasirange
+C1 = interpolator(Xd,Y1;quasirange=false) # vector
+
+A2 = interpolator(X ,Y2)
+B2 = interpolator(Xd,Y2;quasirange=true )
+C2 = interpolator(Xd,Y2;quasirange=false)
+
+using Test
+@testset "interpolators" begin
+    @test A1(3.5) ≈ 3.5
+    @test B1(3.5) ≈ 3.4895833333333335
+    @test C1(3.5) ≈ 3.4895833333333335
+
+    @test A1(-1.) ≈ -1.0
+    @test B1(-1.) ≈ -1.2941176470588236
+    @test C1(-1.) ≈ -1.2941176470588236
+
+    @test A1(4.3) ≈ 4.3
+    @test B1(4.3) ≈ 4.322916666666666
+    @test C1(4.3) ≈ 4.322916666666666
+
+    @test A2(4.3) ≈ 4.3 .+ [0,1]
+    @test B2(4.3) ≈ 4.322916666666666  .+ [0,1]
+    @test C2(4.3) ≈ 4.322916666666666  .+ [0,1]
+end
+
+
 end
 
 

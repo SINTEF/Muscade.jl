@@ -34,8 +34,7 @@ module Muscade
     public Taylor,McLaurin
     
     include("Functors.jl")
-    export @functor, Functor
-    public FunctionFromVector
+    export @functor, Functor, interpolator
 
     include("Dots.jl")
     export ∘₀,∘₁,∘₂,⊗

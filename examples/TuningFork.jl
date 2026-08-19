@@ -40,7 +40,7 @@ XnodeCoord = vcat(
 )
 
 # External excitation load at the end of the upper prong 
-@functor with() pling(t) = Muscade.FunctionFromVector([-10, 0, 10e-3, 12e-3, 10],[0,0,10,0,0])(t)
+@functor with() pling(t) = interpolator([-10, 0, 10e-3, 12e-3, 10],[0,0,10,0,0])(t)
 plingNode = n₀+2n₁+n₂+1; # where do we hit the tuning fork
 
 # # Building the model
@@ -87,7 +87,7 @@ addelement!(XUAmodel, SingleUdof,[Xnod[plingNode]];Xfield=:t2,Ufield=:t2,cost=Uc
 initialState    = initialize!(model;time=0.);
 dynamicStates   = solve(SweepX{2};initialstate=initialState, time=timeVec, verbose=false)
 vibTarget       = getdof(dynamicStates;field=:t2,nodID=[Xnod[plingNode]])
-target          = Muscade.FunctionFromVector(timeVec,vibTarget);
+target          = interpolator(timeVec,vibTarget);
 
 # Add costs on the deviation to target measurements, in the XA and XUA models
 @functor with(σᵥ=1e-6,target) Xcost(x,t)=((x-target(t))/σᵥ)^2

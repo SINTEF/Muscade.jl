@@ -1,29 +1,93 @@
-"""
-    f  = Muscade.FunctionFromVector(xs::AbstractRange,ys::AbstractVector)
-    y  = f(x)
+abstract type Interpolator <: Function end
 
-    Linear interpolation.  Fails if `x` is outside the range `xs`
-"""
-struct FunctionFromVector{X,Y} <:Function
-    x::X  
-    y::Y
+struct RangeInterpolator{Nc,X,Y} <:Interpolator
+    x ::X
+    y ::Y
+    x0::Float64
+    Δx⁻¹::Float64 # average time step
 end
-function (f::FunctionFromVector{<:AbstractRange})(x)
-    @assert first(f.x)≤x≤last(f.x)
-    ix = (x-first(f.x))/step(f.x) +1
-    i  = min(trunc(𝕫,ix),length(f.x)-1)
-    di = ix-i
-    return f.y[i]*(1-di)+f.y[i+1]*di
+Nout(o::RangeInterpolator{Nc}) where{Nc} = Nc
+function findinterval(o::RangeInterpolator,x) 
+    i⁻ = floor(Int64,(x-o.x0)*o.Δx⁻¹)+1
+    i⁻ = max(1            ,i⁻)
+    i⁻ = min(length(o.x)-1,i⁻)
+    if o.x isa AbstractVector # quasi-range
+        while i⁻>1 && x<o.x[i⁻]  
+            i⁻ -=1
+        end
+        while i⁻<length(o.x)-1 && x>o.x[i⁻+1]  
+            i⁻ +=1
+        end
+    end 
+    return i⁻
 end
-function (f::FunctionFromVector{<:AbstractVector})(x)
-    @assert first(f.x)≤x≤last(f.x)
-    i = findlast(i->i≤x,f.x)
-    if i==length(f.x) 
-        i -=1
+
+struct VectorInterpolator{Nc,X,Y} <:Interpolator
+    x ::X
+    y ::Y
+end
+Nout(o::VectorInterpolator{Nc}) where{Nc} = Nc
+function findinterval(o::VectorInterpolator,x)
+    x≤first(o.x) && return 1
+    x≥last( o.x) && return length(o.x)-1
+    i⁻ = 1
+    i⁺ = length(o.x)
+    Δi = i⁺-i⁻
+    while Δi > 1
+        i = div(Δi,2)+i⁻
+        if x > o.x[i]
+            i⁻ = i
+        else
+            i⁺ = i
+        end
+        Δi = i⁺-i⁻
     end
-    di = (x-f.x[i])/(f.x[i+1]-f.x[i])
-    return f.y[i]*(1-di)+f.y[i+1]*di
+    return i⁻
 end
+
+
+struct linearinterp{Nc} end
+function linearinterp{:scalar}(o,x,i⁻)
+    y⁻, y⁺ = o.y[i⁻], o.y[i⁻+1]
+    x⁻, x⁺ = o.x[i⁻], o.x[i⁻+1]
+    return y⁻ + (y⁺-y⁻)*((x -x⁻)/(x⁺-x⁻))
+end
+function linearinterp{Nc}(o,x,i⁻) where{Nc}
+    x⁻, x⁺ = o.x[i⁻], o.x[i⁻+1]
+    r      = (x -x⁻)/(x⁺-x⁻)
+    return SVector{Nc}(o.y[j,i⁻] + (o.y[j,i⁻+1]-o.y[j,i⁻])*r  for j∈1:Nc)
+end
+"""
+    f = interpolator(X,Y;[quasirange=false])
+    y = f(x)
+
+Linear interpolation over a 1D domain.  Used to interpolate over time series
+from logging data. Extrapolates linearly.
+
+- `X` is either an `AbstractVector` or an `AbstractRange`, of length `Nx≥2` (the times of logging), containing strictly increasing values.
+- `Y` is either a `Vector` of length `Nx`, or a `Matrix` of size `(Nc,Nx)` where `Nc` is the number of channels to interpolate.
+- `quasirange` (default `false`).  If `X` is an `AbstractVector`, states that the logging time only have small deviations from values in an `AbstractRange`.
+
+- `x` must be a scalar
+- `y` will be either a scalar or a `SVector{Nc}`, depending on the type of `Y`.
+
+"""
+function interpolator(x,y;quasirange=false)
+    Nc = isa(y,AbstractVector) ? :scalar : size(y,1)
+    if quasirange || x isa AbstractRange 
+        x0   = first(x)
+        Δx⁻¹ = (length(x)-1)/(last(x)-x0)
+        return RangeInterpolator{Nc,typeof(x),typeof(y)}(x,y,x0,Δx⁻¹)
+    else
+        return VectorInterpolator{Nc,typeof(x),typeof(y)}(x,y)
+    end
+end 
+function (o::Interpolator)(x)
+    i⁻ = findinterval(o,x)
+    return linearinterp{Nout(o)}(o,x,i⁻)
+end
+
+
 
 
 """
