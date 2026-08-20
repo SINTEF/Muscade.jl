@@ -25,7 +25,7 @@ initialstate    = setdof!(initialstate,[x′];field=:tx1,nodID=[node],order=1)  
 
 state0          = solve(SweepX{2};  initialstate,time= t,verbose=false,catcherror=true)
 xtarget         = getdof(state0;field=:tx1,nodID=[node])
-target          = Muscade.FunctionFromVector(t,xtarget)
+target          = interpolator(t,xtarget[1,:])
 
 ### Optimize
 
