@@ -11,7 +11,7 @@ using Muscade,StaticArrays,Interpolations,GLMakie
 fold(x::SVector{6}) = SMatrix{3,3}( x[1],x[2],x[3],
                                     x[2],x[4],x[5],
                                     x[3],x[5],x[6])
-
+solve
 const floatermotion  = (:surge,:sway,:yaw)
 const idx    = (:11,:12,:16,:22,:26,:66)
 
@@ -128,7 +128,7 @@ e7             = addelement!(modelXUA,SingleDofCost,[n1];class=:X,field=:yaw,   
 
 #Solve inverse problem
 initialstateXUA    = initialize!(modelXUA;time=0.)
-stateXUA         = solve(DirectXUA{2,0,1};initialstate=[initialstateXUA],time=[T],
+stateXUA         = solve(DirectXUA{2,0,1};primerstate=[initialstateXUA],time=[T],
                         maxiter=100,saveiter=true,verbose=false,
                         maxΔx=1e-5,maxΔλ=Inf,maxΔu=1e-5,maxΔa=1e-5);
 

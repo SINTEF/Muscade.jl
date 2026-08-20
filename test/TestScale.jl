@@ -30,12 +30,12 @@ model2          = deepcopy(model1)
 
 initialstate1    = initialize!(model1)
 stateX1          = solve(SweepX{0};  initialstate=initialstate1,time=[0.,1.],verbose=false)
-stateXUA1        = solve(DirectXUA{0,0,1};initialstate=[stateX1[1]],time = [0:.1:1],maxΔλ=.5,maxΔa=1e-4,maxΔx=1e-4,verbose=false)
+stateXUA1        = solve(DirectXUA{0,0,1};primerstate=[stateX1[1]],time = [0:.1:1],maxΔλ=.5,maxΔa=1e-4,maxΔx=1e-4,verbose=false)
 
 setscale!(model2;scale=(X=(tx1=1.,tx2=10.,rx3=2.),A=(Δseadrag=3.,Δskydrag=4.,ΔL=5)),Λscale=2)  
 initialstate2    = initialize!(model2)
 stateX2          = solve(SweepX{0};  initialstate=initialstate2,time=[0.],verbose=false)
-stateXUA2        = solve(DirectXUA{0,0,1};initialstate=[stateX2[1]],time = [0:.1:1],maxΔλ=.5,maxΔa=1e-4,maxΔx=1e-4,verbose=false)
+stateXUA2        = solve(DirectXUA{0,0,1};primerstate=[stateX2[1]],time = [0:.1:1],maxΔλ=.5,maxΔa=1e-4,maxΔx=1e-4,verbose=false)
 
 step = 1
 iexp = 1

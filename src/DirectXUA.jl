@@ -465,7 +465,7 @@ A non-linear direct solver for optimisation FEM.
 An analysis is carried out by a call with the following syntax:
 
 ```
-initialstate    = initialize!(model)
+primerstate    = initialize!(model)
 ```
 
 The solver does not yet support interior point methods. 
@@ -482,13 +482,15 @@ The solver does not yet support interior point methods.
 # Named arguments
 - `dbg=(;)`           a named tuple to trace the call tree (for debugging).
 - `verbose=true`      set to false to suppress printed output (for testing).
-- `silenterror=false` set to true to suppress print out of error (for testing) .
-- `initialstate`      an `AbstractVector` of `State`: one initial state for each experiment.
-                      `initialstate` must be with zero time derivatives.  It does not
-                      provide initial conditions for the problem, but an initial guess
-                      for the iterative solver.        
-- `time`              an `AbstractVector` (of same length as `initialstate`) of `AbstractRange` 
-                      of times at which to compute the steps.  Example: 0:0.1:5.                       
+- `silenterror=false` set to true to suppress print out of error (for testing).
+- `primerstate`       an `AbstractVector` of `State` (1) or an `AbstractVector` of `Vector{State}` (2). `primerstate` must be with zero time derivatives.
+                      It does not provide initial conditions for the problem, but an initial guess for the iterative solver.
+                      As DirectXUA solves multiple experiments at once, the i-th element of `primerstate` is an initial guess for the i-th experiment. 
+                      If provided with (1), the i-th initial guess is constructed internally with replicating the i-th input `State` for each timestep of the i-th timerange (see `time`).
+                      If provided with (2), the i-th initial guess is the input `Vector{State}`, if the length corresponds to the i-th timerange (see `time`).
+                      By convention the Adofs for building this primer are taken from the first experiment, first state.
+- `time`              an `AbstractVector` (of same length as `primerstate`) of `AbstractRange` 
+                      of times at which to compute the steps, one for each experiment.  Example: 0:0.1:5.                       
 - `maxiter=50`        maximum number of Newton-Raphson iterations. 
 - `maxΔλ=1e-5`        convergence criteria: a norm of the scaled `Λ` increment.
 - `maxΔx=1e-5`        convergence criteria: a norm of the scaled `X` increment. 
@@ -513,7 +515,7 @@ See also: [`solve`](@ref), [`initialize!`](@ref), [`SweepX`](@ref), [`FreqXU`](@
 struct DirectXUA{OX,OU,IA} <: AbstractSolver end 
 function solve(::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
     time::AbstractVector{AR},
-    initialstate::AbstractVector{STATE},
+    primerstate::Union{Nothing,AbstractVector},
     maxiter::ℤ=50,
     maxΔλ::ℝ=1e-5,maxΔx::ℝ=1e-5,maxΔu::ℝ=1e-5,maxΔa::ℝ=1e-5,
     saveiter::𝔹=false,
@@ -522,21 +524,35 @@ function solve(::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
     #  Mostly constants
     local LU
     nexp,nstep,Δt         = length(time),length.(time),step.(time)
-    length(initialstate)== nexp || muscadeerror("initialstate and time must be of the same length=number of experiments") 
     γ                     = 0.
     nder                  = (1,OX+1,OU+1,IA)
-    model,dis             = initialstate[1].model, initialstate[1].dis
     if IA==1  Δ², maxΔ²   = 𝕣1(undef,4), [maxΔλ^2,maxΔx^2,maxΔu^2,maxΔa^2] 
     else      Δ², maxΔ²   = 𝕣1(undef,3), [maxΔλ^2,maxΔx^2,maxΔu^2        ] 
     end
-
+    
     # State storage
     S                     = State{1,OX+1,OU+1,@NamedTuple{γ::Float64,iter::Int64}}
     state                 = [Vector{S}(undef,nstep[iexp]) for iexp=1:nexp] # state[iexp][istep]
-    s                     = initialstate[1]
-    for (iexp,initialstateᵢ) ∈ enumerate(initialstate)
+    if eltype(primerstate) <: Muscade.State
+        model,dis,Ainit = primerstate[1].model, primerstate[1].dis, primerstate[1].A 
+    else
+        model,dis,Ainit = primerstate[1][1].model, primerstate[1][1].dis, primerstate[1][1].A
+    end
+
+    # Test input dimension compatibility
+    length(primerstate)== nexp || muscadeerror("primerstate length must be equal to the number of experiments")
+
+    for (iexp,primerstateᵢ) ∈ enumerate(primerstate)
         for (istep,timeᵢ) = enumerate(time[iexp])
-            state[iexp][istep] = State{1,OX+1,OU+1}(timeᵢ,deepcopy(initialstateᵢ.Λ),deepcopy(initialstateᵢ.X),deepcopy(initialstateᵢ.U),s.A,(γ=0.,iter=1),s.model,s.dis) # all state[iexp][istep].A are === 
+            if eltype(primerstate) <: Muscade.State
+                # Case where primerstate is an AbstractVector of State. A primer trajectory of state is created from a repetition of this state.
+                primer = primerstateᵢ
+            else
+                # Case where primerstate is already an AbstractVector of Vector{State}.
+                length(primerstateᵢ)== nstep[iexp] || muscadeerror("trajectories in `primerstate` vector must match their associated time grid in `time` vector")
+                primer = primerstateᵢ[istep]
+            end
+            state[iexp][istep] = State{1,OX+1,OU+1}(timeᵢ,deepcopy(primer.Λ),deepcopy(primer.X),deepcopy(primer.U),Ainit,(γ=0.,iter=1),model,dis)
         end
     end
 
@@ -587,5 +603,3 @@ function solve(::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
     end # for iter
     return
 end
-
-
