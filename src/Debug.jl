@@ -48,6 +48,7 @@ macro dbg(ex...)
         code = quote 
             $(code)
             printstyled(@sprintf("  %25s = ",$(string(exᵢ)));color=:green)
+            length($(exᵢ)>80) && println()
             @printf("%s\n",$(exᵢ))
         end                     
     end

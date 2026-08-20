@@ -132,18 +132,6 @@ function Xdiffedresidual(o::ElementCostAndConstraint{NSO,TargetElement,λxinod,�
     return SVector(R),FB
 end
 
-
-
-
-
-
-
-
-
-
-
-
-
 struct   Newmarkβdecrement!{OX} end
 
 function Newmarkβdecrement!{2}(state::State,Δx ,Xdofgr,c,firstiter, a,b,x′,x″,Δx′,Δx″,args...) # x′, x″ are just mutable memory, neither input nor output.

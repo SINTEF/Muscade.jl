@@ -257,13 +257,13 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,o:
 
 
 
-    eleres_e            = revariate{P}(eleres) # 
+    eleres_e           = revariate{P}(eleres)  # eleres is adiffed to order 1, eleres_e to order P
     if typeof(o.cost)  ≠ Nothing  
-        cost_e          = o.cost(eleres_e,t,o.costargs...)
-        cost           = chainrule(cost_e,to_order{P,N∂}(eleres))
+        cost_e         = o.cost(eleres_e,t,o.costargs...)         #             with Pth order derivative of cost wrt eleres
+        cost           = chainrule(cost_e,to_order{P,N∂}(eleres)) # approximate with Pth order derivative of cost wrt X,U,A
         DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,NDΛ,NDX,NDU,NDA}(out,asm,cost,iele,Δt)
     else
-        cost          = nothing
+        cost           = nothing
     end
 
     if Nλx > 0 || Nλu > 0     
@@ -275,12 +275,14 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,o:
         γ              = default{:γ}(SP,0.)
         gap_e          = o.gap(eleres_e,t,o.gapargs...)           #             with Pth order derivative of gap wrt eleres
         gap            = chainrule(gap_e,to_order{P,N∂}(eleres))  # approximate with Pth order derivative of gap wrt X,U,A
-        gap∂x          = ∂{P,N∂}(gap)[:,ieX.+Nλ]
+        gap∂x          = ∂{P,N∂}(gap)[:,ieX.+Nλ]                  
         ∂eΛ            = ∂Λ[ieX] 
         mode           = o.mode(t)
         for iλ ∈ iλX
+            # Here, I am perfectly happy with 1st order derivative and wish to add to R, K, K', cf. SweepX
+            # Compute R as in SweepX, and add directly into Lagrangian
             Λᵢ, mᵢ,gapᵢ,gapᵢ∂x = ∂Λ[iλ],mode[iλ],gap[iλ],gap∂x[iλ,:]
-            λᵢ         = to_order{P,N∂}(∂0(X)[iλ])  ############
+            λᵢ         = to_order{P,N∂}(∂0(X)[iλ])  
             L -=if   mᵢ==:equal;    ∂eΛ ∘₁ gapᵢ∂x .* λᵢ  + Λᵢ *        gapᵢ    
             elseif   mᵢ==:positive; ∂eΛ ∘₁ gapᵢ∂x .* λᵢ  + Λᵢ *∂KKT(λᵢ,gapᵢ,γ) 
             elseif   mᵢ==:off;                             Λᵢ.*     λᵢ 
@@ -289,7 +291,7 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,o:
         end
         for iλ ∈ iλU
             mᵢ,gapᵢ = mode[iλ+Nλx],gap[iλ+Nλx]
-            λᵢ      = to_order{P,N∂}(∂0(X)[iλ]) #############
+            λᵢ      = to_order{P,N∂}(∂0(X)[iλ]) 
             L -=if   mᵢ==:equal;    gapᵢ * λᵢ     
             elseif   mᵢ==:positive; KKT(λᵢ,gapᵢ,γ) 
             elseif   mᵢ==:off;      0.5*(λᵢ * λᵢ) 
