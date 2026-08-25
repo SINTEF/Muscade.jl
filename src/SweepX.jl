@@ -123,9 +123,9 @@ function Xdiffedresidual(o::ElementCostAndConstraint{NSO,TargetElement,λxinod,�
         mode         = o.mode(t) 
         for iλ ∈ eachindex(iλX) 
             λᵢ,mᵢ,gapᵢ,g∂xᵢ = λ[iλ],mode[iλ],gap[iλ],g∂x[iλ,:]
-            if      mᵢ==:equal;    R[iλ ] = -gapᵢ         ; R[ieX] -= λᵢ.*g∂xᵢ        
-            elseif  mᵢ==:positive; R[iλ ] = -S(λᵢ,gapᵢ,γ) ; R[ieX] -= λᵢ.*g∂xᵢ       
-            elseif  mᵢ==:off;      R[iλ ] = -λᵢ            
+            if      mᵢ==:equal;    R[iλ ] = -        gapᵢ    ; R[ieX] -= λᵢ.*g∂xᵢ        
+            elseif  mᵢ==:positive; R[iλ ] = -∂KKT(λᵢ,gapᵢ,γ) ; R[ieX] -= λᵢ.*g∂xᵢ       
+            elseif  mᵢ==:off;      R[iλ ] = -     λᵢ            
             end
         end
     end   

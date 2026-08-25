@@ -86,7 +86,7 @@ addelement!(XUAmodel, SingleUdof,[Xnod[plingNode]];Xfield=:t2,Ufield=:t2,cost=Uc
 # Establish target response
 initialState    = initialize!(model;time=0.);
 dynamicStates   = solve(SweepX{2};initialstate=initialState, time=timeVec, verbose=false)
-vibTarget       = getdof(dynamicStates;field=:t2,nodID=[Xnod[plingNode]])
+vibTarget       = getdof(dynamicStates;field=:t2,nodID=[Xnod[plingNode]])[1,:]
 target          = interpolator(timeVec,vibTarget);
 
 # Add costs on the deviation to target measurements, in the XA and XUA models

@@ -23,12 +23,19 @@ end
 """
 	SweepXA{OX}
 
-A non-linear, time domain solver, that solves the problem time-step by time-step.
-Only the `X`-dofs of the model are solved for, while `U`-dofs and `A`-dofs are unchanged.
+A solver that iterates over the sequence    
+1.  non-linear, time domain solution, time-step by time-step of the the `X`-problem,
+    leaving  `U`-dofs and `A`-dofs unchanged.
+2.  adjust `A`-dofs to minimize the total cost of the model.
+until convergence.
 
-- `SweepXA{0}` is Newton-Raphson. 
-- `SweepXA{1}` is implicit Euler. 
-- `SweepXA{2}` is Newmark-β, with Newton-Raphson iterations.
+This solver is not suitable to get a numerical solution to shadow measurement data
+(see [`DirectXUA](@ref) or [`FreqXU`](@ref)).  It is intended as a design optimisation
+tool.
+
+- `SweepXA{0}` uses Newton-Raphson. 
+- `SweepXA{1}` uses implicit Euler. 
+- `SweepXA{2}` uses Newmark-β, with Newton-Raphson iterations.
 
 IMPORTANT NOTE: Muscade does not allow elements to have state variables, for example, plastic strain,
 or shear-free position for dry friction.  Where the element implements such physics, this 
@@ -46,7 +53,9 @@ states           = solve(SweepXA{2};initialstate=initialstate,time=0:10)
 - `dbg=(;)`           a named tuple to trace the call tree (for debugging)
 - `verbose=true`      set to false to suppress printed output (for testing)
 - `silenterror=false` set to true to suppress print out of error (for testing) 
-- `initialstate`      a `State`, obtain from `ìnitialize!` or `SweepXA`.
+- `initialstate`      a `State`, obtain from `initialize!` or `SweepX`, that
+                      serves as an initial condition (`X`-dofs), seed (`A`-dofs)
+                      and immutable value (`U`-dofs).
 - `time`              maximum number of Newton-Raphson iterations 
 - `β=1/4`,`γ=1/2`     parameters to the Newmark-β algorithm. Dummy if `OX<2`
 - `maxXiter=50`       maximum number of equilibrium iterations at each step.
