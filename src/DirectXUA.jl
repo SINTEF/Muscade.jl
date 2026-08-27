@@ -109,8 +109,8 @@ function addin!{mission}(out::AssemblyDirect,asm,iele,scale,eleobj::Acost,A::SVe
         isassigned(out.L2[ind.A,ind.A],1,1) && add_∂!{1}(out.L2[ind.A,ind.A][1,1],asm[arrnum(ind.A,ind.A)],iele,∇ₐC)
     end
 end
-function addin!{mission}(out::AssemblyDirect,asm,iele,scale,eleobj::Eleobj,Λ,X,U,A,t,Δt,SP,dbg) where{Eleobj,mission} 
-    addin!{mission}(out::AssemblyDirect,asm,iele,scale,eleobj,no_second_order(Eleobj),Λ,X,U,A,t,Δt,SP,dbg)
+function addin!{mission}(out::AssemblyDirect,asm,iele,scale,eleobj::Eleobj                ,Λ,X,U,A,t,Δt,SP,dbg) where{Eleobj,mission} 
+         addin!{mission}(out::AssemblyDirect,asm,iele,scale,eleobj,no_second_order(Eleobj),Λ,X,U,A,t,Δt,SP,dbg)
 end
 function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,eleobj::Eleobj,no_second_order::Val{true}, 
                                 Λ::NTuple{1   ,SVector{Nx}},
@@ -127,11 +127,15 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,el
         _,_,(∂X,∂U)   = variate{1}((X,U ),scale=(AllElements(scale.X),AllElements(scale.U)))
         R,FB     = getresidual(eleobj, ∂X,∂U,  A,t,SP,dbg)
     end        
+    #@dbg(dbg,X[1],∂0(R[1])) 
     ndof   = (Nx, Nx, Nu, Na)
     nder   = (NDΛ,NDX,NDU,NDA)
-    iλ     = 1:ndof[ind.Λ]  ### TODO CHECK
+    iλ     = 1:Nx
     Lλ     = out.L1[ind.Λ]
     isassigned(Lλ,1) && add_value!(Lλ[1] ,asm[arrnum(ind.Λ)],iele,R,iλ;Δt)   
+    # if dbg.ieletyp==13 && dbg.iele==164 && isassigned(Lλ,1)
+    #     @dbg(dbg,VALUE(R[1]),all(Lλ[1].==0),Δt) 
+    # end
     if mission==:matrices
         pβ       = 0
         for β∈xua, βder=1:nder[β]
@@ -200,9 +204,13 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,o:
 
   #  @dbg(mission,NDΛ,NDX,NDU,NDA,NDX_,NDU_,Nx,Nu,Na)
     local L
-    iλX,ieX,iλU,ieU,iλA,ieA = dofpartition(typeof(o)) # TODO CHECK because this could be inconsistent with DofList
+    iλX,ieX,iλU,ieU,iλA,ieA = dofpartition(typeof(o)) 
+    @dbg(iλX,ieX,iλU,ieU,iλA,ieA)
     Nλx,Nλu                 = length(iλX),length(iλU)
     ieΛ,Nλ                  = ieX,Nx                  
+    N∂                      = Nx*NDX_+Nu*NDU_+Na*NDA
+#    @dbg(iλX,ieX,iλU,ieU,iλA,ieA,Nx,Nu,Na,NDX_,NDU_,NDA,N∂)
+
     if     mission==:matrices     
         P                   = 2
         R                   = MVector{Nx,∂ℝ{1,N∂,𝕣}}(undef)
@@ -215,13 +223,13 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,o:
 
     if     NDA == 1  
         class            = xua
-        _,N∂,(∂X,∂U,∂A)  = variate{1}((X,U,A),scale=(AllElements(scale.X),AllElements(scale.U),scale.A))
+        _,_,(∂X,∂U,∂A)  = variate{1}((X,U,A),scale=(AllElements(scale.X),AllElements(scale.U),scale.A))
         ∂eX              = getsomedofs(∂X,ieX) 
         ∂eU              = getsomedofs(∂U,ieU) 
         R[ieX],FB,eleres = getresidual(o.eleobj, ∂eX,∂eU,∂A,t,SP,(dbg...,via=:ElementDofAndCoonstraintAccelerator),o.req.eleres)  
     elseif NDA == 0
         class            = xu
-        _,N∂,(∂X,∂U)     = variate{1}((X,U  ),scale=(AllElements(scale.X),AllElements(scale.U)        ))
+        _,_,(∂X,∂U)     = variate{1}((X,U  ),scale=(AllElements(scale.X),AllElements(scale.U)        ))
         ∂eX              = getsomedofs(∂X,ieX) 
         ∂eU              = getsomedofs(∂U,ieU) 
         R[ieX],FB,eleres = getresidual(o.eleobj, ∂eX,∂eU, A,t,SP,(dbg...,via=:ElementDofAndConstraintAccelerator),o.req.eleres)  
@@ -231,24 +239,24 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,o:
         mode           = o.mode(t)
         γ              = default{:γ}(SP,0.)
         if P==2
-            eleres_e   = revariate{P}(eleres)  # eleres is adiffed to order 1, eleres_e to order P
+            eleres_e   = revariate{P}(eleres)                     # eleres is adiffed to order 1, eleres_e to order P
             gap_e      = o.gap(eleres_e,t,o.gapargs...)           #             with Pth order derivative of gap wrt eleres
             gap        = chainrule(gap_e,to_order{P,N∂}(eleres))  # approximate with Pth order derivative of gap wrt X,U,A
         elseif P==1 
             gap        = o.gap(eleres,t,o.gapargs...)
         end
+    else
+        mode,gap = nothing,nothing
     end
 
-    if Nλx > 0
-        for iλ ∈ iλX
-            mᵢ         = mode[iλ]
-            gapᵢ       = value{P}(gap[iλ])
-            gapᵢ∂x     = ∂{P,N∂}(gapᵢ)[NDX*Nλx .+ ieX]
-            λᵢ         = to_order{P-1,N∂}(∂0(X)[iλ])  
-            if       mᵢ==:equal;    R[iλ] =         gapᵢ   ,   R[ieX] .+= λᵢ .* gapᵢ∂x     
-            elseif   mᵢ==:positive; R[iλ] = ∂KKT(λᵢ,gapᵢ,γ),   R[ieX] .+= λᵢ .* gapᵢ∂x 
-            elseif   mᵢ==:off;      R[iλ] =      λᵢ                                
-            end
+    for iλ ∈ iλX
+        mᵢ         = mode[iλ]
+        gapᵢ       = value{P}(gap[iλ])
+        gapᵢ∂x     = ∂{P,N∂}(gapᵢ)[NDX*Nλx .+ ieX]
+        λᵢ         = to_order{P-1,N∂}(∂0(X)[iλ])  
+        if       mᵢ==:equal;    R[iλ] =         gapᵢ   ;   R[ieX] .+= λᵢ .* gapᵢ∂x     
+        elseif   mᵢ==:positive; R[iλ] = ∂KKT(λᵢ,gapᵢ,γ);   R[ieX] .+= λᵢ .* gapᵢ∂x 
+        elseif   mᵢ==:off;      R[iλ] =      λᵢ                                
         end
     end
 
@@ -261,26 +269,24 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,o:
 # idasm: where in the second dim of out to put data (if transpose: first )
 # nasm,nadsm: provide if Na,Nda are not length(ia),length(ida) (you are adding in a fraction of the element's array)
 #
-# ∀ i,j out[asm[iasm[i]+length(ia)*idasm[j]-1,iele]] += a[ia[i]].dx[ida[j]]  
     Lλ                   = out.L1[ind.Λ]
-    ## out[asm[iasm,iele]] += R[ia]
+    # out[asm[iasm,iele]] += R[ia]
     isassigned(Lλ,1) && add_value!(Lλ[1] ,asm[arrnum(ind.Λ)],iele,R;Δt) #  I have a vector R from o.eleobj, and I assemble it at the end of o's vector
-    if mission==:matrices # K,C,M,H,G   ------------ REPRISE ------------
-      #  @dbg(Nλ, Nx, Nu, Na,ieΛ,ieX,ieU,ieA) 
-        ndof             = (Nx, Nu, Na)
-        iedof            = (ieX,ieU,ieA) # where in target's 2nd dim to put
+    if mission==:matrices 
+        @dbg(Nλ, Nx, Nu, Na) 
+        ndof             = (Nx, Nu, Na )
         nder             = (NDX,NDU,NDA)
-        iα               = SVector{length(ieX)}(1:length(ieX)) # and NOT ieα: where in eR (not R) to pick
+        iα               = 1:Nx
         pβ               = 0
         for β∈class, βder=1:nder[β]
-            ieβ          = pβ.+iedof[β]   # which of eR's partials to pick
+            iβ           = pβ.+(1:ndof[β])   # which of R's partials to pick
             pβ          += ndof[β]
-       #     @dbg β βder iα ieβ iedof[ind.Λ] iedof[β]
+            @dbg β βder iα iβ 
             Lλβ          = out.L2[ind.Λ,β]
             Lβλ          = out.L2[β,ind.Λ]
-            # ∀i,j out[asm[ieΛᵢ+Nλ*(iedof[β]-1),iele]] += R[iαᵢ].dx[ieβⱼ]
-            isassigned(Lλβ,1,βder) && add_∂!{1,:plus,:notranspose}(Lλβ[1,βder],asm[arrnum(ind.Λ,β)],iele,eR,iα,ieβ;nasm=Nλ,ndasm=ndof[β],iasm=iedof[ind.Λ],idasm=iedof[β],Δt)  
-            isassigned(Lβλ,βder,1) && add_∂!{1,:plus,  :transpose}(Lβλ[βder,1],asm[arrnum(β,ind.Λ)],iele,eR,iα,ieβ;nasm=Nλ,ndasm=ndof[β],iasm=iedof[ind.Λ],idasm=iedof[β],Δt)  
+            # ∀ i,j out[asm[iasm[i]+length(ia)*idasm[j]-1,iele]] += a[iα[i]].dx[iβ[j]]  
+            isassigned(Lλβ,1,βder) && add_∂!{1,:plus,:notranspose}(Lλβ[1,βder],asm[arrnum(ind.Λ,β)],iele,R,iα,iβ;Δt)  
+            isassigned(Lβλ,βder,1) && add_∂!{1,:plus,  :transpose}(Lβλ[βder,1],asm[arrnum(β,ind.Λ)],iele,R,iα,iβ;Δt)  
         end
     end
     r,k,c,m = out.L1[1][1],Matrix(out.L2[1,2][1,1]),Matrix(out.L2[1,2][1,2]),Matrix(out.L2[1,2][1,3]) 
@@ -297,18 +303,15 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,o:
         cost           = nothing
     end
 
-    if Nλu > 0     
-        for iλ ∈ iλU
-            mᵢ,gapᵢ = mode[iλ+Nλx],gap[iλ+Nλx]
-            λᵢ      = to_order{P,N∂}(∂0(U)[iλ]) 
-            L -=if   mᵢ==:equal;        λᵢ*gapᵢ     
-            elseif   mᵢ==:positive; KKT(λᵢ,gapᵢ,γ) 
-            elseif   mᵢ==:off;      0.5*(λᵢ * λᵢ) 
-            end
+    for iλ ∈ iλU
+        mᵢ,gapᵢ = mode[iλ+Nλx],gap[iλ+Nλx]
+        λᵢ      = to_order{P,N∂}(∂0(U)[iλ]) 
+        L -=if   mᵢ==:equal;        λᵢ*gapᵢ     
+        elseif   mᵢ==:positive; KKT(λᵢ,gapᵢ,γ) 
+        elseif   mᵢ==:off;      0.5*(λᵢ * λᵢ) 
         end
-    else
-        mode,gap = nothing,nothing
     end
+
     DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,0,NDX,NDU,NDA}(out,asm,L,iele,Δt)
     local ☼eleres,☼cost,☼mode,☼gap
 end

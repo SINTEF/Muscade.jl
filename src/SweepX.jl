@@ -232,21 +232,21 @@ function solve(SX::Type{SweepX{OX}},pstate,verbose,dbg;
     state            = State{1,OX+1,1}(copy(initialstate)) 
     states           = allocate(pstate,Vector{typeof(state)}(undef,saveiter ? maxiter : length(time))) # states is not a return argument of this function.  Hence it is not lost in case of exception
     local Lλx # declare Lλx to scope the function, without having to actualy initialize the variable
-    for (step,t)     ∈ enumerate(time)
+    for (istep,t)     ∈ enumerate(time)
         oldt         = state.time
         state.time   = t
         Δt           = t-oldt
-        Δt ≤ 0 && OX>0 && muscadeerror(@sprintf("Time step length not strictly positive at step=%3d",step))
+            Δt>0 || muscadeerror(@sprintf("Time step length not strictly positive at istep=%3d",istep))
         out.c        = Newmarkβcoefficients{OX}(Δt,β,γ)
         for iiter    = 1:maxiter
             citer   += 1
             firstiter = iiter==1
-            if   firstiter assemble!{:step}(out,asm,dis,model,state,Δt,(dbg...,solver=:SweepX,step=step,iiter=iiter))
-            else           assemble!{:iter}(out,asm,dis,model,state,Δt,(dbg...,solver=:SweepX,step=step,iiter=iiter))
+            if   firstiter assemble!{:step}(out,asm,dis,model,state,Δt,(dbg...,solver=:SweepX,istep=istep,iiter=iiter))
+            else           assemble!{:iter}(out,asm,dis,model,state,Δt,(dbg...,solver=:SweepX,istep=istep,iiter=iiter))
             end
-            try if step==1  && firstiter  Lλx = lu(out.Lλx) # here we do not write "local Lλx", so we refer to the variable defined outside the loops (we do not shadow Lλx)
+            try if istep==1  && firstiter  Lλx = lu(out.Lλx) # here we do not write "local Lλx", so we refer to the variable defined outside the loops (we do not shadow Lλx)
             else                          lu!(Lλx, out.Lλx) 
-            end catch;    muscadeerror(@sprintf("matrix factorization failed at step=%i, iiter=%i",step,iiter)) end
+            end catch;    muscadeerror(@sprintf("matrix factorization failed at istep=%i, iiter=%i",istep,iiter)) end
             Δx       = Lλx\out.Lλ
             Δx²,Lλ²  = sum(Δx.^2),sum(out.Lλ.^2)
             Newmarkβdecrement!{OX}(state,Δx ,Xdofgr,out.c,firstiter,buffer...)
@@ -254,12 +254,12 @@ function solve(SX::Type{SweepX{OX}},pstate,verbose,dbg;
             verbose && saveiter && @printf("        iteration %3d, γ= %7.1e\n",iiter,γ)
             saveiter && (states[iiter]=State(state.time,state.Λ,deepcopy(state.X),state.U,state.A,state.SP,model,dis))
             if Δx²≤cΔx² && Lλ²≤cLλ² 
-                verbose && @printf "    step %3d converged in %3d iterations. |Δx|=%7.1e |Lλ|=%7.1e\n" step iiter √(Δx²) √(Lλ²)
-                ~saveiter && (states[step]=State(state.time,state.Λ,deepcopy(state.X),state.U,state.A,state.SP,model,dis))
-                (saveiter && step==length(time)) && resize!(states,iiter)
+                verbose && @printf "    step %3d converged in %3d iterations. |Δx|=%7.1e |Lλ|=%7.1e\n" istep iiter √(Δx²) √(Lλ²)
+                ~saveiter && (states[istep]=State(state.time,state.Λ,deepcopy(state.X),state.U,state.A,state.SP,model,dis))
+                (saveiter && istep==length(time)) && resize!(states,iiter)
                 break#out of the iiter loop
             end
-            iiter==maxiter && muscadeerror(@sprintf("no convergence of step %3d after %3d iterations |Δx|=%g / %g, |Lλ|=%g / %g",step,iiter,√(Δx²),maxΔx,√(Lλ²)^2,maxLλ))
+            iiter==maxiter && muscadeerror(@sprintf("no convergence of step %3d after %3d iterations |Δx|=%g / %g, |Lλ|=%g / %g",istep,iiter,√(Δx²),maxΔx,√(Lλ²)^2,maxLλ))
         end
     end
     verbose && @printf "\n    nel=%d, ndof=%d, nstep=%d, niter=%d, niter/nstep=%5.2f\n" getnele(model) getndof(Xdofgr) length(time) citer citer/length(time)

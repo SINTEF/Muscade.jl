@@ -34,13 +34,15 @@ macro dbg(ex...)
     stk      = gensym(:stk)
     stkᵢ     = gensym(:stkᵢ)
     code = quote
-        printstyled("● ";color=:light_green) # \mdlgblkcircle
-        printstyled(@sprintf("%s:%i\n",$file,$line);color=:light_green,bold=true)
+        #printstyled("● ";color=:light_green) # \mdlgblkcircle
+        printstyled(@sprintf("● %s:%i\n",$file,$line);color=:light_green,bold=true)  \mdlgblkcircle
       #  printstyled(@sprintf("  %s\n",$fullname);color=:green)
         $stk = Muscade.stackstring(2)
-        print("  ")
-        for $stkᵢ ∈ reverse($stk)  
-            printstyled("▸ ",$stkᵢ," ";color=:green)
+ #       print("  ")
+           printstyled(@sprintf("  %25s = ","call stack");color=:green)
+         for $stkᵢ ∈ reverse($stk)  
+#            printstyled("▸ ",$stkᵢ," ";color=:green)
+            print("▸ ",$stkᵢ," ";color=:green)
         end
         println()
     end
@@ -48,7 +50,7 @@ macro dbg(ex...)
         code = quote 
             $(code)
             printstyled(@sprintf("  %25s = ",$(string(exᵢ)));color=:green)
-            length($(exᵢ)>80) && println()
+            length($(string(exᵢ)))>80 && println()
             @printf("%s\n",$(exᵢ))
         end                     
     end

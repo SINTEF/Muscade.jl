@@ -90,7 +90,7 @@ function solve(::Type{SweepXA{OX}},pstate,verbose,dbg;
     cXiter           = 0
     cAiter           = 0
 
-    state            = State{1,OX+1,1}(copy(initialstate)) 
+    state            = State{1,OX+1,1}(copy(initialstate))
     state.Λ[1]      .= 0.
     states           = allocate(pstate,Vector{typeof(state)}(undef,length(time))) 
 
@@ -109,13 +109,16 @@ function solve(::Type{SweepXA{OX}},pstate,verbose,dbg;
         Qa               .= outA.L1[ind.A][1]   
         Qaa              .= outA.L2[ind.A,ind.A][1,1] 
         zero!(Xₐ)
-
         for (istep,t)    ∈ enumerate(time)
             #verbose && @printf "        step %3d\n" istep
             oldt         = state.time
             state.time   = t
             Δt           = t-oldt
-            Δt ≤ 0 && OX>0 && muscadeerror(@sprintf("Time step length not strictly positive at step=%3d",istep))
+            if Δt≤0 
+                if istep==1 muscadeerror(@sprintf("Time step length not strictly positive at istep=1 (time[1]=%g, initialstate.time=%g, Δt=%g)",time[1],initialstate.time,Δt))
+                else        muscadeerror(@sprintf("Time step length not strictly positive at istep=%3d (time[istep]=%g, time[istep-1]=%g, Δt=%g)",istep,time[istep],time[istep-1],Δt))
+                end
+            end
             outX.c = c = Newmarkβcoefficients{OX}(Δt,β,γ)
 
             # step and iterations
@@ -144,6 +147,7 @@ function solve(::Type{SweepXA{OX}},pstate,verbose,dbg;
             end
 
             #verbose && @printf "            Assembling matrices for optimisation phase\n" 
+ 
             assemble!{:matrices}(outA,asmA,dis,model,state,Δt,(dbg...,solver=:SweepXA,phase=:Asensitivity,iAiter=iAiter,istep=istep))
             Lx,La,Lxx,Lax,Laa = outA.L1[ind.X], outA.L1[ind.A], outA.L2[ind.X,ind.X], outA.L2[ind.A,ind.X], outA.L2[ind.A,ind.A]
             Lλx,Lλa           = outA.L2[ind.Λ,ind.X],outA.L2[ind.Λ,ind.A]
@@ -151,37 +155,39 @@ function solve(::Type{SweepXA{OX}},pstate,verbose,dbg;
             # sensitivity of X to A
 
             #verbose && @printf "            Evaluate sensitivity of X to A\n" 
-            a₁,a₂,a₃,b₁,b₂,b₃ = c.a₁,c.a₂,c.a₃,c.b₁,c.b₂,c.b₃
-            if OX≥2 b₂♯,b₃♯   = b₂/(1-a₂), a₃/(1-a₂)+b₃       end
-            if OX≥1 Xₐ[2]    .= (1-a₂)  .* Xₐ[2] .- a₃      .* Xₐ[3]   end #         xₐ′-= aₐ
-            if OX≥2 Xₐ[3]    .= -b₂♯    .* Xₐ[2] .+ (1-b₃♯) .* Xₐ[3]   end # same as xₐ″-= bₐ but in place
+            if istep>1
+                a₁,a₂,a₃,b₁,b₂,b₃ = c.a₁,c.a₂,c.a₃,c.b₁,c.b₂,c.b₃
+                if OX≥2 b₂♯,b₃♯   = b₂/(1-a₂), a₃/(1-a₂)+b₃       end
+                if OX≥1 Xₐ[2]    .= (1-a₂)  .* Xₐ[2] .- a₃      .* Xₐ[3]   end #         xₐ′-= aₐ
+                if OX≥2 Xₐ[3]    .= -b₂♯    .* Xₐ[2] .+ (1-b₃♯) .* Xₐ[3]   end # same as xₐ″-= bₐ but in place
 
-            Rₐ                 = Matrix(Lλa[1,1]) 
-            Rₐ               .+= Lλx[1,1]*Xₐ[1]
-            OX≥1 && Rₐ       .+= Lλx[1,2]*Xₐ[2]
-            OX≥2 && Rₐ       .+= Lλx[1,3]*Xₐ[3]
-            K♯                 = Lλx[1,1]
-            OX≥1 && K♯.nzval .+= Lλx[1,2].nzval*c.a₁ # operate on nzval directly, lest Sparse resize it
-            OX≥2 && K♯.nzval .+= Lλx[1,3].nzval*c.b₁ 
+                Rₐ                 = Matrix(Lλa[1,1]) 
+                Rₐ               .+= Lλx[1,1]*Xₐ[1]
+                if OX≥1 Rₐ       .+= Lλx[1,2]*Xₐ[2] end 
+                if OX≥2 Rₐ       .+= Lλx[1,3]*Xₐ[3] end
+                K♯                 = Lλx[1,1]
+                if OX≥1 K♯.nzval .+= Lλx[1,2].nzval*c.a₁ end # operate on nzval directly, lest Sparse resize it
+                if OX≥2 K♯.nzval .+= Lλx[1,3].nzval*c.b₁ end 
 
-            try if istep==1 && firstAiter
-                    ◺K♯ = lu(      K♯) 
-            else          lu!(◺K♯, K♯) 
-            end catch;    muscadeerror(@sprintf("matrix factorization failed at Xₐ evaluation, iAiter=%i, step=%i",iAiter,istep)) end
-            ΔXₐ       = ◺K♯\Rₐ
-            Newmarkβdecrement!{OX}(Xₐ,ΔXₐ ,Xdofgr,Adofgr,c) # increments without a or b
+                try if istep==2 && firstAiter
+                        ◺K♯ = lu(      K♯) 
+                else          lu!(◺K♯, K♯) 
+                end catch;    muscadeerror(@sprintf("matrix factorization failed at Xₐ evaluation, iAiter=%i, step=%i",iAiter,istep)) end
+                ΔXₐ       = ◺K♯\Rₐ
+                Newmarkβdecrement!{OX}(Xₐ,ΔXₐ ,Xdofgr,Adofgr,c) # increments without a or b
 
-            # time-integrate total gradient and Hessian of L wrt A
+                # time-integrate total gradient and Hessian of L wrt A
 
-            #verbose && @printf "            Time-integrate total gradient and Hessian of L wrt A\n" 
-            Qa         .+= La[1]      # this is gradient of cost over time Δt
-            Qaa        .+= Laa[1,1]
-            for idx ∈ 1:OX+1
-                Qa     .+=             Lx[     idx] ∘₁ Xₐ[idx]
-                Qaa    .+=             Lax[1  ,idx] ∘₁ Xₐ[idx]
-                Qaa    .+= Xₐ[idx]' ∘₁ Lax[1  ,idx]'  
-                for jdx ∈ 1:OX+1  
-                    Qaa.+= Xₐ[idx]' ∘₁ Lxx[idx,jdx] ∘₁ Xₐ[jdx] 
+                #verbose && @printf "            Time-integrate total gradient and Hessian of L wrt A\n" 
+                Qa         .+= La[1]      # this is gradient of cost over time Δt
+                Qaa        .+= Laa[1,1]
+                for idx ∈ 1:OX+1
+                    Qa     .+=             Lx[     idx] ∘₁ Xₐ[idx]
+                    Qaa    .+=             Lax[1  ,idx] ∘₁ Xₐ[idx]
+                    Qaa    .+= Xₐ[idx]' ∘₁ Lax[1  ,idx]'  
+                    for jdx ∈ 1:OX+1  
+                        Qaa.+= Xₐ[idx]' ∘₁ Lxx[idx,jdx] ∘₁ Xₐ[jdx] 
+                    end
                 end
             end
         end # istep

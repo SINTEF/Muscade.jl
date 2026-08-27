@@ -547,7 +547,7 @@ end
 # out[asm[iasm,iele]] += a      # build: 'a' is only a part of the element vector (FreqXU)   
 # out[asm[:,   iele]] += a[ia]  # split: parts of 'a' are assembled (DirectXUA)   
 # out[asm[iasm,iele]] += a[ia]  # not used
-function add_value!(out::𝕣1,asm,iele,a::SVector{Na,<:ℝ},ia=1:Na ; iasm=idvec,Δt=idmult) where{Na}
+function add_value!(out::𝕣1,asm,iele,a::Union{SVector{Na,<:ℝ},MVector{Na,<:ℝ}},ia=1:Na ; iasm=idvec,Δt=idmult) where{Na}
     for (i,iaᵢ) ∈ enumerate(ia)
         iout = asm[iasm[i],iele]
         if iout≠0 
@@ -568,7 +568,7 @@ struct   add_∂!{P,S,T} end # to allow syntax with type-parameter P: precedence
 # ∀ i,j out[asm[iasm[i]+length(ia)*idasm[j]-1,iele]] += a[ia[i]].dx[ida[j]]  
 #
 # out::Array is deliberately vague, encompassing 𝕣2 and sparse.nzval
-function add_∂!{P,S,T}(out::Array,asm,iele,a::SVector{Na,∂ℝ{P,Nda,R}},ia=1:Na,ida=1:Nda ; nasm=length(ia),ndasm=length(ida), iasm=idvec,idasm=idvec,Δt=idmult) where{P,Nda,R,Na,S,T}
+function add_∂!{P,S,T}(out::Array,asm,iele,a::Union{SVector{Na,∂ℝ{P,Nda,R}},MVector{Na,∂ℝ{P,Nda,R}}},ia=1:Na,ida=1:Nda ; nasm=length(ia),ndasm=length(ida), iasm=idvec,idasm=idvec,Δt=idmult) where{P,Nda,R,Na,S,T}
     # println("add_∂!")
     # @show asm,iele,Na,Nda
     # @show ia,ida,nasm,ndasm,iasm,idasm,T
