@@ -105,7 +105,6 @@ function Xdiffedresidual(o::ElementCostAndConstraint{NSO,TargetElement,λxinod,�
                            U::NTuple{1,SVector{Nu}},
                            A::         SVector{Na} ,t,SP,dbg) where{NSO,TargetElement,λxinod,λuinod,NDX,Nx,Nu,Na} 
 
-  #  @dbg typeof(X)                       
     nλX, neX         = length(λxinod), getndof(TargetElement,:X) 
     nλU, neU         = length(λuinod), getndof(TargetElement,:U) 
     iλX              = SVector{nλX,𝕫}(    1:    nλX)
@@ -129,7 +128,6 @@ function Xdiffedresidual(o::ElementCostAndConstraint{NSO,TargetElement,λxinod,�
             elseif  mᵢ==:positive; R[iλ ] = -∂KKT(λᵢ,gapᵢ,γ) ; R[ieX] -= λᵢ.*gapᵢ∂x       
             elseif  mᵢ==:off;      R[iλ ] = -     λᵢ            
             end
-         #   @dbg mᵢ λᵢ gapᵢ gapᵢ∂x R
         end
     end   
     return SVector(R),FB

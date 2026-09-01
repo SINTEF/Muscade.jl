@@ -24,7 +24,7 @@ end
 """
     Muscade.@dbg var1,...
 
-Similar to @show, but prints code location.    
+Similar to @show, but in addition prints code location, call stack and the variable `dbg` (if in scope).    
 
 """
 macro dbg(ex...)

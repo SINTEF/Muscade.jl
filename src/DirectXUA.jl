@@ -134,9 +134,6 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,el
     iλ     = 1:Nx
     Lλ     = out.L1[ind.Λ]
     isassigned(Lλ,1) && add_value!(Lλ[1] ,asm[arrnum(ind.Λ)],iele,R,iλ;Δt)   
-    # if dbg.ieletyp==13 && dbg.iele==164 && isassigned(Lλ,1)
-    #     @dbg(dbg,VALUE(R[1]),all(Lλ[1].==0),Δt) 
-    # end
     if mission==:matrices
         pβ       = 0
         for β∈xua, βder=1:nder[β]
@@ -204,8 +201,6 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,o:
                            X::NTuple{NDX_,SVector{Nx}},
                            U::NTuple{NDU_,SVector{Nu}},
                            A::            SVector{Na} ,t,Δt,SP,dbg) where{mission,NDΛ,NDX,NDU,NDA,NSO,TargetElement,λxinod,λuinod,NDX_,NDU_,Nx,Nu,Na} 
-#    @dbg typeof(X)                       
-
     @assert NDX_≥NDX
     @assert NDU_≥NDU
     local L
@@ -241,39 +236,21 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,o:
     if o.gap ≠ nothing    
         mode           = o.mode(t)
         γ              = default{:γ}(SP,0.)
-        # if P==2
-        #     eleres_e   = revariate{P}(eleres)                     # eleres is adiffed to order 1, eleres_e to order P
-        #     gap_e      = o.gap(eleres_e,t,o.gapargs...)           #             with Pth order derivative of gap wrt eleres
-        #     gap        = chainrule(gap_e,to_order{P,N∂}(eleres))  # approximate with Pth order derivative of gap wrt X,U,A
-        # elseif P==1 
-        #     gap        = o.gap(eleres,t,o.gapargs...)
-        # end
-        gap        = o.gap(eleres,t,o.gapargs...)
+        gap            = o.gap(eleres,t,o.gapargs...)
     else
-        mode,gap = nothing,nothing
+        mode,gap       = nothing,nothing
     end
     for iλ ∈ iλX
         mᵢ         = mode[iλ]
         gapᵢ       = value{P}(gap[iλ])
-       # gapᵢ∂x     = ∂{P,N∂}( gap[iλ])[ieX]
         gapᵢ∂x     = ∂{1,N∂}( gap[iλ])[ieX]
         λᵢ         = to_order{P-1,N∂}(∂0(∂X)[iλ])  
         if       mᵢ==:equal;    R[iλ] = -        gapᵢ   ;   R[ieX] .-= λᵢ .* gapᵢ∂x     
         elseif   mᵢ==:positive; R[iλ] = -∂KKT(λᵢ,gapᵢ,γ);   R[ieX] .-= λᵢ .* gapᵢ∂x 
         elseif   mᵢ==:off;      R[iλ] = -     λᵢ                                
         end
-    #    @dbg P N∂ mᵢ λᵢ gapᵢ gapᵢ∂x R
     end
 
-
-    # TODO    --------------------------------------------------------
-# given a vector a
-# ia:    where in the vector to pick data
-# ida:   where in the partials to pick data
-# iasm:  where in first dim of out to put data      (if transpose: second)
-# idasm: where in the second dim of out to put data (if transpose: first )
-# nasm,nadsm: provide if Na,Nda are not length(ia),length(ida) (you are adding in a fraction of the element's array)
-#
     Lλ                   = out.L1[ind.Λ]
     # out[asm[iasm,iele]] += R[ia]
     isassigned(Lλ,1) && add_value!(Lλ[1] ,asm[arrnum(ind.Λ)],iele,R;Δt) #  I have a vector R from o.eleobj, and I assemble it at the end of o's vector
@@ -292,18 +269,12 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,o:
             isassigned(Lβλ,βder,1) && add_∂!{1,:plus,  :transpose}(Lβλ[βder,1],asm[arrnum(β,ind.Λ)],iele,R,iα,iβ;Δt)  
         end
     end
-    # r,k = out.L1[1][1],Matrix(out.L2[1,2][1,1]) 
-    # g = Matrix(out.L2[1,4][1,1])
-    # @dbg r k #c m g
-    # TODO ------------------------------------------------------------
-
 
     if typeof(o.cost)  ≠ Nothing  
         eleres_e       = revariate{P}(eleres)                     # eleres is adiffed to order 1, eleres_e to order P
         eleres_P       = to_order{P,N∂}(eleres)
         cost_e         = o.cost(eleres_e,t,o.costargs...)         #             with Pth order derivative of cost wrt eleres
         cost           = chainrule(cost_e,eleres_P)               # approximate with Pth order derivative of cost wrt X,U,A
-#        @dbg P N∂ typeof(cost_P) typeof(eleres) typeof(eleres_P) typeof(to_order{P,N∂}(eleres)) typeof(cost)
         L             += cost
     else
         cost           = nothing

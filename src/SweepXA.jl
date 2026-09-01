@@ -30,7 +30,7 @@ A solver that iterates over the sequence
 until convergence.
 
 This solver is not suitable to get a numerical solution to shadow measurement data
-(see [`DirectXUA](@ref) or [`FreqXU`](@ref)).  It is intended as a design optimisation
+(see [`DirectXUA`](@ref) or [`FreqXU`](@ref)).  It is intended as a design optimisation
 tool.
 
 - `SweepXA{0}` uses Newton-Raphson. 
