@@ -569,16 +569,13 @@ struct   add_∂!{P,S,T} end # to allow syntax with type-parameter P: precedence
 #
 # out::Array is deliberately vague, encompassing 𝕣2 and sparse.nzval
 function add_∂!{P,S,T}(out::Array,asm,iele,a::Union{SVector{Na,∂ℝ{P,Nda,R}},MVector{Na,∂ℝ{P,Nda,R}}},ia=1:Na,ida=1:Nda ; nasm=length(ia),ndasm=length(ida), iasm=idvec,idasm=idvec,Δt=idmult) where{P,Nda,R,Na,S,T}
-    # println("add_∂!")
-    # @show asm,iele,Na,Nda
-    # @show ia,ida,nasm,ndasm,iasm,idasm,T
+   # @dbg(size(out),size(asm),iele,T,Na,Nda,ia,ida,nasm,ndasm,iasm,idasm)
     for (i,iaᵢ) ∈ enumerate(ia), (j,idaⱼ) ∈ enumerate(ida)
         k = if T==:transpose   idasm[j]+ndasm*( iasm[i]-1)   # k: flat index into receiving array
         elseif T==:notranspose iasm[ i]+nasm *(idasm[j]-1)  
         else   muscadeerror((;T=T),"Illegal value of parameter T")    
         end
-        # @show i,iaᵢ,j,idaⱼ
-        # @show idasm[j],iasm[i],k
+     #  @dbg(k,i,iaᵢ,i,iaᵢ,idasm[j],iasm[i])
         iout = asm[k,iele]
         if iout≠0
             if     S==:plus   out[iout]+=a[iaᵢ].dx[idaⱼ]*Δt  

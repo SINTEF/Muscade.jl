@@ -49,14 +49,14 @@ See also: [`∂0`](@ref),[`∂1`](@ref),[`getsomedofs`](@ref)
 
 """
     t3        = getsomedofs(X,3)
-    rotations = getsomedofs(X,SVector(4:6))
+    rotations = getsomedofs(X,SVector{3}(4:6))
 
 Used by elements' [`residual`](@ref), [`lagrangian`](@ref) or [`update_drawing`](@ref) to obtain 
-some degrees of freedom. 
+some degrees of freedom.
 
 `X` and `U` are provided as `NTuple`s of `SVector` (of `Matrix` in the case of `update_drawing`](@ref)).
 `getsomedofs` forms a `NTuple` containing the selected array components.  Where e.g. `X` is a `Matrix`,
-the indexing is applied to the first dimension (corresponding to the dofs) 
+the indexing is applied to the first dimension (corresponding to the dofs). 
 
 See also: [`∂0`](@ref),[`∂1`](@ref),[`∂2`](@ref),[`motion`](@ref)  
 """

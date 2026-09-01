@@ -51,7 +51,7 @@ If you use this package in published work, please cite (review on-going):
 @article{MainconSauder2026,
   author  = {Maincon, P. and Sauder, T.},
   title   = {Muscade.jl : a Julia package for FEM-constrained optimisation},
-  journal = {SoftareX},
+  journal = {SoftwareX},
   year    = {2026},
   doi     = {10.2139/ssrn.7268625},
   url     = {https://doi.org/10.2139/ssrn.7268625},

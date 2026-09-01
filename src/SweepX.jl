@@ -105,6 +105,7 @@ function Xdiffedresidual(o::ElementCostAndConstraint{NSO,TargetElement,λxinod,�
                            U::NTuple{1,SVector{Nu}},
                            A::         SVector{Na} ,t,SP,dbg) where{NSO,TargetElement,λxinod,λuinod,NDX,Nx,Nu,Na} 
 
+  #  @dbg typeof(X)                       
     nλX, neX         = length(λxinod), getndof(TargetElement,:X) 
     nλU, neU         = length(λuinod), getndof(TargetElement,:U) 
     iλX              = SVector{nλX,𝕫}(    1:    nλX)
@@ -115,18 +116,20 @@ function Xdiffedresidual(o::ElementCostAndConstraint{NSO,TargetElement,λxinod,�
     eX               = getsomedofs(X,ieX) 
     eU               = getsomedofs(U,ieU) 
     R[ieX],FB,eleres = getresidual(o.eleobj, eX,eU, A,t,SP,(dbg...,via=:ElementDofAndConstraintAccelerator),o.req.eleres)  
+
     if typeof(o.gap) ≠ Nothing 
         γ            = default{:γ}(SP,0.)
         λ            = ∂0(X)[iλX] 
         gap          = o.gap(eleres,t,o.gapargs...)           
-        g∂x          = ∂{1,Nx+1}(gap)[:,ieX]  # approximation, because g∂x has no derivative
+        gap∂x        = ∂{1,Nx+1}(gap)[:,ieX]  # approximation, because gap∂x has no derivative
         mode         = o.mode(t) 
         for iλ ∈ eachindex(iλX) 
-            λᵢ,mᵢ,gapᵢ,g∂xᵢ = λ[iλ],mode[iλ],gap[iλ],g∂x[iλ,:]
-            if      mᵢ==:equal;    R[iλ ] = -        gapᵢ    ; R[ieX] -= λᵢ.*g∂xᵢ        
-            elseif  mᵢ==:positive; R[iλ ] = -∂KKT(λᵢ,gapᵢ,γ) ; R[ieX] -= λᵢ.*g∂xᵢ       
+            λᵢ,mᵢ,gapᵢ,gapᵢ∂x = λ[iλ],mode[iλ],gap[iλ],gap∂x[iλ,:]
+            if      mᵢ==:equal;    R[iλ ] = -        gapᵢ    ; R[ieX] -= λᵢ.*gapᵢ∂x        
+            elseif  mᵢ==:positive; R[iλ ] = -∂KKT(λᵢ,gapᵢ,γ) ; R[ieX] -= λᵢ.*gapᵢ∂x       
             elseif  mᵢ==:off;      R[iλ ] = -     λᵢ            
             end
+         #   @dbg mᵢ λᵢ gapᵢ gapᵢ∂x R
         end
     end   
     return SVector(R),FB
@@ -198,7 +201,8 @@ states           = solve(SweepX{2};initialstate=initialstate,time=0:10)
 - `silenterror=false` set to true to suppress print out of error (for testing) 
 - `initialstate`      a `State`, obtain from `ìnitialize!` or `SweepX`, describing the 
                       initial conditions of the problem.  
-- `time`              maximum number of Newton-Raphson iterations 
+- `time`              an `AbstractVector` of strictly increasing times at which to
+                      compute a step. `time[1]>initialstate.time` is required.  
 - `β=1/4`,`γ=1/2`     parameters to the Newmark-β algorithm. 
                       `β` is dummy if `OX<2`.
                       `γ` is dummy if `OX<1`.
@@ -236,7 +240,11 @@ function solve(SX::Type{SweepX{OX}},pstate,verbose,dbg;
         oldt         = state.time
         state.time   = t
         Δt           = t-oldt
-            Δt>0 || muscadeerror(@sprintf("Time step length not strictly positive at istep=%3d",istep))
+        if Δt≤0 
+            if istep==1 muscadeerror(@sprintf("Time step length not strictly positive at istep=1 (time[1]=%g, initialstate.time=%g, Δt=%g)",time[1],initialstate.time,Δt))
+            else        muscadeerror(@sprintf("Time step length not strictly positive at istep=%3d (time[istep]=%g, time[istep-1]=%g, Δt=%g)",istep,time[istep],time[istep-1],Δt))
+            end
+        end
         out.c        = Newmarkβcoefficients{OX}(Δt,β,γ)
         for iiter    = 1:maxiter
             citer   += 1

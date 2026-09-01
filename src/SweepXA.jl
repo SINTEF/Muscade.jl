@@ -56,7 +56,8 @@ states           = solve(SweepXA{2};initialstate=initialstate,time=0:10)
 - `initialstate`      a `State`, obtain from `initialize!` or `SweepX`, that
                       serves as an initial condition (`X`-dofs), seed (`A`-dofs)
                       and immutable value (`U`-dofs).
-- `time`              maximum number of Newton-Raphson iterations 
+- `time`              an `AbstractVector` of strictly increasing times at which to
+                      compute a step. `time[1]>initialstate.time` is required.  
 - `β=1/4`,`γ=1/2`     parameters to the Newmark-β algorithm. Dummy if `OX<2`
 - `maxXiter=50`       maximum number of equilibrium iterations at each step.
 - `maxΔx=1e-5`        convergence criteria: norm of `X`. 

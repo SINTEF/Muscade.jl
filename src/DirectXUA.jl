@@ -117,6 +117,8 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,el
                                 X::NTuple{NDX_,SVector{Nx}},
                                 U::NTuple{NDU_,SVector{Nu}},
                                 A::            SVector{Na} ,t,Δt,SP,dbg) where{mission,NDΛ,NDX,NDU,NDA,NDX_,NDU_,Nx,Nu,Na,Eleobj} 
+    @assert NDX_≥NDX
+    @assert NDU_≥NDU
     if     mission==:matrices     P=1
     elseif mission==:vectors      P=0
     end
@@ -127,7 +129,6 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,el
         _,_,(∂X,∂U)   = variate{1}((X,U ),scale=(AllElements(scale.X),AllElements(scale.U)))
         R,FB     = getresidual(eleobj, ∂X,∂U,  A,t,SP,dbg)
     end        
-    #@dbg(dbg,X[1],∂0(R[1])) 
     ndof   = (Nx, Nx, Nu, Na)
     nder   = (NDΛ,NDX,NDU,NDA)
     iλ     = 1:Nx
@@ -180,6 +181,8 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,el
                            X::NTuple{NDX_,SVector{Nx}},
                            U::NTuple{NDU_,SVector{Nu}},
                            A::            SVector{Na} ,t,Δt,SP,dbg) where{mission,NDΛ,NDX,NDU,NDA,NDX_,NDU_,Nx,Nu,Na,Eleobj} 
+    @assert NDX_≥NDX
+    @assert NDU_≥NDU
     if     mission==:matrices     P=2
     elseif mission==:vectors      P=1
     end
@@ -201,15 +204,15 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,o:
                            X::NTuple{NDX_,SVector{Nx}},
                            U::NTuple{NDU_,SVector{Nu}},
                            A::            SVector{Na} ,t,Δt,SP,dbg) where{mission,NDΛ,NDX,NDU,NDA,NSO,TargetElement,λxinod,λuinod,NDX_,NDU_,Nx,Nu,Na} 
+#    @dbg typeof(X)                       
 
-  #  @dbg(mission,NDΛ,NDX,NDU,NDA,NDX_,NDU_,Nx,Nu,Na)
+    @assert NDX_≥NDX
+    @assert NDU_≥NDU
     local L
     iλX,ieX,iλU,ieU,iλA,ieA = dofpartition(typeof(o)) 
-    @dbg(iλX,ieX,iλU,ieU,iλA,ieA)
     Nλx,Nλu                 = length(iλX),length(iλU)
     ieΛ,Nλ                  = ieX,Nx                  
     N∂                      = Nx*NDX_+Nu*NDU_+Na*NDA
-#    @dbg(iλX,ieX,iλU,ieU,iλA,ieA,Nx,Nu,Na,NDX_,NDU_,NDA,N∂)
 
     if     mission==:matrices     
         P                   = 2
@@ -223,13 +226,13 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,o:
 
     if     NDA == 1  
         class            = xua
-        _,_,(∂X,∂U,∂A)  = variate{1}((X,U,A),scale=(AllElements(scale.X),AllElements(scale.U),scale.A))
+        _,_,(∂X,∂U,∂A)   = variate{1}((X,U,A),scale=(AllElements(scale.X),AllElements(scale.U),scale.A))
         ∂eX              = getsomedofs(∂X,ieX) 
         ∂eU              = getsomedofs(∂U,ieU) 
         R[ieX],FB,eleres = getresidual(o.eleobj, ∂eX,∂eU,∂A,t,SP,(dbg...,via=:ElementDofAndCoonstraintAccelerator),o.req.eleres)  
     elseif NDA == 0
         class            = xu
-        _,_,(∂X,∂U)     = variate{1}((X,U  ),scale=(AllElements(scale.X),AllElements(scale.U)        ))
+        _,_,(∂X,∂U)      = variate{1}((X,U  ),scale=(AllElements(scale.X),AllElements(scale.U)        ))
         ∂eX              = getsomedofs(∂X,ieX) 
         ∂eU              = getsomedofs(∂U,ieU) 
         R[ieX],FB,eleres = getresidual(o.eleobj, ∂eX,∂eU, A,t,SP,(dbg...,via=:ElementDofAndConstraintAccelerator),o.req.eleres)  
@@ -238,26 +241,28 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,o:
     if o.gap ≠ nothing    
         mode           = o.mode(t)
         γ              = default{:γ}(SP,0.)
-        if P==2
-            eleres_e   = revariate{P}(eleres)                     # eleres is adiffed to order 1, eleres_e to order P
-            gap_e      = o.gap(eleres_e,t,o.gapargs...)           #             with Pth order derivative of gap wrt eleres
-            gap        = chainrule(gap_e,to_order{P,N∂}(eleres))  # approximate with Pth order derivative of gap wrt X,U,A
-        elseif P==1 
-            gap        = o.gap(eleres,t,o.gapargs...)
-        end
+        # if P==2
+        #     eleres_e   = revariate{P}(eleres)                     # eleres is adiffed to order 1, eleres_e to order P
+        #     gap_e      = o.gap(eleres_e,t,o.gapargs...)           #             with Pth order derivative of gap wrt eleres
+        #     gap        = chainrule(gap_e,to_order{P,N∂}(eleres))  # approximate with Pth order derivative of gap wrt X,U,A
+        # elseif P==1 
+        #     gap        = o.gap(eleres,t,o.gapargs...)
+        # end
+        gap        = o.gap(eleres,t,o.gapargs...)
     else
         mode,gap = nothing,nothing
     end
-
     for iλ ∈ iλX
         mᵢ         = mode[iλ]
         gapᵢ       = value{P}(gap[iλ])
-        gapᵢ∂x     = ∂{P,N∂}(gapᵢ)[NDX*Nλx .+ ieX]
-        λᵢ         = to_order{P-1,N∂}(∂0(X)[iλ])  
-        if       mᵢ==:equal;    R[iλ] =         gapᵢ   ;   R[ieX] .+= λᵢ .* gapᵢ∂x     
-        elseif   mᵢ==:positive; R[iλ] = ∂KKT(λᵢ,gapᵢ,γ);   R[ieX] .+= λᵢ .* gapᵢ∂x 
-        elseif   mᵢ==:off;      R[iλ] =      λᵢ                                
+       # gapᵢ∂x     = ∂{P,N∂}( gap[iλ])[ieX]
+        gapᵢ∂x     = ∂{1,N∂}( gap[iλ])[ieX]
+        λᵢ         = to_order{P-1,N∂}(∂0(∂X)[iλ])  
+        if       mᵢ==:equal;    R[iλ] = -        gapᵢ   ;   R[ieX] .-= λᵢ .* gapᵢ∂x     
+        elseif   mᵢ==:positive; R[iλ] = -∂KKT(λᵢ,gapᵢ,γ);   R[ieX] .-= λᵢ .* gapᵢ∂x 
+        elseif   mᵢ==:off;      R[iλ] = -     λᵢ                                
         end
+    #    @dbg P N∂ mᵢ λᵢ gapᵢ gapᵢ∂x R
     end
 
 
@@ -273,15 +278,13 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,o:
     # out[asm[iasm,iele]] += R[ia]
     isassigned(Lλ,1) && add_value!(Lλ[1] ,asm[arrnum(ind.Λ)],iele,R;Δt) #  I have a vector R from o.eleobj, and I assemble it at the end of o's vector
     if mission==:matrices 
-        @dbg(Nλ, Nx, Nu, Na) 
-        ndof             = (Nx, Nu, Na )
-        nder             = (NDX,NDU,NDA)
+        ndof             = (Nλ, Nx, Nu, Na )
+        nder             = (1,  NDX,NDU,NDA)
         iα               = 1:Nx
         pβ               = 0
         for β∈class, βder=1:nder[β]
             iβ           = pβ.+(1:ndof[β])   # which of R's partials to pick
             pβ          += ndof[β]
-            @dbg β βder iα iβ 
             Lλβ          = out.L2[ind.Λ,β]
             Lβλ          = out.L2[β,ind.Λ]
             # ∀ i,j out[asm[iasm[i]+length(ia)*idasm[j]-1,iele]] += a[iα[i]].dx[iβ[j]]  
@@ -289,15 +292,18 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,o:
             isassigned(Lβλ,βder,1) && add_∂!{1,:plus,  :transpose}(Lβλ[βder,1],asm[arrnum(β,ind.Λ)],iele,R,iα,iβ;Δt)  
         end
     end
-    r,k,c,m = out.L1[1][1],Matrix(out.L2[1,2][1,1]),Matrix(out.L2[1,2][1,2]),Matrix(out.L2[1,2][1,3]) 
-    g = Matrix(out.L2[1,4][1,1])
-    @dbg r k c m g
+    # r,k = out.L1[1][1],Matrix(out.L2[1,2][1,1]) 
+    # g = Matrix(out.L2[1,4][1,1])
+    # @dbg r k #c m g
     # TODO ------------------------------------------------------------
 
 
     if typeof(o.cost)  ≠ Nothing  
+        eleres_e       = revariate{P}(eleres)                     # eleres is adiffed to order 1, eleres_e to order P
+        eleres_P       = to_order{P,N∂}(eleres)
         cost_e         = o.cost(eleres_e,t,o.costargs...)         #             with Pth order derivative of cost wrt eleres
-        cost           = chainrule(cost_e,to_order{P,N∂}(eleres)) # approximate with Pth order derivative of cost wrt X,U,A
+        cost           = chainrule(cost_e,eleres_P)               # approximate with Pth order derivative of cost wrt X,U,A
+#        @dbg P N∂ typeof(cost_P) typeof(eleres) typeof(eleres_P) typeof(to_order{P,N∂}(eleres)) typeof(cost)
         L             += cost
     else
         cost           = nothing
