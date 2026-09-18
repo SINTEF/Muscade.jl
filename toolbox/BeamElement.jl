@@ -133,8 +133,18 @@ Three additional U-dofs can be added by calling [`addelement!`](@ref) with `Eule
 -   `mat   :: Mat` contains the material properties ([`BeamCrossSection`](@ref), for example)
 
 # Optional argument to the constructor
--    `orient2 :: SVector{3,𝕣}` defines the direction of the first bending axis in the global coordinate system. 
-Default is `SVector(0.,1.,0.)`.
+-    `orient2 :: SVector{3,𝕣}` defines the approximate direction of the first bending axis in the global coordinate system. The first bending axis will be defined at the construction of the element from the tangential direction of the element `t` as `orient2 - t*dot(orient2,t)`. Default value for `orient2` is `SVector(0.,1.,0.)`.
+
+# Requestable element results, see [`@request`](@ref) and [`getresult`](@ref).
+-   `ε :: Tuple{𝕣, 𝕣, 𝕣}` contains the axial strain of the element and its first and second time-derivatives.
+-   `κ :: Tuple{SVector{3,𝕣}, SVector{3,𝕣}, SVector{3,𝕣}}`. The first element of κ contains the twist/curvatures at the centroid of the element. Twist is defined about the tangential direction of the element, and curvatures are defined as rate of rotation along the element Note that κ[3]>0 implies +2 direction is inside curve, and κ[2]>0 implies -3 direction is inside curve. The second SVector{3,𝕣} in κ contains the time derivatives of twist/curvatures, and the third SVector{3,𝕣} the second time-derivatives. 
+-   `rₛₘ :: Tuple{SMatrix{3,3,𝕣,9}, SMatrix{3,3,𝕣,9}, SMatrix{3,3,𝕣,9}}`. The first element of the Tuple is the "from local-to-global" rotation matrix describing the orientation of the element local coordinate system. The remaining elements of the Tuple are its first and second time-derivatives.
+-   `gp(x) :: Tuple{SVector{3,𝕣}, SVector{3,𝕣}, SVector{3,𝕣}}` contains the motions of Gauss points. The first element of the Tuple contains the three absolute positions of the Gauss point, the second the three velocities, and the third one the three accelerations. 
+-   `gp(κgp)` contains twists and curvatures at each Gauss point (see κ above). Same type and structure as for `gp(x)`. 
+-   `gp(resultants(fₑ)) :: SVector{3, 𝕣}` contains the three components of the external forces at the Gauss point
+-   `gp(resultants(mₑ)) :: SVector{3, 𝕣}` contains external torsional and bending moments about the three local directions of the element. 
+-   `gp(resultants(fᵢ)) :: 𝕣` contains the internal axial force 
+-   `gp(resultants(mᵢ)) :: SVector{3, 𝕣}` contains internal torsional and bending moments about the three local directions of the element. 
 
 # Example
 ```
