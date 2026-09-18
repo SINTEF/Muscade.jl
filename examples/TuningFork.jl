@@ -1,7 +1,8 @@
 # # Tuning vibrations of a tuning fork
 # 
-# Tuning forks should resonate at a desired frequency when subjected to an impulsive load. Achieving the right frequency cab be done by adding material or filing material off the prongs.
-# We start from a target solution establihed using SweepX. A sprious mass is then introduced, parametrized by an A-dof. We use the SweepXA and DirectXUA solvers to estimate how much mass should be removed. In SweepXA, the excitation is assume to be known, while it is estimated by DirectXUA. 
+# Tuning forks, as represented below, should resonate at a desired frequency when subjected to an impulsive load. Achieving the right frequency can be done by adding material or filing material off the prongs.
+# In this example, we build the finite element model of a tuning fork using beam elements (black lines and dots in the sketch below represent the beams and their nodes). We simulate the vibration response of the tuning fork (depicted in purple), when subject to an impulsive load (in red). This target solution is computed with SweepX. A sprious mass (blue square in the sketch below) is then introduced, parametrized by an A-dof. We use the SweepXA and DirectXUA solvers to estimate how much mass should be removed. In SweepXA, the excitation is assumed to be known. With DirectXUA, estimating the excitation is part of the problem to be solved. 
+# ![Description of the problem](assets/TuningForkSketch.png)
 #
 # NB: In several places in this script, `solve` is called with optional `verbose=false`, because this script is part of the generation
 # of `Muscade`'s online documentation.  Setting `verbose=true` would be more relevant in other contexts.
