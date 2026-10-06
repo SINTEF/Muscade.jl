@@ -166,7 +166,7 @@ See also: [`BeamCrossSection`](@ref), [`Bar3D`](@ref)
 """
 struct EulerBeam3D{Mat,Uforce} <: AbstractElement
     cₘ       :: SVector{3,𝕣}     # Position of the middle of the element, as meshed
-    rₘ       :: SMatrix{3,3,𝕣}   # Orientation of the element, as meshed, represented by a rotation matrix 
+    rₘ       :: SMatrix{3,3,𝕣,9}   # Orientation of the element, as meshed, represented by a rotation matrix 
     ζgp      :: SVector{ngp,𝕣}   # Location of the Gauss points for the normalized element with length 1
     ζnod     :: SVector{nXnod,𝕣} # Location of the nodes for the normalized element with length 1
     tgₘ      :: SVector{ndim,𝕣}  # Vector connecting the nodes of the element in the global coordinate system
@@ -271,7 +271,7 @@ end
 struct corotated{Mode} end 
 function corotated{Mode}(o::EulerBeam3D,X₀)  where{Mode}
     cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp    = o.cₘ,o.rₘ,o.tgₘ,o.tgₑ,o.ζnod,o.ζgp   # As-meshed element coordinates and describing tangential vector
-    uᵧ₁,vᵧ₁,uᵧ₂,vᵧ₂           = vec3(X₀,1:3), vec3(X₀,4:6), vec3(X₀,7:9), vec3(X₀,10:12)
+    uᵧ₁,vᵧ₁,uᵧ₂,vᵧ₂           = vec3(X₀,1,2,3), vec3(X₀,4,5,6), vec3(X₀,7,8,9), vec3(X₀,10,11,12)
     Δvᵧ,rₛₘ,vₛₘ                = apply{Mode}((vᵧ₁=vᵧ₁,vᵧ₂=vᵧ₂)) do v
         rₛ₁                   = apply{Mode}(Rodrigues,v.vᵧ₁)
         rₛ₂                   = apply{Mode}(Rodrigues,v.vᵧ₂)
@@ -401,7 +401,7 @@ function Muscade.update_drawing(axis,o::AbstractVector{EulerBeam3D{Tmat,Udof}},o
             cₘ,rₘ,tgₘ,tgₑ,ζnod,ζgp,L  = oᵢ.cₘ,oᵢ.rₘ,oᵢ.tgₘ,oᵢ.tgₑ,oᵢ.ζnod,oᵢ.ζgp,oᵢ.L   
             X₀ₑ = view(X₀,:,iel)
             vₛₘ,rₛₘ,uₗ₂,vₗ₂,cₛₘ = corotated{:direct}(oᵢ,X₀ₑ) 
-            vᵧ₁,vᵧ₂          = vec3(X₀ₑ,4:6), vec3(X₀ₑ,10:12)
+            vᵧ₁,vᵧ₂          = vec3(X₀ₑ,4,5,6), vec3(X₀ₑ,10,11,12)
             rₛ₁              = Rodrigues(vᵧ₁)
             rₛ₂              = Rodrigues(vᵧ₂)
             if opt.Udof

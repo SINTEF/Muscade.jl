@@ -172,7 +172,7 @@ end;
     # Obtain motions (i.e. including velocity and accelerations) from X
     P,ND,x_      = motion(X)
     # Motions of the nodes, center of the element (underscores are appended to motion'ed variables)
-    uᵧ₁_,uᵧ₂_   = vec3(x_,1:3), vec3(x_,4:6) 
+    uᵧ₁_,uᵧ₂_   = vec3(x_,1,2,3), vec3(x_,4,5,6) 
     c_        = o.cₘ + 0.5*(uᵧ₁_+uᵧ₂_) 
     # Element direction and length
     tg_      = o.tgₘ + uᵧ₂_ - uᵧ₁_
@@ -186,11 +186,11 @@ end;
     # Compute loads at Gauss points
     gpContrib = ntuple(ngp) do igp
         ζ = o.ζgp[igp]                         # Coordinate of the Gauss point along [-1/2,1/2]
-        x_ = c_ + tg_ * ζ                      # Compute motions of Gauss point
-        x = motion⁻¹{P,ND}(x_)                  
-        fᵢ,fₑ     = ☼resultants(o.mat,ε,x,δ,t) # Compute loads from strains/motions, etc.
+        xGP_ = c_ + tg_ * ζ                      # Compute motions of Gauss point
+        xGP = motion⁻¹{P,ND}(xGP_)                  
+        fᵢ,fₑ     = ☼resultants(o.mat,ε,xGP,δ,t) # Compute loads from strains/motions, etc.
         fₑ        = Udof ? fₑ-∂0(U) : fₑ       # If there are unknown loads, they're added here (U is per unit length)
-        x∂X₀ = SMatrix{3,6}(ψ₁(ζ),0,0, 0,ψ₁(ζ),0, 0,0,ψ₁(ζ), ψ₂(ζ),0,0, 0,ψ₂(ζ),0, 0,0,ψ₂(ζ))           
+        x∂X₀ = SMatrix{3,6,𝕣,18}(ψ₁(ζ),0,0, 0,ψ₁(ζ),0, 0,0,ψ₁(ζ), ψ₂(ζ),0,0, 0,ψ₂(ζ),0, 0,0,ψ₂(ζ))           
         #  Application of PVW, local contribution of the integral over the element        
         R_        = ( fᵢ ∘₀ ε∂X₀ + fₑ ∘₁ x∂X₀ ) * o.wgp[igp]   
         @named(R_);
