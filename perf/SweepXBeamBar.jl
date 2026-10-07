@@ -62,5 +62,5 @@ end
 println("   Third run for detailed profiling")
 Profile.clear()
 @profile solve(SweepX{2}; initialstate=staticStates[nStaticLoadSteps], time=dynamicLoadSteps, verbose=false);
-ProfileSVG.save("Profile_$(model.ID).svg",width=1800, height=1200,maxdepth=100, maxframes=3000)
+ProfileSVG.save("Profile_$(model.ID).svg",width=1800, maxdepth=100, maxframes=100000)
 end
