@@ -41,7 +41,7 @@ res             = solve(EigX{ℝ};state=state[1],nmod);
 
 # Analytical solutions for the natural frequency of a simply supported beam 
 # See e.g. https://roymech.org/Useful_Tables/Vibrations/Natural_Vibrations_derivation.html
-fₙ(k) = √(EI₂/μ)*(k^2*π)/(2*L^2)
+fₙ(k) = √(EI₃/μ)*(k^2*π)/(2*L^2)
 Φₙ(k,x) = sin.(k*π/L.*x);
 
 # Display solution and comparison against analytical solution

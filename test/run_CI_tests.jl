@@ -36,5 +36,10 @@ workingDir = joinpath(muscadeDir,"docs")
 devMuscadeIn(workingDir,muscadeDir)
 include(joinpath(workingDir,"make.jl"))
 
+# test performance of typical analyses
+workingDir = joinpath(muscadeDir,"perf")
+devMuscadeIn(workingDir,muscadeDir)
+include(joinpath(workingDir,"SweepXBeamBar.jl"))
+
 # back to test/ directory
 cd(joinpath(muscadeDir,"test"))

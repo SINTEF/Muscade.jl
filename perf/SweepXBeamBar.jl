@@ -55,8 +55,9 @@ local commit_hash         = readchomp(`git -C $(@__DIR__) rev-parse HEAD`)
 local username            = ENV["USERNAME"]
 local pc_id               = ENV["COMPUTERNAME"]
 local benchmark_datetime  = Dates.now()
+local julia_version       = VERSION
 open(joinpath(@__DIR__, "BenchmarkHistory.txt"), "a") do file
-    println(file, "$(model.ID) $commit_hash $username $pc_id $benchmark_datetime $benchmark_seconds")
+    println(file, "$(model.ID) $commit_hash $julia_version $username $pc_id $benchmark_datetime $benchmark_seconds")
 end
 
 println("   Third run for detailed profiling")
