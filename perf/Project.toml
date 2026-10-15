@@ -1,0 +1,9 @@
+[deps]
+BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+Interpolations = "a98d9a8b-a2ab-59e6-89dd-64a1c18fca59"
+Muscade = "93488820-1883-11ed-0c34-05177b029e4d"
+Profile = "9abbd945-dff8-562f-b5e8-e1ebf5ef1b79"
+ProfileSVG = "132c30aa-f267-4189-9183-c8a63c7e05e6"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"

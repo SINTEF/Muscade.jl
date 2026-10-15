@@ -1,7 +1,6 @@
-# Runs tests, examples and documentation generation 
+# Runs tests, examples, performance benchmarks and documentation generation 
 # from a clean environment, using the version of Muscade
-# located in "muscadeDir". Useful to run prior to 
-# a merge.
+# located in "muscadeDir". Useful to run prior to a merge.
 
 muscadeDir = joinpath(@__DIR__,"..")
 
@@ -35,6 +34,11 @@ include(joinpath(workingDir,"TuningFork.jl"))
 workingDir = joinpath(muscadeDir,"docs")
 devMuscadeIn(workingDir,muscadeDir)
 include(joinpath(workingDir,"make.jl"))
+
+# test performance of typical analyses
+workingDir = joinpath(muscadeDir,"perf")
+devMuscadeIn(workingDir,muscadeDir)
+include(joinpath(workingDir,"SweepXBeamBar.jl"))
 
 # back to test/ directory
 cd(joinpath(muscadeDir,"test"))

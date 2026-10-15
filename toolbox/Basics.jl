@@ -1,16 +1,16 @@
 """
-    vec3(v, ind)
+    vec3(v, ind1, ind2, ind3)
 
 Create a 3-element static vector from selected elements of vector `v`.
 
 # Arguments
 - `v`: The input vector from which elements are selected.
-- `ind`: A collection of 3 indices specifying which elements of `v` to include.
+- `ind1`, `ind2`, `ind3`: 3 indices specifying which elements of `v` to include.
 
 # Returns
-- An `SVector{3}` containing the elements `v[ind[1]]`, `v[ind[2]]`, `v[ind[3]]`.
+- An `SVector{3}` containing the elements `v[ind1]`, `v[ind2]`, `v[ind3]`.
 """
-vec3(v,ind) = SVector{3}(v[i] for i∈ind);
+vec3(v,ind1,ind2,ind3) = SVector{3,eltype(v)}(v[ind1],v[ind2],v[ind3]);
 
 """
 	clutch(x,x₁,x₂,y₁,y₂,γ)
