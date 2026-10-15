@@ -8,6 +8,7 @@ using BenchmarkTools, Dates
 using Profile,ProfileSVG
 
 include("CommonProperties.jl")
+include("BenchmarkHistory.jl")
 
 # Create Muscade beam element model
 BeamModel   = Model(:CatenaryRiserBeam);
@@ -51,14 +52,7 @@ solve(SweepX{2}; initialstate=staticStates[nStaticLoadSteps], time=dynamicLoadSt
 
 println("   Second run to assess computational time")
 local benchmark_seconds   = @belapsed solve(SweepX{2}; initialstate=$staticStates[nStaticLoadSteps], time=$dynamicLoadSteps, verbose=false);
-local commit_hash         = readchomp(`git -C $(@__DIR__) rev-parse HEAD`)
-local username            = ENV["USERNAME"]
-local pc_id               = ENV["COMPUTERNAME"]
-local benchmark_datetime  = Dates.now()
-local julia_version       = VERSION
-open(joinpath(@__DIR__, "BenchmarkHistory.txt"), "a") do file
-    println(file, "$(model.ID) $commit_hash $julia_version $username $pc_id $benchmark_datetime $benchmark_seconds")
-end
+newEntryInBenchmarkHistory(model.ID,benchmark_seconds)
 
 println("   Third run for detailed profiling")
 Profile.clear()

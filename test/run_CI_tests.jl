@@ -1,7 +1,6 @@
-# Runs tests, examples and documentation generation 
+# Runs tests, examples, performance benchmarks and documentation generation 
 # from a clean environment, using the version of Muscade
-# located in "muscadeDir". Useful to run prior to 
-# a merge.
+# located in "muscadeDir". Useful to run prior to a merge.
 
 muscadeDir = joinpath(@__DIR__,"..")
 
