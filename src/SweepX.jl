@@ -110,7 +110,7 @@ function Xdiffedresidual(o::ElementCostAndConstraint{NSO,TargetElement,λxinod,�
     iλX              = SVector{nλX,𝕫}(    1:    nλX)
     ieX              = SVector{neX,𝕫}(nλX+1:nλX+neX)
     ieU              = SVector{neU,𝕫}(nλU+1:nλU+neU)
-    R                = MVector{Nx,∂ℝ{1,Nx+1,𝕣}}(undef)
+    R                = MVector{Nx,∂ℝ{1,npartial((X,U,A,t)),𝕣}}(undef)
 
     eX               = getsomedofs(X,ieX) 
     eU               = getsomedofs(U,ieU) 
