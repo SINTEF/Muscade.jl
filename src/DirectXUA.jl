@@ -488,6 +488,7 @@ The solver does not yet support interior point methods.
 - `saveiter=false`    set to true so that the output `state` contains the states 
                       at each Newton-Raphson iteration (for debugging 
                       non-convergence). 
+- `saveLvv=false`     set to true so that the output `state` is a named tuple with the usual output of the solver, and the Hessian Lvv of the Lagragian. 
 Setting the following flags to `true` will improve the sparsity of the system. But setting
 a flag to `true` when the condition isn't met causes the Hessian to be wrong, which is detrimental for convergence.                      
 - `Xwhite=false`      `true` if response measurement error is a white noise process.
@@ -508,6 +509,7 @@ function solve(::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
     maxiter::ℤ=50,
     maxΔλ::ℝ=1e-5,maxΔx::ℝ=1e-5,maxΔu::ℝ=1e-5,maxΔa::ℝ=1e-5,
     saveiter::𝔹=false,
+    saveLvv::𝔹=false,
     wanted::Wanted=Wanted{1,OX+1,OU+1,IA}(:all,:all)) where{OX,OU,IA,AR<:AbstractRange{𝕣},STATE<:State}
 
     #  Mostly constants
@@ -590,5 +592,8 @@ function solve(::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
         end
         iter<maxiter || muscadeerror(@sprintf("no convergence after %3d iterations. \n",iter))
     end # for iter
+    if saveLvv
+        pstate[] = (state = pstate[], Lvv=cLvv)
+    end
     return
 end
