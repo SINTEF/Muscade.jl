@@ -58,3 +58,20 @@ macro deprecated(old,new)
     println(". ",old," will be phased out in a future release.")
     return :()
 end
+
+struct ErrorInMultithread{E,STK}
+    error::E
+    stk::STK # a catch_backtrace()
+    ijob::Int64
+    ithread::Int64
+end
+function Base.showerror(io::IO, e::ErrorInMultithread{E}) where{E}
+    printstyled(io,"ErrorInMultiThread ",color=:red,bold=true)
+    println(io,"in job $(e.ijob), thread $(e.ithread), due to ")
+    showerror(io,e.error)
+    println(io,"\nStacktrace within thread:")
+    stk = stacktrace(e.stk) # from InterpreterIP to StackFrame
+    for i = 1:length(stk)-2
+        println(io," [$i] $(stk[i+1])")
+    end
+end

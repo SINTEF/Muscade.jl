@@ -9,6 +9,7 @@ module Muscade
     using MacroTools: postwalk,gensym_ids,rmlines,unblock 
     using Base.Cartesian
     using GLMakie
+    using Base.Threads
 
     include("Debug.jl")
     public @dbg,stackstring,scoop
@@ -114,6 +115,8 @@ module Muscade
     public getδω,getδt,𝔉,𝔉⁻¹
 
     include("Eigenmodes.jl")
+
+    include("multithreading.jl")
 
     public Toolbox
     module Toolbox

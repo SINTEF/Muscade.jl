@@ -99,5 +99,8 @@ module Runtest
         @testset "TestRigidBodyKinematics" begin
             include("TestRigidBodyKinematics.jl")
         end
+        @testset "TestMultithreading" begin
+            include("TestMultithreading.jl")
+        end
     end
 end
