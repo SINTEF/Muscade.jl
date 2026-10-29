@@ -1,9 +1,16 @@
 ## Schedulers
 
+"""
+    scheduler = SingleDependencyScheduler(dependencies)
+
+`dependencies[i]::Int64` contains the index of the job that job `i` depends on.
+Set `dependencies[i]` to `0` if job `i` does not require any other job to be completed.
+
+"""
 struct SingleDependencyScheduler 
-    dependson  :: Vector{Int64}
-    dispatched :: Vector{Bool}
-    done       :: Vector{Bool}
+    dependson  :: 𝕫1
+    dispatched :: 𝕓1 #Vector{Bool }
+    done       :: 𝕓1 #Vector{Bool }
 end
 SingleDependencyScheduler(dependson:: Vector{Int64}) = SingleDependencyScheduler(dependson,falses(length(dependson)),falses(length(dependson)))
 function next!(o::SingleDependencyScheduler)
@@ -17,18 +24,29 @@ function next!(o::SingleDependencyScheduler)
     end  
     done    = all(o.done)
     waiting = ~done
-    waiting && (o.dispatched==o.done) && error("Circular dependencies") # we have not completed all jobs (waiting), but all dispatched jobs are done, so no new jobs will become doable
+    waiting && (o.dispatched==o.done) && muscadeerror("Circular dependencies") # we have not completed all jobs (waiting), but all dispatched jobs are done, so no new jobs will become doable
     return 0, waiting, done 
 end
 function done!(o::SingleDependencyScheduler,ijob)
     o.done[ijob]=true
 end
 
+"""
+    scheduler = SequentialScheduler(list)
+
+`list[i]::Int64` contains the index of the job to be run at the `i`-th position.
+
+    scheduler = SequentialScheduler(n)
+
+where `n` is and `Int64`, is equivalent to `list=1:n`.    
+
+"""
 struct SequentialScheduler
-    jobs :: Vector{Int64}
-    SequentialScheduler(order:: AbstractVector{Int64}) = isperm(order) ?  new(collect(order)) : error("Input must be a permutation")
+    jobs :: 𝕫1
+    SequentialScheduler(order:: AbstractVector{𝕫}) = isperm(order) ?  new(collect(order)) : error("Input must be a permutation")
 end
-# next! and done! not implemented, because it will dispatch to a version of weave that does not use these
+SequentialScheduler(n::𝕫) = SequentialScheduler(1:n)
+# next! and done! not implemented, because SequentialScheduler will dispatch to a version of weave that does not use these
 
 
 
@@ -41,7 +59,7 @@ function thread!(execute!,jobs,todo_ch,done_ch,error_ch,verbose)
     for ijob ∈ todo_ch 
         verbose && println("Thread $ithread: start job ",ijob)
         try
-            execute!(jobs[ijob],error_ch,verbose)
+            execute!(jobs[ijob],error_ch)
         catch ex
             put!(error_ch,(ex,catch_backtrace(),ijob,ithread))
             verbose && println("Thread $ithread: close thread due to error in job $ijob")
@@ -55,12 +73,27 @@ function thread!(execute!,jobs,todo_ch,done_ch,error_ch,verbose)
     return
 end
 
+"""
+    weave(execute!,jobs,scheduler;nthread=nthreads(),verbose=true) 
 
+Calls `execute!(jobs[i],error_ch)` for all `i`, where `execute!` and `jobs` are user-defined, 
+accounting for dependencies between jobs defined by `scheduler`.
+
+`scheduler` must implement `next(scheduler)` which returns the index of a job ready for execution
+and `done!(scheduler,i)`, to tell the scheduler that job `i` is completed.
+
+See also: [`SequentialScheduler`](@ref), [`SingleDependencyScheduler`](@ref). `SequentialScheduler` does
+not use multithreading and is intended for debugging.
+
+`execute` must execute `isready(error_ch) && return` regularly, so that all threads can be stopped if
+one job fails.
+
+"""
 function weave(execute!,jobs::AbstractVector,scheduler;nthread::Int=Threads.nthreads(),verbose=true) 
     local done
-    todo_ch      = Channel{Int64}(length(jobs))
-    done_ch      = Channel{Int64}(length(jobs))
-    error_ch     = Channel{Any  }(1)
+    todo_ch      = Channel{𝕫  }(length(jobs))
+    done_ch      = Channel{𝕫  }(length(jobs))
+    error_ch     = Channel{Any}(1           )
 
     for ithread ∈ 1:nthread
         @spawn thread!(execute!,jobs,todo_ch,done_ch,error_ch,verbose) 
@@ -76,7 +109,7 @@ function weave(execute!,jobs::AbstractVector,scheduler;nthread::Int=Threads.nthr
         done && break 
         verbose && println("scheduler: go to sleep")   
         while ~isready(done_ch)
-            sleep(0.01)
+            sleep(.01)
             if isready(error_ch)
                 verbose && println("scheduler: error in a thread, close all channels")
                 close.((todo_ch,done_ch,error_ch))
@@ -101,7 +134,7 @@ function weave(execute!::Function,jobs::AbstractVector,scheduler::SequentialSche
         ijob = scheduler.jobs[i]
         verbose && println("Starting $ijob")
         try
-            execute!(jobs[ijob],error_ch,verbose)
+            execute!(jobs[ijob],error_ch)
         catch ex
             verbose && println("Interrupt sequential work due to error in job $ijob")
             close(error_ch)
