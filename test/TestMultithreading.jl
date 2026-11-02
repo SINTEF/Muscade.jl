@@ -2,7 +2,7 @@ module TestMultithreading
 
 using Test
 using Muscade
-using Muscade: weave, SequentialScheduler, SingleDependencyScheduler
+using Muscade: team, SequentialScheduler, SingleDependencyScheduler
 
 struct Job
     ijob :: 𝕫
@@ -37,7 +37,7 @@ verbose = false
     done     = falses(7) 
     jobs     = [Job(i,false,0.01+0.001i,done,verbose) for i=1:7] 
     sched    = SequentialScheduler([4,1,2,3,6,7,5]) 
-    weave(execute!,jobs,sched;verbose) 
+    team(execute!,jobs,sched;verbose) 
     @test all(done)
 end
 
@@ -47,7 +47,7 @@ end
     done     = falses(7) 
     jobs     = [Job(i,i==7,0.01+0.001i,done,verbose) for i=1:7] 
     sched    = SequentialScheduler([4,1,2,3,6,7,5]) 
-    @test_throws Muscade.MuscadeException weave(execute!,jobs,sched;verbose)
+    @test_throws Muscade.MuscadeException team(execute!,jobs,sched;verbose)
     @test done == [1,1,1,1,0,1,0]
 end
 
@@ -57,7 +57,7 @@ end
     done     = falses(7) 
     sched    = SingleDependencyScheduler([4,3,0,0,1,2,5]) 
     jobs     = [Job(i,false,0.01+0.001i,done,verbose) for i=1:7] 
-    weave(execute!,jobs,sched,nthread=3;verbose)
+    team(execute!,jobs,sched,nworker=3;verbose)
     @test all(done)
 end
 
@@ -67,7 +67,7 @@ end
     done     = falses(7) 
     sched    = SingleDependencyScheduler([4,3,0,0,1,2,5]) 
     jobs     = [Job(i,i==4,0.01+0.001i,done,verbose) for i=1:7] 
-    @test_throws Muscade.ErrorInMultithread   weave(execute!,jobs,sched,nthread=3;verbose)
+    @test_throws Muscade.ErrorInMultithread   team(execute!,jobs,sched,nworker=3;verbose)
     @test all(done .≤ [0,1,1,1,0,1,0]) # what exactly will be done is a race
 end
 

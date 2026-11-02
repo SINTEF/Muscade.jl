@@ -240,7 +240,8 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,o:
     else
         mode,gap       = nothing,nothing
     end
-    for iλ ∈ iλX
+
+    for iλ ∈ iλX # which is empty if o.gap==nothing
         mᵢ         = mode[iλ]
         gapᵢ       = value{P}(gap[iλ])
         gapᵢ∂x     = ∂{1,N∂}( gap[iλ])[ieX]
@@ -251,8 +252,8 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,o:
         end
     end
 
+    # special add-in of X constraints
     Lλ                   = out.L1[ind.Λ]
-    # out[asm[iasm,iele]] += R[ia]
     isassigned(Lλ,1) && add_value!(Lλ[1] ,asm[arrnum(ind.Λ)],iele,R;Δt) #  I have a vector R from o.eleobj, and I assemble it at the end of o's vector
     if mission==:matrices 
         ndof             = (Nλ, Nx, Nu, Na )
@@ -280,7 +281,7 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,o:
         cost           = nothing
     end
 
-    for iλ ∈ iλU
+    for iλ ∈ iλU # which is empty if o.gap==nothing
         mᵢ,gapᵢ = mode[iλ+Nλx],gap[iλ+Nλx]
         λᵢ      = to_order{P,N∂}(∂0(U)[iλ]) 
         L -=if   mᵢ==:equal;        λᵢ*gapᵢ     
@@ -289,6 +290,7 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,o:
         end
     end
 
+    # common add-in of cost and U-constraints
     DirectXUA_lagrangian_addition!{mission,Nx,Nu,Na,0,NDX,NDU,NDA}(out,asm,L,iele,Δt)
     local ☼eleres,☼cost,☼mode,☼gap
 end
@@ -508,7 +510,7 @@ function solve(::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
     maxiter::ℤ=50,
     maxΔλ::ℝ=1e-5,maxΔx::ℝ=1e-5,maxΔu::ℝ=1e-5,maxΔa::ℝ=1e-5,
     saveiter::𝔹=false,
-    wanted::Wanted=Wanted{1,OX+1,OU+1,IA}(:all,:all)) where{OX,OU,IA,AR<:AbstractRange{𝕣},STATE<:State}
+    wanted::Wanted=Wanted{1,OX+1,OU+1,IA}(:all,:all)) where{OX,OU,IA,AR<:AbstractRange{𝕣}}
 
     #  Mostly constants
     local LU

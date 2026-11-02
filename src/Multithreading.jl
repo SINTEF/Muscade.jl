@@ -3,8 +3,13 @@
 """
     scheduler = SingleDependencyScheduler(dependencies)
 
+`scheduler` is intended as an input to [`team`](@ref), and constrains how a collection
+of jobs can be sequenced over multiple parallel threads.
+
 `dependencies[i]::Int64` contains the index of the job that job `i` depends on.
 Set `dependencies[i]` to `0` if job `i` does not require any other job to be completed.
+
+See also: [team`](@ref), [`SequentialScheduler`](@ref)
 
 """
 struct SingleDependencyScheduler 
@@ -34,11 +39,16 @@ end
 """
     scheduler = SequentialScheduler(list)
 
+`scheduler` is intended as an input to [`team`](@ref), and constrains how a collection
+of jobs can be sequenced over multiple parallel threads.
+
 `list[i]::Int64` contains the index of the job to be run at the `i`-th position.
 
     scheduler = SequentialScheduler(n)
 
 where `n` is and `Int64`, is equivalent to `list=1:n`.    
+
+See also: [team`](@ref), [`SingleDependencyScheduler`](@ref)
 
 """
 struct SequentialScheduler
@@ -46,35 +56,34 @@ struct SequentialScheduler
     SequentialScheduler(order:: AbstractVector{𝕫}) = isperm(order) ?  new(collect(order)) : error("Input must be a permutation")
 end
 SequentialScheduler(n::𝕫) = SequentialScheduler(1:n)
-# next! and done! not implemented, because SequentialScheduler will dispatch to a version of weave that does not use these
+# next! and done! not implemented, because SequentialScheduler will dispatch to a version of team that does not use these
 
 
 
-## weave
+## team
 
 
-function thread!(execute!,jobs,todo_ch,done_ch,error_ch,verbose)
-    ithread = threadid()
-    verbose && println("Thread $ithread: start thread")
+function worker!(execute!,iworker,jobs,todo_ch,done_ch,error_ch,verbose)
+    verbose && println("Worker $iworker: clock in")
     for ijob ∈ todo_ch 
-        verbose && println("Thread $ithread: start job ",ijob)
+        verbose && println("Worker $iworker: start job ",ijob)
         try
             execute!(jobs[ijob],error_ch)
         catch ex
-            put!(error_ch,(ex,catch_backtrace(),ijob,ithread))
-            verbose && println("Thread $ithread: close thread due to error in job $ijob")
+            put!(error_ch,(ex,catch_backtrace(),ijob,iworker))
+            verbose && println("Worker $iworker: clock out due to error in job $ijob")
             return
         else
-            verbose && println("Thread $ithread: close job ",ijob)
+            verbose && println("Worker $iworker: close job ",ijob)
             put!(done_ch,ijob)
         end
     end
-    verbose && println("Thread ",threadid(),": close thread")
+    verbose && println("Worker ",threadid(),": clock out")
     return
 end
 
 """
-    weave(execute!,jobs,scheduler;nthread=nthreads(),verbose=true) 
+    team(execute!,jobs,scheduler;nworker=nthreads(),verbose=true) 
 
 Calls `execute!(jobs[i],error_ch)` for all `i`, where `execute!` and `jobs` are user-defined, 
 accounting for dependencies between jobs defined by `scheduler`.
@@ -89,14 +98,14 @@ not use multithreading and is intended for debugging.
 one job fails.
 
 """
-function weave(execute!,jobs::AbstractVector,scheduler;nthread::Int=Threads.nthreads(),verbose=true) 
+function team(execute!,jobs::AbstractVector,scheduler;nworker::Int=Threads.nthreads(),verbose=true) 
     local done
     todo_ch      = Channel{𝕫  }(length(jobs))
     done_ch      = Channel{𝕫  }(length(jobs))
     error_ch     = Channel{Any}(1           )
 
-    for ithread ∈ 1:nthread
-        @spawn thread!(execute!,jobs,todo_ch,done_ch,error_ch,verbose) 
+    for iworker ∈ 1:nworker
+        @spawn worker!(execute!,iworker,jobs,todo_ch,done_ch,error_ch,verbose) 
     end
 
     while true # still work to do
@@ -128,7 +137,7 @@ function weave(execute!,jobs::AbstractVector,scheduler;nthread::Int=Threads.nthr
     return 
 end
 
-function weave(execute!::Function,jobs::AbstractVector,scheduler::SequentialScheduler;nthread::Int=Threads.nthreads(),verbose=true)
+function team(execute!::Function,jobs::AbstractVector,scheduler::SequentialScheduler;nworker::Int=Threads.nthreads(),verbose=true)
     error_ch     = Channel{Exception}(1)
     for i=1:length(scheduler.jobs)
         ijob = scheduler.jobs[i]

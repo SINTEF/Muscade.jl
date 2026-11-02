@@ -116,7 +116,7 @@ module Muscade
 
     include("Eigenmodes.jl")
 
-    include("multithreading.jl")
+    include("Multithreading.jl")
 
     public Toolbox
     module Toolbox
