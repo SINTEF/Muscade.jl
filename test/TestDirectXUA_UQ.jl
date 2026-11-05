@@ -1,4 +1,4 @@
-# module TestDirectXUA
+module TestDirectXUA_UQ
 
 using Test
 using Muscade
@@ -13,40 +13,62 @@ El1(nod::Vector{Node};K::𝕣) = El1(K)
     r         = -u + o.K*x
     return SVector(r),noFB
 end
-Muscade.doflist( ::Type{El1})  = (inod =(1 ,1), class=(:X,:U), field=(:tx1,:u))
+Muscade.doflist( ::Type{El1})  = (inod =(1 ,1), class=(:X,:U), field=(:tx1,:utx1))
 
-model           = Model(:TrueModel)
-n1              = addnode!(model,𝕣[0])
-e1              = addelement!(model,El1,[n1], K=1.)
-σₓ = 0.5
+# Parameters
+model           = Model(:NoConfidenceX)
+model2           = Model(:SameConfidenceXU)
+k = 5.
+σₓ = 1e10
 σᵤ = 0.1
-@functor with() fu(u,t)   = 0.5 * (u/ σᵤ)^2
-@functor with() l1(tx1,t) = 0.5 * ((tx1-0.1*sin(t))/σₓ)^2
-e10             = addelement!(model,SingleUdof   ,[n1];Xfield=:tx1,Ufield=:utx1,cost=fu)
-e12             = addelement!(model,SingleDofCost,[n1];class=:X,field=:tx1,     cost=l1)
+σₓ₂ = 2e-2
 
+n1              = addnode!(model,𝕣[0])
+e1              = addelement!(model,El1,[n1], K=k)
+n2              = addnode!(model2,𝕣[0])
+e2              = addelement!(model2,El1,[n2], K=k)
+
+# Costs
+@functor with() fu(u,t)   = 0.5 * (u / σᵤ)^2
+@functor with() l1(x,t) = 0.5 * ((x-1.) / σₓ)^2
+@functor with() l2(x,t) = 0.5 * ((x-1.) / σₓ₂)^2
+e11            = addelement!(model,SingleDofCost,[n1];class=:X,field=:tx1,     cost=l1)
+e12             = addelement!(model,SingleDofCost,[n1];class=:U,field=:utx1,     cost=fu)
+e21            = addelement!(model2,SingleDofCost,[n2];class=:X,field=:tx1,     cost=l2)
+e22             = addelement!(model2,SingleDofCost,[n2];class=:U,field=:utx1,     cost=fu)
+
+# Resolutions
 initialstate    = initialize!(model)
-stateX          = solve(SweepX{0};  initialstate,time=[0.],verbose=false)
-output        = solve(DirectXUA{0,0,0};primerstate=[stateX[1]],time = [1:0.5:1],verbose=false,maxiter=50, saveLvv=true)
-# output        = solve(DirectXUA{0,0,0};primerstate=[stateX[1]],time = [0:.1:1],verbose=false,maxiter=50, saveLvv=true)
+stateX          = solve(SweepX{0};  initialstate=initialstate,time=[0.],verbose=false)
+output        = solve(DirectXUA{0,0,0};primerstate=[stateX[1]],time = [1:0.5:1],verbose=false,maxiter=60, saveLvv=true)
 stateXUA = output.state
 Lvv_out = output.Lvv
-display(Lvv_out)
-println("1/σₓ² = ", 1/σₓ^2)
-println("1/σᵤ² = ", 1/σᵤ^2)
+covarMatrix = Matrix(Lvv_out)^-1
 
+initialstate2    = initialize!(model2)
+stateX2          = solve(SweepX{0};  initialstate=initialstate2,time=[0.],verbose=false)
+output2        = solve(DirectXUA{0,0,0};primerstate=[stateX2[1]],time = [1:0.5:1],verbose=false,maxiter=60, saveLvv=true)
+stateXUA2 = output2.state
+Lvv_out2 = output2.Lvv
+covarMatrix2 = Matrix(Lvv_out2)^-1
+
+@testset "uncertain X" begin
+    @test covarMatrix[2,2] ≈ (σᵤ/k)^2
+    @test covarMatrix[3,3] ≈ (σᵤ)^2
+end
+@testset "equally certain X and U" begin
+    @test covarMatrix2[2,2] ≈ (σₓ₂)^2 * 0.5
+    @test covarMatrix2[3,3] ≈ (σᵤ)^2  * 0.5
+end
+
+# display(Lvv_out)
+# println("\n1/σₓ² = ", 1/σₓ^2)
+# println("1/σᵤ² = ", 1/σᵤ^2)
+# println("-----\n")
 # covarMatrix = Matrix(Lvv_out)^-1
+# display(covarMatrix)
+# println("\nσₓ² = ", σₓ^2)
+# println("σᵤ² = ", σᵤ^2)
+# println("(σᵤ/K)² = ", (σᵤ/k)^2)
 
-# @testset "solution" begin
-#     @test 1==1
-# end
-
-# @testset "saveLvv" begin
-#     @test 1==1
-# end
-
-# @testset "UQstatic" begin
-#     @test 1==1
-# end
-
-# end 
+end 
