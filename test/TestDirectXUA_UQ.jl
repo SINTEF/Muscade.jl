@@ -4,6 +4,7 @@ using Test
 using Muscade
 using StaticArrays,SparseArrays
 
+# Classic spring element, with unknown force u
 struct El1 <: AbstractElement
     K :: 𝕣
 end
@@ -18,7 +19,7 @@ Muscade.doflist( ::Type{El1})  = (inod =(1 ,1), class=(:X,:U), field=(:tx1,:utx1
 # Parameters
 model           = Model(:NoConfidenceX)
 model2           = Model(:SameConfidenceXU)
-k = 5.
+k = 5. # Stiffness (N/m)
 σₓ = 1e10
 σᵤ = 0.1
 σₓ₂ = 2e-2
@@ -53,9 +54,13 @@ Lvv_out2 = output2.Lvv
 covarMatrix2 = Matrix(Lvv_out2)^-1
 
 @testset "uncertain X" begin
+    # This test considers a standard deviation of σₓ = 1e10 m (infinite) for the position x, but a std for the force u of σᵤ = 0.01 N.
+    # It can be then compared to a analytical problem where you express the probability distribution of x, knowing the Gaussian pdf of u with mean 0 and variance σᵤ² = 0.0001.
+    # The solution is analytically derived: x follows a Gaussian pdf with mean 0 and standard deviation σₓ = σᵤ/K. 
     @test covarMatrix[2,2] ≈ (σᵤ/k)^2
     @test covarMatrix[3,3] ≈ (σᵤ)^2
 end
+
 @testset "equally certain X and U" begin
     @test covarMatrix2[2,2] ≈ (σₓ₂)^2 * 0.5
     @test covarMatrix2[3,3] ≈ (σᵤ)^2  * 0.5
