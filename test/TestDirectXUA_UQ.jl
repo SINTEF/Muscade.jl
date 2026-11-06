@@ -30,13 +30,12 @@ n2              = addnode!(model2,𝕣[0])
 e2              = addelement!(model2,El1,[n2], K=k)
 
 # Costs
-@functor with() fu(u,t)   = 0.5 * (u / σᵤ)^2
-@functor with() l1(x,t) = 0.5 * ((x-1.) / σₓ)^2
-@functor with() l2(x,t) = 0.5 * ((x-1.) / σₓ₂)^2
-e11            = addelement!(model,SingleDofCost,[n1];class=:X,field=:tx1,     cost=l1)
-e12             = addelement!(model,SingleDofCost,[n1];class=:U,field=:utx1,     cost=fu)
-e21            = addelement!(model2,SingleDofCost,[n2];class=:X,field=:tx1,     cost=l2)
-e22             = addelement!(model2,SingleDofCost,[n2];class=:U,field=:utx1,     cost=fu)
+@functor with() fu(u,t,σ)   = 0.5 * (u / σ)^2
+@functor with() l1(x,t,σ) = 0.5 * ((x-1.) / σ)^2
+e11            = addelement!(model,SingleDofCost,[n1];class=:X,field=:tx1,     cost=l1,     costargs = (σ=σₓ,))
+e12             = addelement!(model,SingleDofCost,[n1];class=:U,field=:utx1,     cost=fu,   costargs = (σ=σᵤ,))
+e21            = addelement!(model2,SingleDofCost,[n2];class=:X,field=:tx1,     cost=l1,    costargs = (σ=σₓ₂,))
+e22             = addelement!(model2,SingleDofCost,[n2];class=:U,field=:utx1,     cost=fu,  costargs = (σ=σᵤ,))
 
 # Resolutions
 initialstate    = initialize!(model)

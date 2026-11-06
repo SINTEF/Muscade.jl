@@ -488,7 +488,7 @@ The solver does not yet support interior point methods.
 - `saveiter=false`    set to true so that the output `state` contains the states 
                       at each Newton-Raphson iteration (for debugging 
                       non-convergence). 
-- `saveLvv=false`     set to true so that the output `state` is a named tuple with the usual output of the solver, and the Hessian Lvv of the Lagragian. 
+- `saveLvv=false`     set to true so that the output `state` is a named tuple with the usual output of the solver, and the Hessian Lvv of the Lagrangian. 
 Setting the following flags to `true` will improve the sparsity of the system. But setting
 a flag to `true` when the condition isn't met causes the Hessian to be wrong, which is detrimental for convergence.                      
 - `Xwhite=false`      `true` if response measurement error is a white noise process.
