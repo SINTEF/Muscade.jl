@@ -138,7 +138,7 @@ function draw_!(graphic::Graphic,dis::EletypDisassembler,eleobj::AbstractVector{
         A[:,i]  = state.A[index.A]
     end
     mut     = readObservable(graphic.obs)
-    mut     = update_drawing(graphic.axis,eleobj,mut,graphic.opt, Λ,X,U,A,state.time,state.SP,(dbg...,iele=iele))
+    mut     = update_drawing(graphic.axis,eleobj,mut,graphic.opt, Λ,X,U,A,state.time,state.SP,(;dbg...,iele=iele))
     writeObservable!(graphic.obs,mut)
     # foreach(graphic.obs,mut) do obsᵢ,mutᵢ
     #     obsᵢ[] = mutᵢ

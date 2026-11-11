@@ -77,7 +77,7 @@ function solve(::Type{FreqXU{OX,OU}},pstate,verbose::𝕓,dbg;
     out,asm,dofgr         = prepare(AssemblyDirect,model,dis,wanted)   # model assembler for all arrays   
 
     verbose && @printf("    Computing matrices\n")
-    assemble!{:matrices}(out,asm,dis,model,stateᵣ,Δt,(dbg...,solver=:FreqXU,phase=:matrices))            # assemble all model matrices - in class-blocks
+    assemble!{:matrices}(out,asm,dis,model,stateᵣ,Δt,(;dbg...,solver=:FreqXU,phase=:matrices))            # assemble all model matrices - in class-blocks
     pattern               = make_λxu_sparsepattern(out)
     L2                    = Vector{Sparse𝕣2}(undef,5)
     L2[1],L2bigasm,L1bigasm,Ldis  = prepare(pattern)  
@@ -85,7 +85,7 @@ function solve(::Type{FreqXU{OX,OU}},pstate,verbose::𝕓,dbg;
     for ider              = 2:5
         L2[ider]          = copy(L2[1])
     end    
-    assemblebigmat!(L2,L2bigasm,asm,model,dis,out,(dbg...,solver=:FreqXU))              # assemble all complete model matrices into L2
+    assemblebigmat!(L2,L2bigasm,asm,model,dis,out,(;dbg...,solver=:FreqXU))              # assemble all complete model matrices into L2
 
     verbose && @printf("    Improving sparsity ")    
     keep = sparser!(L2,droptol)

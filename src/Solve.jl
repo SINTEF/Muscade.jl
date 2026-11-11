@@ -19,7 +19,7 @@ function solve(Solver::Type{<:AbstractSolver};dbg=NamedTuple(),verbose::𝕓=tru
     pstate = Ref{Any}() # state is not a return argument of the solver, so that partial results are not lost on error
     if catcherror
         try
-            t = @elapsed solve(Solver,pstate,verbose,(dbg...,solver=Symbol(Solver));kwargs...)  
+            t = @elapsed solve(Solver,pstate,verbose,(;dbg...,solver=Symbol(Solver));kwargs...)  
             verbose && @printf("    %s time: %s\n",Symbol(Solver),showtime(t))
         catch exn
             silenterror || report(exn)
@@ -27,7 +27,7 @@ function solve(Solver::Type{<:AbstractSolver};dbg=NamedTuple(),verbose::𝕓=tru
             silenterror || println(" Function 'solve' still returns any results obtained before the exception.")
         end
     else
-        t = @elapsed solve(Solver,pstate,verbose,(dbg...,solver=Symbol(Solver));kwargs...)  
+        t = @elapsed solve(Solver,pstate,verbose,(;dbg...,solver=Symbol(Solver));kwargs...)  
         verbose && @printf("    %s time: %s\n",Symbol(Solver),showtime(t))
     end
     verbose && printstyled("Muscade done.\n\n\n",bold=true,color=:cyan)

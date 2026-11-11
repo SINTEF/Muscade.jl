@@ -424,7 +424,7 @@ function study_scale(state::State;SP=nothing,verbose::𝕓=true,dbg=(;))
     tmp                = state.SP 
     state.SP           = SP
     out,asm,dofgr      = prepare(Assemblystudy_scale,model,dis)
-    assemble!{:ok}(out,asm,dis,model,state,idmult,(dbg...,solver=:study_scale))
+    assemble!{:ok}(out,asm,dis,model,state,idmult,(;dbg...,solver=:study_scale))
     state.SP           = tmp
     Z                  = zeros(getndof(dofgr))
     get!(state,1,Z,dofgr) 
@@ -598,7 +598,7 @@ function study_singular(state::State;SP,iclasses=(Λ,:X,:U,:A),jclasses=iclasses
     out,asm,idofgr,jdofgr  = prepare(Assemblystudy_singular,model,dis,iclasses,jclasses)
     tmp = state.SP
     state.SP = SP
-    assemble!(out,asm,dis,model,state,(dbg...,solver=:study_scale))
+    assemble!(out,asm,dis,model,state,(;dbg...,solver=:study_scale))
     state.SP = tmp
     kernel =  nullspace(Matrix(out.Lij))
     nker   = size(kernel,2)
@@ -765,7 +765,7 @@ function Monitor(nod::Vector{Node};TargetElement,trigger::Function,elementkwargs
 end
 doflist( ::Type{<:Monitor{Teleobj}}) where{Teleobj} = doflist(Teleobj)
 @espy function lagrangian(o::Monitor{Teleobj}, Λ,X,U,A,t,SP,dbg)  where{Teleobj}
-    L,FB = getlagrangian(o.eleobj,Λ,X,U,A,t,SP,(dbg...,via=Monitor))
+    L,FB = getlagrangian(o.eleobj,Λ,X,U,A,t,SP,(;dbg...,via=Monitor))
     if o.trigger(dbg)
         @show dbg
         @show SP

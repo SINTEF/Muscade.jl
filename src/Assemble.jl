@@ -452,7 +452,7 @@ function assemble!{mission}(out::Assembly,asm,dis,model,state,Δt,dbg) where{mis
     zero!(out)
     for ieletyp = 1:lastindex(model.eleobj)
         eleobj  = model.eleobj[ieletyp]
-        assemble_!{mission}(out,view(asm,:,ieletyp),dis.dis[ieletyp],eleobj,state,state.time,Δt,state.SP,(dbg...,ieletyp=ieletyp))
+        assemble_!{mission}(out,view(asm,:,ieletyp),dis.dis[ieletyp],eleobj,state,state.time,Δt,state.SP,(;dbg...,ieletyp))
     end
 end
 assemble_!{         mission}(out::Assembly,asm,dis,eleobj::Vector{<:Acost},state::State{nΛder,nXder,nUder},t,Δt,SP,dbg) where{mission,nΛder,nXder,nUder} = nothing
@@ -463,7 +463,7 @@ function assemble_!{mission}(out::Assembly,asm,dis,eleobj                 ,state
         Xe    = NTuple{nXder}(x[index.X] for x∈state.X)
         Ue    = NTuple{nUder}(u[index.U] for u∈state.U)
         Ae    =         state.A[index.A]
-        addin!{mission}(out,asm,iele,dis.scale,eleobj[iele],Λe,Xe,Ue,Ae, t,Δt,SP,(dbg...,iele=iele)) # defined by solver.  Called for each element. But the asm that is passed
+        addin!{mission}(out,asm,iele,dis.scale,eleobj[iele],Λe,Xe,Ue,Ae, t,Δt,SP,(;dbg...,iele)) # defined by solver.  Called for each element. But the asm that is passed
     end                                                                              # is of the form asm[iarray][i,iele], because addin! will add to all arrays in one pass
 end
 
@@ -474,7 +474,7 @@ end
 #     zero!(out)
 #     for ieletyp = 1:lastindex(model.eleobj)
 #         eleobj  = model.eleobj[ieletyp]
-#         assemble_!{mission}(out,view(asm,:,ieletyp),dis.dis[ieletyp],eleobj,Λ,X,U,A,t,Δt,nothing,(dbg...,ieletyp=ieletyp))
+#         assemble_!{mission}(out,view(asm,:,ieletyp),dis.dis[ieletyp],eleobj,Λ,X,U,A,t,Δt,nothing,(;dbg...,ieletyp=ieletyp))
 #     end
 # end
 # assemble_!{mission}(out::Assembly,asm,dis,eleobj::Acost,Λ,X,U,A,t,Δt,SP,dbg) where{mission} = nothing
@@ -485,7 +485,7 @@ end
 #         Xe    = NTuple{nXder}(x[index.X] for x∈X)
 #         Ue    = NTuple{nUder}(u[index.U] for u∈U)
 #         Ae    = A[index.A]
-#         addin!{mission}(out,asm,iele,dis.scale,eleobj[iele],Λe,Xe,Ue,Ae, t,Δt,SP,(dbg...,iele=iele)) # defined by solver.  Called for each element. But the asm that is passed
+#         addin!{mission}(out,asm,iele,dis.scale,eleobj[iele],Λe,Xe,Ue,Ae, t,Δt,SP,(;dbg...,iele=iele)) # defined by solver.  Called for each element. But the asm that is passed
 #     end                                                                              # is of the form asm[iarray][i,iele], because addin! will add to all arrays in one pass
 # end
 
@@ -494,14 +494,14 @@ function assembleA!{mission}(out::Assembly,asm,dis,model,state,dbg) where{missio
     zero!(out)
     for ieletyp = 1:lastindex(model.eleobj)
         eleobj  = model.eleobj[ieletyp]
-        assembleA_!{mission}(out,view(asm,:,ieletyp),dis.dis[ieletyp],eleobj,state,(dbg...,assembleA=true,ieletyp=ieletyp))
+        assembleA_!{mission}(out,view(asm,:,ieletyp),dis.dis[ieletyp],eleobj,state,(;dbg...,assembleA=true,ieletyp))
     end
 end
 assembleA_!{mission}(out::Assembly,asm,dis,eleobj,state,dbg) where{mission} = nothing
 function assembleA_!{mission}(out::Assembly,asm,dis,eleobj::Vector{A},state,dbg) where{mission,A<:Acost}
     for iele  = 1:lastindex(eleobj)
         Ae    = state.A[dis.index[iele].A]
-        addin!{mission}(out,asm,iele,dis.scale,eleobj[iele],Ae,(dbg...,iele=iele))                
+        addin!{mission}(out,asm,iele,dis.scale,eleobj[iele],Ae,(;dbg...,iele=iele))                
     end
 end
 
@@ -624,13 +624,13 @@ haslagrangian(::Eleobj) where{Eleobj} = Val(hasmethod(lagrangian,(Eleobj,NTuple,
 function getresidual(eleobj::Eleobj,X,U,A,t,SP,dbg,req) where{Eleobj} 
     R,FB,eleres = getresidual(eleobj,hasresidual(eleobj),haslagrangian(eleobj),no_second_order(Eleobj),X,U,A,t,SP,dbg,req) 
     R isa SVector{length(X[1])} || muscadeerror(dbg,@sprintf("R, from residual(%s,...), must be a SVector of length nXdof",Eleobj))
-    hasnan(R,FB) && muscadeerror((dbg...,t=t,SP=SP ),@sprintf("residual(%s,...) returned NaN in R, FB or derivatives",Eleobj))  
+    hasnan(R,FB) && muscadeerror((;dbg...,t=t,SP=SP ),@sprintf("residual(%s,...) returned NaN in R, FB or derivatives",Eleobj))  
     return R,FB,eleres
 end
 function getresidual(eleobj::Eleobj,X,U,A,t,SP,dbg,req...) where{Eleobj} 
     R,FB     = getresidual(eleobj,hasresidual(eleobj),haslagrangian(eleobj),no_second_order(Eleobj),X,U,A,t,SP,dbg    ) 
     R isa SVector{length(X[1])} || muscadeerror(dbg,@sprintf("R, from residual(%s,...), must be a SVector of length nXdof",Eleobj))
-    hasnan(R,FB) && muscadeerror((dbg...,t=t,SP=SP ),@sprintf("residual(%s,...) returned NaN in R, FB or derivatives",Eleobj))  
+    hasnan(R,FB) && muscadeerror((;dbg...,t=t,SP=SP ),@sprintf("residual(%s,...) returned NaN in R, FB or derivatives",Eleobj))  
     return R,FB
 end
 
@@ -680,19 +680,19 @@ end
 
 # has nothing !?!
 getresidual(eleobj::Eleobj,hasres::Val{false},haslag::Val{false},nso, X,U,A,t,SP,dbg,req...) where{Eleobj} =
-    muscadeerror((dbg...,t=t,SP=SP),@sprintf("Element %s must have method 'Muscade.lagrangian' or/and 'Muscade.residual' with correct interface",Eleobj))
+    muscadeerror((;dbg...,t=t,SP=SP),@sprintf("Element %s must have method 'Muscade.lagrangian' or/and 'Muscade.residual' with correct interface",Eleobj))
 
 # Acost
 function getlagrangian(eleobj::Acost, A::SVector, SP, dbg,req) 
     L,FB,eleres = lagrangian(eleobj,A,SP,dbg,req)    
     L isa ℝ || muscadeerror(dbg,@sprintf("L, from lagrangian(%s,...), must be a ℝ, alias Real",Eleobj))
-    hasnan(L,FB) && muscadeerror((dbg...,t=t,SP=SP),"lagrangian(Acost,...) returned NaN in L, FB or derivatives") 
+    hasnan(L,FB) && muscadeerror((;dbg...,t=t,SP=SP),"lagrangian(Acost,...) returned NaN in L, FB or derivatives") 
     return L,FB,eleres  
 end
 function getlagrangian(eleobj::Acost, A::SVector, SP, dbg) 
     L,FB = lagrangian(eleobj,A,SP,dbg)    
     L isa ℝ || muscadeerror(dbg,@sprintf("L, from lagrangian(%s,...), must be a ℝ, alias Real",Eleobj))
-    hasnan(L,FB) && muscadeerror((dbg...,t=t,SP=SP),@sprintf("lagrangian(Acost,...) returned NaN in L, FB or derivatives",Eleobj)) 
+    hasnan(L,FB) && muscadeerror((;dbg...,t=t,SP=SP),@sprintf("lagrangian(Acost,...) returned NaN in L, FB or derivatives",Eleobj)) 
     return L,FB  
 end
 
@@ -701,14 +701,14 @@ function getlagrangian(eleobj::Eleobj, Λ::SVector{Nx}, X::NTuple{Ndx,SVector{Nx
         U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na}, t::ℝ,SP,dbg,req)     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
     L,FB,eleres = getlagrangian(eleobj,hasresidual(eleobj),haslagrangian(eleobj),no_second_order(Eleobj),Λ,X,U,A,t,SP,dbg,req)    
     L isa ℝ || muscadeerror(dbg,@sprintf("L, from lagrangian(%s,...), must be a ℝ, alias Real",Eleobj))
-    hasnan(L,FB) && muscadeerror((dbg...,t=t,SP=SP),@sprintf("lagrangian(%s,...) returned NaN in L, FB or derivatives",Eleobj)) 
+    hasnan(L,FB) && muscadeerror((;dbg...,t=t,SP=SP),@sprintf("lagrangian(%s,...) returned NaN in L, FB or derivatives",Eleobj)) 
     return L,FB,eleres  
 end
 function getlagrangian(eleobj::Eleobj, Λ::SVector{Nx}, X::NTuple{Ndx,SVector{Nx}}, 
         U::NTuple{Ndu,SVector{Nu}}, A::SVector{Na}, t::ℝ,SP,dbg,req...)     where{Eleobj<:AbstractElement,Ndx,Nx,Ndu,Nu,Na} 
     L,FB           = getlagrangian(eleobj,hasresidual(eleobj),haslagrangian(eleobj),no_second_order(Eleobj),Λ,X,U,A,t,SP,dbg       )    
     L isa ℝ || muscadeerror(dbg,@sprintf("L, from lagrangian(%s,...), must be a ℝ, alias Real",Eleobj))
-    hasnan(L,FB) && muscadeerror((dbg...,t=t,SP=SP),@sprintf("lagrangian(%s,...) returned NaN in L, FB or derivatives",Eleobj)) 
+    hasnan(L,FB) && muscadeerror((;dbg...,t=t,SP=SP),@sprintf("lagrangian(%s,...) returned NaN in L, FB or derivatives",Eleobj)) 
     return L,FB        
 end
 
@@ -756,4 +756,4 @@ end
 
 # has nothing !?!
 getlagrangian(eleobj::Eleobj,hasres::Val{false},haslag::Val{false},nso, Λ,X,U,A,t,SP,dbg,req...)     where{Eleobj} =
-    muscadeerror((dbg...,t=t,SP=SP),@sprintf("Element %s must have method 'Muscade.lagrangian' or/and 'Muscade.residual' with correct interface",Eleobj))
+    muscadeerror((;dbg...,t=t,SP=SP),@sprintf("Element %s must have method 'Muscade.lagrangian' or/and 'Muscade.residual' with correct interface",Eleobj))

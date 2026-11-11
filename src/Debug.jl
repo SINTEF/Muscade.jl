@@ -116,3 +116,17 @@ struct Scoop<: Exception scooped end
 Base.showerror(io::IO, ex::Scoop) = print(io,"Scoop, data = Muscade.scoop(err) to retrieve scooped data") 
 scoop(args...) = throw(Scoop(args))
 scoop(err::Base.ExceptionStack) = err.stack[1].exception.error.scooped
+
+
+function state_memory(s)
+    for i∈eachindex(s.Λ)
+        println("   state.Λ[order=$(i-1)] @ $(Int64(pointer(s.Λ[i])))")
+    end    
+    for i∈eachindex(s.X)
+        println("   state.X[order=$(i-1)] @ $(Int64(pointer(s.X[i])))")
+    end    
+    for i∈eachindex(s.U)
+        println("   state.U[order=$(i-1)] @ $(Int64(pointer(s.U[i])))")
+    end    
+    println("   state.A          @ $(Int64(pointer(s.A)))")
+end

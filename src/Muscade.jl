@@ -75,6 +75,8 @@ module Muscade
     include("Solve.jl")
     export solve
 
+    include("Multithreading.jl")
+
     include("SparseTools.jl")
     
     include("FiniteDifferences.jl")
@@ -83,7 +85,7 @@ module Muscade
     export SweepX
 
     include("SweepXA.jl")
-    export SweepXA
+    export SweepXA,Sweep
 
     include("DirectXUA.jl")
     export DirectXUA
@@ -115,8 +117,6 @@ module Muscade
     public getδω,getδt,𝔉,𝔉⁻¹
 
     include("Eigenmodes.jl")
-
-    include("Multithreading.jl")
 
     public Toolbox
     module Toolbox

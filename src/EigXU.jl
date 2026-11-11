@@ -84,7 +84,7 @@ function assemblebigmat!(L2::Vector{Sparse𝕣2},L2bigasm::SparseMatrixCSC,asm,m
 end
 function assemblebigvec!(L1,L1bigasm::𝕫1,asm,model,dis,out::AssemblyDirect,state,Δt,dbg) 
     zero!.(L1)
-    assemble!{:vectors}(out,asm,dis,model,state,Δt,(dbg...,asm=:assemblebigvec!)) # first assemble model vectors
+    assemble!{:vectors}(out,asm,dis,model,state,Δt,(;dbg...,asm=:assemblebigvec!)) # first assemble model vectors
     for β ∈ λxu                                                                # then collate them into
         Lβ = out.L1[β]
         for βder = 1:size(Lβ,1)
@@ -170,7 +170,7 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
     out,asm,dofgr         = prepare(AssemblyDirect,model,dis,wanted)   # model assembler for all arrays   
 
     verbose && @printf("    Computing matrices\n")
-    assemble!{:matrices}(out,asm,dis,model,state₀,idmult,(dbg...,solver=:EigXU,phase=:matrices))            # assemble all model matrices - in class-blocks
+    assemble!{:matrices}(out,asm,dis,model,state₀,idmult,(;dbg...,solver=:EigXU,phase=:matrices))            # assemble all model matrices - in class-blocks
     pattern               = make_λxu_sparsepattern(out)
     L2                    = Vector{Sparse𝕣2}(undef,5)
     L2[1],L2bigasm,L1bigasm,Ldis  = prepare(pattern)  
@@ -178,7 +178,7 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
     for ider              = 2:5
         L2[ider]          = copy(L2[1])
     end    
-    assemblebigmat!(L2,L2bigasm,asm,model,dis,out,(dbg...,solver=:EigXU))              # assemble all complete model matrices into L2
+    assemblebigmat!(L2,L2bigasm,asm,model,dis,out,(;dbg...,solver=:EigXU))              # assemble all complete model matrices into L2
     nXdof,nUdof           = getndof(model,(:X,:U))
     ixu                   = (nXdof+1):(2nXdof+nUdof)
     B                     = sparse(ixu,ixu,𝕣1(undef,nXdof+nUdof)) # ndof×ndof

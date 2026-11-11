@@ -42,7 +42,7 @@ function solve(::Type{EigX{ℝ}},pstate,verbose,dbg;
     out,asm,dofgr    = prepare(AssemblyDirect,model,dis,wanted)  
     nXdof            = getndof.(dofgr)[ind.X]
     state₀           = State{1,OX+1,OU+1}(copy(state)) 
-    assemble!{:matrices}(out,asm,dis,model,state₀,idmult,(dbg...,solver=:EigXℝ))
+    assemble!{:matrices}(out,asm,dis,model,state₀,idmult,(;dbg...,solver=:EigXℝ))
     K                = out.L2[ind.Λ,ind.X][1,1]
     M                = out.L2[ind.Λ,ind.X][1,3]
     sparser!(K,droptol)
@@ -72,7 +72,7 @@ function solve(::Type{EigX{:fullℝ}},pstate,verbose,dbg; state::State)
     out,asm,dofgr    = prepare(AssemblyDirect,model,dis,wanted)  
     nXdof            = getndof.(dofgr)[ind.X]
     state₀           = State{1,OX+1,OU+1}(copy(state)) 
-    assemble!{:matrices}(out,asm,dis,model,state₀,idmult,(dbg...,solver=:EigXfullℝ))
+    assemble!{:matrices}(out,asm,dis,model,state₀,idmult,(;dbg...,solver=:EigXfullℝ))
     K                = Matrix(out.L2[ind.Λ,ind.X][1,1])
     M                = Matrix(out.L2[ind.Λ,ind.X][1,3])
 
@@ -145,7 +145,7 @@ function solve(::Type{EigX{ℂ}},pstate,verbose,dbg;
     out,asm,dofgr    = prepare(AssemblyDirect,model,dis,wanted)  
     nXdof            = getndof.(dofgr)[ind.X]
     state₀           = State{1,OX+1,OU+1}(copy(state))   
-    assemble!{:matrices}(out,asm,dis,model,state₀,idmult,(dbg...,solver=:EigXℂ))
+    assemble!{:matrices}(out,asm,dis,model,state₀,idmult,(;dbg...,solver=:EigXℂ))
     K                = out.L2[ind.Λ,ind.X][1,1]
     C                = out.L2[ind.Λ,ind.X][1,2]
     M                = out.L2[ind.Λ,ind.X][1,3]
@@ -174,7 +174,7 @@ function solve(::Type{EigX{:fullℂ}},pstate,verbose,dbg; state::State)
     out,asm,dofgr    = prepare(AssemblyDirect,model,dis,wanted)  
     nXdof            = getndof.(dofgr)[ind.X]
     state₀           = State{1,OX+1,OU+1}(copy(state))   
-    assemble!{:matrices}(out,asm,dis,model,state₀,idmult,(dbg...,solver=:EigXfullℂ))
+    assemble!{:matrices}(out,asm,dis,model,state₀,idmult,(;dbg...,solver=:EigXfullℂ))
     K                = out.L2[ind.Λ,ind.X][1,1]
     C                = out.L2[ind.Λ,ind.X][1,2]
     M                = out.L2[ind.Λ,ind.X][1,3]

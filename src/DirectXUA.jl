@@ -224,13 +224,13 @@ function addin!{mission}(out::AssemblyDirect{NDΛ,NDX,NDU,NDA},asm,iele,scale,o:
         _,_,(∂X,∂U,∂A)   = variate{1}((X,U,A),scale=(AllElements(scale.X),AllElements(scale.U),scale.A))
         ∂eX              = getsomedofs(∂X,ieX) 
         ∂eU              = getsomedofs(∂U,ieU) 
-        R[ieX],FB,eleres = getresidual(o.eleobj, ∂eX,∂eU,∂A,t,SP,(dbg...,via=:ElementDofAndCoonstraintAccelerator),o.req.eleres)  
+        R[ieX],FB,eleres = getresidual(o.eleobj, ∂eX,∂eU,∂A,t,SP,(;dbg...,via=:ElementDofAndCoonstraintAccelerator),o.req.eleres)  
     elseif NDA == 0
         class            = xu
         _,_,(∂X,∂U)      = variate{1}((X,U  ),scale=(AllElements(scale.X),AllElements(scale.U)        ))
         ∂eX              = getsomedofs(∂X,ieX) 
         ∂eU              = getsomedofs(∂U,ieU) 
-        R[ieX],FB,eleres = getresidual(o.eleobj, ∂eX,∂eU, A,t,SP,(dbg...,via=:ElementDofAndConstraintAccelerator),o.req.eleres)  
+        R[ieX],FB,eleres = getresidual(o.eleobj, ∂eX,∂eU, A,t,SP,(;dbg...,via=:ElementDofAndConstraintAccelerator),o.req.eleres)  
     end
 
     if o.gap ≠ nothing    
@@ -379,7 +379,7 @@ function assemblebig!{mission}(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out::AssemblyDi
     cumblk = 0
     if NDA==1
         Ablk = 3sum(nstep)+1  
-        assembleA!{mission}(out,asm,dis,model,state[1][1],(dbg...,asm=:assemblebig!)) 
+        assembleA!{mission}(out,asm,dis,model,state[1][1],(;dbg...,asm=:assemblebig!)) 
         La, Laa = out.L1[ind.A], out.L2[ind.A,ind.A]
         isassigned(La ,1  ) && addin!(Lvasm ,Lv ,out.L1[ind.A      ][1  ],Ablk     )  
         isassigned(Laa,1,1) && addin!(Lvvasm,Lvv,out.L2[ind.A,ind.A][1,1],Ablk,Ablk)
@@ -388,7 +388,7 @@ function assemblebig!{mission}(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out::AssemblyDi
     for iexp = 1:length(nstep)
         for istep = 1:nstep[iexp]
             state[iexp][istep].SP   = SP
-            assemble!{mission}(out,asm,dis,model,state[iexp][istep],idmult,(dbg...,asm=:assemblebig!,step=istep))
+            assemble!{mission}(out,asm,dis,model,state[iexp][istep],idmult,(;dbg...,asm=:assemblebig!,step=istep))
             for β∈class
                 Lβ = out.L1[β]
                 for βder = 1:size(Lβ,1)
@@ -525,9 +525,9 @@ function solve(::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
     S                     = State{1,OX+1,OU+1,@NamedTuple{γ::Float64,iter::Int64}}
     state                 = [Vector{S}(undef,nstep[iexp]) for iexp=1:nexp] # state[iexp][istep]
     if eltype(primerstate) <: Muscade.State
-        model,dis,Ainit = primerstate[1].model, primerstate[1].dis, primerstate[1].A 
+        model,dis,Ainit = primerstate[1].model, primerstate[1].dis, copy(primerstate[1].A) 
     else
-        model,dis,Ainit = primerstate[1][1].model, primerstate[1][1].dis, primerstate[1][1].A
+        model,dis,Ainit = primerstate[1][1].model, primerstate[1][1].dis, copy(primerstate[1][1].A)
     end
 
     # Test input dimension compatibility
@@ -557,7 +557,7 @@ function solve(::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
     # Prepare assembler
     verbose && @printf("\n    Preparing assembler\n")
     out,asm,dofgr         = prepare(AssemblyDirect,model,dis,wanted)          # mem and assembler for system at any given step
-    assemble!{:matrices}(out,asm,dis,model,state[1][1],idmult,(dbg...,solver=:DirectXUA,phase=:sparsity))    # create a sample "out" for preparebig
+    assemble!{:matrices}(out,asm,dis,model,state[1][1],idmult,(;dbg...,solver=:DirectXUA,phase=:sparsity))    # create a sample "out" for preparebig
     Lvv,Lv,Lvvasm,Lvasm,Lvdis = preparebig(IA,nstep,out)                                   # mem and assembler for big system
     cLvv                  = copy(Lvv)
     for iter              = 1:maxiter
@@ -565,7 +565,7 @@ function solve(::Type{DirectXUA{OX,OU,IA}},pstate,verbose::𝕓,dbg;
 
         verbose && @printf("        Assembling")
         SP = (γ=γ,iter=iter)
-        assemblebig!{:matrices}(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out,state,nstep,Δt,SP,(dbg...,solver=:DirectXUA,iter=iter))
+        assemblebig!{:matrices}(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out,state,nstep,Δt,SP,(;dbg...,solver=:DirectXUA,iter=iter))
         sparser!(cLvv,Lvv,1e-20) # TODO user defined parameter
         verbose && @printf(", solving")
         try 

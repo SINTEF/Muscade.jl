@@ -2,7 +2,7 @@ module TestMultithreading
 
 using Test
 using Muscade
-using Muscade: team, SequentialScheduler, SingleDependencyScheduler
+using Muscade: run_all_jobs!, SingleDependencyScheduler
 
 struct Job
     ijob :: 𝕫
@@ -11,64 +11,79 @@ struct Job
     done :: BitVector
     verbose :: 𝕓
 end
-function execute!(job::Job,error_ch) 
+function execute!(job::Job,error_ch,dbg;verbose=false,kwargs...) 
+    job.done[job.ijob] && muscadeerror("Job required is already completed")
     tend = round(Int64,1000_000_000*job.time) + time_ns()
     while time_ns() < tend 
         if isready(error_ch)
-            job.verbose && println("Job interrupted")
+            verbose && println("Job interrupted")
             return
         end
         if job.fail && time_ns()>tend/2
             muscadeerror("1202") # Now see where that got you!
         end
     end 
-    job.done[job.ijob] && muscadeerror("run twice?")
     job.done[job.ijob] = true
     return 
+end
+struct Accumulator
+    sum :: Ref{𝕣}
+end
+function reduce!(accum,job,dbg)
+    accum.sum[] += 1
 end
 
 
 ## Test
 
-# Sequential scheduler
+# # Sequential scheduler
 
 verbose = false
-@testset "SequentialScheduler" begin
+dbg = (;location=:testing)
+@testset "SingleDependencyScheduler sequential" begin
     done     = falses(7) 
-    jobs     = [Job(i,false,0.01+0.001i,done,verbose) for i=1:7] 
-    sched    = SequentialScheduler([4,1,2,3,6,7,5]) 
-    team(execute!,jobs,sched;verbose) 
+    jobs     = [Job(i,false,0.001+0.0001i,done,verbose) for i=1:7] 
+    accum    = Accumulator(Ref(0.))
+    sched    = SingleDependencyScheduler([4,3,0,0,1,2,5])  
+    run_all_jobs!{:sequential}(accum,execute!,reduce!,jobs,sched,verbose,dbg) 
     @test all(done)
+    @test accum.sum[] == 7
 end
 
 # Sequential scheduler with job error
 
-@testset "SequentialScheduler with job error" begin
+@testset "SingleDependencyScheduler sequential with job error" begin
     done     = falses(7) 
-    jobs     = [Job(i,i==7,0.01+0.001i,done,verbose) for i=1:7] 
-    sched    = SequentialScheduler([4,1,2,3,6,7,5]) 
-    @test_throws Muscade.MuscadeException team(execute!,jobs,sched;verbose)
-    @test done == [1,1,1,1,0,1,0]
+    jobs     = [Job(i,i==7,0.001+0.0001i,done,verbose) for i=1:7] 
+    accum    = Accumulator(Ref(0.))
+    sched    = SingleDependencyScheduler([4,3,0,0,1,2,5]) 
+    @test_throws Muscade.MuscadeException run_all_jobs!{:sequential}(accum,execute!,reduce!,jobs,sched,verbose,dbg)
+    @test done == [1,1,1,1,1,1,0]
+    @test accum.sum[] == 6
 end
 
 # SingleDependencyScheduler
 
-@testset "SingleDependencyScheduler" begin
+@testset "SingleDependencyScheduler parallel" begin
     done     = falses(7) 
     sched    = SingleDependencyScheduler([4,3,0,0,1,2,5]) 
-    jobs     = [Job(i,false,0.01+0.001i,done,verbose) for i=1:7] 
-    team(execute!,jobs,sched,nworker=3;verbose)
+    jobs     = [Job(i,false,0.001+0.0001i,done,verbose) for i=1:7] 
+    accum    = Accumulator(Ref(0.))
+    run_all_jobs!{:parallel}(accum,execute!,reduce!,jobs,sched,verbose,dbg;nworker=3)
     @test all(done)
+    @test accum.sum[] == 7
 end
 
 # SingleDependencyScheduler with job error
 
-@testset "SingleDependencyScheduler with job error" begin
+@testset "SingleDependencyScheduler parallel with job error" begin
     done     = falses(7) 
     sched    = SingleDependencyScheduler([4,3,0,0,1,2,5]) 
-    jobs     = [Job(i,i==4,0.01+0.001i,done,verbose) for i=1:7] 
-    @test_throws Muscade.ErrorInMultithread   team(execute!,jobs,sched,nworker=3;verbose)
+    jobs     = [Job(i,i==4,0.001+0.0001i,done,verbose) for i=1:7] 
+    accum    = Accumulator(Ref(0.))
+    @test_throws Muscade.ErrorInMultithread   run_all_jobs!{:parallel}(accum,execute!,reduce!,jobs,sched,verbose,dbg;nworker=3)
     @test all(done .≤ [0,1,1,1,0,1,0]) # what exactly will be done is a race
+    @test accum.sum[] ≤ 4
 end
 
 end

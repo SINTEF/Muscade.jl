@@ -135,7 +135,7 @@ function extractkernel!(iele::AbstractVector{𝕫},eleobj::Vector{E},dis::Eletyp
         X     = Tuple(Xᵢ[index.X] for Xᵢ∈s.X)
         U     = Tuple(Uᵢ[index.U] for Uᵢ∈s.U)
         A     = s.A[index.A]
-        L,FB,e = getlagrangian(eleobj[i],Λ,X,U,A,s.time,s.SP,(dbg...,istep=istep,iele=i),req)
+        L,FB,e = getlagrangian(eleobj[i],Λ,X,U,A,s.time,s.SP,(;dbg...,istep=istep,iele=i),req)
         e
     end for i∈iele, (istep,s)∈enumerate(state)]
 end

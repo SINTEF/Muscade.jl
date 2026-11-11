@@ -114,7 +114,7 @@ function Xdiffedresidual(o::ElementCostAndConstraint{NSO,TargetElement,λxinod,�
 
     eX               = getsomedofs(X,ieX) 
     eU               = getsomedofs(U,ieU) 
-    R[ieX],FB,eleres = getresidual(o.eleobj, eX,eU, A,t,SP,(dbg...,via=:ElementDofAndConstraintAccelerator),o.req.eleres)  
+    R[ieX],FB,eleres = getresidual(o.eleobj, eX,eU, A,t,SP,(;dbg...,via=:ElementDofAndConstraintAccelerator),o.req.eleres)  
 
     if typeof(o.gap) ≠ Nothing 
         γ            = default{:γ}(SP,0.)
@@ -247,8 +247,8 @@ function solve(SX::Type{SweepX{OX}},pstate,verbose,dbg;
         for iiter    = 1:maxiter
             citer   += 1
             firstiter = iiter==1
-            if   firstiter assemble!{:step}(out,asm,dis,model,state,Δt,(dbg...,solver=:SweepX,istep=istep,iiter=iiter))
-            else           assemble!{:iter}(out,asm,dis,model,state,Δt,(dbg...,solver=:SweepX,istep=istep,iiter=iiter))
+            if   firstiter assemble!{:step}(out,asm,dis,model,state,Δt,(;dbg...,solver=:SweepX,istep=istep,iiter=iiter))
+            else           assemble!{:iter}(out,asm,dis,model,state,Δt,(;dbg...,solver=:SweepX,istep=istep,iiter=iiter))
             end
             try if istep==1  && firstiter  Lλx = lu(out.Lλx) # here we do not write "local Lλx", so we refer to the variable defined outside the loops (we do not shadow Lλx)
             else                          lu!(Lλx, out.Lλx) 
