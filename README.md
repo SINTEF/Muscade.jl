@@ -45,20 +45,23 @@ Some newer features, which have the vocation to be part of the next release, are
 
 ## Citation
 
-If you use this package in published work, please cite (review on-going):
+If you use this package in published work, please cite:
 
 > P. Maincon and T. Sauder, "Muscade.jl : a Julia package for 
 > FEM-constrained optimisation", (2026). 
 > https://doi.org/10.1016/j.softx.2026.103186
 
 ```bibtex
-@article{MainconSauder2026,
-  author  = {Maincon, P. and Sauder, T.},
-  title   = {Muscade.jl : a Julia package for FEM-constrained optimisation},
+@Article{MuscadeInSoftwareX,
+  title = {Muscade.jl: A {{Julia}} Package for {{FEM-constrained}} Optimisation},
+  author = {Main{\c c}on, Philippe and Sauder, Thomas},
+  year = 2026,
   journal = {SoftwareX},
-  year    = {2026},
-  doi     = {10.1016/j.softx.2026.103186},
-  url     = {https://doi.org/10.1016/j.softx.2026.103186},
+  volume = {36},
+  pages = {103186},
+  issn = {23527110},
+  doi = {10.1016/j.softx.2026.103186},
+  urldate = {2026-11-06}
 }
 ```
 

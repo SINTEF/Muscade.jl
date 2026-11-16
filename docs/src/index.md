@@ -19,6 +19,23 @@ CurrentModule = Muscade
 
 `Muscade` deals with static problems (FEM-equilibrium at a given time, and an objective function that depends on the values of the dofs at that time), and dynamic problems (FEM-equilibrium at all time steps, and an objective function that depends on the values, of derivatives, of the dofs at all time steps).
 
+!!! info
+    `Muscade` is described in the SoftwareX paper [MuscadeInSoftwareX](@cite).
+    If you use this package in published work, please cite:
+    ```bibtex
+    @Article{MuscadeInSoftwareX,
+      title = {Muscade.Jl: A {{Julia}} Package for {{FEM-constrained}} Optimisation},
+      author = {Main{\c c}on, Philippe and Sauder, Thomas},
+      year = 2026,
+      journal = {SoftwareX},
+      volume = {36},
+      pages = {103186},
+      issn = {23527110},
+      doi = {10.1016/j.softx.2026.103186},
+      urldate = {2026-11-06}
+    }
+    ```
+
 ## Applications
 
 FEM-constrained optimisation problems include a variety of applications:
