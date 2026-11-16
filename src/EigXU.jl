@@ -106,8 +106,7 @@ end
 	EigXU{OX,OU}
 
 !!! warning    
-    `EigXU` is currently not working well due to problems with the sparse eigenvalue solver.
-    In addition, the solver is still experimental
+    The solver is still experimental
 
 Study the combinations of load and response that are least detected by sensor systems.
 
