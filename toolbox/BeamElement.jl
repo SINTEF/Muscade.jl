@@ -3,6 +3,8 @@
 using StaticArrays, LinearAlgebra, Muscade
 @functor with() g̃_default(t) = SVector(0.,0.,1.); 
 
+# Define first beam cross sections
+
 """
     BeamCrossSection 
 
@@ -62,45 +64,6 @@ struct BeamCrossSection{Tg̃}
 end
 BeamCrossSection(;EA,EI₂=EI₂,EI₃=EI₃,GJ=GJ,μ=μ,ι₁=ι₁,w=0.,g̃=g̃_default,Ca₁=0.,Cl₁=0.,Cq₁=0.,Ca₂=0.,Cl₂=0.,Cq₂=0.,Ca₃=0.,Cl₃=0.,Cq₃=0.) = BeamCrossSection(EA,EI₂,EI₃,GJ,μ,ι₁,w,g̃,Ca₁,Cl₁,Cq₁,Ca₂,Cl₂,Cq₂,Ca₃,Cl₃,Cq₃);
 
-# Resultant function that computes the internal loads from the strains and curvatures, and external loads on the element. 
-@espy function resultants(o::BeamCrossSection,ε,κ,xᵧ,rₛₘ,vᵢ,t) 
-    r₀  = ∂0(rₛₘ)  # orientation of the element's local refsys
-    vᵢ₁ = ∂1(vᵢ)  # intrinsic rotation rate         of the element's local refsys
-    vᵢ₂ = ∂2(vᵢ)  # intrinsic rotation acceleration of the element's local refsys
-    xᵧ₀,xᵧ₁,xᵧ₂ = ∂0(xᵧ),∂1(xᵧ),∂2(xᵧ)
-    xₗ₁          = xᵧ₁ ∘₁ r₀
-    xₗ₂          = xᵧ₂ ∘₁ r₀
-    ## Weight
-    fw = - o.w * o.g̃(t)
-    ## Compute translational inertia force 
-    fi = o.μ * xᵧ₂ 
-    ## Compute added mass force 
-    faₗ = SVector(o.Ca₁ * xₗ₂[1], o.Ca₂ * xₗ₂[2], o.Ca₃ * xₗ₂[3])
-    faᵧ = r₀ ∘₁ faₗ
-    ## Compute linear damping force 
-    flₗ = SVector(   o.Cl₁ * xₗ₁[1], o.Cl₂ * xₗ₁[2], o.Cl₃ * xₗ₁[3])
-    flᵧ = r₀ ∘₁ flₗ
-    ## Compute quadratic damping force
-    fq1ₗ = o.Cq₁ * xₗ₁[1]^2; if xₗ₁[1] < 0; fq1ₗ = -fq1ₗ end
-    fq2ₗ = o.Cq₂ * xₗ₁[2]^2; if xₗ₁[2] < 0; fq2ₗ = -fq2ₗ end
-    fq3ₗ = o.Cq₃ * xₗ₁[3]^2; if xₗ₁[3] < 0; fq3ₗ = -fq3ₗ end
-    fqₗ = SVector(fq1ₗ,fq2ₗ,fq3ₗ)
-    fqᵧ = r₀ ∘₁ fqₗ
-    # Summing up forces
-    ☼fₑ = fi + faᵧ + flᵧ + fqᵧ + fw # external forces at Gauss point.
-    ## Compute roll inertia moment 
-    m₁ₗ = o.ι₁*vᵢ₂[1] #local 
-    mᵧ = ∂0(rₛₘ)[:,1] * m₁ₗ #global
-    ☼mₑ = mᵧ  # external couples at Gauss point. 
-    ## Compute internal loads
-    ☼fᵢ = o.EA*∂0(ε)
-    ## WARNING: curvatures are defined as rate of rotation along the element, not second derivatives of deflection.  
-    ## Hence κ[3]>0 implies +2 direction is inside curve, 
-    ##       κ[2]>0 implies -3 direction is inside curve.
-    ☼mᵢ  = SVector(o.GJ*∂0(κ)[1],o.EI₃*∂0(κ)[2],o.EI₂*∂0(κ)[3])
-    return fᵢ,mᵢ,fₑ,mₑ
-end;
-
 ## Static Euler beam element, with two nodes, four Gauss points and 12 degrees of freedom. 
 const ngp        = 4
 const ndim       = 3
@@ -108,7 +71,7 @@ const nXdof      = 12
 const nUdof      = 3
 const nXnod      = 2;
 
-# Shape functions for a beam element with support ζ∈[-1/2,1/2]. Though the shape function matrices are sparse, do not "unroll" them.  That would be applyer but considerably clutter the code                          
+# Shape functions for a beam element with support ζ∈[-1/2,1/2].                          
 yₐ(ζ) =            2ζ       # differential axial displacement or roll field
 yᵤ(ζ) =  -4ζ^3    +3ζ       # deflection due to differential nodal transverse translation
 yᵥ(ζ) =        ζ^2   - 1/4  # deflection due to differenttial rotation (bending, not torsion)
@@ -116,7 +79,8 @@ yᵥ(ζ) =        ζ^2   - 1/4  # deflection due to differenttial rotation (bend
 κᵤ(ζ) =  -24ζ               # curvature. κᵤ = yᵤ′′. Divide by L².
 κᵥ(ζ) =                2;   # curvature. κᵥ = yᵥ′′. Divide by L .
 
-# Data structure describing an EulerBeam3D element as meshed
+# ## Type
+
 """
     EulerBeam3D <: AbstractElement
 
@@ -182,8 +146,7 @@ struct EulerBeam3D{Mat,Uforce} <: AbstractElement
     mat      :: Mat              # used to store material properties (BeamCrossSection, for example)
 end;
 
-# For performance, `residual` will only accept differentiation to first order
-Muscade.no_second_order(::Type{<:EulerBeam3D}) = Val(true)
+# ## `doflist`
 
 # Define nodes, classes, and field names of dofs
 Muscade.doflist(     ::Type{EulerBeam3D{Mat,false}}) where{Mat} = 
@@ -197,29 +160,26 @@ Muscade.doflist(     ::Type{EulerBeam3D{Mat,true}}) where{Mat} =
          class= (:X,:X,:X,:X,:X,:X,:X,:X,:X,:X,:X,:X,:U,:U,:U),  
          field= (:t1,:t2,:t3,:r1,:r2,:r3, :t1,:t2,:t3,:r1,:r2,:r3,  :t1,:t2,:t3) )
 
-# Element Type for the EulerBeam3D element. Arguments: node list, material, and direction of the first bending axis in the global coordinate system.  
+
+# ## Constructor
+
+# Arguments: node list, material, and direction of the first bending axis in the global coordinate system.  
 EulerBeam3D(nod;kwargs...) = EulerBeam3D{false}(nod;kwargs...) # by default, EulerBeam3D does not have Udof.
 function EulerBeam3D{Udof}(nod::Vector{Node};mat,orient2::SVector{ndim,𝕣}=SVector(0.,1.,0.)) where {Udof}
-    c       = coord(nod)
-    ## Position of the middle of the element in the global coordinate system (as-meshed)
-    cₘ      = SVector{ndim}((c[1]+c[2])/2)
-    ## Length and tangential vector to the element in the global coordinate system  
+    c       = coord(nod) # Position of the middle of the element in the global coordinate system (as-meshed)
+    cₘ      = SVector{ndim}((c[1]+c[2])/2) # Length and tangential vector to the element in the global coordinate system  
     tgₘ     = SVector{ndim}( c[2]-c[1]   )
     L       = norm(tgₘ)
-    t       = tgₘ/L
-    ## Create t, n, b which are the longitudinal and two transverse unit vectors to the element (as-meshed). 
-    ## NB: orient2, provided by the user, will define the first bending axis. 
+    t       = tgₘ/L # Create t, n, b which are the longitudinal and two transverse unit vectors to the element (as-meshed). NB: orient2, provided by the user, will define the first bending axis. 
     orient2/= norm(orient2)
     n       = orient2 - t*dot(orient2,t) 
     nn      = norm(n) 
     nn>1e-3 || muscadeerror("Provide a 'orient' input that is not nearly parallel to the element")
     n      /= nn
     b       = cross(t,n)
-    rₘ      = SMatrix{ndim,ndim}(t...,n...,b...)
-    ## Tangential vector and node coordinates in the local coordinate system
-    tgₑ     = SVector{ndim}(L,0,0)
-    ## Weight associated to each Gauss point
-    dL    = SVector{ngp}(L/2*(18-sqrt(30))/36,L/2*(18+sqrt(30))/36  ,L/2*(18+sqrt(30))/36,L/2*(18-sqrt(30))/36  ) 
+    rₘ      = SMatrix{ndim,ndim}(t...,n...,b...) 
+    tgₑ     = SVector{ndim}(L,0,0) # Tangential vector and node coordinates in the local coordinate system 
+    dL    = SVector{ngp}(L/2*(18-sqrt(30))/36,L/2*(18+sqrt(30))/36  ,L/2*(18+sqrt(30))/36,L/2*(18-sqrt(30))/36  ) # Weight associated to each Gauss point
     ## Location ζgp of the Gauss points for a unit-length beam element, with nodes at ζnod=±1/2. 
     ζgp     = SVector{ngp  }(-1/2*sqrt(3/7+2/7*sqrt(6/5)),-1/2*sqrt(3/7-2/7*sqrt(6/5)), +1/2*sqrt(3/7-2/7*sqrt(6/5)),+1/2*sqrt(3/7+2/7*sqrt(6/5))) 
     ζnod    = SVector{nXnod}(-1/2  ,1/2  )
@@ -227,25 +187,56 @@ function EulerBeam3D{Udof}(nod::Vector{Node};mat,orient2::SVector{ndim,𝕣}=SVe
     return EulerBeam3D{typeof(mat),Udof}(cₘ,rₘ,ζgp,ζnod,tgₘ,tgₑ,shapes...,L,dL,mat)
 end;
 
+# ## `residual`
+
+# For performance, `residual` will only accept differentiation to first order
+Muscade.no_second_order(::Type{<:EulerBeam3D}) = Val(true)
+
+# Resultant function that computes the internal loads from the strains and curvatures, and external loads on the element. 
+# Note: curvatures are defined as rate of rotation along the element, not second derivatives of deflection. Hence κ[3]>0 implies +2 direction is inside curve, κ[2]>0 implies -3 direction is inside curve.
+@espy function resultants(o::BeamCrossSection,ε,κ,xᵧ,rₛₘ,vᵢ,t) 
+    r₀  = ∂0(rₛₘ)  # orientation of the element's local refsys
+    vᵢ₁ = ∂1(vᵢ)  # intrinsic rotation rate         of the element's local refsys
+    vᵢ₂ = ∂2(vᵢ)  # intrinsic rotation acceleration of the element's local refsys
+    xᵧ₀,xᵧ₁,xᵧ₂ = ∂0(xᵧ),∂1(xᵧ),∂2(xᵧ)
+    xₗ₁          = xᵧ₁ ∘₁ r₀
+    xₗ₂          = xᵧ₂ ∘₁ r₀
+    fw = - o.w * o.g̃(t) # weight
+    fi = o.μ * xᵧ₂ # Compute translational inertia force 
+    faₗ = SVector(o.Ca₁ * xₗ₂[1], o.Ca₂ * xₗ₂[2], o.Ca₃ * xₗ₂[3]) #added mass
+    faᵧ = r₀ ∘₁ faₗ
+    flₗ = SVector(   o.Cl₁ * xₗ₁[1], o.Cl₂ * xₗ₁[2], o.Cl₃ * xₗ₁[3]) #linear damping
+    flᵧ = r₀ ∘₁ flₗ
+    fq1ₗ = o.Cq₁ * xₗ₁[1]^2; if xₗ₁[1] < 0; fq1ₗ = -fq1ₗ end
+    fq2ₗ = o.Cq₂ * xₗ₁[2]^2; if xₗ₁[2] < 0; fq2ₗ = -fq2ₗ end
+    fq3ₗ = o.Cq₃ * xₗ₁[3]^2; if xₗ₁[3] < 0; fq3ₗ = -fq3ₗ end
+    fqₗ = SVector(fq1ₗ,fq2ₗ,fq3ₗ) # quadratic damping force
+    fqᵧ = r₀ ∘₁ fqₗ
+    ☼fₑ = fi + faᵧ + flᵧ + fqᵧ + fw # external forces at Gauss point.
+    m₁ₗ = o.ι₁*vᵢ₂[1] # roll inertia moment 
+    mᵧ = ∂0(rₛₘ)[:,1] * m₁ₗ 
+    ☼mₑ = mᵧ  # external couples at Gauss point. 
+    ☼fᵢ = o.EA*∂0(ε) # internal loads
+    ☼mᵢ  = SVector(o.GJ*∂0(κ)[1],o.EI₃*∂0(κ)[2],o.EI₂*∂0(κ)[3])
+    return fᵢ,mᵢ,fₑ,mₑ
+end;
+
 # Define now the residual function for the EulerBeam3D element.
 @espy function Muscade.residual(o::EulerBeam3D{Mat,Udof},   X,U,A,t,SP,dbg) where{Mat,Udof}
-    ## Compute all quantities at Gauss point, their time derivatives, including intrinsic roll rate and acceleration
-    P,ND,X_             = motion(X)
+    P,ND,X_             = motion(X)  # Compute all quantities at Gauss point, their time derivatives, including intrinsic roll rate and acceleration
     gp_,ε_,vₛₘ_,rₛₘ_,vₗ₂_,_,_ = kinematics{:direct}(o,X_)
     gpval,☼ε,☼rₛₘ        = motion⁻¹{P,ND}(gp_,ε_,rₛₘ_) 
     vᵢ                  = intrinsicrotationrates(rₛₘ)
-    ## compute all Jacobians of the above quantities with respect to X₀
     X₀                  = ∂0(X) 
     TX₀                 = revariate{P+1}(X₀)  
     Tgp,Tε,Tvₛₘ,_,_,_,_  = kinematics{:direct}(o,TX₀) # the crux
-    gp∂X₀,ε∂X₀,vₛₘ∂X₀    = chainrule_Jacobian((Tgp,Tε,Tvₛₘ),X₀)  
-    ## Quadrature loop: compute resultants
-    gp                  = ntuple(ngp) do igp
+    gp∂X₀,ε∂X₀,vₛₘ∂X₀    = chainrule_Jacobian((Tgp,Tε,Tvₛₘ),X₀) # compute all Jacobians of the above quantities with respect to X₀
+    gp                  = ntuple(ngp) do igp # Quadrature loop: compute resultants
         ☼x,☼κgp         = gpval[igp].x, gpval[igp].κ
         x∂X₀,κ∂X₀       = gp∂X₀[igp].x, gp∂X₀[igp].κ
         fᵢ,mᵢ,fₑ,mₑ     = ☼resultants(o.mat,ε,κgp,x,rₛₘ,vᵢ,t)          # call the "resultant" function to compute loads (local coordinates) from strains/curvatures/etc. using material properties. Note that output is dual of input. 
         fₑ              = Udof ? fₑ-∂0(U) : fₑ                    # U is per unit length
-        R_              = (fᵢ ∘₀ ε∂X₀ + mᵢ ∘₁ κ∂X₀ + fₑ ∘₁ x∂X₀ + mₑ ∘₁ vₛₘ∂X₀) * o.dL[igp]     # Contribution to the local nodal load of this Gauss point  [nXdof] = scalar*[nXdof] + [ndim]⋅[ndim,nXdof] + [ndim]⋅[ndim,nXdof]
+        R_              = (fᵢ ∘₀ ε∂X₀ + mᵢ ∘₁ κ∂X₀ + fₑ ∘₁ x∂X₀ + mₑ ∘₁ vₛₘ∂X₀) * o.dL[igp]  # Contribution to the local nodal load of this Gauss point  [nXdof] = scalar*[nXdof] + [ndim]⋅[ndim,nXdof] + [ndim]⋅[ndim,nXdof]
         @named(R_)
     end
     R                   = sum(gpᵢ.R_ for gpᵢ∈gp) 
@@ -286,7 +277,8 @@ function corotated{Mode}(o::EulerBeam3D,X₀)  where{Mode}
     return vₛₘ,rₛₘ,uₗ₂,vₗ₂,cₛ+cₘ
 end;
 
-# The following functions explain how the beam element should be drawn
+# ## Drawing
+
 using GLMakie
 """
 
