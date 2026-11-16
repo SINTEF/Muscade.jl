@@ -144,6 +144,9 @@ module Muscade
         include("../toolbox/MeshLine.jl")
         export MeshLine!
 
+        include("../toolbox/DryFriction.jl")
+        export DryFriction
+
         include("../toolbox/Unit.jl") 
         export ←,→
     end
