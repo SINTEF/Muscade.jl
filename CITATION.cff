@@ -17,7 +17,7 @@ authors:
 version: 0.8.0
 date-released: "2026-07-29"
 license: MIT
-repository-code: "https://https://github.com/SINTEF/Muscade.jl"
+repository-code: "https://github.com/SINTEF/Muscade.jl"
 keywords:
   - Julia
   - FEM
@@ -26,6 +26,7 @@ keywords:
   - load estimation
   - model recalibration
   - sensor fusion
+  - optimal control
 preferred-citation:
   type: article
   title: "Muscade.jl : a Julia package for FEM-constrained optimisation"
@@ -41,11 +42,7 @@ preferred-citation:
     affiliation: "SINTEF Ocean"
     orcid: "https://orcid.org/0000-0001-7445-7239"
   year: 2026
-  month: 7
+  month: 11
   journal: "SoftwareX"
-  identifiers:
-    - type: other
-      value: "ssrn:7268625"
-      description: "papers.ssrn.com"
-  doi: "10.2139/ssrn.7268625"
-  url: "https://doi.org/10.2139/ssrn.7268625"
+  doi: "10.1016/j.softx.2026.103186"
+  url: "https://doi.org/10.1016/j.softx.2026.103186"
