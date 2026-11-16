@@ -65,7 +65,7 @@ The implementation of a element requires
 - A **[constructor](@ref constructor)** which is called when the user adds an element to the model, and constructs the above `struct`.
 - **[`Muscade.doflist`](@ref)** specifies the degrees of freedom (dofs) of the element.
 - **[`Muscade.residual`](@ref)** (either this of [`Muscade.lagrangian`](@ref)) takes element dofs as input and returns the element's additive contribution to the residual of a non-linear system of equations,
-- **[`Muscade.lagrangian`](@ref)** (either this of [`Muscade.residual`](@ref)) takes element dofs as input and returns the element's additive contribution to a target function,
+- **[`Muscade.lagrangian`](@ref)** (either this of [`Muscade.residual`](@ref)) takes element dofs as input and returns the element's additive contribution to an objective function,
 - **[`Muscade.allocate_drawing`](@ref)**, **[`Muscade.update_drawing`](@ref)** and **[`Muscade.display_drawing!`](@ref)** (optional) to draw all the elements of the same element type.
 
 Each element must implement *either* [`Muscade.lagrangian`](@ref) *or* [`Muscade.residual`](@ref), depending on what is more natural: a beam element will implement [`Muscade.residual`](@ref) (element reaction forces as a function of nodal displacements), while an element representing a strain sensor will implement [`Muscade.lagrangian`](@ref) (log-of the probability density of the strain, given an uncertain measurement).
@@ -195,7 +195,7 @@ An element must implement at least one of `Muscade.lagrangian` or `Muscade.resid
 
 ### Method for `Muscade.lagrangian`
 
-Elements that implement a contribution to a target function must implement `Muscade.lagrangian`.
+Elements that implement a contribution to an objective function must implement `Muscade.lagrangian`.
 
 ```julia
 @espy function Muscade.lagrangian(o::MyElement,Λ,X,U,A,t,SP,dbg) 

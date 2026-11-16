@@ -18,7 +18,7 @@ FEM-constrained optimisation problems are optimisation problems that apply equil
 
 ## Purpose
 
-Muscade.jl aims to be a general platform for the solution of FEM-constrained optimisation problems, using differentiable FEM, and implementing algorithms adapted from optimal control. It uses Lagrange multipliers to handle a large number of constraints. 
+*Muscade.jl* aims to be a general platform for the solution of FEM-constrained optimisation problems, using differentiable FEM, and implementing algorithms adapted from optimal control. It uses Lagrange multipliers to handle a large number of constraints. 
 
 Muscade is not specific to a given branch of physics or engineering.  Instead, it provides a generic platform for the development of application-specific sets of elements, with a well-defined API for the element-developers. 
 
@@ -30,7 +30,7 @@ The unknowns that are dual to the FEM equations are noted X-dofs (the *response*
 
 ## Official documentation
 
-See the [documentation](https://sintef.github.io/Muscade.jl/stable/index.html).
+See the [documentation](https://sintef.github.io/Muscade.jl/stable/index.html). The dev branch also has its online [documentation](https://sintef.github.io/Muscade.jl/dev/).
 
 ## Installing the latest release of Muscade.jl
 

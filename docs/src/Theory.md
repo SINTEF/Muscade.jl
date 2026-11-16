@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This section presents the theory of how FEM-optimisation problems are *defined* or formulated.  This is of interest both for the user of a `Muscade`-based application, and for someone implementing new elements to create such an application.
+This section presents the theory of how FEM-constrained optimisation problems are *defined* or formulated.  This is of interest both for the user of a `Muscade`-based application, and for someone implementing new elements to create such an application.
 
 ## Classes of degrees of freedom
 
@@ -33,7 +33,7 @@ To simplify the presentations in the following, we drop time ``t`` from the nota
 
 ## Target function
 
-To make the problem well-posed again, we introduce a target function ``Q(X,U,A)``.  We then seek to make ``Q`` stationary (finding a local minimum or maximum), under the constraint ``R(X,U,A)=0``. Depending on the relevant application, the target function ``Q`` can represent different concepts.
+To make the problem well-posed again, we introduce an objective function ``Q(X,U,A)``.  We then seek to make ``Q`` stationary (finding a local minimum or maximum), under the constraint ``R(X,U,A)=0``. Depending on the relevant application, the objective function ``Q`` can represent different concepts.
 
 ### Target function as financial value
 In design optimisation, one can associate a monetary value to ``A`` (building stronger costs more money), and to ``X`` (some system responses, including failure, would cost money). The objective is to find the design with the lowest total cost,- under the constraint that load and response verify equilibrium.
@@ -57,7 +57,7 @@ Q(X) &= -\log(P(X)) \\
 \end{aligned}
 ```
 
-where ``k`` is a constant, whose value does not affect the extremal ``X``, so ``k`` will be ignored in contributions to the target function. The constant matrix ``Q_{XX}`` is the inverse of the covariance matrix ``\Sigma``. In this example, ``s`` is a quadratic function of ``X``: its Hessian is constant and has value ``Q_{XX}``.  A Newton-Rapshon algorithm solves the minimization of a quadratic function exactly, in one iteration.  Further, a Newton-Raphson algorithm solves the minimization of a quadratic function, constrained by linear constraints, exaclty, in one iteration.  By contrast, a Newton-Raphson algorithm applied to finding the zero of the derivative of a Gaussian distribution, is prone to diverge.
+where ``k`` is a constant, whose value does not affect the extremal ``X``, so ``k`` will be ignored in contributions to the objective function. The constant matrix ``Q_{XX}`` is the inverse of the covariance matrix ``\Sigma``. In this example, ``s`` is a quadratic function of ``X``: its Hessian is constant and has value ``Q_{XX}``.  A Newton-Rapshon algorithm solves the minimization of a quadratic function exactly, in one iteration.  Further, a Newton-Raphson algorithm solves the minimization of a quadratic function, constrained by linear constraints, exaclty, in one iteration.  By contrast, a Newton-Raphson algorithm applied to finding the zero of the derivative of a Gaussian distribution, is prone to diverge.
 
 Hence, the code for an element defining a "cost" on a single dof ``X``, measured to a value ``v(t)`` with a Gaussian measurement error of standard deviation ``\sigma`` would implemented the function 
 
@@ -65,9 +65,9 @@ Hence, the code for an element defining a "cost" on a single dof ``X``, measured
 Q(X,t) = \frac{1}{2} \frac{1}{\sigma^2} \left( X-v(t) \right)^2
 ```
 
-### Contributions to the target function
+### Contributions to the objective function
 
-In Muscade, additive contributions to the target function are called "costs", although this is admitedly an inadequate name for an additive contribution to a surprisal. The costs are implemented as elements.  
+In Muscade, additive contributions to the objective function are called "costs", although this is admitedly an inadequate name for an additive contribution to a surprisal. The costs are implemented as elements.  
 
 One example of built-in element defining a cost is [`DofCost`](@ref), an element to add a cost which is a function of the value of a dof. Examples would include:
 
@@ -94,7 +94,7 @@ For evolution problems (involving a time-dependency), the dot product ``R(X,U,A)
 
 In the original finite element analysis, the *elements* in a model form a partition of a domain over which differential equations are to be solved. We will call these "physical elements".  These elements provide additive contributions to the system of equations ``R(X,U,A)=0``. Further contributions can come from external loads.
 
-When doing optimisation-FEM in `Muscade`, the elements provide additive contributions to the Lagrangian scalar ``L``, instead of to the residual vector ``R``. Actually when creating a new element in `Muscade` to create an application, one can either implement a contribution to ``R`` by implementing a method `Muscade.residual` for the element, or a contribution to ``L`` by implementing `Muscade.lagrangian`.  For performance, whenever possible (for example when implementing a physical element), prefer `Muscade.residual`. 
+When doing FEM-constrained optimisation in `Muscade`, the elements provide additive contributions to the Lagrangian scalar ``L``, instead of to the residual vector ``R``. Actually when creating a new element in `Muscade` to create an application, one can either implement a contribution to ``R`` by implementing a method `Muscade.residual` for the element, or a contribution to ``L`` by implementing `Muscade.lagrangian`.  For performance, whenever possible (for example when implementing a physical element), prefer `Muscade.residual`. 
 
 ## Physical and optimisation constraints
 
