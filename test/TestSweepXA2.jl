@@ -1,10 +1,9 @@
 module TestSweepXA2
 using Test
-using Muscade
+using Muscade, Muscade.Toolbox
 
 
 include("SomeElements.jl")
-include("../examples/DryFriction.jl")
 
 # Δt              = 0.01
 # t               = Δt:Δt:1000*Δt

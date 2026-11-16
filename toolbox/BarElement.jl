@@ -3,6 +3,8 @@
 using StaticArrays, LinearAlgebra, Muscade
 @functor with() g̃_default(t) = SVector(0.,0.,1.); 
 
+# Definition of an axisymmetric cross section, that bars can be made of. 
+
 """
     AxisymmetricBarCrossSection 
 
@@ -52,13 +54,13 @@ const ngp        = 4 # Number of Gauss points
 const ndim       = 3 # Number of dimensions
 const nXdof      = 6 # Number of X-class degrees of freedom
 const nXnod      = 2 # Number of X-class nodes
-const nUdof      = 3 # Number of U-class degrees of freedom   
+const nUdof      = 3;# Number of U-class degrees of freedom   
 
 # Shape functions
 ψ₁(ζ) = -ζ + 1/2          
-ψ₂(ζ) =  ζ + 1/2         
+ψ₂(ζ) =  ζ + 1/2;         
 
-# Data structure describing an Bar3D element as meshed
+# ## Type
 """
     Bar3D <: AbstractElement
 
@@ -107,8 +109,7 @@ struct Bar3D{Mat,Uforce} <: AbstractElement
     ψ₂       :: SVector{ngp,𝕣}   # Value at gp of shape function
 end;
 
-# For performance, `residual` will only accept differentiation to first order
-Muscade.no_second_order(::Type{<:Bar3D}) = Val(true)
+# ## `doflist`
 
 # Define nodes, classes, and field names of dofs for the element, in absence/presence of U-dofs, respectively
 Muscade.doflist(     ::Type{Bar3D{Mat,false}}) where{Mat} = 
@@ -120,88 +121,74 @@ Muscade.doflist(     ::Type{Bar3D{Mat,true}}) where{Mat} =
          class= (:X,:X,:X,      :X,:X,:X,       :U,:U,:U),  
          field= (:t1,:t2,:t3,   :t1,:t2,:t3,    :t1,:t2,:t3) )
 
-# Constructor of the Bar3D element. 
+# ## Constructor
 Bar3D(nod;kwargs...) = Bar3D{false}(nod;kwargs...) # by default, Bar3D does not have Udof.
 function Bar3D{Udof}(nod::Vector{Node};mat,ϵₛ=eps()) where {Udof}
     c       = coord(nod)
-    # Position of the middle of the element in the global coordinate system (as-meshed)
-    cₘ      = SVector{3}((c[1]+c[2])/2)
-    # Tangential vector to the element in the local and global coordinate system, and its length (as-meshed)
-    tgₘ     = SVector{ndim}(c[2]-c[1])
+    cₘ      = SVector{3}((c[1]+c[2])/2) # Position of the middle of the element in the global coordinate system (as-meshed)
+    tgₘ     = SVector{ndim}(c[2]-c[1])  # Tangential vector to the element in the local and global coordinate system, and its length (as-meshed)
     L₀ =  norm(tgₘ)
     Lₛ =  (1-ϵₛ)*L₀
     tgₑ     = SVector{ndim}(L₀,0,0)
-    # Location ζgp of the Gauss points associated weigths, and values of the shape functions, for a unit-length bar element, with nodes at ζnod=±1/2. 
     wgp    = SVector{ngp}(      L₀/2*(18-sqrt(30))/36,          L₀/2*(18+sqrt(30))/36  ,        L₀/2*(18+sqrt(30))/36,          L₀/2*(18-sqrt(30))/36       ) 
-    ζgp     = SVector{ngp  }(   -1/2*sqrt(3/7+2/7*sqrt(6/5)),   -1/2*sqrt(3/7-2/7*sqrt(6/5)),   +1/2*sqrt(3/7-2/7*sqrt(6/5)),   +1/2*sqrt(3/7+2/7*sqrt(6/5))) 
+    ζgp     = SVector{ngp  }(   -1/2*sqrt(3/7+2/7*sqrt(6/5)),   -1/2*sqrt(3/7-2/7*sqrt(6/5)),   +1/2*sqrt(3/7-2/7*sqrt(6/5)),   +1/2*sqrt(3/7+2/7*sqrt(6/5))) # Location ζgp of the Gauss points associated weigths, and values of the shape functions, for a unit-length bar element, with nodes at ζnod=±1/2. 
     ζnod    = SVector{nXnod}(   -1/2  ,1/2  )
     shapes  = (ψ₁.(ζgp), ψ₂.(ζgp))
     return Bar3D{typeof(mat),Udof}(cₘ,tgₘ,tgₑ,L₀,Lₛ,mat,wgp,ζgp,ζnod,shapes...)
 end;
 
+# ## `Residual`
+
+# For performance, `residual` will only accept differentiation to first order
+Muscade.no_second_order(::Type{<:Bar3D}) = Val(true)
+
 # Internal and external loads at a given Gauss point with coordinates x, and strain ε. 
 @espy function resultants(o::AxisymmetricBarCrossSection,ε,x,u,t) 
-    # Unit vector tangential to the element
-    δ      = ∂0(u)
-    # Velocity and acceleration
-    v,a      = ∂1(x),∂2(x)    
-    # Inertia force
-    fi      = o.μ * a
-    # Weight 
-    fw = - o.w * o.g̃(t) 
-    # Added mass
-    aₜ = a ∘₁ δ         # Tangential acceleration (scalar)
-    aₙ = a - aₜ * δ     # Normal acceleration (vector)
-    fa  = SVector{3}(o.Caₜ * aₜ,o.Caₙ * aₙ[2],o.Caₙ* aₙ[3])
-    # Linear and quadratic damping
-    vₜ = v ∘₁ δ         # Tangential acceleration (scalar)
-    vₙ = v - vₜ * δ     # Normal acceleration (vector)
+    δ      = ∂0(u)  # Unit vector tangential to the element
+    v,a      = ∂1(x),∂2(x) # Velocity and acceleration
+    fi      = o.μ * a # Inertia force
+    fw = - o.w * o.g̃(t) # Weight 
+    aₜ = a ∘₁ δ # Tangential acceleration (scalar)
+    aₙ = a - aₜ * δ # Normal acceleration (vector)
+    fa  = SVector{3}(o.Caₜ * aₜ,o.Caₙ * aₙ[2],o.Caₙ* aₙ[3]) # Added mass
+    vₜ = v ∘₁ δ # Tangential velocity (scalar)
+    vₙ = v - vₜ * δ # Normal velocity (vector)
     fqₜ = o.Cqₜ * vₜ^2;          if vₜ < 0; fqₜ = -fqₜ end
     fqₙ2 = o.Cqₙ * vₙ[2]^2;     if vₙ[2] < 0; fqₙ2 = -fqₙ2 end
     fqₙ3 = o.Cqₙ * vₙ[3]^2;     if vₙ[3] < 0; fqₙ3 = -fqₙ3 end
-    fd  = SVector{3}(o.Clₜ * vₜ + fqₜ, o.Clₙ * vₙ[2] + fqₙ2 ,o.Clₙ* vₙ[3]+ fqₙ3 )
-    # Sum of external forces
-    ☼fe      =   fi+fw+fa+fd
-    # Internal forces
-    ☼fᵢ      = o.EA*∂0(ε)
+    fd  = SVector{3}(o.Clₜ * vₜ + fqₜ, o.Clₙ * vₙ[2] + fqₙ2 ,o.Clₙ* vₙ[3]+ fqₙ3 ) # Linear and quadratic damping
+    ☼fe      =   fi+fw+fa+fd # Sum of external forces
+    ☼fᵢ      = o.EA*∂0(ε) # Internal forces
     return fᵢ,fe
 end;
 
 # Define now the residual function for the Bar3D element.
 @espy function Muscade.residual(o::Bar3D{Mat,Udof},   X,U,A,t,SP,dbg) where{Mat,Udof}
-    # Obtain motions (i.e. including velocity and accelerations) from X
-    P,ND,x_      = motion(X)
-    # Motions of the nodes, center of the element (underscores are appended to motion'ed variables)
-    uᵧ₁_,uᵧ₂_   = vec3(x_,1,2,3), vec3(x_,4,5,6) 
+    P,ND,x_      = motion(X)            # Obtain motions (i.e. including velocity and accelerations) from X
+    uᵧ₁_,uᵧ₂_   = vec3(x_,1,2,3), vec3(x_,4,5,6) # Motions of the nodes, center of the element (underscores are appended to motion'ed variables)
     c_        = o.cₘ + 0.5*(uᵧ₁_+uᵧ₂_) 
-    # Element direction and length
-    tg_      = o.tgₘ + uᵧ₂_ - uᵧ₁_
+    tg_      = o.tgₘ + uᵧ₂_ - uᵧ₁_      # Element direction and length
     L_       = norm(tg_)
     δ_       = tg_/L_
-    # Strains
-    ε_       = L_/o.Lₛ - 1.
-    # Compute how strains vary with nodal displacements (will be used in the Princple of Virtual Work, PVW)
-    ε,δ = motion⁻¹{P,ND}(ε_,δ_); δ₀ = ∂0(δ)
-    ε∂X₀ = 1/o.L₀*SVector{6}(-δ₀[1],-δ₀[2],-δ₀[3],δ₀[1],δ₀[2],δ₀[3]) 
-    # Compute motions of Gauss points
-    xGP_ = ntuple(i -> c_ .+ tg_ * o.ζgp[i], ngp)
+    ε_       = L_/o.Lₛ - 1.             # Strains
+    ε,δ = motion⁻¹{P,ND}(ε_,δ_); δ₀ = ∂0(δ)  
+    ε∂X₀ = 1/o.L₀*SVector{6}(-δ₀[1],-δ₀[2],-δ₀[3],δ₀[1],δ₀[2],δ₀[3]) # derivative of strains with respect to nodal displacements (will be used in the Princple of Virtual Work, PVW)
+    xGP_ = ntuple(i -> c_ .+ tg_ * o.ζgp[i], ngp)       # Motions of Gauss points
     xGP = motion⁻¹{P,ND}(xGP_)  
-    # Compute loads at Gauss points
-    gpContrib = ntuple(ngp) do igp              
+    gpContrib = ntuple(ngp) do igp                  # Compute loads at Gauss points
         fᵢ,fₑ     = ☼resultants(o.mat,ε,xGP[igp],δ,t) # Compute loads from strains/motions, etc.
         fₑ        = Udof ? fₑ-∂0(U) : fₑ       # If there are unknown loads, they're added here (U is per unit length)
         x∂X₀ = SMatrix{3,6,𝕣,18}(ψ₁(o.ζgp[igp]),0,0,0,ψ₁(o.ζgp[igp]),0,
                                 0,0,ψ₁(o.ζgp[igp]),ψ₂(o.ζgp[igp]),0,0, 
                                 0,ψ₂(o.ζgp[igp]),0,0,0,ψ₂(o.ζgp[igp]))           
-        #  Application of PVW, local contribution of the integral over the element        
-        R_        = ( fᵢ ∘₀ ε∂X₀ + fₑ ∘₁ x∂X₀ ) * o.wgp[igp]   
+        R_        = ( fᵢ ∘₀ ε∂X₀ + fₑ ∘₁ x∂X₀ ) * o.wgp[igp]           #  Application of PVW, local contribution of the integral over the element 
         @named(R_);
     end
     R                   = sum(gpᵢ.R_ for gpᵢ∈gpContrib)
     return R,noFB  
 end;
 
-# The following functions explain how the bar element should be drawn
+# ## Drawing
 using GLMakie
 """
 

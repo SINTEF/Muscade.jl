@@ -1,10 +1,13 @@
-
 #Assumes that pwd() is docs
 docs        = @__DIR__
 muscade     = normpath(joinpath(docs,".."))
 docsrc      = joinpath(docs,"src")
-examplesrc(ex) = normpath(joinpath(docs,"..","examples",ex))
-examples    = ["StaticBeamAnalysis","ModalBeamAnalysis","DynamicBeamAnalysis","DecayAnalysis","TuningFork","DryFriction"]
+
+analysisExampleSrc(ex) = normpath(joinpath(docs,"..","examples",ex))
+analysisExamples    = ["StaticBeamAnalysis","ModalBeamAnalysis","DynamicBeamAnalysis","DecayAnalysis","TuningFork"]
+
+elementExampleSrc(ex) = normpath(joinpath(docs,"..","toolbox",ex))
+elementExamples    =  ["DryFriction","BarElement","BeamElement"]
 
 requiredIncludeFiles = ["toolbox" "BeamElement.jl"; 
                         "toolbox" "Rotations.jl";  
@@ -27,9 +30,13 @@ cp(joinpath(muscade,"LICENSE.md"),joinpath(docsrc,"LICENSE.md"),force=true)
 nodocstr(str) =  replace(str, r"(*ANYCRLF)^\"\"\"$.*?^\"\"\"$"ms => "") # Take """ somedocstring """ out of str
 
 @printf "\nLiterate.markdown: *.jl → *.md\n\n"
-for ex ∈ examples
-        Literate.markdown(examplesrc(@sprintf("%s.jl",ex)), docsrc, preprocess = nodocstr)
+for ex ∈ analysisExamples
+        Literate.markdown(analysisExampleSrc(@sprintf("%s.jl",ex)), docsrc, preprocess = nodocstr)
 end
+for ex ∈ elementExamples
+        Literate.markdown(elementExampleSrc(@sprintf("%s.jl",ex)), docsrc, preprocess = nodocstr)
+end
+
 
 ## DocumenterCitations
 
@@ -53,7 +60,8 @@ makedocs(sitename ="Muscade.jl",
                                         "Solvers.md",
                                         "Diagnostic.md",
                                         "Elements.md"],
-                "Examples" => [@sprintf("%s.md",ex) for ex∈examples],
+                "Element examples" =>  [@sprintf("%s.md",ex) for ex ∈ elementExamples],
+                "Analysis examples" => [@sprintf("%s.md",ex) for ex ∈ analysisExamples],
                 "reference.md",
                 "internals.md",
                 "Appendix" => [

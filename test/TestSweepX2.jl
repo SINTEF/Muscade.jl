@@ -1,10 +1,9 @@
 module TestSweepX2
 using Test
-using Muscade
+using Muscade, Muscade.Toolbox
 
 
 include("SomeElements.jl")
-include("../examples/DryFriction.jl")
 
 model           = Model(:TestModel)
 node            = addnode!(model,𝕣[])
