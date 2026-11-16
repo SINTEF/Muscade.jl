@@ -44,8 +44,8 @@ Some newer features, which have the vocation to be part of the next release, are
 If you use this package in published work, please cite (review on-going):
 
 > P. Maincon and T. Sauder, "Muscade.jl : a Julia package for 
-> FEM-constrained optimisation", ssrn:7268625
-> (2026). https://doi.org/10.2139/ssrn.7268625
+> FEM-constrained optimisation", (2026). 
+> https://doi.org/10.1016/j.softx.2026.103186
 
 ```bibtex
 @article{MainconSauder2026,
@@ -53,8 +53,8 @@ If you use this package in published work, please cite (review on-going):
   title   = {Muscade.jl : a Julia package for FEM-constrained optimisation},
   journal = {SoftwareX},
   year    = {2026},
-  doi     = {10.2139/ssrn.7268625},
-  url     = {https://doi.org/10.2139/ssrn.7268625},
+  doi     = {10.1016/j.softx.2026.103186},
+  url     = {https://doi.org/10.1016/j.softx.2026.103186},
 }
 ```
 
