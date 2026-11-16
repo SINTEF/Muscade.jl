@@ -37,7 +37,7 @@ force           = eleres[iele,istep].F
 ## Model definition
 
 A typical analysis flow chart is presented below. 
-![FlowChart](FlowChart.png)
+![FlowChart](assets/FlowChart.png)
 
 The definition of a model is done in three phases:
 

@@ -25,19 +25,19 @@ FEM-constrained optimisation problems include a variety of applications:
 
 **Load identification and monitoring**: Given incomplete and noisy measurements of the response `X` of a system, what are the loads `U` that are most likely to have caused a response close to what has been measured?  The objective function describes prior knowledge of the load processes, and the type, value and precision of the measurements. 
 
-![iFEMsmall](iFEMsmall.jpg)
+![iFEMsmall](assets/iFEMsmall.jpg)
 
 *Conceptual representation of load identification and response monitoring. `U`-dof in red `X`-dof in magenta, measurement data in black and evaluated measurement in green. The figure is not a `Muscade` analysis output.*
 
 **Model identification**: Adjust the model parameters `A` of a system (model calibration, damage detection) given measurements on its response `X` when exposed to at least partly unknown (`U`) load. As in load identification problems, the objective function describes prior knowledge of the load processes, and the measurements.  In addition, it expresses prior knowledge of the state of the structure. 
 
-![Decaysmall](decaysmall.png)
+![Decaysmall](assets/decaysmall.png)
 
 *A small-scale physical model of an anchored vessel is "kicked" in an ocean laboratory, and the vessel's oscillations registrered. The graph shows the identification, using `Muscade`, of the system's non-linear added mass, damping and stiffness for surge (oscillation in forward direction). The actual analysis also captures the interaction with other degrees of freedom (sway and yaw).* 
 
 **Design optimisation**: What is the cheapest way to engineer a system whose strength is described by `A`, that will survive a set of loading conditions?  The objective function describes a financial cost.
 
-![SharedAnchor](SharedAnchor.jpg)
+![SharedAnchor](assets/SharedAnchor.jpg)
 
 *Static optimisation of a shared anchor system for a lattice of offshore wind turbines.*
 
