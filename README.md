@@ -14,7 +14,7 @@ FEM-constrained optimisation problems are optimisation problems that apply equil
 - *Sensor array optimisation* determines the optimal placement of sensors in a system in order to monitor a given behaviour. 
 - Finally *structural reliability* seeks the combination of loads and structural response which are the most likely to cause the failure of a structure.
 
-![Example of use of Muscade.jl](docs/src/windTurbineExample.png)
+![Example of use of Muscade.jl](docs/src/assets/windTurbineExample.png)
 
 ## Purpose
 
