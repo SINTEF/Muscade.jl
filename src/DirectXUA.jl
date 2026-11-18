@@ -449,12 +449,12 @@ end
 """
 	DirectXUA{OX,OU,IA}
 
-A non-linear direct solver for optimisation FEM.
+A non-linear direct solver for FEM-constrained optimisation.
 
 An analysis is carried out by a call with the following syntax:
 
 ```
-primerstate    = initialize!(model)
+stateXUA         = solve(DirectXUA{OX,OU,IA};primerstate=[initialstateXUA],time=[T]);
 ```
 
 The solver does not yet support interior point methods. 

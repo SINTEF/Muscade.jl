@@ -25,7 +25,7 @@ initialstate    = initialize!(model);
 nmod            = 5
 Random.seed!(1234) # eigensolvers use a random start.  Freeze it for reproducible tests
 
-eiginc          = solve(EigX{ℝ};state=initialstate,nmod,verbose=false)
+eiginc          = solve(EigX{ℝ};linearisationstate=initialstate,nmod,verbose=false)
 imod            = [1,    2]
 A               = [1,4+5im] 
 state           = increment(initialstate,eiginc,imod,A)
@@ -37,7 +37,7 @@ state           = increment(initialstate,eiginc,imod,A)
     @test state.X[3][1:2:end] ≈ [-0.2937262712953869, -0.6962620392508903, -0.6613336756803813, -0.2137967604399907, 0.36006958839215825, 0.694478296097603]
 end
 
-eiginc          = solve(EigX{:fullℝ};state=initialstate,verbose=false)
+eiginc          = solve(EigX{:fullℝ};linearisationstate=initialstate,verbose=false)
 imod            = [1,    2]
 A               = [1,4+5im] 
 state           = increment(initialstate,eiginc,imod,A)
@@ -51,7 +51,7 @@ end
 
 
 
-eiginc          = solve(EigX{ℂ};state=initialstate,nmod,verbose=false)
+eiginc          = solve(EigX{ℂ};linearisationstate=initialstate,nmod,verbose=false)
 imod            = [1,    2]
 A               = [1,4+5im] 
 state           = increment(initialstate,eiginc,imod,A)
@@ -63,7 +63,7 @@ state           = increment(initialstate,eiginc,imod,A)
     @test state.X[3][1:2:end] ≈  [0.02223145453650511, 0.06504555832867998, 0.10303553062324605, 0.13338382896767445, 0.15383965890798573, 0.1628859051167022] atol=1e-6
 end
 
-eiginc          = solve(EigX{:fullℂ};state=initialstate,verbose=false)
+eiginc          = solve(EigX{:fullℂ};linearisationstate=initialstate,verbose=false)
 imod            = [1,    2] # modes not in same order as in EigX{ℂ}
 A               = [1,4+5im] 
 state           = increment(initialstate,eiginc,imod,A)

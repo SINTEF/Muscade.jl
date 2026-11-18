@@ -42,7 +42,7 @@ OU              = 2
 t               = range(start=t₀,step=Δt,length=2^p)
 
 initialstate    = initialize!(model)   
-state           = solve(FreqXU{OX,OU};Δt, p, t₀,initialstate,verbose=false)
+state           = solve(FreqXU{OX,OU};Δt, p, t₀,linearisationstate=initialstate,verbose=false)
 dof             = getdof(state,field=:tx1)
 
 # using GLMakie
