@@ -20,11 +20,10 @@ A linear frequency domain solver for optimisation FEM.
 An analysis is carried out by a call with the following syntax:
 
 ```
-initialstate    = initialize!(model)
-stateXU         = solve(FreqXU{OX,OU};Δt, p, t₀,tᵣ,initialstate)
+stateXU         = solve(FreqXU{OX,OU};Δt, p, t₀,tᵣ,linearisationstate)
 ```
 
-The solver linearises the problem (computes the Hessian of the Lagrangian) at `initialstate` with time `tᵣ`, and solves
+The solver linearises the problem (computes the Hessian of the Lagrangian) at `linearisationstate` with time `tᵣ`, and solves
 it at times `t=range(start=t₀,step=Δt,length=2^p)`. The return
 
 
@@ -39,7 +38,7 @@ it at times `t=range(start=t₀,step=Δt,length=2^p)`. The return
 - `dbg=(;)`           a named tuple to trace the call tree (for debugging).
 - `verbose=true`      set to false to suppress printed output (for testing).
 - `silenterror=false` set to true to suppress print out of error (for testing) .
-- `initialstate`      a `State` at which the problem is linearized.
+- `linearisationstate`      a `State` at which the problem is linearized.
 - `t₀=0.`             time of first step.                      
 - `Δt`                time step.
 - `p`                 `2^p` steps will be analysed.      
@@ -55,13 +54,13 @@ See also: [`solve`](@ref), [`initialize!`](@ref), [`study_singular`](@ref), [`Sw
 struct FreqXU{OX,OU} <: AbstractSolver end 
 function solve(::Type{FreqXU{OX,OU}},pstate,verbose::𝕓,dbg;
     Δt::𝕣, p::𝕫, t₀::𝕣=0.,tᵣ::𝕣=t₀, 
-    initialstate::State,
+    linearisationstate::State,
     droptol::𝕣=1e-10,
     wanted::Wanted=Wanted{1,OX+1,OU+1,0}(:all,:all)) where{OX,OU}
 
     #  Mostly constants
     local LU
-    model,dis             = initialstate.model, initialstate.dis
+    model,dis             = linearisationstate.model, linearisationstate.dis
     nω                    = 2^(p-1)
     nstep                 = 2nω
     time                  = range(;start=t₀,step=Δt,length=nstep)
@@ -70,7 +69,7 @@ function solve(::Type{FreqXU{OX,OU}},pstate,verbose::𝕓,dbg;
     # State storage
     S                     = State{1,3,3,Nothing}
     pstate[] = state      = Vector{S}(undef,nstep)                                                                           
-    stateᵣ                = State{1,3,3}(copy(initialstate,time=tᵣ))   
+    stateᵣ                = State{1,3,3}(copy(linearisationstate,time=tᵣ))   
 
     # Prepare assembler
     verbose && @printf("    Preparing assembler\n")

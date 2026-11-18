@@ -113,11 +113,10 @@ Study the combinations of load and response that are least detected by sensor sy
 An analysis is carried out by a call with the following syntax:
 
 ```
-initialstate    = initialize!(model)
-eiginc          = solve(EigXU{OX,OU};Δω, p, nmod,initialstate)
+eiginc          = solve(EigXU{OX,OU};Δω, p, nmod,linearisationstate)
 ```
 
-The solver linearises the problem (computes the Hessian of the Lagrangian) at `initialstate` and solves 
+The solver linearises the problem (computes the Hessian of the Lagrangian) at `linearisationstate` and solves 
 the ΛXU-eigenvalue problem at frequencies ``ωᵢ = Δω*i`` with ``i∈{0,...,2ᵖ-1}``.
 
 
@@ -131,7 +130,7 @@ the ΛXU-eigenvalue problem at frequencies ``ωᵢ = Δω*i`` with ``i∈{0,...,
 # Named arguments
 - `dbg=(;)`           a named tuple to trace the call tree (for debugging).
 - `verbose=true`      set to false to suppress printed output (for testing).
-- `initialstate`      a `State`, at which the problem is linearized.
+- `linearisationstate`  a `State`, at which the problem is linearized.
 - `nmod`              the number of eigen-modes to identusy
 - `Δω`                frequency step
 - `p`                 `2^p` steps will be analysed.      
@@ -147,7 +146,7 @@ struct EigXU{OX,OU} <: AbstractSolver end
 
 function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
     Δω::𝕣, p::𝕫, 
-    initialstate::State,
+    linearisationstate::State,
     droptol::𝕣=1e-10,
     nmod::𝕫=5,
     full::𝕓=false,
@@ -156,13 +155,13 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
 
     #  Mostly constants
     local ◺A
-    model,dis             = initialstate.model, initialstate.dis
+    model,dis             = linearisationstate.model, linearisationstate.dis
     nω                    = 2^p
     IA                    = 0
     # State storage
     S                     = State{1,OX+1,OU+1,Nothing}
     pstate[] = state      = Vector{S}(undef,nω)                                                                           
-    state₀                = State{1,OX+1,OU+1}(copy(initialstate))   
+    state₀                = State{1,OX+1,OU+1}(copy(linearisationstate))   
 
     verbose && @printf("    Preparing assembler\n")
     wanted                = Wanted{1,OX+1,OU+1,IA}(:all,:all) # TODO refine
@@ -230,15 +229,15 @@ function solve(::Type{EigXU{OX,OU}},pstate,verbose::𝕓,dbg;
     return
 end
 """
-    state = increment{OX}(initialstate,eiginc,iω,imod,A)
+    state = increment{OX}(linearisationstate,eiginc,iω,imod,A)
 
 Starting from `initalstate` for which an `EigX` analysis has been carried out, and using the output
 `eiginc` of that analysis, construct new `State`s representing the instantaneous state of the 
 vibrating structure
     
 # Input
-- `OX` the number of time derivatives to be computed.  `increment(initialstate,eiginc,imod,A)` defaults to `OX=2`
-- `initialstate` the same initial `State` provided to `EigXU` to compute `eiginc`
+- `OX` the number of time derivatives to be computed.  `increment(linearisationstate,eiginc,imod,A)` defaults to `OX=2`
+- `linearisationstate` the same initial `State` provided to `EigXU` to compute `eiginc`
 - `eiginc` obtained from `EigXU`
 - `iω`, the number of the frequency to consider. `ω=iω*Δω` where `Δω` is an input to [`EigXU`](@ref). 
 - `imod`, an `AbstractVector` of integer mode numbers
@@ -250,8 +249,8 @@ vibrating structure
 
 See also: [`EigXU`](@ref)
 """
-function increment{OX}(initialstate,eiginc::EigXUincrement,iω::𝕫,imod::AbstractVector{𝕫},amplitude::AbstractVector) where{OX} 
-    state       = State{1,OX+1,1}(copy(initialstate)) 
+function increment{OX}(linearisationstate,eiginc::EigXUincrement,iω::𝕫,imod::AbstractVector{𝕫},amplitude::AbstractVector) where{OX} 
+    state       = State{1,OX+1,1}(copy(linearisationstate)) 
     ω, ΔΛXU     = eiginc.ω[iω], eiginc.ΔΛXU[iω]
     maximum(imod)≤length(eiginc.λ) || muscadeerror(@sprintf("eiginc only has %n modes for iω=%i.",length(ω),iω))
     for (i,imodᵢ)∈enumerate(imod)  
@@ -263,11 +262,11 @@ function increment{OX}(initialstate,eiginc::EigXUincrement,iω::𝕫,imod::Abstr
 end
 
 # scales Λ,X and U differently (so is no longer a solution state) and only updates 0th derivatives. For graphical outputs
-function visualincrement(initialstate,eiginc::EigXUincrement,iω::𝕫,imod::𝕫;Λscale::𝕣=1.,Xscale::𝕣=1.,Uscale::𝕣=1.) 
+function visualincrement(linearisationstate,eiginc::EigXUincrement,iω::𝕫,imod::𝕫;Λscale::𝕣=1.,Xscale::𝕣=1.,Uscale::𝕣=1.) 
     imod≤length(eiginc.λ) || muscadeerror(@sprintf("eiginc only has %n modes for iω=%i.",length(ω),iω))
-    model,dis             = initialstate.model, initialstate.dis
+    model,dis             = linearisationstate.model, linearisationstate.dis
     gr, ΔΛXU              = eiginc.dofgr, eiginc.ΔΛXU[iω][imod]
-    state                 = State{1,1,1}(copy(initialstate)) 
+    state                 = State{1,1,1}(copy(linearisationstate)) 
     for i ∈ eachindex(gr.iΛ); state.Λ[1][gr.iΛ[i]] += ΔΛXU[gr.jΛ[i]] * gr.scaleΛ[i] *Λscale end
     for i ∈ eachindex(gr.iX); state.X[1][gr.iX[i]] += ΔΛXU[gr.jX[i]] * gr.scaleX[i] *Xscale end
     for i ∈ eachindex(gr.iU); state.U[1][gr.iU[i]] += ΔΛXU[gr.jU[i]] * gr.scaleU[i] *Uscale end
@@ -275,7 +274,7 @@ function visualincrement(initialstate,eiginc::EigXUincrement,iω::𝕫,imod::�
 end
 """
 
-    Muscade.GUI(eiginc,initialstate;[draw_shadow=true],[shadow=...],[model=...])
+    Muscade.GUI(eiginc,linearisationstate;[draw_shadow=true],[shadow=...],[model=...])
 
 Taking the output `eiginc` obtained from an `EigXU`, and the state `initstate` provided to `EigXU`, provide
 a GUI to explore the results.
@@ -287,7 +286,7 @@ Optional keyword arguements are
 
 See also [`EigXU`](@ref)
 """
-function GUI(initialstate,eiginc::EigXUincrement,;kwargs...)
+function GUI(linearisationstate,eiginc::EigXUincrement,;kwargs...)
     args = default(kwargs, (draw_shadow=true, shadow=(;),model=(;)))
 
     ## Organize the window
@@ -324,11 +323,11 @@ function GUI(initialstate,eiginc::EigXUincrement,;kwargs...)
 
     ## Model
 
-    args.draw_shadow && draw!(axisModel,initialstate;args.shadow...); # draw initial state once to keep on screen
+    args.draw_shadow && draw!(axisModel,linearisationstate;args.shadow...); # draw initial state once to keep on screen
     
-    graphic = draw!(axisModel,initialstate;args.model...);                             # and twice to start the pump
+    graphic = draw!(axisModel,linearisationstate;args.model...);                             # and twice to start the pump
     _ = map(iωs,obs.imode,obs.Xscale,obs.Uscale) do iω,imod,Xscale,Uscale                                    # Then observe the sliders
-        state = Muscade.visualincrement(initialstate,eiginc,iω,imod;Xscale=exp10(Xscale),Uscale=exp10(Uscale))
+        state = Muscade.visualincrement(linearisationstate,eiginc,iω,imod;Xscale=exp10(Xscale),Uscale=exp10(Uscale))
         draw!(graphic,state;args.model...);
     end
 

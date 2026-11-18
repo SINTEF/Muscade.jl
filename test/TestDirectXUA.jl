@@ -91,7 +91,7 @@ Muscade.assemblebig!{:matrices}(Lvv,Lv,Lvvasm,Lvasm,asm,model,dis,out,[state],[n
 # fig = Muscade.spy(Lvv,title="bigsparse Lvv sparsity",size=500)
 # save("C:\\Users\\philippem\\.julia\\dev\\Muscade\\spy.jpg",fig)
 
-#stateXUA         = solve(DirectXUA{OX,OU,IA};initialstate=[state0,state0],time=[0:1.:5, 6:1.:12],maxiter=100,verbose=false)
+#stateXUA         = solve(DirectXUA{OX,OU,IA};primerstate=[state0,state0],time=[0:1.:5, 6:1.:12],maxiter=100,verbose=false)
 
 @testset "prepare_out" begin
     @test out.L1[1] ≈ [[0.0, 0.0]]

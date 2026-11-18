@@ -37,7 +37,7 @@ state           = solve(SweepX{0};initialstate,time=[0.]);
 
 # Solve eigenvalue problem
 nmod            = 15
-res             = solve(EigX{ℝ};state=state[1],nmod);
+res             = solve(EigX{ℝ};linearisationstate=state[1],nmod);
 
 # Analytical solutions for the natural frequency of a simply supported beam 
 # See e.g. https://roymech.org/Useful_Tables/Vibrations/Natural_Vibrations_derivation.html

@@ -50,6 +50,9 @@ module Runtest
         @testset "TestFreqXU" begin
             include("TestFreqXU.jl")
         end
+#        @testset "TestEigXU" begin
+#            include("TestEigXU.jl")
+#        end
         @testset "TestScale" begin
             include("TestScale.jl")
         end

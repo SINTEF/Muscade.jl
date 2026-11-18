@@ -1,14 +1,14 @@
 """
-	eiginc = solve(EigX{ℝ     };state=initialstate,nmod)
-	eiginc = solve(EigX{:fullℝ};state=initialstate,nmod)
-	eiginc = solve(EigX{ℂ     };state=initialstate,nmod)
+	eiginc = solve(EigX{ℝ     };linearisationstate,nmod)
+	eiginc = solve(EigX{:fullℝ};linearisationstate,nmod)
+	eiginc = solve(EigX{ℂ     };linearisationstate,nmod)
 
-Given an initial (typicaly static) state `initialstate`, computes the lowest `nmod` eigenmodes of a system. 
-`EigX{ℝ}` computes real eigenmodes not accounting for damping. `EigX{ℝ}` computes complex eigenmodes accounting for damping.
+Given an initial (typically static) state `linearisationstate`, computes the lowest `nmod` eigenmodes of a system. 
+`EigX{ℝ}` computes real eigenmodes not accounting for damping. `EigX{ℂ}` computes complex eigenmodes accounting for damping.
 The data structure `eiginc` can be passed to `increment` to obtain dynamic states superimposing mode shapes.
 
 # Input
-- `initialstate` - a `State`, at which the problem is linearized.
+- `linearisationstate` - a `State`, at which the problem is linearized.
 - `nmod=5` - the number of eigenmodes to identify
 - `droptol=1e-9` - in the stiffness and mass matrix, the magnitude of a term relative to the largest term in the matrix
         under which the term is set to zero.
@@ -28,16 +28,16 @@ struct EigXℝincrement
     Δx    :: 𝕣11
 end
 function solve(::Type{EigX{ℝ}},pstate,verbose,dbg; 
-                   state::State, nmod::𝕫=5,droptol::𝕣=1e-9,kwargs...) 
+                   linearisationstate::State, nmod::𝕫=5,droptol::𝕣=1e-9,kwargs...) 
     OX,OU,IA         = 2,0,0
-    model,dis        = state.model,state.dis
+    model,dis        = linearisationstate.model,linearisationstate.dis
 
     verbose && @printf("\n    Assembling\n")
     wantK,wantM      = (ind.Λ,ind.X,1,1),(ind.Λ,ind.X,1,3)
     wanted           = Wanted{1,OX+1,OU+1,IA}(:all,(wantK,wantM))
     out,asm,dofgr    = prepare(AssemblyDirect,model,dis,wanted)  
     nXdof            = getndof.(dofgr)[ind.X]
-    state₀           = State{1,OX+1,OU+1}(copy(state)) 
+    state₀           = State{1,OX+1,OU+1}(copy(linearisationstate)) 
     assemble!{:matrices}(out,asm,dis,model,state₀,idmult,(dbg...,solver=:EigXℝ))
     K                = out.L2[ind.Λ,ind.X][1,1]
     M                = out.L2[ind.Λ,ind.X][1,3]
@@ -58,16 +58,16 @@ function maxto1(v::AbstractVector{𝕣})
     maxabs    = abs(lo)>abs(hi) ? lo : hi
     return  v./maxabs
 end
-function solve(::Type{EigX{:fullℝ}},pstate,verbose,dbg; state::State) 
+function solve(::Type{EigX{:fullℝ}},pstate,verbose,dbg; linearisationstate::State) 
     OX,OU,IA         = 2,0,0
-    model,dis        = state.model,state.dis
+    model,dis        = linearisationstate.model,linearisationstate.dis
 
     verbose && @printf("\n    Assembling\n")
     wantK,wantM      = (ind.Λ,ind.X,1,1),(ind.Λ,ind.X,1,3)
     wanted           = Wanted{1,OX+1,OU+1,IA}(:all,(wantK,wantM))
     out,asm,dofgr    = prepare(AssemblyDirect,model,dis,wanted)  
     nXdof            = getndof.(dofgr)[ind.X]
-    state₀           = State{1,OX+1,OU+1}(copy(state)) 
+    state₀           = State{1,OX+1,OU+1}(copy(linearisationstate)) 
     assemble!{:matrices}(out,asm,dis,model,state₀,idmult,(dbg...,solver=:EigXfullℝ))
     K                = Matrix(out.L2[ind.Λ,ind.X][1,1])
     M                = Matrix(out.L2[ind.Λ,ind.X][1,3])
@@ -82,15 +82,15 @@ function solve(::Type{EigX{:fullℝ}},pstate,verbose,dbg; state::State)
     return 
 end
 """
-    state = increment{OX}(initialstate,eiginc,imod,A)
+    state = increment{OX}(linearisationstate,eiginc,imod,A)
 
 Starting from `initalstate` for which an `EigX` analysis has been carried out, and using the output
 `eiginc` of that analysis, construct new `State`s representing the instantaneous state of the 
 vibrating structure
     
 # Input
-- `OX` the number of time derivatives to be computed.  `increment(initialstate,eiginc,imod,A)` defaults to `OX=2`
-- `initialstate` the same initial `State` provided to `EigX` to compute `eiginc`
+- `OX` the number of time derivatives to be computed.  `increment(linearisationstate,eiginc,imod,A)` defaults to `OX=2`
+- `linearisationstate` the same `State` provided to `EigX` to compute `eiginc`
 - `eiginc` obtained from `EigX`
 - `imod`, an `AbstractVector` of integer mode numbers
 - `A`, an `AbstractVector` of same length as `imod`, containing real or complex 
@@ -103,9 +103,9 @@ See also: [`EigX`](@ref)
 """
 struct increment{OX} end
 increment(args...) = increment{2}(args...)
-function increment{OX}(initialstate,eiginc::EigXℝincrement,imod::AbstractVector{𝕫},A::AbstractVector) where{OX}
+function increment{OX}(linearisationstate,eiginc::EigXℝincrement,imod::AbstractVector{𝕫},A::AbstractVector) where{OX}
     length(imod)==length(A)|| muscadeerror("imod and A must be of same length.")
-    state            = State{1,OX+1,1}(copy(initialstate)) 
+    state            = State{1,OX+1,1}(copy(linearisationstate)) 
     maximum(imod)≤length(eiginc.ω) || muscadeerror(@sprintf("eiginc only has %n modes.",length(ω)))
     for i∈eachindex(imod)  
         ωᵢ,Δxᵢ = eiginc.ω[imod[i]],eiginc.Δx[imod[i]]
@@ -131,16 +131,16 @@ function blkasm(iA,jA,vA)
     return A,Vasm,Vdis
 end 
 function solve(::Type{EigX{ℂ}},pstate,verbose,dbg; 
-    state::State, nmod::𝕫=5,droptol::𝕣=1e-9,kwargs...) 
+    linearisationstate::State, nmod::𝕫=5,droptol::𝕣=1e-9,kwargs...) 
     OX,OU,IA         = 2,0,0
-    model,dis        = state.model,state.dis
+    model,dis        = linearisationstate.model,linearisationstate.dis
 
     verbose && @printf("\n    Assembing\n")
     wantK,wantC,wantM= (ind.Λ,ind.X,1,1),(ind.Λ,ind.X,1,2),(ind.Λ,ind.X,1,3)
     wanted           = Wanted{1,OX+1,OU+1,IA}(:all,(wantK,wantC,wantM))
     out,asm,dofgr    = prepare(AssemblyDirect,model,dis,wanted)  
     nXdof            = getndof.(dofgr)[ind.X]
-    state₀           = State{1,OX+1,OU+1}(copy(state))   
+    state₀           = State{1,OX+1,OU+1}(copy(linearisationstate))   
     assemble!{:matrices}(out,asm,dis,model,state₀,idmult,(dbg...,solver=:EigXℂ))
     K                = out.L2[ind.Λ,ind.X][1,1]
     C                = out.L2[ind.Λ,ind.X][1,2]
@@ -160,16 +160,16 @@ function solve(::Type{EigX{ℂ}},pstate,verbose,dbg;
     pstate[] = EigXℂincrement(dofgr[ind.X],p,Δx)
     return 
 end
-function solve(::Type{EigX{:fullℂ}},pstate,verbose,dbg; state::State) 
+function solve(::Type{EigX{:fullℂ}},pstate,verbose,dbg; linearisationstate::State) 
     OX,OU,IA         = 2,0,0
-    model,dis        = state.model,state.dis
+    model,dis        = linearisationstate.model,linearisationstate.dis
 
     verbose && @printf("\n    Assembing\n")
     wantK,wantC,wantM= (ind.Λ,ind.X,1,1),(ind.Λ,ind.X,1,2),(ind.Λ,ind.X,1,3)
     wanted           = Wanted{1,OX+1,OU+1,IA}(:all,(wantK,wantC,wantM))
     out,asm,dofgr    = prepare(AssemblyDirect,model,dis,wanted)  
     nXdof            = getndof.(dofgr)[ind.X]
-    state₀           = State{1,OX+1,OU+1}(copy(state))   
+    state₀           = State{1,OX+1,OU+1}(copy(linearisationstate))   
     assemble!{:matrices}(out,asm,dis,model,state₀,idmult,(dbg...,solver=:EigXfullℂ))
     K                = out.L2[ind.Λ,ind.X][1,1]
     C                = out.L2[ind.Λ,ind.X][1,2]
@@ -185,8 +185,8 @@ function solve(::Type{EigX{:fullℂ}},pstate,verbose,dbg; state::State)
     pstate[]         = EigXℂincrement(dofgr[ind.X],p,Δx)
     return 
 end
-function increment{OX}(initialstate,eiginc::EigXℂincrement,imod::AbstractVector{𝕫},A::AbstractVector) where{OX} 
-    state            = State{1,OX+1,1}(copy(initialstate)) 
+function increment{OX}(linearisationstate,eiginc::EigXℂincrement,imod::AbstractVector{𝕫},A::AbstractVector) where{OX} 
+    state            = State{1,OX+1,1}(copy(linearisationstate)) 
     maximum(imod)≤length(eiginc.p)|| muscadeerror(@sprintf("eiginc only has %n modes.",length(ω)))
     for i∈eachindex(imod)  
         pᵢ,Δxᵢ = eiginc.p[imod[i]],eiginc.Δx[imod[i]]

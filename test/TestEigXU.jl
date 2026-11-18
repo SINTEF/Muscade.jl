@@ -115,7 +115,7 @@ nmod              = 5
 
 
 
-eigincXU          = solve(EigXU{OX,OU};Δω, p, nmod,initialstate,verbose=true,verbosity=1,tol=1e-20,σₓᵤ)
+eigincXU          = solve(EigXU{OX,OU};Δω, p, nmod,linearisationstate=initialstate,verbose=true,verbosity=1,tol=1e-20,σₓᵤ)
 
 
 # using ProfileView
