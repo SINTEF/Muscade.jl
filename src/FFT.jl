@@ -1,5 +1,5 @@
 #https://en.wikipedia.org/wiki/Bit-reversal_permutation
-function bitreversalpermutation(p) 
+function getbrp(p) 
     n                           = 2^p
     brp                         = Vector{𝕫}(undef,n)
     brp[1]                      = 0
@@ -18,7 +18,7 @@ function bitreversalpermutation(p)
 end
 function applybrp!(a,brp)
     @assert length(a) == length(brp)
-    @simd for i = 1:length(a)
+    @simd for i ∈ eachindex(a)
         @inbounds j = brp[i]
         if j≤i
             @inbounds a[i],a[j] = a[j],a[i]
@@ -56,7 +56,7 @@ function basic_fft!(A::AbstractVector{Complex{R}},brp,p,z) where{R<:Real}   # Wi
         ωₘ                         = expπ𝑖(z/m) 
         for k ∈ 1:2m:n # k+1 in Wikipedia     Block index
             ω                      = complex(1.)
-            @simd for j ∈ 0:m-1              #      Within block 
+            @simd for j ∈ 0:m-1                  # Within block 
                 @inbounds t        = ω*A[k+j+m]  # if a∈ℝ, i>1 then A[i]=A[n-i+2]'
                 @inbounds u        =   A[k+j  ]  # hence for m=n/2, A[n/2+k+j] = A[n/2+2-k-j]'
                 @inbounds A[k+j]   = u+t
@@ -65,18 +65,20 @@ function basic_fft!(A::AbstractVector{Complex{R}},brp,p,z) where{R<:Real}   # Wi
                 if mod(j,1024) == 15  # once in a while, renormalize ω 
                     ω             *= (3-ℜ(ω)^2-ℑ(ω)^2)/2  # but do so fast, do it using a 1st order Taylor expansion at 1 of of 1/|ω|
                 end
+                iω=abs(Int64(round(imag(log(ω))/2π*2^p)))
+                zz= (s-j)*2^(p-1-s) # +2^(p-1)
+                @show s,k,j,iω,zz,iω-zz
             end
         end
         m                         *= 2
     end
 end
 
-## ℝ → ℂ transforms
+# ℝ → ℂ transform (returns the positive half of the Hermitian spectre)
+# 2*2^pc ℝ vector a (time series) → 2^pc ℂ vector A 
 # See "fft real.pdf" for theory
-# forward 2^pc complex transform A of 2*2^pc real vector a
-#   A = reinterpret(Complex{Float64},a) # just a view
-#   basic_rfft!(A,brp,iW,pc)   # TODO reinterpret is not an AbstractVector
-# A is the half Fourrier transform
+#       A = reinterpret(Complex{Float64},a) # just a view
+#       basic_rfft!(A,brp,iW,pc)   # TODO reinterpret is not an AbstractVector
 function basic_rfft!(A::AbstractVector{Complex{R}},brp,iW,pc) where{R<:Real}
     nc     = 2^pc # N in the theory
     @assert length(A  )== nc
@@ -94,10 +96,9 @@ function basic_rfft!(A::AbstractVector{Complex{R}},brp,iW,pc) where{R<:Real}
         @inbounds A[j+1] = Aⱼ
     end
 end
-# A is the half Fourrier transform
-#   basic_irfft!(A,brp,iW,pc)
-#   a = reinterpret(Float64,A) # just a view
-# A is the half Fourrier transform
+# ℂ → ℝ transform (assuming half of a Hermitian spectre)
+#       basic_irfft!(A,brp,iW,pc)
+#       a = reinterpret(Float64,A) # just a view
 function basic_irfft!(A::AbstractVector{Complex{R}},brp,iW,pc) where{R<:Real}
     nc     = 2^pc # N in the theory
     @assert length(A  )== nc
@@ -153,7 +154,7 @@ function 𝔉(a::AbstractVector{R},δt::ℝ) where{R<:Real} #\mfrakF
     pc      = 𝕫log2(nc)
     A       = copy(reinterpret(Complex{R},a))
     iW      = getiW(nc)
-    brp     = bitreversalpermutation(pc)
+    brp     = getbrp(pc)
     basic_rfft!(A,brp,iW,pc)
     A     .*= δt/√(2π)   
     return A
@@ -164,7 +165,7 @@ function 𝔉!(A::AbstractMatrix{Complex{R}},δt::ℝ) where{R<:Real} #\mfrakF
     nc,ndof  = size(A)
     pc      = 𝕫log2(nc)
     iW      = getiW(nc)
-    brp     = bitreversalpermutation(pc)
+    brp     = getbrp(pc)
     Threads.@threads for idof = 1:ndof  
         basic_rfft!(view(A,:,idof),brp,iW,pc)
     end
@@ -197,7 +198,7 @@ function 𝔉⁻¹(A::AbstractVector{Complex{R}},δω::ℝ) where{R<:Real} #\mfr
     pc      = 𝕫log2(nc)
     a       = Vector{R}(undef,nr)
     iW      = getiW(nc)
-    brp     = bitreversalpermutation(pc)
+    brp     = getbrp(pc)
     a       = copy(A)
     basic_irfft!(a,brp,iW,pc)
     a     .*= δω*√(2/π)
@@ -209,7 +210,7 @@ function 𝔉⁻¹!(A::AbstractMatrix{Complex{R}},δω::ℝ) where{R<:Real} #\mf
     nc,ndof  = size(A)
     pc      = 𝕫log2(nc)
     iW      = getiW(nc)
-    brp     = bitreversalpermutation(pc)
+    brp     = getbrp(pc)
     Threads.@threads for idof = 1:ndof  
         basic_irfft!(view(A,:,idof),brp,iW,pc)
     end
